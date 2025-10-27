@@ -15,4 +15,8 @@
     <ProjectReference Include="..\BlazorIdle.Shared\BlazorIdle.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\sample-data\" />
+  </ItemGroup>
+
 </Project>

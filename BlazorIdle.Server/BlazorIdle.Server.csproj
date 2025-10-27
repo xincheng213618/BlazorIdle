@@ -19,4 +19,9 @@
     <ProjectReference Include="..\BlazorIdle.Shared\BlazorIdle.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Controllers\" />
+    <Folder Include="Data\" />
+  </ItemGroup>
+
 </Project>
