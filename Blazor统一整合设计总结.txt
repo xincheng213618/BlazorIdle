@@ -1,0 +1,471 @@
+# BlazorWebGame 统一整合设计总结 (Comprehensive Integrated Design Spec) — 客户端仿真版
+版本：2025-10（由服务端权威改为“客户端确定性仿真 + 服务器轻裁判 + 异步助战”）  
+作者：协同（你 + 设计辅助）  
+状态：Living Document（后续可拆分为 README、/docs 子文档、Issue 任务）
+
+---
+
+## 目录
+1. 愿景与核心定位  
+2. 玩家核心循环 (Core Loops)  
+3. 架构与工程原则  
+4. 领域模块总览与职责矩阵  
+5. 战斗系统 (双轨 + 资源 + 确定性事件调度)  
+6. 技能与自动施放系统  
+7. 职业与资源差异化机制  
+8. 活动计划系统（多槽 / 限制 / 序列）  
+9. 离线收益 & 快进模拟 (Offline Fast-Forward)  
+10. 组队感与助战（Async Co-op）  
+11. 地图 / 区域 / 解锁链 / NPC / 任务挂钩  
+12. 条件 / 解锁 DSL 与缓存体系  
+13. 装备与物品生态（品级 / 词条 / 套装 / 分解 / 重铸）  
+14. 消耗品与自动使用策略  
+15. 任务与声望 / 日常周常刷新  
+16. 经济循环与掉落裁定  
+17. 多角色 Roster 系统  
+18. 持久化与摘要审计 / 快照策略  
+19. 配置版本化与热更新 (Config Version Pin)  
+20. 监控 / 诊断 / 调试面板 (Metrics & Debug)  
+21. 安全与反滥用策略（客户端仿真版）  
+22. 随机性与控制（RNG 策略）  
+23. 数据驱动与可扩展性规范  
+24. 与当前已有代码的差异映射  
+25. 重构 / 演进路线图（Phase Plan）  
+26. 新增关键抽象类与结构清单  
+27. 决策日志 (Decision Log)  
+28. 后续拓展占位（赛季 / 公会 / 交易 / 高级事件）  
+29. 术语表 (Glossary)  
+附录 A-D
+
+---
+
+## 1. 愿景与核心定位
+构建一款“客户端确定性仿真 + 放置循环 + 构筑深度”的 Web RPG。  
+新定位要点：  
+- 战斗完全在前端确定性运行；服务器承担最小职责（存档、签名、开战/结算、掉落裁定、助战政策校验）。  
+- 以“异步助战影分身”塑造组队感，低成本实现社交参与与反馈。  
+- 支持离线收益与在线一致性（同一仿真核），但经济结果以服务器结算为准。
+
+特征：  
+- 时间驱动（Event Time Jump 或固定 Tick）统一推进循环（战斗、采集、生产、资源层叠）  
+- 双轨战斗节奏（Attack Track + Special Track）+ 双资源 / 叠层 Buff，塑造职业差异与构筑选择  
+- 助战政策（V1：等级上限）保证平衡，后续可加缩放/占比上限/光环模式  
+- Map / Region 解锁 → 进程感 + 内容引导  
+- 数据驱动（技能 / 掉落 / 条件 / 配方 / 装备词条）降低新增成本
+
+---
+
+## 2. 玩家核心循环 (Core Loops)
+| 层级 | 时间尺度 | 描述 |
+|------|----------|------|
+| 短循环 | 秒 ~ 分钟 | 进入地图→本地战斗仿真→资源生成→技能释放→客户端结算动画→向服务器提交摘要换取掉落 |
+| 中循环 | 0.5~5小时 | 选择助战影分身→装备调整/重铸→重复刷图→离线回收 |
+| 长循环 | 天 / 周 | 声望推进、周常任务、职业转职、装备优化、地图解锁、助战荣誉与积分（可选） |
+| 赛季循环 (未来) | 月+ | 赛季重置 / 限时事件 / 排行榜（摘要上报型） |
+
+---
+
+## 3. 架构与工程原则
+- Client-Sim, Server-Verified：战斗、数值与RNG在客户端确定性推进；服务器负责开战签发（runId+seed）、结算审计与掉落裁定。  
+- Deterministic 时间推进：固定 Tick（建议100ms）或事件时间跳跃（PriorityQueue）；统一 RNG 消耗序，支持回放/重算。  
+- Data-Driven：配置（JSON/数据表）+ 版本号管理；战斗内 VersionPin。  
+- 事件导向（客户端域内）：SkillCast / ResourceOverflow / PlanCompleted / SegmentFlushed。  
+- 可测试：可注入 GameClock 与 RNGContext；支持战斗摘要（Digest）对比。  
+- 监控优先：审计通过率、助战选择与通过率、掉落裁定延迟、异常摘要分布。  
+- 安全与反滥用：助战政策版本、摘要合理性窗口、掉落仅服务器裁定、run 幂等。  
+- 小步演进：MVP 先上线助战等级上限，后续再加缩放/占比上限/光环。
+
+---
+
+## 4. 领域模块总览与职责矩阵
+| 模块 | 职责焦点 | 核心实体/运行态 |
+|------|----------|----------------|
+| Activity | 活动计划/多槽调度（客户端） | ActivityPlan, ActivitySlot, LimitSpec |
+| Combat | 客户端战斗实例/事件/双轨/聚合 | BattleInstance, TrackState, CombatantState, Segment |
+| Skills | 技能定义/资源消耗/自动施放 | SkillDef, SkillSlot, CooldownState |
+| Resources & Buff | 资源桶/叠层 Buff | ResourceBucket, BuffInstance |
+| Professions | 职业参数与成长 | ProfessionProfile, ProfessionRuntime |
+| Equipment & Gear | 装备/词条/Tier/分解/重铸 | GearDefinition, GearInstance, Affix, SetBonus |
+| Economy | 掉落裁定/经济事件（服务器） | DropTable, EconomyEvent, AuditRule |
+| Assist (新增) | 异步助战/政策/日志 | BuildSnapshot, AssistPolicy, AssistRunLog |
+| Quests & Reputation | 任务/声望 | Quest, QuestObjective, ReputationRecord |
+| Unlock / Condition | 条件表达式引擎 | ConditionExpr, ConditionCache |
+| Offline Engine | 离线快进（客户端） | OfflineFastForwardEngine |
+| Map / Region | 区域怪池/解锁链 | MapRegion, RegionGraph |
+| Consumables | 自动使用策略 | ConsumableLoadout, ConsumableBuff |
+| Multi-Character | 账号多角色 | Roster, RosterSlot |
+| Persistence | 存档/摘要审计/快照 | BattleDigest, CharacterSnapshot |
+| Config & Version | 静态数据 & 热更 | ConfigBundle, VersionPin |
+| Monitoring | 指标/日志/调试 | MetricsCollector, DebugSnapshotBuilder |
+| Security | 审计/限频/签名 | PolicyVersion, SeedCommit, RunId |
+
+---
+
+## 5. 战斗系统 (双轨 + 事件调度 + 聚合)
+说明：战斗在客户端运行，保证确定性；服务器不参与逐事件计算，仅在开战/结算时交互。
+
+### 5.1 核心概念
+- BattleInstance：客户端运行态根对象  
+- TrackState：AttackTrack（受急速）、SpecialTrack（职业节奏，默认不受急速）  
+- 时间推进：  
+  - 方案A：固定 Tick（如 100ms），逻辑与渲染解耦；  
+  - 方案B：事件时间跳跃（PriorityQueue，按 nextTriggerTime）。  
+- 事件类型：AttackTick / SpecialPulse / SkillReady / BuffExpire / PlanTransition / SegmentFlush（客户端本地）
+
+### 5.2 战斗循环（伪流程）
+1. 从调度器取最近事件或推进到下一个 Tick  
+2. AdvanceClock → 执行事件 → 更新资源/伤害/Buff/冷却  
+3. 自动施放：按槽位优先级检查成本与CD → 施放  
+4. 写入 Segment 缓冲（聚合原子事件）  
+5. 达到阈值（事件数≥N 或时间≥M）→ 产出 SegmentSummary（仅本地存，用于 Digest）
+
+### 5.3 CombatSegment / Digest
+- 作用：减少上传成本，便于审计与回放  
+- 字段（建议）：startTime/tick, endTime/tick, eventCount, damageBySource, resourceFlow, buffUptime, rngSeedRange  
+- 战后生成 BattleDigest（总伤、时长、施放次数、rngSeedStart/End、关键计数）
+
+### 5.4 RNG 管理（客户端）
+- StartBattle 注入 Seed（服务器签发），战斗内记录 seedIndex 消耗区间  
+- 统一 RNGContext.Next() 消费顺序，保证可回放与一致性
+
+---
+
+## 6. 技能与自动施放系统
+| 要素 | 说明 |
+|------|------|
+| SkillDef | id, trackAffinity, baseCooldown, costs[], tags |
+| SkillSlot | 4 槽位（1→4 优先级） |
+| AutoCastPolicy | MVP=槽位顺序；后续可拓展 Rotation/条件表达式 |
+| CooldownState | readyAt（tick/time） |
+| Cost 模型 | 资源桶 / Buff 层数 / 复合 |
+| 技能等级 | level→伤害系数/冷却缩减 |
+
+自动施放：每次事件循环末尾→槽位 1..4 检查→首个 Ready+CostOK 施放。
+
+---
+
+## 7. 职业与资源差异化机制
+| 元素 | 描述 |
+|------|------|
+| 基础资源桶 | AttackTrack 触发生成 |
+| 特殊资源/层数 | SpecialTrack 周期生成 |
+| OverflowPolicy | Clamp / Convert（转 Buff） |
+| ProfessionRuntime | {attackHasteMod, specialInterval, resourceMax, overflowRules} |
+
+示例同旧稿（战士/法师），执行端从服务端改为客户端。
+
+---
+
+## 8. 活动计划系统
+| 要素 | 描述 |
+|------|------|
+| ActivitySlot (3~5) | 客户端调度 |
+| ActivityPlan | {type: Combat/Gather/Craft..., limit: Count/Duration/Infinite} |
+| 状态机 | Pending → Running → Completed/Cancelled |
+| 限制类型 | CountLimit / DurationLimit / Infinite |
+| 互斥 | ActivityClass + exclusionTags（避免多战斗并发） |
+
+当前仅影响本地仿真与摘要生成；服务器不实时参与。
+
+---
+
+## 9. 离线收益 & 快进模拟
+| 步骤 | 描述 |
+|------|------|
+| 1 | offlineDuration = min(realOffline, cap 可配) |
+| 2 | 客户端 OfflineFastForwardEngine：用同一调度推进 |
+| 3 | 生成聚合摘要（资源、产出期望） |
+| 4 | 上线后按服务器规则提交“离线结算请求”（可配：仅战利品/部分活动） |
+| 审计 | 服务器可设置离线上限、最小时长/事件数、频率限制，拒绝异常摘要 |
+
+备注：离线直发掉落仍由服务器裁定；为降低风险，MVP 可先仅支持“在线战斗结算”。
+
+---
+
+## 10. 组队感与助战（Async Co-op）
+- 形态：从服务器获取他人 BuildSnapshot（签名），在本地生成“影分身”AI 同伴。  
+- 掉落归属：仅借用者；被助战者获得积分/荣誉（可选）。  
+- 平衡（V1 已启用）：助战等级上限  
+  - helper.level ≤ borrower.level + 5  
+  - 可选区域门槛（默认关闭）：helper.level ≤ region.midLevel + 2  
+  - StartBattle 强校验；Assist 列表客户端预筛选与禁用提示。  
+- 后续（V2+）：缩放（final_scale）、伤害占比上限（maxShare）、光环模式（极差时仅提供 Buff）。
+
+---
+
+## 11. 地图 / 区域 / 解锁链
+| 元素 | 描述 |
+|------|------|
+| MapRegion | {id, levelRange, monsterPool[], dungeons?[], npcSet[], unlockConditionExpr} |
+| RegionGraph | 邻接/解锁路径 |
+| 区域挂机 | 从 monsterPool 随机生成波次/单战 |
+| 特殊区（未来） | 临时事件 / 稀有怪 / 产出加成 |
+| NPC / 任务 | 主线引导下一区域与系统解锁 |
+
+---
+
+## 12. 条件 / 解锁 DSL 与缓存
+| 组件 | 功能 |
+|------|------|
+| ConditionExpr | 文本→AST→依赖列表 |
+| 缓存 | ParseCache / ResultCache / DependencyIndex |
+| 失效 | 基础数据变更→广播失效 |
+| 示例 | `AND(level>=20, reputation.factionA>=300, quest.completed("WeeklyMine"))` |
+
+客户端执行，服务器侧用于列表/接口裁剪与审核。
+
+---
+
+## 13. 装备与物品生态
+同旧稿（Tier/Affix/分解/重铸等）；数值运算在客户端，经济事件与掉落在服务器裁定与记账。
+
+---
+
+## 14. 消耗品与自动使用策略
+同旧稿（UsePolicy/冷却/绑定活动）；执行在客户端。
+
+---
+
+## 15. 任务与声望
+同旧稿；重置逻辑在服务器；客户端执行任务进度与摘要上报。
+
+---
+
+## 16. 经济循环与掉落裁定
+| 产出 | 本地战斗仿真 + 服务器裁定掉落（基于 seed + 掉落表） |
+| 消耗 | 服务器记录（重铸、词条重置、购买等） |
+| 材料分层 | 每 10 级一档 |
+| 控制手段 | 递增成本、分解返利≤投入、产出监控、摘要审计 |
+| 监控 | gold_net、reroll_cost_avg、disenchant_yield、finish_audit_ok_ratio |
+
+---
+
+## 17. 多角色 Roster 系统
+同旧稿；角色切换不影响其他角色活动（客户端可继续仿真，结算仍需服务器确认）。
+
+---
+
+## 18. 持久化与摘要审计 / 快照策略
+| 类别 | 策略 |
+|------|------|
+| 战斗 | 客户端生成 BattleDigest；服务器只存摘要与掉落结果 |
+| 经济事件 | 服务器原子记账 |
+| 助战日志 | 服务器记录 AssistRunLog（谁借用、区域、结果、审计标志） |
+| 快照 | 角色/装备等由服务器持久化，客户端可做本地缓存 |
+| 审计 | 最小时长、最小事件数、技能用量≤冷却/资源上限、DPS 顶值阈、助战政策一致性 |
+
+---
+
+## 19. 配置版本化与热更新
+| 要素 | 描述 |
+|------|------|
+| ConfigBundle | {version, hash, modules{skills.json, items.json,...}} |
+| VersionPin | StartBattle 返回 configVersion，战斗内钉死 |
+| 热更 | 客户端拉取最新配置；新战斗生效，新老共存 |
+| 回滚 | 服务器保留 N 版本，指针切换 |
+| Diff 报告 | 数值波动监控与告警 |
+
+---
+
+## 20. 监控 / 诊断 / 调试面板
+| 项目 | 指标 |
+|------|------|
+| 战斗摘要 | avg_events_per_run, run_duration_ms, rng_seed_span |
+| 审计 | finish_audit_ok_ratio, audit_reject_reason_dist |
+| 助战 | assist_selected_count, assist_win_rate, helper_popularity |
+| 掉落 | server_roll_latency_ms, loot_rarity_dist |
+| 经济 | gold_net, reroll_attempts, disenchant_yield |
+| 客户端调试 | nextTriggerTime / ResourceBuckets / SkillCD / Segment 缓冲 |
+
+---
+
+## 21. 安全与反滥用策略（客户端仿真版）
+| 风险 | 应对 |
+|------|------|
+| 客户端篡改战斗 | 掉落仅服务器裁定；摘要审计（时长/事件/技能CD/资源/顶值阈） |
+| 助战带飞 | V1 等级上限；后续缩放/占比上限/光环 |
+| 重放/重复提交 | runId 幂等；Digest 包含 seedIndex 范围与 policyVersion |
+| 频繁刷战 | Start/Finish 限频；短时多失败加入冷却 |
+| RNG 操控 | 服务器签发 seed；可选 lootCommit(HMAC) |
+| 离线刷 | 离线上限与频率限制；超阈值摘要拒绝 |
+
+---
+
+## 22. 随机性与控制（RNG 策略）
+| 元素 | 策略 |
+|------|------|
+| 战斗浮动 | 伤害 ±5%、怪物 HP ±3%（客户端执行） |
+| 掉落 | 服务器用 seed + 权重表 roll；可设 pity（未来） |
+| 记录 | 客户端记录 rngSeedStart/End（seedIndex 区间） |
+
+---
+
+## 23. 数据驱动与可扩展性规范
+| 资源 | 载体 | 版本控制 |
+|------|------|---------|
+| SkillDefs | JSON/DB | configVersion |
+| GearDefinitions | JSON/DB | configVersion |
+| MapRegionDefs | JSON/DB | configVersion |
+| ConditionExpr | 文本 DSL | 解析缓存 |
+| DropTables | JSON | 服务器使用 |
+| ProfessionDefs | JSON | configVersion |
+| 经验/经济曲线 | JSON | configVersion |
+
+命名同旧稿；启动校验引用完整性。
+
+---
+
+## 24. 现有代码差异映射（关键缺失/变更）
+| 目标设计项 | 当前实现 | 状态 |
+|-----------|----------|------|
+| 客户端战斗核（Tick/RNG） | AttacksPerSecond 单一 | 需改为确定性引擎 |
+| EventScheduler | 无 | 缺失（或先用固定 Tick） |
+| 双轨 TrackState | 初级 | 需完善 |
+| ResourceBucket / Overflow | Mana/Health only | 需扩展 |
+| Buff 实例 | 仅 SkillEffect 定义 | 需运行态 |
+| 技能槽优先级 | List<string> | 需接入 AutoCastEngine |
+| 活动计划多槽 | CharacterActions 单动作 | 需替换 |
+| Offline 快进 | 占位 | 需实现客户端快进 |
+| CombatSegment/Digest | 无 | 需实现 |
+| Assist 模块 | 无 | 新增（列表/政策/日志） |
+| 掉落裁定接口 | 无 | 新增 Start/Finish |
+| 审计与监控 | 无 | 新增 |
+| Config VersionPin | 无 | 新增 |
+
+---
+
+## 25. 重构 / 演进路线图（Phase）
+| Phase | 目标 | 交付 |
+|-------|------|------|
+| P1 | 客户端确定性战斗核 | GameClock, RNGContext, TrackState, AutoCast, Segment 聚合 |
+| P2 | Assist V1（等级上限） | Assist 列表/选择、StartBattle 校验、Finish 审计最小集 |
+| P3 | 掉落裁定最小版 | DropTable 服务端 roll、回包演出、run 幂等 |
+| P4 | 活动计划/离线快进 | ActivitySlot+Plan、OfflineFastForwardEngine（客户端） |
+| P5 | 装备扩展与经济事件 | 分解/重铸/词条重置 + 服务器记账 |
+| P6 | 监控与调试 | 审计指标、助战指标、Debug 面板 |
+| P7 | Assist V2 平衡 | 缩放/占比上限/光环，policyVersion 升级 |
+| P8 | 参与感增强 | 被助战通知/点赞/积分/周榜（可选） |
+
+---
+
+## 26. 新增关键抽象类与结构清单 (建议)
+```
+GameClock
+IRngContext (记录 seed 与消费序)
+EventScheduler or FixedTickLoop
+IGameEvent (AttackTick, SpecialPulse, SkillCast, BuffExpire, PlanTransition, SegmentFlush)
+BattleInstance
+TrackState {trackType, baseInterval, hasteFactor, nextTriggerAt}
+ResourceBucket {id, current, max, overflowPolicy, convertTarget?, ratio?}
+OverflowPolicy (Enum)
+BuffInstance {id, sourceId, stacks, maxStacks, expireAt, effects[]}
+SkillSlot {slotIndex, skillId}
+CooldownState {skillId, readyAt}
+AutoCastEngine
+SegmentAggregator
+BattleDigest {durationMs, ticks, totalDamage, damageBySource, skillCasts, rngSeedStart, rngSeedEnd, counters...}
+AssistPolicy {version, maxLevelGap, ...}
+BuildSnapshot {stats, skills, aiPolicy, serverSig}
+AssistRunLog
+DropTable / LootRoller (server)
+MetricsCollector / AuditRules
+DebugSnapshotBuilder
+```
+
+---
+
+## 27. 决策日志 (Decision Log)
+| 序号 | 决策 | 描述 |
+|------|------|------|
+| D01 | 客户端仿真 | 战斗在客户端确定性运行，服务器仅开战/结算 |
+| D02 | 掉落裁定 | 掉落只由服务器使用 seed+表裁定 |
+| D03 | 助战政策 V1 | 仅启用“助战等级 ≤ 玩家等级+5”，policyVersion=v1-level-cap |
+| D04 | VersionPin | 战斗内固定 configVersion |
+| D05 | RNG 记录 | 客户端记录 seedIndex 区间入 Digest |
+| D06 | 审计窗口 | 最小时长/事件数/技能冷却/资源一致性/DPS 顶值 |
+| D07 | AutoCast | 槽位优先级 1→4，首个满足施放 |
+| D08 | 双轨 | Attack + Special；Special 默认不受急速 |
+| D09 | 监控优先 | 审计通过率/助战选择/掉落延迟 |
+| D10 | 未来平衡 | 规划缩放/伤害占比上限/光环模式 |
+
+---
+
+## 28. 后续拓展占位
+| 模块 | 设想 |
+|------|------|
+| 赛季机制 | 赛季特定地图/天赋/Reset |
+| 社交增强 | 助战积分/点赞/周榜/徽章 |
+| 世界 Boss | 摘要上报型全服进度 |
+| 构筑深化 | 天赋树/符文/精炼 |
+| PvP | 异步战报或简单锁步原型 |
+| 实时联机 | 主机权威 P2P 或锁步（可选路线） |
+
+---
+
+## 29. 术语表 (Glossary)
+| 术语 | 定义 |
+|------|------|
+| Client-Sim | 客户端确定性仿真 |
+| Assist/Ghost | 助战影分身（他人快照生成的 AI 同伴） |
+| policyVersion | 助战政策版本（审计与回溯用） |
+| VersionPin | 战斗内固定配置版本 |
+| Segment | 战斗事件聚合包 |
+| Digest | 战斗摘要（上传审计/结算） |
+| SeedCommit | 服务器签发的随机种子/承诺 |
+| Track | 战斗节奏轨道（Attack/Special） |
+| Bucket | 资源桶 |
+| AutoCast | 技能槽位自动施放 |
+| RNGContext | 随机序列控制上下文 |
+
+---
+
+## 附录 A：固定 Tick 最小循环伪代码
+```
+const TICK_MS = 100
+loop:
+  now = clock.Now()
+  if now < nextTick: render.Interpolate(); continue
+  nextTick += TICK_MS
+  foreach (track in tracks) track.TryTrigger(now)
+  events = scheduler.CollectDue(now) // 或按固定顺序执行
+  foreach (e in events) e.Execute(ctx)
+  AutoCast.TryCast(ctx)
+  segment.Add(events)
+  if segment.ShouldFlush(): segment.Flush()
+```
+
+## 附录 B：资源溢出示例
+```
+怒气(bucket_rage):
+  max=100, overflow=Convert -> 战意(buff) ratio=20
+溢出 37:
+  current=100
+  excess=37
+  converted=floor(37/20)=1 层 战意 (持续10s)
+  剩余 17 被截断
+```
+
+## 附录 C：技能槽检查伪流程
+```
+for slot in 1..4:
+  skill = slots[slot]
+  if skill.Ready(clock) and CostsSatisfied(skill, buckets, buffs):
+      Cast(skill)
+      break
+```
+
+## 附录 D：Start/Finish 接口字段建议（缩略）
+```
+POST /api/battle/start
+req: { borrowerId, regionId, helperId? }
+res: { runId, seed, configVersion, policyVersion, maxHelperLevelAllowed }
+
+POST /api/battle/finish
+req: { digest, helperId? }
+res: { loot[], auditFlag /* ok|suspect */ }
+```
+
+---
+
+## 结束语
+本版将“服务端权威”调整为“客户端确定性仿真 + 服务器轻裁判 + 异步助战”。你可以以最低成本上线可玩版本，并在不破坏现有结构的前提下逐步加入助战平衡（缩放/占比上限/光环）、参与感与监控审计。
