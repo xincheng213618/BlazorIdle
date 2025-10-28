@@ -1,6 +1,7 @@
 ﻿@using BlazorIdle.Game
 @using BlazorIdle.Game.Config
 @using BlazorIdle.Components
+@using BlazorIdle.Shared.Models
 @implements IDisposable
 @implements IAsyncDisposable
 @inject IJSRuntime JS
@@ -9,90 +10,96 @@
 <div class="battle-card">
     <h3>战斗演示（持续战斗：复活/刷新由配置驱动）</h3>
 
-    <!-- 职业 / 怪物选择 -->
-    <div class="row g-2 mb-3">
-        <div class="col-6">
-            <label class="form-label">职业</label>
-            <InputSelect class="form-control" @bind-Value="selectedProfessionId" disabled="@(!configReady || isRunning)" @onchange="OnSelectionChanged">
-                @foreach (var p in professions)
-                {
-                    <option value="@p.Id">@p.Name</option>
-                }
-            </InputSelect>
+    @if (SelectedCharacter == null)
+    {
+        <div class="alert alert-info">
+            请先在上方创建并选择一个角色
+        </div>
+    }
+    else
+    {
+        <!-- 角色信息展示 -->
+        <div class="character-info mb-3">
+            <h5>当前角色: @SelectedCharacter.Name</h5>
+            <p class="text-muted mb-0">职业: @(GetProfessionName(SelectedCharacter.ProfessionId))</p>
         </div>
 
-        <div class="col-6">
-            <label class="form-label">怪物</label>
-            <InputSelect class="form-control" @bind-Value="selectedMonsterId" disabled="@(!configReady || isRunning)" @onchange="OnSelectionChanged">
-                @foreach (var m in monsters)
-                {
-                    <option value="@m.Id">@m.Name</option>
-                }
-            </InputSelect>
-        </div>
-    </div>
-
-    <div class="small text-muted mb-3">
-        预估玩家输出 DPS：@($"{theoreticalDps:N1}") · 配置版本：@configVersion
-        @if (!configReady)
-        {
-            <span class="text-warning ms-2">(配置加载中...)</span>
-        }
-        <span class="float-end" title="@($"{snapshot.ElapsedMs / 1000.0:0.00}s")">用时: @FormatDuration(snapshot.ElapsedMs)</span>
-    </div>
-
-    <!-- 角色/怪物 面板 -->
-    <div class="row g-3 mb-3">
-        <div class="col-12 col-lg-6">
-            <CharacterPanel Title="玩家"
-                            Subtitle="@currentProfession?.Name"
-                            Tag="@selectedProfessionId"
-                            StatusText="@PlayerStatusText"
-                            Hp="@snapshot.PlayerHp"
-                            MaxHp="@snapshot.PlayerMaxHp"
-                            AttackProgress01="@attackProgress01"
-                            AttackRemainMs="@attackRemainMs"
-                            SpecialProgress01="@specialProgress01"
-                            SpecialRemainMs="@specialRemainMs" />
+        <!-- 怪物选择 -->
+        <div class="row g-2 mb-3">
+            <div class="col-6">
+                <label class="form-label">怪物</label>
+                <InputSelect class="form-control" @bind-Value="selectedMonsterId" disabled="@(!configReady || isRunning)" @onchange="OnSelectionChanged">
+                    @foreach (var m in monsters)
+                    {
+                        <option value="@m.Id">@m.Name</option>
+                    }
+                </InputSelect>
+            </div>
         </div>
 
-        <div class="col-12 col-lg-6">
-            <MonsterPanel Title="@currentMonster?.Name"
-                          Level="@(currentMonster?.Level)"
-                          Tag="@selectedMonsterId"
-                          StatusText="@EnemyStatusText"
-                          Hp="@snapshot.EnemyHp"
-                          MaxHp="@snapshot.EnemyMaxHp"
-                          EnemyAttackProgress01="@enemyProgress01"
-                          EnemyAttackRemainMs="@enemyRemainMs" />
+        <div class="small text-muted mb-3">
+            预估玩家输出 DPS：@($"{theoreticalDps:N1}") · 配置版本：@configVersion
+            @if (!configReady)
+            {
+                <span class="text-warning ms-2">(配置加载中...)</span>
+            }
+            <span class="float-end" title="@($"{snapshot.ElapsedMs / 1000.0:0.00}s")">用时: @FormatDuration(snapshot.ElapsedMs)</span>
         </div>
-    </div>
 
-    <!-- 控制按钮 -->
-    <div class="btn-group mb-3">
-        <button class="btn btn-success" @onclick="StartBattle" disabled="@(!configReady || isRunning)">开始战斗</button>
-        <button class="btn btn-warning" @onclick="StopBattle" disabled="@(isRunning == false)">停止</button>
-        <button class="btn btn-secondary" @onclick="ResetBattle" disabled="@isRunning">重置</button>
-    </div>
+        <!-- 角色/怪物 面板 -->
+        <div class="row g-3 mb-3">
+            <div class="col-12 col-lg-6">
+                <CharacterPanel Title="@SelectedCharacter.Name"
+                                Subtitle="@GetProfessionName(SelectedCharacter.ProfessionId)"
+                                Tag="@SelectedCharacter.Id"
+                                StatusText="@PlayerStatusText"
+                                Hp="@snapshot.PlayerHp"
+                                MaxHp="@snapshot.PlayerMaxHp"
+                                AttackProgress01="@attackProgress01"
+                                AttackRemainMs="@attackRemainMs"
+                                SpecialProgress01="@specialProgress01"
+                                SpecialRemainMs="@specialRemainMs" />
+            </div>
 
-    <!-- 日志组件 -->
-    <LogPanel Title="战斗日志"
-              Lines="@logs"
-              OnClear="@ClearLogs"
-              AutoScroll="true"
-              AutoScrollTolerancePx="30"
-              AutoScrollSmooth="false" />
+            <div class="col-12 col-lg-6">
+                <MonsterPanel Title="@currentMonster?.Name"
+                              Level="@(currentMonster?.Level)"
+                              Tag="@selectedMonsterId"
+                              StatusText="@EnemyStatusText"
+                              Hp="@snapshot.EnemyHp"
+                              MaxHp="@snapshot.EnemyMaxHp"
+                              EnemyAttackProgress01="@enemyProgress01"
+                              EnemyAttackRemainMs="@enemyRemainMs" />
+            </div>
+        </div>
+
+        <!-- 控制按钮 -->
+        <div class="btn-group mb-3">
+            <button class="btn btn-success" @onclick="StartBattle" disabled="@(!configReady || isRunning)">开始战斗</button>
+            <button class="btn btn-warning" @onclick="StopBattle" disabled="@(isRunning == false)">停止</button>
+            <button class="btn btn-secondary" @onclick="ResetBattle" disabled="@isRunning">重置</button>
+        </div>
+
+        <!-- 日志组件 -->
+        <LogPanel Title="战斗日志"
+                  Lines="@logs"
+                  OnClear="@ClearLogs"
+                  AutoScroll="true"
+                  AutoScrollTolerancePx="30"
+                  AutoScrollSmooth="false" />
+    }
 </div>
 
 @code {
     private const int TickMs = 100;
 
+    [Parameter]
+    public CharacterData? SelectedCharacter { get; set; }
+
     // 配置选择
     private List<ProfessionDef> professions = new();
     private List<MonsterDef> monsters = new();
-    private string? selectedProfessionId;
     private string? selectedMonsterId;
-    private ProfessionDef? currentProfession => professions.FirstOrDefault(p => p.Id == selectedProfessionId);
     private MonsterDef? currentMonster => monsters.FirstOrDefault(m => m.Id == selectedMonsterId);
     private string configVersion = "loading";
     private bool configReady = false;
@@ -129,12 +136,22 @@
         monsters = GameConfig.Monsters.ToList();
         configVersion = GameConfig.Version;
 
-        selectedProfessionId = professions.FirstOrDefault()?.Id;
         selectedMonsterId = monsters.FirstOrDefault()?.Id;
 
-        configReady = professions.Count > 0 && monsters.Count > 0;
+        configReady = monsters.Count > 0;
 
-        ResetBattle();
+        if (SelectedCharacter != null)
+        {
+            ResetBattle();
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (SelectedCharacter != null && configReady && battle == null)
+        {
+            ResetBattle();
+        }
     }
 
     private void OnSelectionChanged(ChangeEventArgs _)
@@ -142,30 +159,37 @@
         if (!isRunning) ResetBattle();
     }
 
+    private string GetProfessionName(string professionId)
+    {
+        return professions.FirstOrDefault(p => p.Id == professionId)?.Name ?? professionId;
+    }
+
     private void BuildBattle()
     {
+        if (SelectedCharacter == null) return;
+
         if (battle is not null) battle.CombatEventFired -= OnCombatEvent;
 
-        var p = currentProfession ?? professions.First();
         var m = currentMonster ?? monsters.First();
 
         var clock = new SimClock();
-        int seed = HashSeed(p.Id, m.Id, configVersion);
+        int seed = HashSeed(SelectedCharacter.Id, m.Id, configVersion);
         var rng = new RngContext(seed);
 
+        // 使用角色数据创建战斗角色实例
         var character = new Character
         {
-            MaxHp = Math.Max(1, p.MaxHp),
-            Hp = Math.Max(1, p.MaxHp),
-            AttackRateAPS = p.AttackRateAPS,
-            DamagePerAttack = p.DamagePerAttack,
-            HastePercent = p.HastePercent,
-            SpecialIntervalSec = p.SpecialIntervalSec,
-            SpecialDamage = p.SpecialDamage,
-            CritChancePercent = p.CritChancePercent,
-            CritMultiplier = p.CritMultiplier,
-            VariancePct = p.VariancePct,
-            ReviveMs = (int)Math.Round(Math.Max(0, p.ReviveSec) * 1000.0)
+            MaxHp = Math.Max(1, SelectedCharacter.MaxHp),
+            Hp = Math.Max(1, SelectedCharacter.MaxHp),
+            AttackRateAPS = SelectedCharacter.AttackRateAPS,
+            DamagePerAttack = SelectedCharacter.DamagePerAttack,
+            HastePercent = SelectedCharacter.HastePercent,
+            SpecialIntervalSec = SelectedCharacter.SpecialIntervalSec,
+            SpecialDamage = SelectedCharacter.SpecialDamage,
+            CritChancePercent = SelectedCharacter.CritChancePercent,
+            CritMultiplier = SelectedCharacter.CritMultiplier,
+            VariancePct = SelectedCharacter.VariancePct,
+            ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0)
         };
 
         var enemy = new Enemy
@@ -302,5 +326,17 @@
         padding: 16px;
         margin-top: 16px;
         box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+
+    .character-info {
+        background: #f8f9fa;
+        border-left: 4px solid #0d6efd;
+        padding: 15px;
+        border-radius: 4px;
+    }
+
+    .character-info h5 {
+        margin-bottom: 5px;
+        color: #212529;
     }
 </style>

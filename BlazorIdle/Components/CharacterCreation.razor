@@ -1,0 +1,251 @@
+@using BlazorIdle.Shared.Models
+@using BlazorIdle.Game.Config
+@using BlazorIdle.Services
+@inject ICharacterService CharacterService
+@inject IGameConfigService GameConfig
+
+<div class="character-creation-card">
+    <h4>创建角色 (Create Character)</h4>
+
+    @if (!configReady)
+    {
+        <div class="text-muted">加载配置中...</div>
+    }
+    else if (showSuccessMessage)
+    {
+        <div class="alert alert-success">
+            角色 <strong>@createdCharacterName</strong> 创建成功！
+        </div>
+        <button class="btn btn-primary" @onclick="ResetForm">继续创建新角色</button>
+    }
+    else
+    {
+        <div class="mb-3">
+            <label class="form-label">角色名称 (Character Name)</label>
+            <input type="text" 
+                   class="form-control" 
+                   @bind="characterName" 
+                   @bind:event="oninput"
+                   placeholder="请输入角色名称"
+                   maxlength="20" />
+            @if (!string.IsNullOrWhiteSpace(nameError))
+            {
+                <div class="text-danger small mt-1">@nameError</div>
+            }
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">选择职业 (Select Profession)</label>
+            <select class="form-select" @bind="selectedProfessionId">
+                <option value="">-- 请选择职业 --</option>
+                @foreach (var profession in professions)
+                {
+                    <option value="@profession.Id">@profession.Name - @profession.Desc</option>
+                }
+            </select>
+            @if (!string.IsNullOrWhiteSpace(professionError))
+            {
+                <div class="text-danger small mt-1">@professionError</div>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(selectedProfessionId))
+        {
+            var profession = professions.FirstOrDefault(p => p.Id == selectedProfessionId);
+            if (profession != null)
+            {
+                <div class="profession-preview mb-3">
+                    <h6>职业属性预览 (Profession Stats Preview)</h6>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">最大生命值:</span>
+                            <span class="stat-value">@profession.MaxHp</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">攻击速度:</span>
+                            <span class="stat-value">@profession.AttackRateAPS 次/秒</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">攻击伤害:</span>
+                            <span class="stat-value">@profession.DamagePerAttack</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">急速:</span>
+                            <span class="stat-value">@profession.HastePercent%</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">特殊技能间隔:</span>
+                            <span class="stat-value">@profession.SpecialIntervalSec 秒</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">特殊技能伤害:</span>
+                            <span class="stat-value">@profession.SpecialDamage</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">暴击率:</span>
+                            <span class="stat-value">@profession.CritChancePercent%</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">暴击倍率:</span>
+                            <span class="stat-value">@profession.CritMultiplier x</span>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-success" @onclick="CreateCharacter" disabled="@isCreating">
+                @if (isCreating)
+                {
+                    <span>创建中...</span>
+                }
+                else
+                {
+                    <span>创建角色</span>
+                }
+            </button>
+            <button class="btn btn-secondary" @onclick="ResetForm">重置</button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback OnCharacterCreated { get; set; }
+
+    private List<ProfessionDef> professions = new();
+    private string characterName = string.Empty;
+    private string selectedProfessionId = string.Empty;
+    private string nameError = string.Empty;
+    private string professionError = string.Empty;
+    private bool configReady = false;
+    private bool isCreating = false;
+    private bool showSuccessMessage = false;
+    private string createdCharacterName = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GameConfig.EnsureLoadedAsync();
+        professions = GameConfig.Professions.ToList();
+        configReady = professions.Count > 0;
+    }
+
+    private bool ValidateInput()
+    {
+        nameError = string.Empty;
+        professionError = string.Empty;
+        bool isValid = true;
+
+        if (string.IsNullOrWhiteSpace(characterName))
+        {
+            nameError = "角色名称不能为空";
+            isValid = false;
+        }
+        else if (characterName.Length < 2)
+        {
+            nameError = "角色名称至少需要2个字符";
+            isValid = false;
+        }
+
+        if (string.IsNullOrWhiteSpace(selectedProfessionId))
+        {
+            professionError = "请选择一个职业";
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    private async Task CreateCharacter()
+    {
+        if (!ValidateInput())
+        {
+            return;
+        }
+
+        isCreating = true;
+        try
+        {
+            var profession = professions.FirstOrDefault(p => p.Id == selectedProfessionId);
+            if (profession == null)
+            {
+                professionError = "无效的职业选择";
+                return;
+            }
+
+            var character = await CharacterService.CreateCharacterAsync(characterName.Trim(), profession);
+            createdCharacterName = character.Name;
+            showSuccessMessage = true;
+
+            // 通知父组件
+            if (OnCharacterCreated.HasDelegate)
+            {
+                await OnCharacterCreated.InvokeAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            nameError = $"创建失败: {ex.Message}";
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        characterName = string.Empty;
+        selectedProfessionId = string.Empty;
+        nameError = string.Empty;
+        professionError = string.Empty;
+        showSuccessMessage = false;
+        createdCharacterName = string.Empty;
+    }
+}
+
+<style>
+    .character-creation-card {
+        background: #fff;
+        border: 1px solid #e5e5e5;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+
+    .profession-preview {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 15px;
+    }
+
+    .profession-preview h6 {
+        margin-bottom: 10px;
+        color: #495057;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 10px;
+    }
+
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+    }
+
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    .stat-value {
+        font-weight: 600;
+        color: #212529;
+    }
+</style>
