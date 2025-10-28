@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.AspNetCore.Components.Authorization;
 using Blazored.LocalStorage;
+using BlazorIdle.Game.Config;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -19,5 +20,8 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<CustomAuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(provider => provider.GetRequiredService<CustomAuthStateProvider>());
 builder.Services.AddAuthorizationCore();
+
+// Game config service (scoped£∫ø…”√ HttpClient)
+builder.Services.AddScoped<IGameConfigService, GameConfigService>();
 
 await builder.Build().RunAsync();

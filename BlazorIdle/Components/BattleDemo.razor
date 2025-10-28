@@ -1,64 +1,49 @@
 ﻿@using BlazorIdle.Game
+@using BlazorIdle.Game.Config
 @implements IDisposable
 @implements IAsyncDisposable
 @inject IJSRuntime JS
+@inject IGameConfigService GameConfig
 
 <div class="battle-card">
-    <h3>战斗演示（玩家 vs 敌人：使用 Character/Enemy）</h3>
+    <h3>战斗演示（配置驱动：职业 + 怪物）</h3>
 
     <div class="row g-2 mb-3">
         <div class="col-6">
-            <label class="form-label">玩家最大生命值</label>
-            <InputNumber @bind-Value="playerMaxHp" class="form-control" disabled="@isRunning" />
-        </div>
-        <div class="col-6">
-            <label class="form-label">玩家暴击率 %</label>
-            <InputNumber @bind-Value="playerCritPct" class="form-control" disabled="@isRunning" />
-        </div>
-        <div class="col-6">
-            <label class="form-label">玩家暴击倍数</label>
-            <InputNumber @bind-Value="playerCritMult" class="form-control" disabled="@isRunning" />
-        </div>
-
-        <div class="col-6">
-            <label class="form-label">怪物最大生命值</label>
-            <InputNumber @bind-Value="enemyMaxHp" class="form-control" disabled="@isRunning" />
+            <label class="form-label">职业</label>
+            <InputSelect class="form-control" @bind-Value="selectedProfessionId" disabled="@(!configReady || isRunning)" @onchange="OnSelectionChanged">
+                @foreach (var p in professions)
+                {
+                    <option value="@p.Id">@p.Name</option>
+                }
+            </InputSelect>
+            @if (currentProfession is not null)
+            {
+                <small class="text-muted">HP=@currentProfession.MaxHp · APS=@currentProfession.AttackRateAPS · Atk=@currentProfession.DamagePerAttack · Haste=@currentProfession.HastePercent% · SpSec=@currentProfession.SpecialIntervalSec · SpDmg=@currentProfession.SpecialDamage · Crit=@currentProfession.CritChancePercent% x@currentProfession.CritMultiplier</small>
+            }
         </div>
 
         <div class="col-6">
-            <label class="form-label">每击伤害（Attack）</label>
-            <InputNumber @bind-Value="damagePerAttack" class="form-control" disabled="@isRunning" />
-        </div>
-        <div class="col-6">
-            <label class="form-label">攻击速度 APS（次/秒）</label>
-            <InputNumber @bind-Value="attackRateAPS" class="form-control" disabled="@isRunning" />
-        </div>
-        <div class="col-6">
-            <label class="form-label">急速（%）仅影响 Attack</label>
-            <InputNumber @bind-Value="hastePercent" class="form-control" disabled="@isRunning" />
-        </div>
-
-        <div class="col-6">
-            <label class="form-label">Special 冷却（秒）</label>
-            <InputNumber @bind-Value="specialIntervalSec" class="form-control" disabled="@isRunning" />
-        </div>
-        <div class="col-6">
-            <label class="form-label">Special 伤害（点）</label>
-            <InputNumber @bind-Value="specialDamage" class="form-control" disabled="@isRunning" />
-        </div>
-
-        <div class="col-6">
-            <label class="form-label">敌人攻击间隔（秒）</label>
-            <InputNumber @bind-Value="enemyAttackIntervalSec" class="form-control" disabled="@isRunning" />
-        </div>
-        <div class="col-6">
-            <label class="form-label">敌人每击伤害</label>
-            <InputNumber @bind-Value="enemyDamagePerHit" class="form-control" disabled="@isRunning" />
+            <label class="form-label">怪物</label>
+            <InputSelect class="form-control" @bind-Value="selectedMonsterId" disabled="@(!configReady || isRunning)" @onchange="OnSelectionChanged">
+                @foreach (var m in monsters)
+                {
+                    <option value="@m.Id">@m.Name</option>
+                }
+            </InputSelect>
+            @if (currentMonster is not null)
+            {
+                <small class="text-muted">Lv.@currentMonster.Level · HP=@currentMonster.MaxHp · Interval=@currentMonster.AttackIntervalSec s · Dmg=@currentMonster.DamagePerHit</small>
+            }
         </div>
     </div>
 
     <div class="small text-muted mb-2">
-        预估玩家输出 DPS（不含暴击浮动）：@theoreticalDps:0.0
+        预估玩家输出 DPS：@theoreticalDps:0.0 · 配置版本：@configVersion
+        @if (!configReady)
+        {
+            <span class="text-warning ms-2">(配置加载中...)</span>
+        }
     </div>
 
     <!-- 双方 HP 条 -->
@@ -114,12 +99,12 @@
     </div>
 
     <div class="btn-group mb-2">
-        <button class="btn btn-success" @onclick="StartBattle" disabled="@isRunning">开始战斗</button>
+        <button class="btn btn-success" @onclick="StartBattle" disabled="@(!configReady || isRunning)">开始战斗</button>
         <button class="btn btn-warning" @onclick="StopBattle" disabled="@(isRunning == false)">停止</button>
         <button class="btn btn-secondary" @onclick="ResetBattle" disabled="@isRunning">重置</button>
     </div>
 
-    <!-- 日志区域（省略：与之前相同，保留自动滚动/复制/清空） -->
+    <!-- 日志区域与底部自动滚动代码保持不变 -->
     <div class="log-header d-flex justify-content-between align-items-center">
         <h5 class="mb-1">战斗日志</h5>
         <div>
@@ -158,21 +143,15 @@
     private const int AutoScrollTolerancePx = 12;
     private const bool AutoScrollSmooth = false;
 
-    // 玩家参数（用于构建 Character）
-    private int playerMaxHp = 200;
-    private double playerCritPct = 15.0;
-    private double playerCritMult = 1.5;
-
-    // 敌人与输出参数（用于构建 Enemy / Character 输出）
-    private int enemyMaxHp = 300;
-    private int damagePerAttack = 15;
-    private double attackRateAPS = 2.0;
-    private double hastePercent = 0.0;
-    private double specialIntervalSec = 5.0;
-    private int specialDamage = 120;
-
-    private double enemyAttackIntervalSec = 1.5;
-    private int enemyDamagePerHit = 12;
+    // 配置选择
+    private List<ProfessionDef> professions = new();
+    private List<MonsterDef> monsters = new();
+    private string? selectedProfessionId;
+    private string? selectedMonsterId;
+    private ProfessionDef? currentProfession => professions.FirstOrDefault(p => p.Id == selectedProfessionId);
+    private MonsterDef? currentMonster => monsters.FirstOrDefault(m => m.Id == selectedMonsterId);
+    private string configVersion = "loading";
+    private bool configReady = false;
 
     private BattleInstance? battle;
     private BattleSnapshot snapshot = new BattleSnapshot { EnemyHp = 0, EnemyMaxHp = 1, PlayerHp = 0, PlayerMaxHp = 1, ElapsedMs = 0, Outcome = BattleOutcome.Ongoing };
@@ -204,8 +183,19 @@
 
     private CancellationTokenSource? _cts;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        await GameConfig.EnsureLoadedAsync();
+        professions = GameConfig.Professions.ToList();
+        monsters = GameConfig.Monsters.ToList();
+        configVersion = GameConfig.Version;
+
+        // 默认选择第一个（一定存在：服务已做兜底）
+        selectedProfessionId = professions.First().Id;
+        selectedMonsterId = monsters.First().Id;
+
+        configReady = GameConfig.IsLoaded && professions.Count > 0 && monsters.Count > 0;
+
         ResetBattle();
     }
 
@@ -213,22 +203,19 @@
     {
         if (firstRender)
         {
-            try
-            {
-                _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "/js/battleDemo.js");
-            }
-            catch { }
+            try { _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "/js/battleDemo.js"); } catch { }
         }
 
         if (_shouldScrollToBottom && _jsModule is not null)
         {
             _shouldScrollToBottom = false;
-            try
-            {
-                await _jsModule.InvokeVoidAsync("scrollToBottomIfNear", logPanelRef, AutoScrollTolerancePx, AutoScrollSmooth);
-            }
-            catch { }
+            try { await _jsModule.InvokeVoidAsync("scrollToBottomIfNear", logPanelRef, AutoScrollTolerancePx, AutoScrollSmooth); } catch { }
         }
+    }
+
+    private void OnSelectionChanged(ChangeEventArgs _)
+    {
+        if (!isRunning) ResetBattle();
     }
 
     private void BuildBattle()
@@ -238,34 +225,35 @@
             battle.CombatEventFired -= OnCombatEvent;
         }
 
+        // 兜底：即使列表为空也能启动（极端情况下）
+        var p = currentProfession ?? professions.FirstOrDefault() ?? new ProfessionDef { Id = "fallbackP", Name = "Fallback", MaxHp = 200, AttackRateAPS = 2.0, DamagePerAttack = 15, SpecialIntervalSec = 5, SpecialDamage = 120, CritChancePercent = 10, CritMultiplier = 1.5, VariancePct = 0.05 };
+        var m = currentMonster ?? monsters.FirstOrDefault() ?? new MonsterDef { Id = "fallbackM", Name = "Fallback", Level = 1, MaxHp = 220, AttackIntervalSec = 2.0, DamagePerHit = 8, VariancePct = 0.05 };
+
         var clock = new SimClock();
-        int seed = HashSeed(
-            playerMaxHp, playerCritPct, playerCritMult,
-            enemyMaxHp, damagePerAttack, attackRateAPS, hastePercent,
-            specialIntervalSec, specialDamage, enemyAttackIntervalSec, enemyDamagePerHit);
+        int seed = HashSeed(p.Id, m.Id, configVersion);
         var rng = new RngContext(seed);
 
         var character = new Character
         {
-            MaxHp = Math.Max(1, playerMaxHp),
-            Hp = Math.Max(1, playerMaxHp),
-            AttackRateAPS = attackRateAPS,
-            DamagePerAttack = damagePerAttack,
-            HastePercent = hastePercent,
-            SpecialIntervalSec = specialIntervalSec,
-            SpecialDamage = specialDamage,
-            CritChancePercent = Math.Max(0, playerCritPct),
-            CritMultiplier = Math.Max(1.0, playerCritMult),
-            VariancePct = 0.05
+            MaxHp = Math.Max(1, p.MaxHp),
+            Hp = Math.Max(1, p.MaxHp),
+            AttackRateAPS = p.AttackRateAPS,
+            DamagePerAttack = p.DamagePerAttack,
+            HastePercent = p.HastePercent,
+            SpecialIntervalSec = p.SpecialIntervalSec,
+            SpecialDamage = p.SpecialDamage,
+            CritChancePercent = p.CritChancePercent,
+            CritMultiplier = p.CritMultiplier,
+            VariancePct = p.VariancePct
         };
 
         var enemy = new Enemy
         {
-            MaxHp = Math.Max(1, enemyMaxHp),
-            Hp = Math.Max(1, enemyMaxHp),
-            AttackIntervalSec = Math.Max(0.1, enemyAttackIntervalSec),
-            DamagePerHit = Math.Max(1, enemyDamagePerHit),
-            VariancePct = 0.05
+            MaxHp = Math.Max(1, m.MaxHp),
+            Hp = Math.Max(1, m.MaxHp),
+            AttackIntervalSec = Math.Max(0.1, m.AttackIntervalSec),
+            DamagePerHit = Math.Max(1, m.DamagePerHit),
+            VariancePct = m.VariancePct
         };
 
         battle = new BattleInstance(clock, rng, character, enemy);
@@ -278,17 +266,14 @@
         unchecked
         {
             int h = 17;
-            foreach (var o in arr)
-            {
-                h = h * 31 + (o?.GetHashCode() ?? 0);
-            }
+            foreach (var o in arr) h = h * 31 + (o?.GetHashCode() ?? 0);
             return h == 0 ? 1234567 : h;
         }
     }
 
     private void StartBattle()
     {
-        if (isRunning) return;
+        if (!configReady || isRunning) return;
 
         BuildBattle();
         battle!.Start();
@@ -341,10 +326,7 @@
                 await InvokeAsync(StateHasChanged);
             }
         }
-        catch (TaskCanceledException)
-        {
-            // ignore
-        }
+        catch (TaskCanceledException) { }
     }
 
     private void OnCombatEvent(CombatEvent ev)
@@ -380,32 +362,21 @@
     private async Task CopyLogs()
     {
         var text = string.Join(Environment.NewLine, logs);
-        try
-        {
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
-        }
-        catch { }
+        try { await JS.InvokeVoidAsync("navigator.clipboard.writeText", text); } catch { }
     }
 
     public void Dispose()
     {
         _cts?.Cancel();
         _cts?.Dispose();
-        if (battle is not null)
-        {
-            battle.CombatEventFired -= OnCombatEvent;
-        }
+        if (battle is not null) battle.CombatEventFired -= OnCombatEvent;
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (_jsModule is not null)
-        {
-            try { await _jsModule.DisposeAsync(); } catch { }
-        }
+        if (_jsModule is not null) { try { await _jsModule.DisposeAsync(); } catch { } }
     }
 }
-
 <style>
     .battle-card {
         background: #fff;
@@ -414,13 +385,6 @@
         padding: 16px;
         margin-top: 16px;
         box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-    }
-
-    .digest-card {
-        background: #f8f9fa;
-        border: 1px dashed #c8ced6;
-        padding: 12px;
-        border-radius: 6px;
     }
 
     .log-header {

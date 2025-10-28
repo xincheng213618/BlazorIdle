@@ -1,0 +1,44 @@
+﻿[
+  {
+    "id": "warrior",
+    "name": "Warrior",
+    "desc": "高生命、稳定输出",
+    "maxHp": 280,
+    "attackRateAPS": 1.8,
+    "damagePerAttack": 18,
+    "hastePercent": 0.0,
+    "specialIntervalSec": 6.0,
+    "specialDamage": 140,
+    "critChancePercent": 10.0,
+    "critMultiplier": 1.5,
+    "variancePct": 0.04
+  },
+  {
+    "id": "mage",
+    "name": "Mage",
+    "desc": "高爆发、低生命",
+    "maxHp": 180,
+    "attackRateAPS": 1.6,
+    "damagePerAttack": 14,
+    "hastePercent": 0.0,
+    "specialIntervalSec": 4.0,
+    "specialDamage": 200,
+    "critChancePercent": 20.0,
+    "critMultiplier": 1.8,
+    "variancePct": 0.06
+  },
+  {
+    "id": "rogue",
+    "name": "Rogue",
+    "desc": "高急速、较高暴击",
+    "maxHp": 220,
+    "attackRateAPS": 2.6,
+    "damagePerAttack": 13,
+    "hastePercent": 10.0,
+    "specialIntervalSec": 5.0,
+    "specialDamage": 120,
+    "critChancePercent": 25.0,
+    "critMultiplier": 1.6,
+    "variancePct": 0.05
+  }
+]
