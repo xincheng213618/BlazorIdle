@@ -33,12 +33,12 @@
     </div>
 
     <div class="small text-muted mb-3">
-        预估玩家输出 DPS：@theoreticalDps:0.0 · 配置版本：@configVersion
+        预估玩家输出 DPS：@($"{theoreticalDps:N1}") · 配置版本：@configVersion
         @if (!configReady)
         {
             <span class="text-warning ms-2">(配置加载中...)</span>
         }
-        <span class="float-end">用时: @(snapshot.ElapsedMs / 1000.0):0.0s</span>
+        <span class="float-end" title="@($"{snapshot.ElapsedMs / 1000.0:0.00}s")">用时: @FormatDuration(snapshot.ElapsedMs)</span>
     </div>
 
     <!-- 角色/怪物 面板 -->
@@ -313,6 +313,19 @@
     {
         var text = string.Join(Environment.NewLine, logs);
         try { await JS.InvokeVoidAsync("navigator.clipboard.writeText", text); } catch { }
+    }
+
+    // 友好显示用时：<1h 显示 mm:ss.cc；>=1h 显示 hh:mm:ss
+    private static string FormatDuration(int ms)
+    {
+        var ts = TimeSpan.FromMilliseconds(ms);
+        if (ts.TotalHours >= 1)
+        {
+            return $"{(int)ts.TotalHours:00}:{ts.Minutes:00}:{ts.Seconds:00}";
+        }
+        // centiseconds
+        return $"{ts.Minutes:00}:{ts.Seconds:00}.{ts.Milliseconds / 10:00}";
+        // 如果希望毫秒三位：return $"{ts.Minutes:00}:{ts.Seconds:00}.{ts.Milliseconds:000}";
     }
 
     public void Dispose()
