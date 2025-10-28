@@ -48,6 +48,9 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddSingleton<IGameConfigProvider, GameConfigProvider>();
+builder.Services.AddControllers();
+
 // Configure CORS to allow Blazor client
 builder.Services.AddCors(options =>
 {

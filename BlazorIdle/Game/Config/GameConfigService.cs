@@ -20,6 +20,8 @@ namespace BlazorIdle.Game.Config
         private readonly List<ProfessionDef> _professions = new();
         private readonly List<MonsterDef> _monsters = new();
 
+        private const string ApiBaseUrl = "https://localhost:7056/api/game-config";
+
         public GameConfigService(HttpClient http)
         {
             _http = http;
@@ -35,30 +37,18 @@ namespace BlazorIdle.Game.Config
         {
             if (_loaded) return;
 
-            List<ProfessionDef>? profs = null;
-            List<MonsterDef>? mons = null;
-
+            Shared.DTOs.GameConfigResponse? response = null;
             try
             {
-                profs = await _http.GetFromJsonAsync<List<ProfessionDef>>("config/professions.json", ct);
+                response = await _http.GetFromJsonAsync<Shared.DTOs.GameConfigResponse>($"{ApiBaseUrl}/all", ct);
             }
-            catch { /* ignore, will fallback */ }
+            catch
+            {
+                // ignore, will fallback
+            }
 
-            try
-            {
-                mons = await _http.GetFromJsonAsync<List<MonsterDef>>("config/monsters.json", ct);
-            }
-            catch { /* ignore, will fallback */ }
-
-            // Fallback 到内置默认配置，避免空表导致按钮禁用或 First() 异常
-            if (profs is null || profs.Count == 0)
-            {
-                profs = DefaultProfessions();
-            }
-            if (mons is null || mons.Count == 0)
-            {
-                mons = DefaultMonsters();
-            }
+            var profs = response?.Professions ?? DefaultGameConfig.DefaultProfessions();
+            var mons = response?.Monsters ?? DefaultGameConfig.DefaultMonsters();
 
             _professions.Clear();
             _professions.AddRange(profs.Where(p => !string.IsNullOrWhiteSpace(p.Id)));
@@ -66,7 +56,7 @@ namespace BlazorIdle.Game.Config
             _monsters.Clear();
             _monsters.AddRange(mons.Where(m => !string.IsNullOrWhiteSpace(m.Id)));
 
-            Version = $"p:{_professions.Count}-m:{_monsters.Count}";
+            Version = response?.Version ?? $"p:{_professions.Count}-m:{_monsters.Count}";
             _loaded = true;
         }
 
@@ -75,28 +65,5 @@ namespace BlazorIdle.Game.Config
 
         public MonsterDef? GetMonster(string id)
             => _monsters.FirstOrDefault(m => string.Equals(m.Id, id, StringComparison.OrdinalIgnoreCase));
-
-        // 内置默认（防止资源路径/部署问题导致无法开始）
-        private static List<ProfessionDef> DefaultProfessions() => new()
-{
-    new ProfessionDef
-    {
-        Id = "warrior", Name = "Warrior", Desc="Fallback",
-        MaxHp = 280, AttackRateAPS = 1.8, DamagePerAttack = 18,
-        HastePercent = 0, SpecialIntervalSec = 6, SpecialDamage = 140,
-        CritChancePercent = 10, CritMultiplier = 1.5, VariancePct = 0.04,
-        ReviveSec = 5.0
-    }
-};
-
-        private static List<MonsterDef> DefaultMonsters() => new()
-{
-    new MonsterDef
-    {
-        Id = "slime", Name = "Green Slime", Desc="Fallback", Level=1,
-        MaxHp = 220, AttackIntervalSec = 2.0, DamagePerHit = 8,
-        VariancePct = 0.05, RespawnSec = 2.5
-    }
-};
     }
 }

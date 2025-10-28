@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="wwwroot\config\" />
     <Folder Include="wwwroot\sample-data\" />
   </ItemGroup>
 
