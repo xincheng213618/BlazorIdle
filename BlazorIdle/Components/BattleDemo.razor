@@ -1,5 +1,6 @@
 ﻿@using BlazorIdle.Game
 @using BlazorIdle.Game.Config
+@using BlazorIdle.Components
 @implements IDisposable
 @implements IAsyncDisposable
 @inject IJSRuntime JS
@@ -8,6 +9,7 @@
 <div class="battle-card">
     <h3>战斗演示（配置驱动：职业 + 怪物）</h3>
 
+    <!-- 职业 / 怪物选择 -->
     <div class="row g-2 mb-3">
         <div class="col-6">
             <label class="form-label">职业</label>
@@ -19,7 +21,7 @@
             </InputSelect>
             @if (currentProfession is not null)
             {
-                <small class="text-muted">HP=@currentProfession.MaxHp · APS=@currentProfession.AttackRateAPS · Atk=@currentProfession.DamagePerAttack · Haste=@currentProfession.HastePercent% · SpSec=@currentProfession.SpecialIntervalSec · SpDmg=@currentProfession.SpecialDamage · Crit=@currentProfession.CritChancePercent% x@currentProfession.CritMultiplier</small>
+                <small class="text-muted">HP=@currentProfession.MaxHp · APS=@currentProfession.AttackRateAPS · Atk=@currentProfession.DamagePerAttack · SpSec=@currentProfession.SpecialIntervalSec · SpDmg=@currentProfession.SpecialDamage</small>
             }
         </div>
 
@@ -38,73 +40,50 @@
         </div>
     </div>
 
-    <div class="small text-muted mb-2">
+    <div class="small text-muted mb-3">
         预估玩家输出 DPS：@theoreticalDps:0.0 · 配置版本：@configVersion
         @if (!configReady)
         {
             <span class="text-warning ms-2">(配置加载中...)</span>
         }
+        <span class="float-end">用时: @(snapshot.ElapsedMs / 1000.0):0.0s</span>
     </div>
 
-    <!-- 双方 HP 条 -->
-    <div class="mb-2">
-        <div class="d-flex justify-content-between">
-            <small class="text-muted">玩家 HP: @snapshot.PlayerHp / @snapshot.PlayerMaxHp</small>
-            <small class="text-muted">用时: @(snapshot.ElapsedMs / 1000.0):0.0s</small>
+    <!-- 角色/怪物 面板 -->
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-lg-6">
+            <CharacterPanel Title="玩家"
+                            Subtitle="@currentProfession?.Name"
+                            Tag="@selectedProfessionId"
+                            StatusText="@OutcomeTextForPlayer"
+                            Hp="@snapshot.PlayerHp"
+                            MaxHp="@snapshot.PlayerMaxHp"
+                            AttackProgress01="@attackProgress01"
+                            AttackRemainMs="@attackRemainMs"
+                            SpecialProgress01="@specialProgress01"
+                            SpecialRemainMs="@specialRemainMs" />
         </div>
-        <div class="progress">
-            <div class="progress-bar bg-success" style="width:@($"{PlayerHpPercent}%")"></div>
-        </div>
-    </div>
 
-    <div class="mb-2">
-        <div class="d-flex justify-content-between">
-            <small class="text-muted">敌人 HP: @snapshot.EnemyHp / @snapshot.EnemyMaxHp</small>
-            <small class="text-muted">状态: @OutcomeText</small>
-        </div>
-        <div class="progress">
-            <div class="progress-bar bg-danger" style="width:@($"{EnemyHpPercent}%")"></div>
-        </div>
-    </div>
-
-    <!-- 轨道实时进度条 -->
-    <div class="mb-2">
-        <div class="d-flex justify-content-between small text-muted">
-            <span>Attack 进度</span>
-            <span>@(attackProgress01 * 100):0 % · 下次 @((attackRemainMs / 1000.0)):0.00s</span>
-        </div>
-        <div class="progress">
-            <div class="progress-bar bg-primary" style="width:@($"{attackProgress01 * 100:0}%")"></div>
+        <div class="col-12 col-lg-6">
+            <MonsterPanel Title="@currentMonster?.Name"
+                          Level="@(currentMonster?.Level)"
+                          Tag="@selectedMonsterId"
+                          StatusText="@OutcomeTextForEnemy"
+                          Hp="@snapshot.EnemyHp"
+                          MaxHp="@snapshot.EnemyMaxHp"
+                          EnemyAttackProgress01="@enemyProgress01"
+                          EnemyAttackRemainMs="@enemyRemainMs" />
         </div>
     </div>
 
-    <div class="mb-2">
-        <div class="d-flex justify-content-between small text-muted">
-            <span>Special 进度</span>
-            <span>@(specialProgress01 * 100):0 % · 下次 @((specialRemainMs / 1000.0)):0.00s</span>
-        </div>
-        <div class="progress">
-            <div class="progress-bar bg-info" style="width:@($"{specialProgress01 * 100:0}%")"></div>
-        </div>
-    </div>
-
-    <div class="mb-3">
-        <div class="d-flex justify-content-between small text-muted">
-            <span>Enemy Attack 进度</span>
-            <span>@(enemyProgress01 * 100):0 % · 下次 @((enemyRemainMs / 1000.0)):0.00s</span>
-        </div>
-        <div class="progress">
-            <div class="progress-bar bg-secondary" style="width:@($"{enemyProgress01 * 100:0}%")"></div>
-        </div>
-    </div>
-
-    <div class="btn-group mb-2">
+    <!-- 控制按钮 -->
+    <div class="btn-group mb-3">
         <button class="btn btn-success" @onclick="StartBattle" disabled="@(!configReady || isRunning)">开始战斗</button>
         <button class="btn btn-warning" @onclick="StopBattle" disabled="@(isRunning == false)">停止</button>
         <button class="btn btn-secondary" @onclick="ResetBattle" disabled="@isRunning">重置</button>
     </div>
 
-    <!-- 日志区域与底部自动滚动代码保持不变 -->
+    <!-- 日志 -->
     <div class="log-header d-flex justify-content-between align-items-center">
         <h5 class="mb-1">战斗日志</h5>
         <div>
@@ -160,11 +139,20 @@
     private bool _initial = true;
 
     private double theoreticalDps => battle?.TheoreticalDps() ?? 0.0;
-    private int EnemyHpPercent => snapshot.EnemyMaxHp <= 0 ? 0 : (int)Math.Round(100.0 * snapshot.EnemyHp / Math.Max(1, snapshot.EnemyMaxHp));
-    private int PlayerHpPercent => snapshot.PlayerMaxHp <= 0 ? 0 : (int)Math.Round(100.0 * snapshot.PlayerHp / Math.Max(1, snapshot.PlayerMaxHp));
-    private string OutcomeText => snapshot.Outcome switch { BattleOutcome.Ongoing => "战斗中", BattleOutcome.Victory => "敌人已被击败", BattleOutcome.Defeat => "玩家已阵亡", _ => "未知" };
 
-    // 轨道进度计算（0..1）和剩余毫秒
+    private string OutcomeTextForPlayer => snapshot.Outcome switch
+    {
+        BattleOutcome.Defeat => "阵亡",
+        _ => "战斗中"
+    };
+
+    private string OutcomeTextForEnemy => snapshot.Outcome switch
+    {
+        BattleOutcome.Victory => "已被击败",
+        _ => "战斗中"
+    };
+
+    // 进度（0..1）与剩余毫秒（从战斗实例读取）
     private double attackProgress01 => battle?.AttackProgress01 ?? 0.0;
     private double specialProgress01 => battle?.SpecialProgress01 ?? 0.0;
     private double enemyProgress01 => battle?.EnemyProgress01 ?? 0.0;
@@ -190,9 +178,9 @@
         monsters = GameConfig.Monsters.ToList();
         configVersion = GameConfig.Version;
 
-        // 默认选择第一个（一定存在：服务已做兜底）
-        selectedProfessionId = professions.First().Id;
-        selectedMonsterId = monsters.First().Id;
+        // 默认选择第一个（服务有兜底）
+        selectedProfessionId = professions.FirstOrDefault()?.Id;
+        selectedMonsterId = monsters.FirstOrDefault()?.Id;
 
         configReady = GameConfig.IsLoaded && professions.Count > 0 && monsters.Count > 0;
 
@@ -220,14 +208,10 @@
 
     private void BuildBattle()
     {
-        if (battle is not null)
-        {
-            battle.CombatEventFired -= OnCombatEvent;
-        }
+        if (battle is not null) battle.CombatEventFired -= OnCombatEvent;
 
-        // 兜底：即使列表为空也能启动（极端情况下）
-        var p = currentProfession ?? professions.FirstOrDefault() ?? new ProfessionDef { Id = "fallbackP", Name = "Fallback", MaxHp = 200, AttackRateAPS = 2.0, DamagePerAttack = 15, SpecialIntervalSec = 5, SpecialDamage = 120, CritChancePercent = 10, CritMultiplier = 1.5, VariancePct = 0.05 };
-        var m = currentMonster ?? monsters.FirstOrDefault() ?? new MonsterDef { Id = "fallbackM", Name = "Fallback", Level = 1, MaxHp = 220, AttackIntervalSec = 2.0, DamagePerHit = 8, VariancePct = 0.05 };
+        var p = currentProfession ?? professions.First();
+        var m = currentMonster ?? monsters.First();
 
         var clock = new SimClock();
         int seed = HashSeed(p.Id, m.Id, configVersion);
@@ -342,12 +326,9 @@
             _ => "Unknown"
         };
 
-        var line = $"[{sec:0.00}s] {who}-{src} 命中，伤害 {ev.Damage}，{target}HP→ {ev.DefenderHpAfter}，RNGidx={ev.RngIndexAfter}";
+        var line = $"[{sec:0.00}s] {who}-{src} 命中，伤害 {ev.Damage}，@{target}HP→ {ev.DefenderHpAfter}，RNGidx={ev.RngIndexAfter}";
         logs.Add(line);
-        if (logs.Count > MaxLogEntries)
-        {
-            logs.RemoveRange(0, logs.Count - MaxLogEntries);
-        }
+        if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
 
         _shouldScrollToBottom = true;
         _ = InvokeAsync(StateHasChanged);
@@ -377,6 +358,7 @@
         if (_jsModule is not null) { try { await _jsModule.DisposeAsync(); } catch { } }
     }
 }
+
 <style>
     .battle-card {
         background: #fff;

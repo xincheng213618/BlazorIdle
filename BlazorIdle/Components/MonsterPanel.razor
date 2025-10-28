@@ -1,0 +1,65 @@
+﻿@namespace BlazorIdle.Components
+
+<div class="card p-3 monster-panel">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="me-2">
+            <div class="fw-semibold">@Title</div>
+            @if (Level is not null)
+            {
+                <div class="text-muted small">Lv.@Level</div>
+            }
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Tag))
+        {
+            <span class="badge rounded-pill text-bg-secondary">@Tag</span>
+        }
+    </div>
+
+    <!-- HP 条 -->
+    <div class="mb-2">
+        <div class="d-flex justify-content-between">
+            <small class="text-muted">HP: @Hp / @MaxHp</small>
+            @if (!string.IsNullOrWhiteSpace(StatusText))
+            {
+                <small class="text-muted">@StatusText</small>
+            }
+        </div>
+        <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@HpPercent">
+            <div class="progress-bar bg-danger" style="width:@($"{HpPercent}%")"></div>
+        </div>
+    </div>
+
+    <!-- 敌人攻击进度 -->
+    <div>
+        <div class="d-flex justify-content-between small text-muted">
+            <span>Attack</span>
+            <span>@(EnemyAttackProgress01 * 100):0 % · 下次 @((EnemyAttackRemainMs / 1000.0)):0.00s</span>
+        </div>
+        <div class="progress">
+            <div class="progress-bar bg-secondary" style="width:@($"{EnemyAttackProgress01 * 100:0}%")"></div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // 标题/标签/状态（可选）
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Tag { get; set; }
+    [Parameter] public string? StatusText { get; set; }
+    [Parameter] public int? Level { get; set; }
+
+    // HP
+    [Parameter] public int Hp { get; set; }
+    [Parameter] public int MaxHp { get; set; }
+    private int HpPercent => MaxHp <= 0 ? 0 : (int)Math.Round(100.0 * Hp / Math.Max(1, MaxHp));
+
+    // 敌人攻击进度（0..1）与剩余毫秒
+    [Parameter] public double EnemyAttackProgress01 { get; set; }
+    [Parameter] public double EnemyAttackRemainMs { get; set; }
+}
+
+<style>
+    .monster-panel .progress {
+        height: 10px;
+    }
+</style>
