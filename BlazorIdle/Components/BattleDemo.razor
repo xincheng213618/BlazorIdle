@@ -4,7 +4,7 @@
 @inject IJSRuntime JS
 
 <div class="battle-card">
-    <h3>战斗演示（玩家 vs 敌人：双轨 + 敌人攻击 + 日志）</h3>
+    <h3>战斗演示（玩家 vs 敌人：使用 Character/Enemy）</h3>
 
     <div class="row g-2 mb-3">
         <div class="col-6">
@@ -119,7 +119,7 @@
         <button class="btn btn-secondary" @onclick="ResetBattle" disabled="@isRunning">重置</button>
     </div>
 
-    <!-- 日志区域 -->
+    <!-- 日志区域（省略：与之前相同，保留自动滚动/复制/清空） -->
     <div class="log-header d-flex justify-content-between align-items-center">
         <h5 class="mb-1">战斗日志</h5>
         <div>
@@ -158,12 +158,12 @@
     private const int AutoScrollTolerancePx = 12;
     private const bool AutoScrollSmooth = false;
 
-    // 玩家参数
+    // 玩家参数（用于构建 Character）
     private int playerMaxHp = 200;
     private double playerCritPct = 15.0;
     private double playerCritMult = 1.5;
 
-    // 敌人与输出参数
+    // 敌人与输出参数（用于构建 Enemy / Character 输出）
     private int enemyMaxHp = 300;
     private int damagePerAttack = 15;
     private double attackRateAPS = 2.0;
@@ -197,7 +197,7 @@
     private const int MaxLogEntries = 200;
     private readonly List<string> logs = new();
 
-    // JS 模块 & 元素引用
+    // JS 模块 & 元素引用（自动滚动）
     private ElementReference logPanelRef;
     private IJSObjectReference? _jsModule;
     private bool _shouldScrollToBottom;
@@ -217,10 +217,7 @@
             {
                 _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "/js/battleDemo.js");
             }
-            catch
-            {
-                // 模块加载失败时，仅失去自动滚动功能
-            }
+            catch { }
         }
 
         if (_shouldScrollToBottom && _jsModule is not null)
@@ -230,10 +227,7 @@
             {
                 await _jsModule.InvokeVoidAsync("scrollToBottomIfNear", logPanelRef, AutoScrollTolerancePx, AutoScrollSmooth);
             }
-            catch
-            {
-                // 忽略
-            }
+            catch { }
         }
     }
 
@@ -251,28 +245,30 @@
             specialIntervalSec, specialDamage, enemyAttackIntervalSec, enemyDamagePerHit);
         var rng = new RngContext(seed);
 
-        var player = new PlayerConfig
+        var character = new Character
         {
+            MaxHp = Math.Max(1, playerMaxHp),
+            Hp = Math.Max(1, playerMaxHp),
             AttackRateAPS = attackRateAPS,
             DamagePerAttack = damagePerAttack,
             HastePercent = hastePercent,
             SpecialIntervalSec = specialIntervalSec,
             SpecialDamage = specialDamage,
-            MaxHp = Math.Max(1, playerMaxHp),
             CritChancePercent = Math.Max(0, playerCritPct),
             CritMultiplier = Math.Max(1.0, playerCritMult),
             VariancePct = 0.05
         };
 
-        var enemy = new EnemyState
+        var enemy = new Enemy
         {
             MaxHp = Math.Max(1, enemyMaxHp),
             Hp = Math.Max(1, enemyMaxHp),
             AttackIntervalSec = Math.Max(0.1, enemyAttackIntervalSec),
-            DamagePerHit = Math.Max(1, enemyDamagePerHit)
+            DamagePerHit = Math.Max(1, enemyDamagePerHit),
+            VariancePct = 0.05
         };
 
-        battle = new BattleInstance(clock, rng, player, enemy);
+        battle = new BattleInstance(clock, rng, character, enemy);
         battle.CombatEventFired += OnCombatEvent;
         digest = null;
     }
@@ -388,10 +384,7 @@
         {
             await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
         }
-        catch
-        {
-            // 忽略复制失败
-        }
+        catch { }
     }
 
     public void Dispose()

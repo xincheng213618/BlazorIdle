@@ -3,38 +3,6 @@ using System.Collections.Generic;
 
 namespace BlazorIdle.Game
 {
-    public sealed class PlayerConfig
-    {
-        // 攻击（受急速）
-        public double AttackRateAPS { get; set; } = 2.0;   // 每秒攻击次数
-        public int DamagePerAttack { get; set; } = 15;     // 每次攻击伤害
-        public double HastePercent { get; set; } = 0.0;    // 0 = 无急速
-
-        // Special（不受急速）
-        public double SpecialIntervalSec { get; set; } = 5.0;
-        public int SpecialDamage { get; set; } = 120;
-
-        // 生存
-        public int MaxHp { get; set; } = 200;
-
-        // 暴击
-        public double CritChancePercent { get; set; } = 15.0;
-        public double CritMultiplier { get; set; } = 1.5;
-
-        // 浮动
-        public double VariancePct { get; set; } = 0.05;    // ±5%
-    }
-
-    public sealed class EnemyState
-    {
-        public int MaxHp { get; set; } = 300;
-        public int Hp { get; set; } = 300;
-
-        // 敌人输出（第三轨）
-        public double AttackIntervalSec { get; set; } = 1.5;
-        public int DamagePerHit { get; set; } = 12;
-    }
-
     public enum BattleOutcome
     {
         Ongoing = 0,
@@ -59,8 +27,8 @@ namespace BlazorIdle.Game
     {
         private readonly IGameClock _clock;
         private readonly RngContext _rng;
-        private readonly PlayerConfig _player;
-        private readonly EnemyState _enemy;
+        private readonly Character _player;
+        private readonly Enemy _enemy;
 
         private readonly TrackState _attackTrack;
         private readonly TrackState _specialTrack;
@@ -81,7 +49,7 @@ namespace BlazorIdle.Game
 
         public event Action<CombatEvent>? CombatEventFired;
 
-        public BattleInstance(IGameClock clock, RngContext rng, PlayerConfig player, EnemyState enemy)
+        public BattleInstance(IGameClock clock, RngContext rng, Character player, Enemy enemy)
         {
             _clock = clock;
             _rng = rng;
@@ -144,19 +112,19 @@ namespace BlazorIdle.Game
 
             int now = _clock.NowMs;
 
-            // 玩家 Attack 多次触发处理
+            // 玩家 Attack 可能多次触发
             var atkCount = _attackTrack.CollectTriggers(now);
             for (int i = 0; i < atkCount; i++)
             {
-                int dmg = PlayerRollDamage(baseDamage: _player.DamagePerAttack, allowCrit: true);
+                int dmg = PlayerRollDamage(_player.DamagePerAttack, allowCrit: true);
                 ApplyDamageToEnemy(dmg, EventSource.Attack);
             }
 
-            // 玩家 Special 多次触发处理
+            // 玩家 Special
             var spCount = _specialTrack.CollectTriggers(now);
             for (int i = 0; i < spCount; i++)
             {
-                int dmg = PlayerRollDamage(baseDamage: _player.SpecialDamage, allowCrit: true);
+                int dmg = PlayerRollDamage(_player.SpecialDamage, allowCrit: true);
                 ApplyDamageToEnemy(dmg, EventSource.Special);
             }
 
@@ -192,7 +160,7 @@ namespace BlazorIdle.Game
         private int EnemyRollDamage(int baseDamage)
         {
             // 敌人暂不暴击，保留浮动
-            double dmg = Math.Floor(_rng.Jitter(baseDamage, 0.05));
+            double dmg = Math.Floor(_rng.Jitter(baseDamage, _enemy.VariancePct));
             if (dmg < 1) dmg = 1;
             return (int)dmg;
         }
@@ -209,7 +177,7 @@ namespace BlazorIdle.Game
                 Source = src,
                 TimeMs = _clock.NowMs,
                 Damage = dmg,
-                Crit = false, // 是否暴击已体现在伤害值中，如需细分可额外记录
+                Crit = false, // 可扩展为记录是否暴击
                 RngIndexAfter = _rng.Index,
                 DefenderHpAfter = _enemy.Hp
             };
@@ -284,6 +252,7 @@ namespace BlazorIdle.Game
 
         public double TheoreticalDps()
         {
+            // 急速只影响 Attack；Special 是额外脉冲
             var hasteFactor = 1.0 + _player.HastePercent / 100.0;
             var attackDps = _player.DamagePerAttack * _player.AttackRateAPS * hasteFactor;
             var specialDps = _player.SpecialDamage / Math.Max(0.1, _player.SpecialIntervalSec);

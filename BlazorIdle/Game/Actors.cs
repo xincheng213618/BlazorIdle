@@ -1,0 +1,40 @@
+﻿namespace BlazorIdle.Game
+{
+    // 玩家角色
+    public sealed class Character
+    {
+        // 生存
+        public int MaxHp { get; set; } = 200;
+        public int Hp { get; set; } = 200;
+
+        // 基础输出（Attack，受急速影响）
+        public double AttackRateAPS { get; set; } = 2.0; // 次/秒
+        public int DamagePerAttack { get; set; } = 15;
+        public double HastePercent { get; set; } = 0.0;  // 仅影响 Attack 轨
+
+        // Special（不受急速）
+        public double SpecialIntervalSec { get; set; } = 5.0;
+        public int SpecialDamage { get; set; } = 120;
+
+        // 暴击
+        public double CritChancePercent { get; set; } = 15.0;
+        public double CritMultiplier { get; set; } = 1.5;
+
+        // 浮动
+        public double VariancePct { get; set; } = 0.05;  // ±5%
+    }
+
+    // 敌人
+    public sealed class Enemy
+    {
+        public int MaxHp { get; set; } = 300;
+        public int Hp { get; set; } = 300;
+
+        // 敌人攻击（第三条轨）
+        public double AttackIntervalSec { get; set; } = 1.5;
+        public int DamagePerHit { get; set; } = 12;
+
+        // 浮动
+        public double VariancePct { get; set; } = 0.05; // 可调整
+    }
+}
