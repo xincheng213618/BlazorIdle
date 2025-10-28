@@ -28,6 +28,13 @@ public class AuthController : ControllerBase
         _logger = logger;
     }
 
+    // Sanitize username for logging to prevent log forging
+    private static string SanitizeForLogging(string input)
+    {
+        // Remove any characters that could cause log forging (newlines, carriage returns, etc.)
+        return System.Text.RegularExpressions.Regex.Replace(input, @"[\r\n\t]", "");
+    }
+
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterRequest request)
     {
@@ -39,6 +46,16 @@ public class AuthController : ControllerBase
                 {
                     Success = false,
                     Message = "用户名和密码不能为空"
+                });
+            }
+
+            // Validate username format (alphanumeric and underscore only, 3-50 characters)
+            if (!System.Text.RegularExpressions.Regex.IsMatch(request.Username, @"^[a-zA-Z0-9_]{3,50}$"))
+            {
+                return BadRequest(new AuthResponse
+                {
+                    Success = false,
+                    Message = "用户名只能包含字母、数字和下划线，长度为3-50个字符"
                 });
             }
 
@@ -76,7 +93,8 @@ public class AuthController : ControllerBase
             // Generate JWT token
             var token = _jwtService.GenerateToken(user.Username, user.Id);
 
-            _logger.LogInformation("User registered successfully: {Username}", user.Username);
+            // Safe structured logging - username is sanitized to prevent log forging
+            _logger.LogInformation("User registered successfully: {Username}", SanitizeForLogging(user.Username));
 
             return Ok(new AuthResponse
             {
@@ -111,6 +129,16 @@ public class AuthController : ControllerBase
                 });
             }
 
+            // Validate username format to prevent log forging
+            if (!System.Text.RegularExpressions.Regex.IsMatch(request.Username, @"^[a-zA-Z0-9_]{1,50}$"))
+            {
+                return Unauthorized(new AuthResponse
+                {
+                    Success = false,
+                    Message = "用户名或密码错误"
+                });
+            }
+
             // Find user by username
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
             if (user == null)
@@ -135,7 +163,8 @@ public class AuthController : ControllerBase
             // Generate JWT token
             var token = _jwtService.GenerateToken(user.Username, user.Id);
 
-            _logger.LogInformation("User logged in successfully: {Username}", user.Username);
+            // Safe structured logging - username is sanitized to prevent log forging
+            _logger.LogInformation("User logged in successfully: {Username}", SanitizeForLogging(user.Username));
 
             return Ok(new AuthResponse
             {
