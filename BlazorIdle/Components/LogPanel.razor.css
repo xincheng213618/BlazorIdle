@@ -1,0 +1,21 @@
+.log-header {
+    margin-top: 8px;
+    margin-bottom: 6px;
+}
+
+.log-panel {
+    height: 180px;
+    overflow-y: auto;
+    background: #0f172a;
+    color: #e2e8f0;
+    border: 1px solid #1e293b;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.log-line {
+    white-space: pre-wrap;
+}

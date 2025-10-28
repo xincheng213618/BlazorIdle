@@ -75,35 +75,17 @@
         <button class="btn btn-secondary" @onclick="ResetBattle" disabled="@isRunning">重置</button>
     </div>
 
-    <!-- 日志 -->
-    <div class="log-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-1">战斗日志</h5>
-        <div>
-            <button class="btn btn-sm btn-outline-secondary me-2" @onclick="CopyLogs">复制</button>
-            <button class="btn btn-sm btn-outline-danger" @onclick="ClearLogs">清空</button>
-        </div>
-    </div>
-    <div class="log-panel" @ref="logPanelRef">
-        @if (logs.Count == 0)
-        {
-            <div class="text-muted small">暂无日志</div>
-        }
-        else
-        {
-            @foreach (var line in logs)
-            {
-                <div class="log-line">@line</div>
-            }
-        }
-    </div>
+    <!-- 日志组件 -->
+    <LogPanel Title="战斗日志"
+              Lines="@logs"
+              OnClear="@ClearLogs"
+              AutoScroll="true"
+              AutoScrollTolerancePx="30"
+              AutoScrollSmooth="false" />
 </div>
 
 @code {
     private const int TickMs = 100;
-
-    // 自动滚动容差与是否平滑滚动
-    private const int AutoScrollTolerancePx = 12;
-    private const bool AutoScrollSmooth = false;
 
     // 配置选择
     private List<ProfessionDef> professions = new();
@@ -138,11 +120,6 @@
     private const int MaxLogEntries = 200;
     private readonly List<string> logs = new();
 
-    // JS 模块 & 元素引用（自动滚动）
-    private ElementReference logPanelRef;
-    private IJSObjectReference? _jsModule;
-    private bool _shouldScrollToBottom;
-
     private CancellationTokenSource? _cts;
 
     protected override async Task OnInitializedAsync()
@@ -158,20 +135,6 @@
         configReady = professions.Count > 0 && monsters.Count > 0;
 
         ResetBattle();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            try { _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "/js/battleDemo.js"); } catch { }
-        }
-
-        if (_shouldScrollToBottom && _jsModule is not null)
-        {
-            _shouldScrollToBottom = false;
-            try { await _jsModule.InvokeVoidAsync("scrollToBottomIfNear", logPanelRef, AutoScrollTolerancePx, AutoScrollSmooth); } catch { }
-        }
     }
 
     private void OnSelectionChanged(ChangeEventArgs _)
@@ -241,7 +204,6 @@
         isRunning = true;
 
         logs.Clear();
-        _shouldScrollToBottom = true;
 
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
@@ -299,20 +261,13 @@
         logs.Add(line);
         if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
 
-        _shouldScrollToBottom = true;
         _ = InvokeAsync(StateHasChanged);
     }
 
     private void ClearLogs()
     {
         logs.Clear();
-        _shouldScrollToBottom = true;
-    }
-
-    private async Task CopyLogs()
-    {
-        var text = string.Join(Environment.NewLine, logs);
-        try { await JS.InvokeVoidAsync("navigator.clipboard.writeText", text); } catch { }
+        StateHasChanged();
     }
 
     // 友好显示用时：<1h 显示 mm:ss.cc；>=1h 显示 hh:mm:ss
@@ -323,9 +278,7 @@
         {
             return $"{(int)ts.TotalHours:00}:{ts.Minutes:00}:{ts.Seconds:00}";
         }
-        // centiseconds
         return $"{ts.Minutes:00}:{ts.Seconds:00}.{ts.Milliseconds / 10:00}";
-        // 如果希望毫秒三位：return $"{ts.Minutes:00}:{ts.Seconds:00}.{ts.Milliseconds:000}";
     }
 
     public void Dispose()
@@ -337,7 +290,7 @@
 
     public async ValueTask DisposeAsync()
     {
-        if (_jsModule is not null) { try { await _jsModule.DisposeAsync(); } catch { } }
+        await Task.CompletedTask;
     }
 }
 
@@ -349,27 +302,5 @@
         padding: 16px;
         margin-top: 16px;
         box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-    }
-
-    .log-header {
-        margin-top: 8px;
-        margin-bottom: 6px;
-    }
-
-    .log-panel {
-        height: 180px;
-        overflow-y: auto;
-        background: #0f172a;
-        color: #e2e8f0;
-        border: 1px solid #1e293b;
-        border-radius: 6px;
-        padding: 8px 10px;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        font-size: 12px;
-        line-height: 1.4;
-    }
-
-    .log-line {
-        white-space: pre-wrap;
     }
 </style>

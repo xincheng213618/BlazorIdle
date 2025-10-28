@@ -1,0 +1,103 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+<div class="log-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-1">@Title</h5>
+    <div>
+        <button class="btn btn-sm btn-outline-secondary me-2" @onclick="CopyAsync">复制</button>
+        <button class="btn btn-sm btn-outline-danger" @onclick="ClearAsync">清空</button>
+    </div>
+</div>
+
+<div class="log-panel" @ref="panelRef">
+    @if (Lines is null || Lines.Count == 0)
+    {
+        <div class="text-muted small">暂无日志</div>
+    }
+    else
+    {
+        @foreach (var line in Lines)
+        {
+            <div class="log-line">@line</div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "日志";
+    [Parameter] public IReadOnlyList<string>? Lines { get; set; }
+
+    // 清空回调交由父组件处理（组件不直接修改集合）
+    [Parameter] public EventCallback OnClear { get; set; }
+
+    // 自动滚动参数
+    [Parameter] public bool AutoScroll { get; set; } = true;
+    [Parameter] public int AutoScrollTolerancePx { get; set; } = 30;
+    [Parameter] public bool AutoScrollSmooth { get; set; } = false;
+
+    // 无条件贴底：每次新增都滚到底部（忽略“接近底部”的判断）
+    [Parameter] public bool AlwaysStickToBottom { get; set; } = false;
+
+    private ElementReference panelRef;
+    private IJSObjectReference? _jsModule;
+    private bool _pendingScroll;
+    private int _lastCount;
+    private string? _lastTail;
+
+    protected override void OnParametersSet()
+    {
+        var count = Lines?.Count ?? 0;
+        var tail = count > 0 ? Lines![count - 1] : null;
+
+        // 触发条件：
+        // 1) 行数增加
+        // 2) 行数不变但最后一行文本变化（例如替换最后一行）
+        if (AutoScroll && (count > _lastCount || (count == _lastCount && tail != _lastTail)))
+        {
+            _pendingScroll = true;
+        }
+
+        _lastCount = count;
+        _lastTail = tail;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try { _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "/js/battleDemo.js"); } catch { }
+        }
+
+        if (AutoScroll && _pendingScroll && _jsModule is not null)
+        {
+            _pendingScroll = false;
+            try
+            {
+                if (AlwaysStickToBottom)
+                    await _jsModule.InvokeVoidAsync("scrollToBottom", panelRef, AutoScrollSmooth);
+                else
+                    await _jsModule.InvokeVoidAsync("scrollToBottomIfNear", panelRef, AutoScrollTolerancePx, AutoScrollSmooth);
+            }
+            catch { }
+        }
+    }
+
+    private async Task CopyAsync()
+    {
+        var text = Lines is null ? string.Empty : string.Join(Environment.NewLine, Lines);
+        try { await JS.InvokeVoidAsync("navigator.clipboard.writeText", text); } catch { }
+    }
+
+    private async Task ClearAsync()
+    {
+        if (OnClear.HasDelegate)
+        {
+            await OnClear.InvokeAsync();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_jsModule is not null) { try { await _jsModule.DisposeAsync(); } catch { } }
+    }
+}
