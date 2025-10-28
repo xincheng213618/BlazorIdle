@@ -1,7 +1,8 @@
-﻿@implements IDisposable
+﻿@using BlazorIdle.Game
+@implements IDisposable
 
 <div class="battle-card">
-    <h3>战斗演示（本地固定 Tick 仿真）</h3>
+    <h3>战斗演示（双轨：Attack + Special）</h3>
 
     <div class="row g-2 mb-3">
         <div class="col-6">
@@ -9,15 +10,35 @@
             <InputNumber @bind-Value="enemyMaxHp" class="form-control" disabled="@isRunning" />
         </div>
         <div class="col-6">
-            <label class="form-label">玩家 DPS</label>
-            <InputNumber @bind-Value="playerDps" class="form-control" disabled="@isRunning" />
+            <label class="form-label">每击伤害（Attack）</label>
+            <InputNumber @bind-Value="damagePerAttack" class="form-control" disabled="@isRunning" />
         </div>
+        <div class="col-6">
+            <label class="form-label">攻击速度 APS（次/秒）</label>
+            <InputNumber @bind-Value="attackRateAPS" class="form-control" disabled="@isRunning" />
+        </div>
+        <div class="col-6">
+            <label class="form-label">急速（%）仅影响 Attack</label>
+            <InputNumber @bind-Value="hastePercent" class="form-control" disabled="@isRunning" />
+        </div>
+        <div class="col-6">
+            <label class="form-label">Special 冷却（秒）</label>
+            <InputNumber @bind-Value="specialIntervalSec" class="form-control" disabled="@isRunning" />
+        </div>
+        <div class="col-6">
+            <label class="form-label">Special 伤害（点）</label>
+            <InputNumber @bind-Value="specialDamage" class="form-control" disabled="@isRunning" />
+        </div>
+    </div>
+
+    <div class="small text-muted mb-2">
+        预估 DPS：@theoreticalDps:0.0（含急速与 Special）
     </div>
 
     <div class="mb-2">
         <div class="d-flex justify-content-between">
-            <small class="text-muted">HP: @enemyHp / @enemyMaxHp</small>
-            <small class="text-muted">用时: @(elapsedMs / 1000.0):0.0s</small>
+            <small class="text-muted">HP: @snapshot.EnemyHp / @snapshot.EnemyMaxHp</small>
+            <small class="text-muted">用时: @(snapshot.ElapsedMs / 1000.0):0.0s</small>
         </div>
         <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@HpPercent">
             <div class="progress-bar bg-danger" style="width:@($"{HpPercent}%")"></div>
@@ -30,83 +51,122 @@
         <button class="btn btn-secondary" @onclick="ResetBattle" disabled="@isRunning">重置</button>
     </div>
 
-    @if (!string.IsNullOrWhiteSpace(battleResult))
+    @if (!_initial && snapshot.Finished)
     {
-        <div class="alert alert-info py-2 mb-0">@battleResult</div>
+        <div class="alert alert-info py-2 mb-0">
+            胜利！用时 @(snapshot.ElapsedMs / 1000.0):0.0s，总伤害 @snapshot.TotalDamage，RNG 消耗序 @snapshot.RngIndex
+        </div>
     }
 </div>
 
 @code {
-    // 可调参数
-    private int tickMs = 100;
+    // Tick 设置
+    private const int TickMs = 100;
+
+    // 可编辑参数
     private int enemyMaxHp = 300;
-    private int playerDps = 20;
+    private int damagePerAttack = 15;
+    private double attackRateAPS = 2.0;
+    private double hastePercent = 0.0;
+    private double specialIntervalSec = 5.0;
+    private int specialDamage = 120;
 
     // 运行态
-    private int enemyHp;
-    private int elapsedMs;
-    private bool isRunning;
-    private string? battleResult;
+    private BattleInstance? battle;
+    private BattleSnapshot snapshot = new BattleSnapshot { EnemyHp = 0, EnemyMaxHp = 1, ElapsedMs = 0, Finished = true };
+    private bool isRunning = false;
+    private bool _initial = true;
 
-    private CancellationTokenSource? _loopCts;
+    private double theoreticalDps => battle?.TheoreticalDps() ?? 0.0;
 
-    private int HpPercent => enemyMaxHp <= 0 ? 0 : (int)Math.Round(100.0 * enemyHp / Math.Max(1, enemyMaxHp));
+    private int HpPercent => snapshot.EnemyMaxHp <= 0 ? 0 : (int)Math.Round(100.0 * snapshot.EnemyHp / Math.Max(1, snapshot.EnemyMaxHp));
+
+    private CancellationTokenSource? _cts;
 
     protected override void OnInitialized()
     {
         ResetBattle();
     }
 
+    private void BuildBattle()
+    {
+        var clock = new SimClock();
+        // 为了可重现，seed 用参数哈希（也可用服务器下发）
+        int seed = HashSeed(enemyMaxHp, damagePerAttack, attackRateAPS, hastePercent, specialIntervalSec, specialDamage);
+        var rng = new RngContext(seed);
+
+        var player = new PlayerConfig
+        {
+            AttackRateAPS = attackRateAPS,
+            DamagePerAttack = damagePerAttack,
+            HastePercent = hastePercent,
+            SpecialIntervalSec = specialIntervalSec,
+            SpecialDamage = specialDamage,
+            VariancePct = 0.05
+        };
+
+        var enemy = new EnemyState
+        {
+            MaxHp = Math.Max(1, enemyMaxHp),
+            Hp = Math.Max(1, enemyMaxHp)
+        };
+
+        battle = new BattleInstance(clock, rng, player, enemy);
+    }
+
+    private int HashSeed(params object[] arr)
+    {
+        unchecked
+        {
+            int h = 17;
+            foreach (var o in arr)
+            {
+                h = h * 31 + (o?.GetHashCode() ?? 0);
+            }
+            return h == 0 ? 1234567 : h;
+        }
+    }
+
     private void StartBattle()
     {
         if (isRunning) return;
 
-        battleResult = string.Empty;
-        if (enemyMaxHp <= 0) enemyMaxHp = 100;
-        enemyHp = enemyMaxHp;
-        elapsedMs = 0;
+        BuildBattle();
+        battle!.Start();
+        snapshot = battle!.GetSnapshot();
         isRunning = true;
+        _initial = false;
 
-        _loopCts?.Cancel();
-        _loopCts = new CancellationTokenSource();
-        _ = RunLoopAsync(_loopCts.Token);
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+        _ = RunLoopAsync(_cts.Token);
     }
 
     private void StopBattle()
     {
         isRunning = false;
-        _loopCts?.Cancel();
+        battle?.Stop();
+        _cts?.Cancel();
     }
 
     private void ResetBattle()
     {
         StopBattle();
-        battleResult = string.Empty;
-        enemyHp = Math.Max(1, enemyMaxHp);
-        elapsedMs = 0;
+        BuildBattle();
+        snapshot = battle!.GetSnapshot();
+        StateHasChanged();
     }
 
     private async Task RunLoopAsync(CancellationToken token)
     {
         try
         {
-            while (!token.IsCancellationRequested && isRunning && enemyHp > 0)
+            while (!token.IsCancellationRequested && isRunning)
             {
-                await Task.Delay(tickMs, token);
-
-                elapsedMs += tickMs;
-
-                // 固定 Tick 伤害，至少 1
-                var damagePerTick = Math.Max(1, (int)Math.Round(playerDps * (tickMs / 1000.0)));
-                enemyHp = Math.Max(0, enemyHp - damagePerTick);
-
-                if (enemyHp <= 0)
-                {
-                    isRunning = false;
-                    var seconds = elapsedMs / 1000.0;
-                    battleResult = $"胜利！用时 {seconds:0.0}s，总伤害 {enemyMaxHp}";
-                }
-
+                await Task.Delay(TickMs, token);
+                battle!.AdvanceTick(TickMs);
+                snapshot = battle!.GetSnapshot();
+                if (snapshot.Finished) isRunning = false;
                 await InvokeAsync(StateHasChanged);
             }
         }
@@ -118,8 +178,8 @@
 
     public void Dispose()
     {
-        _loopCts?.Cancel();
-        _loopCts?.Dispose();
+        _cts?.Cancel();
+        _cts?.Dispose();
     }
 }
 
