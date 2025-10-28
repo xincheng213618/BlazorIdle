@@ -26,6 +26,9 @@ namespace BlazorIdle.Game.Config
 
         // 伤害浮动
         [JsonPropertyName("variancePct")] public double VariancePct { get; set; } = 0.05;
+
+        // 新增：玩家阵亡后的复活时间（秒）
+        [JsonPropertyName("reviveSec")] public double ReviveSec { get; set; } = 5.0;
     }
 
     public sealed class MonsterDef
@@ -44,5 +47,8 @@ namespace BlazorIdle.Game.Config
 
         // 伤害浮动
         [JsonPropertyName("variancePct")] public double VariancePct { get; set; } = 0.05;
+
+        // 新增：怪物死亡后的刷新时间（秒）
+        [JsonPropertyName("respawnSec")] public double RespawnSec { get; set; } = 3.0;
     }
 }

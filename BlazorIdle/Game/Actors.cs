@@ -22,6 +22,9 @@
 
         // 浮动
         public double VariancePct { get; set; } = 0.05;  // ±5%
+
+        // 新增：复活时间（毫秒）
+        public int ReviveMs { get; set; } = 5000;
     }
 
     // 敌人
@@ -35,6 +38,9 @@
         public int DamagePerHit { get; set; } = 12;
 
         // 浮动
-        public double VariancePct { get; set; } = 0.05; // 可调整
+        public double VariancePct { get; set; } = 0.05;
+
+        // 新增：刷新时间（毫秒）
+        public int RespawnMs { get; set; } = 3000;
     }
 }

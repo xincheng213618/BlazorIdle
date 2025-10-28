@@ -6,8 +6,16 @@ namespace BlazorIdle.Game
     public enum BattleOutcome
     {
         Ongoing = 0,
-        Victory = 1, // 敌人死亡
-        Defeat = 2   // 玩家死亡
+        Victory = 1, // 敌人死亡（单次交锋结果）
+        Defeat = 2   // 玩家死亡（单次交锋结果）
+    }
+
+    // 持续战斗循环状态
+    public enum LoopState
+    {
+        Fighting = 0,
+        PlayerDeadCooldown = 1,
+        EnemyDeadCooldown = 2
     }
 
     public sealed class BattleSnapshot
@@ -17,10 +25,18 @@ namespace BlazorIdle.Game
         public int EnemyMaxHp { get; init; }
         public int PlayerHp { get; init; }
         public int PlayerMaxHp { get; init; }
+
         public BattleOutcome Outcome { get; init; }
-        public int TotalDamage { get; init; } // 玩家对敌方造成的总伤
+
+        public LoopState LoopState { get; init; }
+        public bool WaitingPlayerRevive { get; init; }
+        public bool WaitingEnemyRespawn { get; init; }
+        public int TimeToResumeMs { get; init; }
+
+        public int TotalDamage { get; init; }
         public int RngIndex { get; init; }
-        public bool Finished => Outcome == BattleOutcome.Victory || Outcome == BattleOutcome.Defeat;
+
+        public bool Finished => false; // 持续战斗模式不自动结束
     }
 
     public sealed class BattleInstance
@@ -35,7 +51,7 @@ namespace BlazorIdle.Game
         private readonly TrackState _enemyAttackTrack;
 
         private bool _running;
-        private int _totalDamage; // 玩家对敌总伤
+        private int _totalDamage;
         private int _tickCount;
 
         private int _playerHp;
@@ -46,6 +62,10 @@ namespace BlazorIdle.Game
         private readonly int _rngSeed;
         private int _rngIndexStart;
         private int _rngIndexEnd;
+
+        // 持续战斗循环
+        private LoopState _loopState = LoopState.Fighting;
+        private int _resumeAtMs = 0;
 
         public event Action<CombatEvent>? CombatEventFired;
 
@@ -87,14 +107,16 @@ namespace BlazorIdle.Game
             _aggregator = new SegmentAggregator(new SegmentAggregatorOptions { MaxEvents = 12, MaxDurationMs = 2000 });
             _aggregator.Reset();
 
-            _rngIndexStart = _rng.Index; // 通常为 0
+            _rngIndexStart = _rng.Index;
+
+            _loopState = LoopState.Fighting;
+            _resumeAtMs = 0;
         }
 
         public void Stop()
         {
             if (!_running) return;
             _running = false;
-            // 结束时强制 Flush 残段
             var seg = _aggregator.ForceFlush(_clock.NowMs, _rng.Index);
             if (seg != null) _segments.Add(seg);
             _rngIndexEnd = _rng.Index;
@@ -105,45 +127,106 @@ namespace BlazorIdle.Game
         public void AdvanceTick(int tickMs)
         {
             if (!_running) return;
-            if (Outcome != BattleOutcome.Ongoing) { Stop(); return; }
 
             _clock.AdvanceBy(tickMs);
             _tickCount++;
 
             int now = _clock.NowMs;
 
-            // 玩家 Attack 可能多次触发
+            // 冷却中：只等待到点，恢复后“双方”轨道都重置为 now，避免积压触发
+            if (_loopState == LoopState.PlayerDeadCooldown)
+            {
+                if (now >= _resumeAtMs)
+                {
+                    // 玩家复活
+                    _playerHp = Math.Max(1, _player.MaxHp);
+                    // 恢复时重置双方轨道，防止累计触发
+                    _attackTrack.Reset(now);
+                    _specialTrack.Reset(now);
+                    _enemyAttackTrack.Reset(now);
+                    _loopState = LoopState.Fighting;
+                }
+                var segByTimeWait = _aggregator.Tick(now, _rng.Index);
+                if (segByTimeWait != null) _segments.Add(segByTimeWait);
+                return;
+            }
+            else if (_loopState == LoopState.EnemyDeadCooldown)
+            {
+                if (now >= _resumeAtMs)
+                {
+                    // 敌人刷新
+                    _enemy.Hp = Math.Max(1, _enemy.MaxHp);
+                    // 恢复时重置双方轨道，防止累计触发
+                    _enemyAttackTrack.Reset(now);
+                    _attackTrack.Reset(now);
+                    _specialTrack.Reset(now);
+                    _loopState = LoopState.Fighting;
+                }
+                var segByTimeWait = _aggregator.Tick(now, _rng.Index);
+                if (segByTimeWait != null) _segments.Add(segByTimeWait);
+                return;
+            }
+
+            // Fighting：正常推进
             var atkCount = _attackTrack.CollectTriggers(now);
             for (int i = 0; i < atkCount; i++)
             {
                 int dmg = PlayerRollDamage(_player.DamagePerAttack, allowCrit: true);
                 ApplyDamageToEnemy(dmg, EventSource.Attack);
+                if (_enemy.Hp <= 0)
+                {
+                    EnterEnemyCooldown(now);
+                    break;
+                }
             }
 
-            // 玩家 Special
-            var spCount = _specialTrack.CollectTriggers(now);
-            for (int i = 0; i < spCount; i++)
+            if (_loopState == LoopState.Fighting)
             {
-                int dmg = PlayerRollDamage(_player.SpecialDamage, allowCrit: true);
-                ApplyDamageToEnemy(dmg, EventSource.Special);
+                var spCount = _specialTrack.CollectTriggers(now);
+                for (int i = 0; i < spCount; i++)
+                {
+                    int dmg = PlayerRollDamage(_player.SpecialDamage, allowCrit: true);
+                    ApplyDamageToEnemy(dmg, EventSource.Special);
+                    if (_enemy.Hp <= 0)
+                    {
+                        EnterEnemyCooldown(now);
+                        break;
+                    }
+                }
             }
 
-            // 敌人攻击
-            var enemyCount = _enemyAttackTrack.CollectTriggers(now);
-            for (int i = 0; i < enemyCount; i++)
+            if (_loopState == LoopState.Fighting)
             {
-                int dmg = EnemyRollDamage(_enemy.DamagePerHit);
-                ApplyDamageToPlayer(dmg, EventSource.EnemyAttack);
+                var enemyCount = _enemyAttackTrack.CollectTriggers(now);
+                for (int i = 0; i < enemyCount; i++)
+                {
+                    int dmg = EnemyRollDamage(_enemy.DamagePerHit);
+                    ApplyDamageToPlayer(dmg, EventSource.EnemyAttack);
+                    if (_playerHp <= 0)
+                    {
+                        EnterPlayerCooldown(now);
+                        break;
+                    }
+                }
             }
 
-            // 时间阈值 Flush
             var segByTime = _aggregator.Tick(now, _rng.Index);
             if (segByTime != null) _segments.Add(segByTime);
+        }
 
-            if (Outcome != BattleOutcome.Ongoing)
-            {
-                Stop();
-            }
+        private void EnterEnemyCooldown(int now)
+        {
+            _loopState = LoopState.EnemyDeadCooldown;
+            _resumeAtMs = now + Math.Max(0, _enemy.RespawnMs);
+            // 进入冷却时可选择立即把玩家轨道推进到 now+interval，以便视觉上“清空并静止”
+            // 我们在 UI 端已返回 0 进度，这里无需额外处理；真正避免积压由恢复时 Reset(now) 保证。
+        }
+
+        private void EnterPlayerCooldown(int now)
+        {
+            _loopState = LoopState.PlayerDeadCooldown;
+            _resumeAtMs = now + Math.Max(0, _player.ReviveMs);
+            // 同上，真正避免积压由恢复时 Reset(now) 保证。
         }
 
         private int PlayerRollDamage(int baseDamage, bool allowCrit)
@@ -159,7 +242,6 @@ namespace BlazorIdle.Game
 
         private int EnemyRollDamage(int baseDamage)
         {
-            // 敌人暂不暴击，保留浮动
             double dmg = Math.Floor(_rng.Jitter(baseDamage, _enemy.VariancePct));
             if (dmg < 1) dmg = 1;
             return (int)dmg;
@@ -177,7 +259,7 @@ namespace BlazorIdle.Game
                 Source = src,
                 TimeMs = _clock.NowMs,
                 Damage = dmg,
-                Crit = false, // 可扩展为记录是否暴击
+                Crit = false,
                 RngIndexAfter = _rng.Index,
                 DefenderHpAfter = _enemy.Hp
             };
@@ -206,7 +288,7 @@ namespace BlazorIdle.Game
             CombatEventFired?.Invoke(ev);
         }
 
-        private BattleOutcome Outcome
+        private BattleOutcome CurrentExchangeOutcome
         {
             get
             {
@@ -218,14 +300,23 @@ namespace BlazorIdle.Game
 
         public BattleSnapshot GetSnapshot()
         {
+            var now = _clock.NowMs;
+            var waitingPlayer = _loopState == LoopState.PlayerDeadCooldown;
+            var waitingEnemy = _loopState == LoopState.EnemyDeadCooldown;
+            var timeToResume = (waitingPlayer || waitingEnemy) ? Math.Max(0, _resumeAtMs - now) : 0;
+
             return new BattleSnapshot
             {
-                ElapsedMs = _clock.NowMs,
+                ElapsedMs = now,
                 EnemyHp = _enemy.Hp,
                 EnemyMaxHp = _enemy.MaxHp,
                 PlayerHp = _playerHp,
                 PlayerMaxHp = _player.MaxHp,
-                Outcome = Outcome,
+                Outcome = CurrentExchangeOutcome,
+                LoopState = _loopState,
+                WaitingPlayerRevive = waitingPlayer,
+                WaitingEnemyRespawn = waitingEnemy,
+                TimeToResumeMs = timeToResume,
                 TotalDamage = _totalDamage,
                 RngIndex = _rng.Index
             };
@@ -235,7 +326,6 @@ namespace BlazorIdle.Game
 
         public BattleDigest BuildDigest()
         {
-            // 确保停止时已 Flush
             if (_running) Stop();
 
             var duration = _clock.NowMs;
@@ -252,20 +342,29 @@ namespace BlazorIdle.Game
 
         public double TheoreticalDps()
         {
-            // 急速只影响 Attack；Special 是额外脉冲
             var hasteFactor = 1.0 + _player.HastePercent / 100.0;
             var attackDps = _player.DamagePerAttack * _player.AttackRateAPS * hasteFactor;
             var specialDps = _player.SpecialDamage / Math.Max(0.1, _player.SpecialIntervalSec);
             return attackDps + specialDps;
         }
 
-        // ===== UI 辅助：轨道进度与剩余时间 =====
-        public double AttackProgress01 => _attackTrack.Progress01(_clock.NowMs);
-        public double SpecialProgress01 => _specialTrack.Progress01(_clock.NowMs);
-        public double EnemyProgress01 => _enemyAttackTrack.Progress01(_clock.NowMs);
+        // ===== UI 辅助：冷却状态进度清空并暂停 =====
+        public double AttackProgress01 =>
+            _loopState == LoopState.Fighting ? _attackTrack.Progress01(_clock.NowMs) : 0.0;
 
-        public double AttackTimeToNextMs => _attackTrack.TimeToNextMs(_clock.NowMs);
-        public double SpecialTimeToNextMs => _specialTrack.TimeToNextMs(_clock.NowMs);
-        public double EnemyTimeToNextMs => _enemyAttackTrack.TimeToNextMs(_clock.NowMs);
+        public double SpecialProgress01 =>
+            _loopState == LoopState.Fighting ? _specialTrack.Progress01(_clock.NowMs) : 0.0;
+
+        public double EnemyProgress01 =>
+            _loopState == LoopState.Fighting ? _enemyAttackTrack.Progress01(_clock.NowMs) : 0.0;
+
+        public double AttackTimeToNextMs =>
+            _loopState == LoopState.Fighting ? _attackTrack.TimeToNextMs(_clock.NowMs) : 0.0;
+
+        public double SpecialTimeToNextMs =>
+            _loopState == LoopState.Fighting ? _specialTrack.TimeToNextMs(_clock.NowMs) : 0.0;
+
+        public double EnemyTimeToNextMs =>
+            _loopState == LoopState.Fighting ? _enemyAttackTrack.TimeToNextMs(_clock.NowMs) : 0.0;
     }
 }

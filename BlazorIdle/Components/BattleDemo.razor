@@ -7,7 +7,7 @@
 @inject IGameConfigService GameConfig
 
 <div class="battle-card">
-    <h3>战斗演示（配置驱动：职业 + 怪物）</h3>
+    <h3>战斗演示（持续战斗：复活/刷新由配置驱动）</h3>
 
     <!-- 职业 / 怪物选择 -->
     <div class="row g-2 mb-3">
@@ -19,10 +19,6 @@
                     <option value="@p.Id">@p.Name</option>
                 }
             </InputSelect>
-            @if (currentProfession is not null)
-            {
-                <small class="text-muted">HP=@currentProfession.MaxHp · APS=@currentProfession.AttackRateAPS · Atk=@currentProfession.DamagePerAttack · SpSec=@currentProfession.SpecialIntervalSec · SpDmg=@currentProfession.SpecialDamage</small>
-            }
         </div>
 
         <div class="col-6">
@@ -33,10 +29,6 @@
                     <option value="@m.Id">@m.Name</option>
                 }
             </InputSelect>
-            @if (currentMonster is not null)
-            {
-                <small class="text-muted">Lv.@currentMonster.Level · HP=@currentMonster.MaxHp · Interval=@currentMonster.AttackIntervalSec s · Dmg=@currentMonster.DamagePerHit</small>
-            }
         </div>
     </div>
 
@@ -55,7 +47,7 @@
             <CharacterPanel Title="玩家"
                             Subtitle="@currentProfession?.Name"
                             Tag="@selectedProfessionId"
-                            StatusText="@OutcomeTextForPlayer"
+                            StatusText="@PlayerStatusText"
                             Hp="@snapshot.PlayerHp"
                             MaxHp="@snapshot.PlayerMaxHp"
                             AttackProgress01="@attackProgress01"
@@ -68,7 +60,7 @@
             <MonsterPanel Title="@currentMonster?.Name"
                           Level="@(currentMonster?.Level)"
                           Tag="@selectedMonsterId"
-                          StatusText="@OutcomeTextForEnemy"
+                          StatusText="@EnemyStatusText"
                           Hp="@snapshot.EnemyHp"
                           MaxHp="@snapshot.EnemyMaxHp"
                           EnemyAttackProgress01="@enemyProgress01"
@@ -104,15 +96,6 @@
             }
         }
     </div>
-
-    @if (!_initial && snapshot.Finished)
-    {
-        <div class="alert alert-info py-2 mb-2">
-            @(snapshot.Outcome == BattleOutcome.Victory ? "胜利！" : "失败！")
-            用时 @(snapshot.ElapsedMs / 1000.0):0.0s，
-            我方输出总伤害 @snapshot.TotalDamage
-        </div>
-    }
 </div>
 
 @code {
@@ -133,24 +116,15 @@
     private bool configReady = false;
 
     private BattleInstance? battle;
-    private BattleSnapshot snapshot = new BattleSnapshot { EnemyHp = 0, EnemyMaxHp = 1, PlayerHp = 0, PlayerMaxHp = 1, ElapsedMs = 0, Outcome = BattleOutcome.Ongoing };
+    private BattleSnapshot snapshot = new BattleSnapshot { EnemyHp = 0, EnemyMaxHp = 1, PlayerHp = 0, PlayerMaxHp = 1, ElapsedMs = 0, Outcome = BattleOutcome.Ongoing, LoopState = LoopState.Fighting };
     private BattleDigest? digest;
     private bool isRunning = false;
-    private bool _initial = true;
 
     private double theoreticalDps => battle?.TheoreticalDps() ?? 0.0;
 
-    private string OutcomeTextForPlayer => snapshot.Outcome switch
-    {
-        BattleOutcome.Defeat => "阵亡",
-        _ => "战斗中"
-    };
-
-    private string OutcomeTextForEnemy => snapshot.Outcome switch
-    {
-        BattleOutcome.Victory => "已被击败",
-        _ => "战斗中"
-    };
+    // 状态文本
+    private string PlayerStatusText => snapshot.WaitingPlayerRevive ? $"等待复活 {(snapshot.TimeToResumeMs / 1000.0):0.00}s" : "战斗中";
+    private string EnemyStatusText => snapshot.WaitingEnemyRespawn ? $"等待刷新 {(snapshot.TimeToResumeMs / 1000.0):0.00}s" : "战斗中";
 
     // 进度（0..1）与剩余毫秒（从战斗实例读取）
     private double attackProgress01 => battle?.AttackProgress01 ?? 0.0;
@@ -178,11 +152,10 @@
         monsters = GameConfig.Monsters.ToList();
         configVersion = GameConfig.Version;
 
-        // 默认选择第一个（服务有兜底）
         selectedProfessionId = professions.FirstOrDefault()?.Id;
         selectedMonsterId = monsters.FirstOrDefault()?.Id;
 
-        configReady = GameConfig.IsLoaded && professions.Count > 0 && monsters.Count > 0;
+        configReady = professions.Count > 0 && monsters.Count > 0;
 
         ResetBattle();
     }
@@ -228,7 +201,8 @@
             SpecialDamage = p.SpecialDamage,
             CritChancePercent = p.CritChancePercent,
             CritMultiplier = p.CritMultiplier,
-            VariancePct = p.VariancePct
+            VariancePct = p.VariancePct,
+            ReviveMs = (int)Math.Round(Math.Max(0, p.ReviveSec) * 1000.0)
         };
 
         var enemy = new Enemy
@@ -237,7 +211,8 @@
             Hp = Math.Max(1, m.MaxHp),
             AttackIntervalSec = Math.Max(0.1, m.AttackIntervalSec),
             DamagePerHit = Math.Max(1, m.DamagePerHit),
-            VariancePct = m.VariancePct
+            VariancePct = m.VariancePct,
+            RespawnMs = (int)Math.Round(Math.Max(0, m.RespawnSec) * 1000.0)
         };
 
         battle = new BattleInstance(clock, rng, character, enemy);
@@ -264,7 +239,6 @@
         snapshot = battle!.GetSnapshot();
         digest = null;
         isRunning = true;
-        _initial = false;
 
         logs.Clear();
         _shouldScrollToBottom = true;
@@ -302,11 +276,6 @@
                 await Task.Delay(TickMs, token);
                 battle!.AdvanceTick(TickMs);
                 snapshot = battle!.GetSnapshot();
-                if (snapshot.Finished)
-                {
-                    isRunning = false;
-                    digest = battle!.BuildDigest();
-                }
                 await InvokeAsync(StateHasChanged);
             }
         }
@@ -326,7 +295,7 @@
             _ => "Unknown"
         };
 
-        var line = $"[{sec:0.00}s] {who}-{src} 命中，伤害 {ev.Damage}，@{target}HP→ {ev.DefenderHpAfter}，RNGidx={ev.RngIndexAfter}";
+        var line = $"[{sec:0.00}s] {who}-{src} 命中，伤害 {ev.Damage}，{target}HP→ {ev.DefenderHpAfter}，RNGidx={ev.RngIndexAfter}";
         logs.Add(line);
         if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
 

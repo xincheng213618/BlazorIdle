@@ -11,7 +11,8 @@
     "specialDamage": 140,
     "critChancePercent": 10.0,
     "critMultiplier": 1.5,
-    "variancePct": 0.04
+    "variancePct": 0.04,
+    "reviveSec": 5.0
   },
   {
     "id": "mage",
@@ -25,7 +26,8 @@
     "specialDamage": 200,
     "critChancePercent": 20.0,
     "critMultiplier": 1.8,
-    "variancePct": 0.06
+    "variancePct": 0.06,
+    "reviveSec": 6.0
   },
   {
     "id": "rogue",
@@ -39,6 +41,7 @@
     "specialDamage": 120,
     "critChancePercent": 25.0,
     "critMultiplier": 1.6,
-    "variancePct": 0.05
+    "variancePct": 0.05,
+    "reviveSec": 4.0
   }
 ]
