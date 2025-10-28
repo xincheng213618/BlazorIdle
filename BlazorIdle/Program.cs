@@ -21,7 +21,10 @@ builder.Services.AddScoped<CustomAuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(provider => provider.GetRequiredService<CustomAuthStateProvider>());
 builder.Services.AddAuthorizationCore();
 
-// Game config service (scoped£º¿ÉÓÃ HttpClient)
+// Add Character service
+builder.Services.AddScoped<ICharacterService, CharacterService>();
+
+// Game config service (scopedï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ HttpClient)
 builder.Services.AddScoped<IGameConfigService, GameConfigService>();
 
 await builder.Build().RunAsync();

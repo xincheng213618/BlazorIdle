@@ -1,12 +1,109 @@
 @page "/"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using BlazorIdle.Components
+@using BlazorIdle.Shared.Models
+@inject BlazorIdle.Services.ICharacterService CharacterService
 
 <PageTitle>Home</PageTitle>
 
-<BattleDemo />
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">角色管理 (Character Management)</h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <CharacterCreation OnCharacterCreated="OnCharacterCreated" />
+        </div>
+        <div class="col-md-6">
+            <CharacterSelector @ref="characterSelector" 
+                             OnCharacterSelected="OnCharacterSelected" 
+                             OnCharacterDeleted="OnCharacterDeleted" />
+        </div>
+    </div>
+
+    @if (selectedCharacter != null)
+    {
+        <div class="row">
+            <div class="col-12">
+                <div class="selected-character-banner">
+                    <h5>当前选中角色: <strong>@selectedCharacter.Name</strong></h5>
+                    <p class="text-muted mb-0">使用此角色进行战斗</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <BattleDemo SelectedCharacter="@selectedCharacter" />
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-warning">
+                    请先创建并选择一个角色，然后开始战斗。
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private CharacterSelector? characterSelector;
+    private CharacterData? selectedCharacter;
+
+    protected override async Task OnInitializedAsync()
+    {
+        selectedCharacter = await CharacterService.GetSelectedCharacterAsync();
+    }
+
+    private async Task OnCharacterCreated()
+    {
+        if (characterSelector != null)
+        {
+            await characterSelector.RefreshAsync();
+        }
+    }
+
+    private void OnCharacterSelected(CharacterData? character)
+    {
+        selectedCharacter = character;
+        StateHasChanged();
+    }
+
+    private async Task OnCharacterDeleted()
+    {
+        selectedCharacter = await CharacterService.GetSelectedCharacterAsync();
+        StateHasChanged();
+    }
+}
+
+}
 
 <style>
+    .selected-character-banner {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .selected-character-banner h5 {
+        margin-bottom: 5px;
+        color: white;
+    }
+
+    .selected-character-banner .text-muted {
+        color: rgba(255,255,255,0.8) !important;
+    }
+
     .btn {
         padding: 10px 20px;
         border: none;
