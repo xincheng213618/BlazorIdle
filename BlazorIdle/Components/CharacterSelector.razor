@@ -3,6 +3,7 @@
 @using BlazorIdle.Game.Config
 @inject ICharacterService CharacterService
 @inject IGameConfigService GameConfig
+@inject IJSRuntime JSRuntime
 
 <div class="character-selector-card">
     <h4>选择角色 (Select Character)</h4>
@@ -127,7 +128,13 @@
 
     private async Task DeleteCharacter(string characterId)
     {
-        // Simple confirmation - in production this should be a nicer modal
+        var character = characters.FirstOrDefault(c => c.Id == characterId);
+        if (character == null) return;
+
+        // Ask for confirmation before deleting
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"确定要删除角色 '{character.Name}' 吗？此操作无法撤销。");
+        if (!confirmed) return;
+
         await CharacterService.DeleteCharacterAsync(characterId);
         await LoadData();
         
