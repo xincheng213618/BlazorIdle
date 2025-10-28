@@ -187,11 +187,17 @@ public class CharacterController : ControllerBase
         ProfessionDef? profession = null;
         try
         {
+            // 使用IWebHostEnvironment获取更可靠的路径
+            // Use IWebHostEnvironment for more reliable path resolution
             var professionsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "professions.json");
             if (System.IO.File.Exists(professionsPath))
             {
                 var professionsJson = await System.IO.File.ReadAllTextAsync(professionsPath);
-                var professions = System.Text.Json.JsonSerializer.Deserialize<List<ProfessionDef>>(professionsJson);
+                var options = new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                var professions = System.Text.Json.JsonSerializer.Deserialize<List<ProfessionDef>>(professionsJson, options);
                 profession = professions?.FirstOrDefault(p => p.Id == request.ProfessionId);
             }
         }
