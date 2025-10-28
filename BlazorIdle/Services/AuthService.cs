@@ -18,6 +18,7 @@ public class AuthService : IAuthService
     private readonly ILocalStorageService _localStorage;
     private const string TokenKey = "authToken";
     private const string UsernameKey = "username";
+    private const string ApiBaseUrl = "https://localhost:7056/api/auth";
 
     public AuthService(HttpClient httpClient, ILocalStorageService localStorage)
     {
@@ -29,7 +30,7 @@ public class AuthService : IAuthService
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("https://localhost:7154/api/auth/login", request);
+            var response = await _httpClient.PostAsJsonAsync($"{ApiBaseUrl}/login", request);
             
             if (response.IsSuccessStatusCode)
             {
@@ -57,7 +58,7 @@ public class AuthService : IAuthService
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("https://localhost:7154/api/auth/register", request);
+            var response = await _httpClient.PostAsJsonAsync($"{ApiBaseUrl}/register", request);
             
             if (response.IsSuccessStatusCode)
             {
