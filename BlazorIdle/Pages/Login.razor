@@ -1,0 +1,196 @@
+@page "/login"
+@using BlazorIdle.Services
+@using BlazorIdle.Shared.DTOs
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>登录</PageTitle>
+
+<div class="login-container">
+    <div class="login-box">
+        <h2>用户登录</h2>
+        
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+        
+        <EditForm Model="@loginRequest" OnValidSubmit="@HandleLogin">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <InputText id="username" @bind-Value="loginRequest.Username" class="form-control" placeholder="请输入用户名" />
+            </div>
+            
+            <div class="form-group">
+                <label for="password">密码</label>
+                <InputText id="password" type="password" @bind-Value="loginRequest.Password" class="form-control" placeholder="请输入密码" />
+            </div>
+            
+            <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span>登录中...</span>
+                }
+                else
+                {
+                    <span>登录</span>
+                }
+            </button>
+        </EditForm>
+        
+        <div class="register-link">
+            <p>还没有账号？ <a href="/register">立即注册</a></p>
+        </div>
+        
+        <div class="test-account-info">
+            <p><small>测试账号: test123 / test123123</small></p>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginRequest loginRequest = new LoginRequest();
+    private string errorMessage = string.Empty;
+    private bool isLoading = false;
+
+    private async Task HandleLogin()
+    {
+        errorMessage = string.Empty;
+        isLoading = true;
+
+        try
+        {
+            var response = await AuthService.Login(loginRequest);
+            
+            if (response.Success)
+            {
+                if (AuthStateProvider is CustomAuthStateProvider customAuthStateProvider)
+                {
+                    customAuthStateProvider.NotifyUserAuthentication(response.Token);
+                }
+                NavigationManager.NavigateTo("/", true);
+            }
+            else
+            {
+                errorMessage = response.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"登录失败: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
+
+<style>
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 80vh;
+        padding: 20px;
+    }
+
+    .login-box {
+        background: white;
+        padding: 40px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .login-box h2 {
+        text-align: center;
+        margin-bottom: 30px;
+        color: #333;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #555;
+        font-weight: 500;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #007bff;
+    }
+
+    .btn {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    .btn-primary {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background-color: #0056b3;
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .alert {
+        padding: 10px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+    }
+
+    .alert-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .register-link {
+        text-align: center;
+        margin-top: 20px;
+    }
+
+    .register-link a {
+        color: #007bff;
+        text-decoration: none;
+    }
+
+    .register-link a:hover {
+        text-decoration: underline;
+    }
+
+    .test-account-info {
+        text-align: center;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+        color: #666;
+    }
+</style>

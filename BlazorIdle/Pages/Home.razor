@@ -1,7 +1,62 @@
-﻿@page "/"
+@page "/"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+@inject BlazorIdle.Services.IAuthService AuthService
+@inject NavigationManager NavigationManager
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>Hello, @username!</h1>
 
-Welcome to your new app.
+<p>欢迎来到您的新应用。</p>
+
+<button class="btn btn-danger" @onclick="HandleLogout">退出登录</button>
+
+@code {
+    private string username = "用户";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            username = user.Identity.Name ?? "用户";
+        }
+    }
+
+    private async Task HandleLogout()
+    {
+        await AuthService.Logout();
+        
+        if (AuthStateProvider is BlazorIdle.Services.CustomAuthStateProvider customAuthStateProvider)
+        {
+            customAuthStateProvider.NotifyUserLogout();
+        }
+        
+        NavigationManager.NavigateTo("/login", true);
+    }
+}
+
+<style>
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        font-size: 14px;
+        cursor: pointer;
+        margin-top: 20px;
+    }
+
+    .btn-danger {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background-color: #c82333;
+    }
+</style>
+
