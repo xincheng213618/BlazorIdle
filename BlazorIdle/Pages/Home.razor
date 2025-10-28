@@ -1,8 +1,10 @@
 @page "/"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using Microsoft.AspNetCore.Components.Authorization
+@using BlazorIdle.Services
+@using BlazorIdle.Components
 @inject AuthenticationStateProvider AuthStateProvider
-@inject BlazorIdle.Services.IAuthService AuthService
+@inject IAuthService AuthService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Home</PageTitle>
@@ -13,6 +15,11 @@
 
 <button class="btn btn-danger" @onclick="HandleLogout">退出登录</button>
 
+<hr />
+
+<h2 class="mt-4">战斗演示</h2>
+<BattleDemo />
+
 @code {
     private string username = "用户";
 
@@ -20,7 +27,7 @@
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-        
+
         if (user.Identity?.IsAuthenticated == true)
         {
             username = user.Identity.Name ?? "用户";
@@ -30,12 +37,12 @@
     private async Task HandleLogout()
     {
         await AuthService.Logout();
-        
+
         if (AuthStateProvider is BlazorIdle.Services.CustomAuthStateProvider customAuthStateProvider)
         {
             customAuthStateProvider.NotifyUserLogout();
         }
-        
+
         NavigationManager.NavigateTo("/login", true);
     }
 }
@@ -55,8 +62,7 @@
         color: white;
     }
 
-    .btn-danger:hover {
-        background-color: #c82333;
-    }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
 </style>
-

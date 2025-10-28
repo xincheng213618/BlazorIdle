@@ -1,0 +1,135 @@
+﻿@implements IDisposable
+
+<div class="battle-card">
+    <h3>战斗演示（本地固定 Tick 仿真）</h3>
+
+    <div class="row g-2 mb-3">
+        <div class="col-6">
+            <label class="form-label">怪物最大生命值</label>
+            <InputNumber @bind-Value="enemyMaxHp" class="form-control" disabled="@isRunning" />
+        </div>
+        <div class="col-6">
+            <label class="form-label">玩家 DPS</label>
+            <InputNumber @bind-Value="playerDps" class="form-control" disabled="@isRunning" />
+        </div>
+    </div>
+
+    <div class="mb-2">
+        <div class="d-flex justify-content-between">
+            <small class="text-muted">HP: @enemyHp / @enemyMaxHp</small>
+            <small class="text-muted">用时: @(elapsedMs / 1000.0):0.0s</small>
+        </div>
+        <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@HpPercent">
+            <div class="progress-bar bg-danger" style="width:@($"{HpPercent}%")"></div>
+        </div>
+    </div>
+
+    <div class="btn-group mb-2">
+        <button class="btn btn-success" @onclick="StartBattle" disabled="@isRunning">开始战斗</button>
+        <button class="btn btn-warning" @onclick="StopBattle" disabled="@(isRunning == false)">停止</button>
+        <button class="btn btn-secondary" @onclick="ResetBattle" disabled="@isRunning">重置</button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(battleResult))
+    {
+        <div class="alert alert-info py-2 mb-0">@battleResult</div>
+    }
+</div>
+
+@code {
+    // 可调参数
+    private int tickMs = 100;
+    private int enemyMaxHp = 300;
+    private int playerDps = 20;
+
+    // 运行态
+    private int enemyHp;
+    private int elapsedMs;
+    private bool isRunning;
+    private string? battleResult;
+
+    private CancellationTokenSource? _loopCts;
+
+    private int HpPercent => enemyMaxHp <= 0 ? 0 : (int)Math.Round(100.0 * enemyHp / Math.Max(1, enemyMaxHp));
+
+    protected override void OnInitialized()
+    {
+        ResetBattle();
+    }
+
+    private void StartBattle()
+    {
+        if (isRunning) return;
+
+        battleResult = string.Empty;
+        if (enemyMaxHp <= 0) enemyMaxHp = 100;
+        enemyHp = enemyMaxHp;
+        elapsedMs = 0;
+        isRunning = true;
+
+        _loopCts?.Cancel();
+        _loopCts = new CancellationTokenSource();
+        _ = RunLoopAsync(_loopCts.Token);
+    }
+
+    private void StopBattle()
+    {
+        isRunning = false;
+        _loopCts?.Cancel();
+    }
+
+    private void ResetBattle()
+    {
+        StopBattle();
+        battleResult = string.Empty;
+        enemyHp = Math.Max(1, enemyMaxHp);
+        elapsedMs = 0;
+    }
+
+    private async Task RunLoopAsync(CancellationToken token)
+    {
+        try
+        {
+            while (!token.IsCancellationRequested && isRunning && enemyHp > 0)
+            {
+                await Task.Delay(tickMs, token);
+
+                elapsedMs += tickMs;
+
+                // 固定 Tick 伤害，至少 1
+                var damagePerTick = Math.Max(1, (int)Math.Round(playerDps * (tickMs / 1000.0)));
+                enemyHp = Math.Max(0, enemyHp - damagePerTick);
+
+                if (enemyHp <= 0)
+                {
+                    isRunning = false;
+                    var seconds = elapsedMs / 1000.0;
+                    battleResult = $"胜利！用时 {seconds:0.0}s，总伤害 {enemyMaxHp}";
+                }
+
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // ignore
+        }
+    }
+
+    public void Dispose()
+    {
+        _loopCts?.Cancel();
+        _loopCts?.Dispose();
+    }
+}
+
+<style>
+    .battle-card {
+        background: #fff;
+        border: 1px solid #e5e5e5;
+        border-radius: 8px;
+        padding: 16px;
+        margin-top: 16px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+</style>
