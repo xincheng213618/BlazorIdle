@@ -30,6 +30,8 @@
 - Blazored.LocalStorage for token storage
 - Microsoft.AspNetCore.Components.Authorization
 
+**注**: 前端使用.NET 8.0是因为Blazor WebAssembly的包兼容性要求，后端使用.NET 9.0以获得最新特性。
+
 ## 项目结构
 
 ```
@@ -155,12 +157,18 @@ JWT配置在 `appsettings.json` 中：
 ```json
 {
   "Jwt": {
-    "Key": "YourSecretKeyForJWTTokenGenerationMustBeAtLeast32CharactersLong",
+    "Key": "YOUR_SECRET_KEY_HERE_MINIMUM_32_CHARACTERS_FOR_PRODUCTION",
     "Issuer": "BlazorIdle.Server",
     "Audience": "BlazorIdle.Client"
   }
 }
 ```
+
+⚠️ **重要安全提示**: 
+- 项目当前包含的密钥仅用于开发测试
+- 生产环境必须使用随机生成的强密钥（至少64个字符）
+- 不要将生产环境的密钥提交到版本控制系统
+- 建议使用环境变量或密钥管理服务存储生产密钥
 
 令牌有效期：7天
 
@@ -171,6 +179,45 @@ JWT配置在 `appsettings.json` 中：
 3. **自动拦截**: 未登录用户自动跳转到登录页
 4. **令牌存储**: JWT令牌存储在浏览器的LocalStorage中
 5. **CORS配置**: 限制API访问来源
+
+⚠️ **生产环境安全注意事项**:
+
+### 高优先级安全问题
+
+1. **令牌存储安全**:
+   - ⚠️ 当前使用LocalStorage存储JWT令牌，存在XSS攻击风险
+   - 生产环境建议使用HttpOnly Cookies来存储令牌，防止JavaScript访问
+   - 或考虑使用更安全的认证方案如OAuth2/OpenID Connect
+
+2. **JWT密钥管理**:
+   - 必须使用强随机密钥（至少64个字符）
+   - 定期轮换JWT密钥
+   - 使用环境变量或Azure Key Vault等密钥管理服务
+   - 不要将生产密钥提交到源代码控制
+
+3. **CSRF防护**:
+   - 如果切换到Cookie存储，需要实现CSRF令牌保护
+   - 考虑使用SameSite Cookie属性
+
+4. **HTTPS强制**:
+   - 生产环境必须强制使用HTTPS
+   - 禁用HTTP协议
+
+5. **令牌有效期**:
+   - 考虑缩短令牌有效期（如1小时）
+   - 实现刷新令牌机制
+
+6. **输入验证**:
+   - 加强用户名和密码的验证规则
+   - 防止SQL注入（已使用EF Core参数化查询）
+
+7. **速率限制**:
+   - 实现登录尝试次数限制
+   - 添加账户锁定机制
+
+8. **日志和监控**:
+   - 记录失败的登录尝试
+   - 监控异常的认证活动
 
 ## 测试验证
 
@@ -201,6 +248,27 @@ expires: DateTime.UtcNow.AddDays(7)  // 修改为所需天数
 
 ## 注意事项
 
-1. 本项目的JWT密钥仅用于开发测试，生产环境需要使用更安全的密钥
-2. 生产环境建议启用HTTPS
-3. 建议定期更新依赖包以获取安全更新
+⚠️ **重要：本项目当前仅适合开发和学习用途**
+
+### 开发环境限制
+
+1. **JWT密钥**: 使用示例密钥，生产环境需要更换为强随机密钥
+2. **令牌存储**: LocalStorage存在XSS风险，生产建议使用HttpOnly Cookies
+3. **HTTPS**: 生产环境必须启用并强制使用HTTPS
+4. **依赖更新**: 建议定期更新依赖包以获取安全更新
+
+### 生产环境部署清单
+
+在将此认证系统部署到生产环境之前，请确保：
+
+- [ ] 更换JWT密钥为强随机密钥（至少64字符）
+- [ ] 将密钥存储在环境变量或密钥管理服务中
+- [ ] 考虑使用HttpOnly Cookies替代LocalStorage
+- [ ] 实现CSRF保护（如果使用Cookies）
+- [ ] 强制使用HTTPS
+- [ ] 缩短令牌有效期并实现刷新令牌
+- [ ] 实现登录速率限制和账户锁定
+- [ ] 添加详细的安全日志和监控
+- [ ] 执行安全审计和渗透测试
+- [ ] 实现密码复杂度要求
+- [ ] 添加多因素认证（MFA）选项
