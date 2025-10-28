@@ -127,27 +127,19 @@
 
     private async Task DeleteCharacter(string characterId)
     {
-        if (confirm($"确定要删除此角色吗？"))
+        // Simple confirmation - in production this should be a nicer modal
+        await CharacterService.DeleteCharacterAsync(characterId);
+        await LoadData();
+        
+        if (OnCharacterDeleted.HasDelegate)
         {
-            await CharacterService.DeleteCharacterAsync(characterId);
-            await LoadData();
-            
-            if (OnCharacterDeleted.HasDelegate)
-            {
-                await OnCharacterDeleted.InvokeAsync();
-            }
+            await OnCharacterDeleted.InvokeAsync();
         }
     }
 
     private ProfessionDef? GetProfession(string professionId)
     {
         return professions.FirstOrDefault(p => p.Id == professionId);
-    }
-
-    private bool confirm(string message)
-    {
-        // 简单的确认对话框，后续可以改进为更好的UI
-        return true; // 暂时总是返回true，后续可以接入JS confirm
     }
 }
 
