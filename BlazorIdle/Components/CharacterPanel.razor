@@ -33,10 +33,11 @@
     <div class="mb-2">
         <div class="d-flex justify-content-between small text-muted">
             <span>Attack</span>
-            <span>@(AttackProgress01 * 100):0 % · 下次 @((AttackRemainMs / 1000.0)):0.00s</span>
+            <span>@($"{AttackProgress01 * 100:0}% · 下次 {AttackRemainMs / 1000.0:0.00}s")</span>
         </div>
         <div class="progress">
-            <div class="progress-bar bg-primary" style="width:@($"{AttackProgress01 * 100:0}%")"></div>
+            <div class="progress-bar bg-primary @(attackWrap ? "no-transition" : "")"
+                 style="width:@($"{AttackProgress01 * 100:0}%")"></div>
         </div>
     </div>
 
@@ -44,10 +45,11 @@
     <div>
         <div class="d-flex justify-content-between small text-muted">
             <span>Special</span>
-            <span>@(SpecialProgress01 * 100):0 % · 下次 @((SpecialRemainMs / 1000.0)):0.00s</span>
+            <span>@($"{SpecialProgress01 * 100:0}% · 下次 {SpecialRemainMs / 1000.0:0.00}s")</span>
         </div>
         <div class="progress">
-            <div class="progress-bar bg-info" style="width:@($"{SpecialProgress01 * 100:0}%")"></div>
+            <div class="progress-bar bg-info @(specialWrap ? "no-transition" : "")"
+                 style="width:@($"{SpecialProgress01 * 100:0}%")"></div>
         </div>
     </div>
 </div>
@@ -70,10 +72,36 @@
     [Parameter] public double AttackRemainMs { get; set; }
     [Parameter] public double SpecialProgress01 { get; set; }
     [Parameter] public double SpecialRemainMs { get; set; }
+
+    // 用于检测进度“回环”（从大到小跳变），回环时禁用过渡，瞬间归零
+    private double _lastAttackProgress;
+    private double _lastSpecialProgress;
+    private bool attackWrap;
+    private bool specialWrap;
+
+    protected override void OnParametersSet()
+    {
+        // 容忍极小抖动
+        attackWrap = AttackProgress01 + 0.0001 < _lastAttackProgress;
+        specialWrap = SpecialProgress01 + 0.0001 < _lastSpecialProgress;
+
+        _lastAttackProgress = AttackProgress01;
+        _lastSpecialProgress = SpecialProgress01;
+    }
 }
 
 <style>
     .character-panel .progress {
         height: 10px;
+    }
+
+    /* 覆盖 Bootstrap 默认的 .6s 过渡，常规前进更灵敏 */
+    .character-panel .progress-bar {
+        transition: width 120ms linear;
+    }
+
+    /* 回环时禁用过渡，确保视觉上瞬间归零到最左侧 */
+    .character-panel .no-transition {
+        transition: none !important;
     }
 </style>
