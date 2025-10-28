@@ -70,8 +70,13 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<GameDbContext>();
     var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+    var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
     
     dbContext.Database.EnsureCreated();
+    
+    // 从配置文件获取默认角色槽位数
+    // Get default character slots from configuration
+    var defaultMaxSlots = configuration.GetValue<int>("CharacterConfig:defaultMaxCharacterSlots", 3);
     
     // Seed default test user if no users exist
     if (!dbContext.Users.Any())
@@ -80,13 +85,15 @@ using (var scope = app.Services.CreateScope())
         {
             Username = "test123",
             PasswordHash = passwordHasher.HashPassword("test123123"),
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            MaxCharacterSlots = defaultMaxSlots,
+            UsedCharacterSlots = 0
         };
         dbContext.Users.Add(defaultUser);
         dbContext.SaveChanges();
         
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogInformation("Default test user created: test123 / test123123");
+        logger.LogInformation("Default test user created: test123 / test123123 with {MaxSlots} character slots", defaultMaxSlots);
     }
 }
 

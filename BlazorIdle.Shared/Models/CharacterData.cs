@@ -10,9 +10,17 @@ namespace BlazorIdle.Shared.Models
     {
         /// <summary>
         /// 角色唯一ID
+        /// Character unique ID
         /// </summary>
         [JsonPropertyName("id")]
         public string Id { get; set; } = Guid.NewGuid().ToString();
+        
+        /// <summary>
+        /// 所属用户ID - 用于关联角色和用户
+        /// Owner user ID - used to associate character with user
+        /// </summary>
+        [JsonPropertyName("userId")]
+        public int UserId { get; set; }
 
         /// <summary>
         /// 角色名称
