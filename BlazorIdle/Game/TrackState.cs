@@ -5,10 +5,11 @@ namespace BlazorIdle.Game
     public enum TrackType
     {
         Attack = 1,
-        Special = 2
+        Special = 2,
+        EnemyAttack = 3
     }
 
-    // 轨道：记录基础间隔、急速（仅攻击生效）、下一触发时间
+    // 轨道：记录基础间隔、急速（仅玩家的 Attack 生效）、下一触发时间
     public sealed class TrackState
     {
         public TrackType Type { get; }
@@ -32,15 +33,27 @@ namespace BlazorIdle.Game
             NextTriggerAtMs = startMs + EffectiveIntervalMs;
         }
 
+        // 单次尝试触发（保留供简单使用）
         public bool TryTrigger(int nowMs)
         {
-            if (nowMs + 0.0001 >= NextTriggerAtMs) // 容差
+            if (nowMs + 0.0001 >= NextTriggerAtMs)
             {
-                // 设置下一次时间
                 NextTriggerAtMs += EffectiveIntervalMs;
                 return true;
             }
             return false;
+        }
+
+        // 收集本 Tick 截止可能的多次触发（避免 Tick>间隔 时漏触发）
+        public int CollectTriggers(int nowMs, int maxTriggers = 8)
+        {
+            int count = 0;
+            while (nowMs + 0.0001 >= NextTriggerAtMs && count < maxTriggers)
+            {
+                NextTriggerAtMs += EffectiveIntervalMs;
+                count++;
+            }
+            return count;
         }
 
         // 公开实际生效的间隔（用于 UI 进度与调试）

@@ -2,19 +2,29 @@
 
 namespace BlazorIdle.Game
 {
+    public enum ActorType
+    {
+        Player = 1,
+        Enemy = 2
+    }
+
     public enum EventSource
     {
         Attack = 1,
-        Special = 2
+        Special = 2,
+        EnemyAttack = 3
     }
 
     public sealed class CombatEvent
     {
+        public ActorType Attacker { get; init; }
+        public ActorType Defender { get; init; }
         public EventSource Source { get; init; }
         public int TimeMs { get; init; }
         public int Damage { get; init; }
+        public bool Crit { get; init; }
         public int RngIndexAfter { get; init; } // 该事件消耗完 RNG 后的索引
-        public int EnemyHpAfter { get; init; }  // 本次伤害结算后的敌人血量
+        public int DefenderHpAfter { get; init; }  // 结算后防守方血量
     }
 
     public sealed class CombatSegment

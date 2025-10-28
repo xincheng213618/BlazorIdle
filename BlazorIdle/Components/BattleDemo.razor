@@ -4,13 +4,27 @@
 @inject IJSRuntime JS
 
 <div class="battle-card">
-    <h3>战斗演示（双轨 + Segment/Digest + 实时进度 + 日志）</h3>
+    <h3>战斗演示（玩家 vs 敌人：双轨 + 敌人攻击 + 日志）</h3>
 
     <div class="row g-2 mb-3">
+        <div class="col-6">
+            <label class="form-label">玩家最大生命值</label>
+            <InputNumber @bind-Value="playerMaxHp" class="form-control" disabled="@isRunning" />
+        </div>
+        <div class="col-6">
+            <label class="form-label">玩家暴击率 %</label>
+            <InputNumber @bind-Value="playerCritPct" class="form-control" disabled="@isRunning" />
+        </div>
+        <div class="col-6">
+            <label class="form-label">玩家暴击倍数</label>
+            <InputNumber @bind-Value="playerCritMult" class="form-control" disabled="@isRunning" />
+        </div>
+
         <div class="col-6">
             <label class="form-label">怪物最大生命值</label>
             <InputNumber @bind-Value="enemyMaxHp" class="form-control" disabled="@isRunning" />
         </div>
+
         <div class="col-6">
             <label class="form-label">每击伤害（Attack）</label>
             <InputNumber @bind-Value="damagePerAttack" class="form-control" disabled="@isRunning" />
@@ -23,6 +37,7 @@
             <label class="form-label">急速（%）仅影响 Attack</label>
             <InputNumber @bind-Value="hastePercent" class="form-control" disabled="@isRunning" />
         </div>
+
         <div class="col-6">
             <label class="form-label">Special 冷却（秒）</label>
             <InputNumber @bind-Value="specialIntervalSec" class="form-control" disabled="@isRunning" />
@@ -31,19 +46,39 @@
             <label class="form-label">Special 伤害（点）</label>
             <InputNumber @bind-Value="specialDamage" class="form-control" disabled="@isRunning" />
         </div>
+
+        <div class="col-6">
+            <label class="form-label">敌人攻击间隔（秒）</label>
+            <InputNumber @bind-Value="enemyAttackIntervalSec" class="form-control" disabled="@isRunning" />
+        </div>
+        <div class="col-6">
+            <label class="form-label">敌人每击伤害</label>
+            <InputNumber @bind-Value="enemyDamagePerHit" class="form-control" disabled="@isRunning" />
+        </div>
     </div>
 
     <div class="small text-muted mb-2">
-        预估 DPS：@theoreticalDps:0.0（含急速与 Special）
+        预估玩家输出 DPS（不含暴击浮动）：@theoreticalDps:0.0
+    </div>
+
+    <!-- 双方 HP 条 -->
+    <div class="mb-2">
+        <div class="d-flex justify-content-between">
+            <small class="text-muted">玩家 HP: @snapshot.PlayerHp / @snapshot.PlayerMaxHp</small>
+            <small class="text-muted">用时: @(snapshot.ElapsedMs / 1000.0):0.0s</small>
+        </div>
+        <div class="progress">
+            <div class="progress-bar bg-success" style="width:@($"{PlayerHpPercent}%")"></div>
+        </div>
     </div>
 
     <div class="mb-2">
         <div class="d-flex justify-content-between">
-            <small class="text-muted">HP: @snapshot.EnemyHp / @snapshot.EnemyMaxHp</small>
-            <small class="text-muted">用时: @(snapshot.ElapsedMs / 1000.0):0.0s</small>
+            <small class="text-muted">敌人 HP: @snapshot.EnemyHp / @snapshot.EnemyMaxHp</small>
+            <small class="text-muted">状态: @OutcomeText</small>
         </div>
-        <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@HpPercent">
-            <div class="progress-bar bg-danger" style="width:@($"{HpPercent}%")"></div>
+        <div class="progress">
+            <div class="progress-bar bg-danger" style="width:@($"{EnemyHpPercent}%")"></div>
         </div>
     </div>
 
@@ -58,13 +93,23 @@
         </div>
     </div>
 
-    <div class="mb-3">
+    <div class="mb-2">
         <div class="d-flex justify-content-between small text-muted">
             <span>Special 进度</span>
             <span>@(specialProgress01 * 100):0 % · 下次 @((specialRemainMs / 1000.0)):0.00s</span>
         </div>
         <div class="progress">
             <div class="progress-bar bg-info" style="width:@($"{specialProgress01 * 100:0}%")"></div>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <div class="d-flex justify-content-between small text-muted">
+            <span>Enemy Attack 进度</span>
+            <span>@(enemyProgress01 * 100):0 % · 下次 @((enemyRemainMs / 1000.0)):0.00s</span>
+        </div>
+        <div class="progress">
+            <div class="progress-bar bg-secondary" style="width:@($"{enemyProgress01 * 100:0}%")"></div>
         </div>
     </div>
 
@@ -99,29 +144,10 @@
     @if (!_initial && snapshot.Finished)
     {
         <div class="alert alert-info py-2 mb-2">
-            胜利！用时 @(snapshot.ElapsedMs / 1000.0):0.0s，总伤害 @snapshot.TotalDamage
+            @(snapshot.Outcome == BattleOutcome.Victory ? "胜利！" : "失败！")
+            用时 @(snapshot.ElapsedMs / 1000.0):0.0s，
+            我方输出总伤害 @snapshot.TotalDamage
         </div>
-
-        @if (digest is not null)
-        {
-            <div class="digest-card">
-                <h5>BattleDigest（审计摘要）</h5>
-                <ul class="mb-1">
-                    <li>段数：@digest.SegmentCount</li>
-                    <li>总事件：@digest.TotalEvents</li>
-                    <li>总伤害：@digest.TotalDamage</li>
-                    <li>平均 DPS：@digest.AverageDps:0.0</li>
-                    <li>RNG 消耗区间：@digest.RngIndexStart - @digest.RngIndexEnd（Seed=@digest.Seed）</li>
-                </ul>
-                <div>
-                    <strong>按来源伤害：</strong>
-                    <ul class="mb-0">
-                        <li>Attack：@(digest.DamageBySource.TryGetValue(nameof(EventSource.Attack), out var a) ? a : 0)</li>
-                        <li>Special：@(digest.DamageBySource.TryGetValue(nameof(EventSource.Special), out var s) ? s : 0)</li>
-                    </ul>
-                </div>
-            </div>
-        }
     }
 </div>
 
@@ -132,7 +158,12 @@
     private const int AutoScrollTolerancePx = 12;
     private const bool AutoScrollSmooth = false;
 
-    // 可编辑参数
+    // 玩家参数
+    private int playerMaxHp = 200;
+    private double playerCritPct = 15.0;
+    private double playerCritMult = 1.5;
+
+    // 敌人与输出参数
     private int enemyMaxHp = 300;
     private int damagePerAttack = 15;
     private double attackRateAPS = 2.0;
@@ -140,20 +171,27 @@
     private double specialIntervalSec = 5.0;
     private int specialDamage = 120;
 
+    private double enemyAttackIntervalSec = 1.5;
+    private int enemyDamagePerHit = 12;
+
     private BattleInstance? battle;
-    private BattleSnapshot snapshot = new BattleSnapshot { EnemyHp = 0, EnemyMaxHp = 1, ElapsedMs = 0, Finished = true };
+    private BattleSnapshot snapshot = new BattleSnapshot { EnemyHp = 0, EnemyMaxHp = 1, PlayerHp = 0, PlayerMaxHp = 1, ElapsedMs = 0, Outcome = BattleOutcome.Ongoing };
     private BattleDigest? digest;
     private bool isRunning = false;
     private bool _initial = true;
 
     private double theoreticalDps => battle?.TheoreticalDps() ?? 0.0;
-    private int HpPercent => snapshot.EnemyMaxHp <= 0 ? 0 : (int)Math.Round(100.0 * snapshot.EnemyHp / Math.Max(1, snapshot.EnemyMaxHp));
+    private int EnemyHpPercent => snapshot.EnemyMaxHp <= 0 ? 0 : (int)Math.Round(100.0 * snapshot.EnemyHp / Math.Max(1, snapshot.EnemyMaxHp));
+    private int PlayerHpPercent => snapshot.PlayerMaxHp <= 0 ? 0 : (int)Math.Round(100.0 * snapshot.PlayerHp / Math.Max(1, snapshot.PlayerMaxHp));
+    private string OutcomeText => snapshot.Outcome switch { BattleOutcome.Ongoing => "战斗中", BattleOutcome.Victory => "敌人已被击败", BattleOutcome.Defeat => "玩家已阵亡", _ => "未知" };
 
     // 轨道进度计算（0..1）和剩余毫秒
     private double attackProgress01 => battle?.AttackProgress01 ?? 0.0;
     private double specialProgress01 => battle?.SpecialProgress01 ?? 0.0;
+    private double enemyProgress01 => battle?.EnemyProgress01 ?? 0.0;
     private double attackRemainMs => battle?.AttackTimeToNextMs ?? 0.0;
     private double specialRemainMs => battle?.SpecialTimeToNextMs ?? 0.0;
+    private double enemyRemainMs => battle?.EnemyTimeToNextMs ?? 0.0;
 
     // 日志
     private const int MaxLogEntries = 200;
@@ -190,16 +228,11 @@
             _shouldScrollToBottom = false;
             try
             {
-                await _jsModule.InvokeVoidAsync(
-                    "scrollToBottomIfNear",
-                    logPanelRef,
-                    AutoScrollTolerancePx,
-                    AutoScrollSmooth
-                );
+                await _jsModule.InvokeVoidAsync("scrollToBottomIfNear", logPanelRef, AutoScrollTolerancePx, AutoScrollSmooth);
             }
             catch
             {
-                // 忽略：滚动失败不影响主流程
+                // 忽略
             }
         }
     }
@@ -212,7 +245,10 @@
         }
 
         var clock = new SimClock();
-        int seed = HashSeed(enemyMaxHp, damagePerAttack, attackRateAPS, hastePercent, specialIntervalSec, specialDamage);
+        int seed = HashSeed(
+            playerMaxHp, playerCritPct, playerCritMult,
+            enemyMaxHp, damagePerAttack, attackRateAPS, hastePercent,
+            specialIntervalSec, specialDamage, enemyAttackIntervalSec, enemyDamagePerHit);
         var rng = new RngContext(seed);
 
         var player = new PlayerConfig
@@ -222,13 +258,18 @@
             HastePercent = hastePercent,
             SpecialIntervalSec = specialIntervalSec,
             SpecialDamage = specialDamage,
+            MaxHp = Math.Max(1, playerMaxHp),
+            CritChancePercent = Math.Max(0, playerCritPct),
+            CritMultiplier = Math.Max(1.0, playerCritMult),
             VariancePct = 0.05
         };
 
         var enemy = new EnemyState
         {
             MaxHp = Math.Max(1, enemyMaxHp),
-            Hp = Math.Max(1, enemyMaxHp)
+            Hp = Math.Max(1, enemyMaxHp),
+            AttackIntervalSec = Math.Max(0.1, enemyAttackIntervalSec),
+            DamagePerHit = Math.Max(1, enemyDamagePerHit)
         };
 
         battle = new BattleInstance(clock, rng, player, enemy);
@@ -313,8 +354,17 @@
     private void OnCombatEvent(CombatEvent ev)
     {
         var sec = ev.TimeMs / 1000.0;
-        var src = ev.Source == EventSource.Attack ? "Attack" : "Special";
-        var line = $"[{sec:0.00}s] {src} 命中，伤害 {ev.Damage}，敌方HP→ {ev.EnemyHpAfter}，RNGidx={ev.RngIndexAfter}";
+        var who = ev.Attacker == ActorType.Player ? "玩家" : "敌人";
+        var target = ev.Defender == ActorType.Player ? "玩家" : "敌人";
+        var src = ev.Source switch
+        {
+            EventSource.Attack => "Attack",
+            EventSource.Special => "Special",
+            EventSource.EnemyAttack => "EnemyAtk",
+            _ => "Unknown"
+        };
+
+        var line = $"[{sec:0.00}s] {who}-{src} 命中，伤害 {ev.Damage}，{target}HP→ {ev.DefenderHpAfter}，RNGidx={ev.RngIndexAfter}";
         logs.Add(line);
         if (logs.Count > MaxLogEntries)
         {
