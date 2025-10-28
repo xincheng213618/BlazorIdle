@@ -1,20 +1,18 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace BlazorIdle.Game
 {
     public sealed class PlayerConfig
     {
-        // 攻击（受急速）
-        public double AttackRateAPS { get; set; } = 2.0;   // 每秒攻击次数
-        public int DamagePerAttack { get; set; } = 15;     // 每次攻击伤害
-        public double HastePercent { get; set; } = 0.0;    // 0 = 无急速
+        public double AttackRateAPS { get; set; } = 2.0;
+        public int DamagePerAttack { get; set; } = 15;
+        public double HastePercent { get; set; } = 0.0;
 
-        // Special（不受急速）
         public double SpecialIntervalSec { get; set; } = 5.0;
         public int SpecialDamage { get; set; } = 120;
 
-        // 浮动
-        public double VariancePct { get; set; } = 0.05;    // ±5%
+        public double VariancePct { get; set; } = 0.05;
     }
 
     public sealed class EnemyState
@@ -33,7 +31,6 @@ namespace BlazorIdle.Game
         public int RngIndex { get; init; }
     }
 
-    // 最小可用的双轨战斗实例：固定 Tick 驱动，确定性 RNG
     public sealed class BattleInstance
     {
         private readonly IGameClock _clock;
@@ -46,6 +43,14 @@ namespace BlazorIdle.Game
 
         private bool _running;
         private int _totalDamage;
+        private int _tickCount;
+
+        private readonly List<CombatSegment> _segments = new();
+        private SegmentAggregator _aggregator = new(new SegmentAggregatorOptions { MaxEvents = 12, MaxDurationMs = 2000 });
+
+        private readonly int _rngSeed;
+        private int _rngIndexStart;
+        private int _rngIndexEnd;
 
         public BattleInstance(IGameClock clock, RngContext rng, PlayerConfig player, EnemyState enemy)
         {
@@ -60,6 +65,8 @@ namespace BlazorIdle.Game
 
             var specialIntervalMs = Math.Max(100.0, _player.SpecialIntervalSec * 1000.0);
             _specialTrack = new TrackState(TrackType.Special, specialIntervalMs);
+
+            _rngSeed = rng.Seed;
         }
 
         public void Start()
@@ -67,46 +74,82 @@ namespace BlazorIdle.Game
             _running = true;
             _clock.Reset();
             _totalDamage = 0;
+            _tickCount = 0;
             _enemy.Hp = Math.Max(1, _enemy.MaxHp);
 
             _attackTrack.Reset(0);
             _specialTrack.Reset(0);
+
+            _segments.Clear();
+            _aggregator = new SegmentAggregator(new SegmentAggregatorOptions { MaxEvents = 12, MaxDurationMs = 2000 });
+            _aggregator.Reset();
+
+            _rngIndexStart = _rng.Index; // 通常为 0
         }
 
         public void Stop()
         {
+            if (!_running) return;
             _running = false;
+            // 结束时强制 Flush 残段
+            var seg = _aggregator.ForceFlush(_clock.NowMs, _rng.Index);
+            if (seg != null) _segments.Add(seg);
+            _rngIndexEnd = _rng.Index;
         }
 
         public bool IsRunning => _running;
 
-        // 每次调用推进 tickMs；按轨道尝试触发
         public void AdvanceTick(int tickMs)
         {
             if (!_running) return;
-            if (_enemy.Hp <= 0) { _running = false; return; }
+            if (_enemy.Hp <= 0) { Stop(); return; }
 
             _clock.AdvanceBy(tickMs);
+            _tickCount++;
 
-            // Attack 触发
+            // Attack
             if (_attackTrack.TryTrigger(_clock.NowMs))
             {
                 var dmg = (int)Math.Floor(_rng.Jitter(_player.DamagePerAttack, _player.VariancePct));
                 if (dmg < 1) dmg = 1;
                 ApplyDamage(dmg);
+
+                var ev = new CombatEvent
+                {
+                    Source = EventSource.Attack,
+                    TimeMs = _clock.NowMs,
+                    Damage = dmg,
+                    RngIndexAfter = _rng.Index
+                };
+                var flushed = _aggregator.AddEvent(ev);
+                if (flushed != null) _segments.Add(flushed);
             }
 
-            // Special 触发
+            // Special
             if (_specialTrack.TryTrigger(_clock.NowMs))
             {
                 var dmg = (int)Math.Floor(_rng.Jitter(_player.SpecialDamage, _player.VariancePct));
                 if (dmg < 1) dmg = 1;
                 ApplyDamage(dmg);
+
+                var ev = new CombatEvent
+                {
+                    Source = EventSource.Special,
+                    TimeMs = _clock.NowMs,
+                    Damage = dmg,
+                    RngIndexAfter = _rng.Index
+                };
+                var flushed = _aggregator.AddEvent(ev);
+                if (flushed != null) _segments.Add(flushed);
             }
+
+            // 时间阈值 Flush
+            var segByTime = _aggregator.Tick(_clock.NowMs, _rng.Index);
+            if (segByTime != null) _segments.Add(segByTime);
 
             if (_enemy.Hp <= 0)
             {
-                _running = false;
+                Stop();
             }
         }
 
@@ -129,13 +172,37 @@ namespace BlazorIdle.Game
             };
         }
 
+        public IReadOnlyList<CombatSegment> Segments => _segments;
+
+        public BattleDigest BuildDigest()
+        {
+            // 确保停止时已 Flush
+            if (_running) Stop();
+
+            var duration = _clock.NowMs;
+            var rngEnd = _rngIndexEnd;
+
+            return BattleDigest.FromSegments(
+                durationMs: duration,
+                tickCount: _tickCount,
+                rngStart: _rngIndexStart,
+                rngEnd: rngEnd,
+                seed: _rngSeed,
+                segments: _segments);
+        }
+
         public double TheoreticalDps()
         {
-            // 急速只影响攻击；Special 是额外的脉冲伤害
             var hasteFactor = 1.0 + _player.HastePercent / 100.0;
             var attackDps = _player.DamagePerAttack * _player.AttackRateAPS * hasteFactor;
             var specialDps = _player.SpecialDamage / Math.Max(0.1, _player.SpecialIntervalSec);
             return attackDps + specialDps;
         }
+
+        // ===== UI 辅助：轨道进度与剩余时间 =====
+        public double AttackProgress01 => _attackTrack.Progress01(_clock.NowMs);
+        public double SpecialProgress01 => _specialTrack.Progress01(_clock.NowMs);
+        public double AttackTimeToNextMs => _attackTrack.TimeToNextMs(_clock.NowMs);
+        public double SpecialTimeToNextMs => _specialTrack.TimeToNextMs(_clock.NowMs);
     }
 }

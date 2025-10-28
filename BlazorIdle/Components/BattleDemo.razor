@@ -2,7 +2,7 @@
 @implements IDisposable
 
 <div class="battle-card">
-    <h3>战斗演示（双轨：Attack + Special）</h3>
+    <h3>战斗演示（双轨 + Segment/Digest + 实时进度）</h3>
 
     <div class="row g-2 mb-3">
         <div class="col-6">
@@ -45,6 +45,27 @@
         </div>
     </div>
 
+    <!-- 新增：轨道实时进度条 -->
+    <div class="mb-2">
+        <div class="d-flex justify-content-between small text-muted">
+            <span>Attack 进度</span>
+            <span>@(attackProgress01 * 100):0 % · 下次 @((attackRemainMs / 1000.0)):0.00s</span>
+        </div>
+        <div class="progress">
+            <div class="progress-bar bg-primary" style="width:@($"{attackProgress01 * 100:0}%")"></div>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <div class="d-flex justify-content-between small text-muted">
+            <span>Special 进度</span>
+            <span>@(specialProgress01 * 100):0 % · 下次 @((specialRemainMs / 1000.0)):0.00s</span>
+        </div>
+        <div class="progress">
+            <div class="progress-bar bg-info" style="width:@($"{specialProgress01 * 100:0}%")"></div>
+        </div>
+    </div>
+
     <div class="btn-group mb-2">
         <button class="btn btn-success" @onclick="StartBattle" disabled="@isRunning">开始战斗</button>
         <button class="btn btn-warning" @onclick="StopBattle" disabled="@(isRunning == false)">停止</button>
@@ -53,14 +74,34 @@
 
     @if (!_initial && snapshot.Finished)
     {
-        <div class="alert alert-info py-2 mb-0">
-            胜利！用时 @(snapshot.ElapsedMs / 1000.0):0.0s，总伤害 @snapshot.TotalDamage，RNG 消耗序 @snapshot.RngIndex
+        <div class="alert alert-info py-2 mb-2">
+            胜利！用时 @(snapshot.ElapsedMs / 1000.0):0.0s，总伤害 @snapshot.TotalDamage
         </div>
+
+        @if (digest is not null)
+        {
+            <div class="digest-card">
+                <h5>BattleDigest（审计摘要）</h5>
+                <ul class="mb-1">
+                    <li>段数：@digest.SegmentCount</li>
+                    <li>总事件：@digest.TotalEvents</li>
+                    <li>总伤害：@digest.TotalDamage</li>
+                    <li>平均 DPS：@digest.AverageDps:0.0</li>
+                    <li>RNG 消耗区间：@digest.RngIndexStart - @digest.RngIndexEnd（Seed=@digest.Seed）</li>
+                </ul>
+                <div>
+                    <strong>按来源伤害：</strong>
+                    <ul class="mb-0">
+                        <li>Attack：@(digest.DamageBySource.TryGetValue(nameof(EventSource.Attack), out var a) ? a : 0)</li>
+                        <li>Special：@(digest.DamageBySource.TryGetValue(nameof(EventSource.Special), out var s) ? s : 0)</li>
+                    </ul>
+                </div>
+            </div>
+        }
     }
 </div>
 
 @code {
-    // Tick 设置
     private const int TickMs = 100;
 
     // 可编辑参数
@@ -71,15 +112,20 @@
     private double specialIntervalSec = 5.0;
     private int specialDamage = 120;
 
-    // 运行态
     private BattleInstance? battle;
     private BattleSnapshot snapshot = new BattleSnapshot { EnemyHp = 0, EnemyMaxHp = 1, ElapsedMs = 0, Finished = true };
+    private BattleDigest? digest;
     private bool isRunning = false;
     private bool _initial = true;
 
     private double theoreticalDps => battle?.TheoreticalDps() ?? 0.0;
-
     private int HpPercent => snapshot.EnemyMaxHp <= 0 ? 0 : (int)Math.Round(100.0 * snapshot.EnemyHp / Math.Max(1, snapshot.EnemyMaxHp));
+
+    // 轨道进度计算（0..1）和剩余毫秒
+    private double attackProgress01 => battle?.AttackProgress01 ?? 0.0;
+    private double specialProgress01 => battle?.SpecialProgress01 ?? 0.0;
+    private double attackRemainMs => battle?.AttackTimeToNextMs ?? 0.0;
+    private double specialRemainMs => battle?.SpecialTimeToNextMs ?? 0.0;
 
     private CancellationTokenSource? _cts;
 
@@ -91,7 +137,6 @@
     private void BuildBattle()
     {
         var clock = new SimClock();
-        // 为了可重现，seed 用参数哈希（也可用服务器下发）
         int seed = HashSeed(enemyMaxHp, damagePerAttack, attackRateAPS, hastePercent, specialIntervalSec, specialDamage);
         var rng = new RngContext(seed);
 
@@ -112,6 +157,7 @@
         };
 
         battle = new BattleInstance(clock, rng, player, enemy);
+        digest = null;
     }
 
     private int HashSeed(params object[] arr)
@@ -134,6 +180,7 @@
         BuildBattle();
         battle!.Start();
         snapshot = battle!.GetSnapshot();
+        digest = null;
         isRunning = true;
         _initial = false;
 
@@ -144,9 +191,13 @@
 
     private void StopBattle()
     {
+        if (!isRunning) return;
         isRunning = false;
         battle?.Stop();
         _cts?.Cancel();
+        snapshot = battle!.GetSnapshot();
+        digest ??= battle!.BuildDigest();
+        StateHasChanged();
     }
 
     private void ResetBattle()
@@ -166,7 +217,11 @@
                 await Task.Delay(TickMs, token);
                 battle!.AdvanceTick(TickMs);
                 snapshot = battle!.GetSnapshot();
-                if (snapshot.Finished) isRunning = false;
+                if (snapshot.Finished)
+                {
+                    isRunning = false;
+                    digest = battle!.BuildDigest();
+                }
                 await InvokeAsync(StateHasChanged);
             }
         }
@@ -191,5 +246,12 @@
         padding: 16px;
         margin-top: 16px;
         box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+
+    .digest-card {
+        background: #f8f9fa;
+        border: 1px dashed #c8ced6;
+        padding: 12px;
+        border-radius: 6px;
     }
 </style>

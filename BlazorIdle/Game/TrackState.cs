@@ -29,7 +29,7 @@ namespace BlazorIdle.Game
 
         public void Reset(double startMs = 0)
         {
-            NextTriggerAtMs = startMs + EffectiveInterval();
+            NextTriggerAtMs = startMs + EffectiveIntervalMs;
         }
 
         public bool TryTrigger(int nowMs)
@@ -37,20 +37,33 @@ namespace BlazorIdle.Game
             if (nowMs + 0.0001 >= NextTriggerAtMs) // 容差
             {
                 // 设置下一次时间
-                NextTriggerAtMs += EffectiveInterval();
+                NextTriggerAtMs += EffectiveIntervalMs;
                 return true;
             }
             return false;
         }
 
-        private double EffectiveInterval()
+        // 公开实际生效的间隔（用于 UI 进度与调试）
+        public double EffectiveIntervalMs =>
+            Type == TrackType.Attack ? BaseIntervalMs / HasteFactor : BaseIntervalMs;
+
+        // 当前进度（0..1），0 表示刚开始计时，1 表示即将触发
+        public double Progress01(int nowMs)
         {
-            // 仅 Attack 受到急速影响；Special 默认不受
-            if (Type == TrackType.Attack)
-            {
-                return BaseIntervalMs / HasteFactor;
-            }
-            return BaseIntervalMs;
+            var interval = EffectiveIntervalMs;
+            if (interval <= 0.0001) return 1.0;
+
+            var lastTriggerAt = NextTriggerAtMs - interval;
+            var elapsed = nowMs - lastTriggerAt;
+            var p = elapsed / interval;
+            return Math.Clamp(p, 0.0, 1.0);
+        }
+
+        // 距离下一次触发还需的毫秒（>=0）
+        public double TimeToNextMs(int nowMs)
+        {
+            var remain = NextTriggerAtMs - nowMs;
+            return remain <= 0 ? 0 : remain;
         }
     }
 }
