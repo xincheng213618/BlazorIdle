@@ -52,6 +52,9 @@ namespace BlazorIdle.Game
         private int _rngIndexStart;
         private int _rngIndexEnd;
 
+        // 新增：当产生一次战斗事件（Attack/Special）时触发
+        public event Action<CombatEvent>? CombatEventFired;
+
         public BattleInstance(IGameClock clock, RngContext rng, PlayerConfig player, EnemyState enemy)
         {
             _clock = clock;
@@ -119,10 +122,13 @@ namespace BlazorIdle.Game
                     Source = EventSource.Attack,
                     TimeMs = _clock.NowMs,
                     Damage = dmg,
-                    RngIndexAfter = _rng.Index
+                    RngIndexAfter = _rng.Index,
+                    EnemyHpAfter = _enemy.Hp
                 };
                 var flushed = _aggregator.AddEvent(ev);
                 if (flushed != null) _segments.Add(flushed);
+
+                CombatEventFired?.Invoke(ev);
             }
 
             // Special
@@ -137,10 +143,13 @@ namespace BlazorIdle.Game
                     Source = EventSource.Special,
                     TimeMs = _clock.NowMs,
                     Damage = dmg,
-                    RngIndexAfter = _rng.Index
+                    RngIndexAfter = _rng.Index,
+                    EnemyHpAfter = _enemy.Hp
                 };
                 var flushed = _aggregator.AddEvent(ev);
                 if (flushed != null) _segments.Add(flushed);
+
+                CombatEventFired?.Invoke(ev);
             }
 
             // 时间阈值 Flush

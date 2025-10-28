@@ -1,8 +1,9 @@
 ﻿@using BlazorIdle.Game
 @implements IDisposable
+@inject IJSRuntime JS
 
 <div class="battle-card">
-    <h3>战斗演示（双轨 + Segment/Digest + 实时进度）</h3>
+    <h3>战斗演示（双轨 + Segment/Digest + 实时进度 + 日志）</h3>
 
     <div class="row g-2 mb-3">
         <div class="col-6">
@@ -45,9 +46,9 @@
         </div>
     </div>
 
-    <!-- 新增：轨道实时进度条 -->
+    <!-- 轨道实时进度条 -->
     <div class="mb-2">
-        <div class="d-flex justify-content-between small text-muted">
+        <div class="d-flex justify-content之间 small text-muted">
             <span>Attack 进度</span>
             <span>@(attackProgress01 * 100):0 % · 下次 @((attackRemainMs / 1000.0)):0.00s</span>
         </div>
@@ -67,9 +68,31 @@
     </div>
 
     <div class="btn-group mb-2">
-        <button class="btn btn-success" @onclick="StartBattle" disabled="@isRunning">开始战斗</button>
+        <button class="btn btn成功" @onclick="StartBattle" disabled="@isRunning">开始战斗</button>
         <button class="btn btn-warning" @onclick="StopBattle" disabled="@(isRunning == false)">停止</button>
         <button class="btn btn-secondary" @onclick="ResetBattle" disabled="@isRunning">重置</button>
+    </div>
+
+    <!-- 新增：日志区域 -->
+    <div class="log-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-1">战斗日志</h5>
+        <div>
+            <button class="btn btn-sm btn-outline-secondary me-2" @onclick="CopyLogs">复制</button>
+            <button class="btn btn-sm btn-outline-danger" @onclick="ClearLogs">清空</button>
+        </div>
+    </div>
+    <div class="log-panel">
+        @if (logs.Count == 0)
+        {
+            <div class="text-muted small">暂无日志</div>
+        }
+        else
+        {
+            @foreach (var line in logs)
+            {
+                <div class="log-line">@line</div>
+            }
+        }
     </div>
 
     @if (!_initial && snapshot.Finished)
@@ -127,6 +150,10 @@
     private double attackRemainMs => battle?.AttackTimeToNextMs ?? 0.0;
     private double specialRemainMs => battle?.SpecialTimeToNextMs ?? 0.0;
 
+    // 日志
+    private const int MaxLogEntries = 200;
+    private readonly List<string> logs = new();
+
     private CancellationTokenSource? _cts;
 
     protected override void OnInitialized()
@@ -136,6 +163,11 @@
 
     private void BuildBattle()
     {
+        if (battle is not null)
+        {
+            battle.CombatEventFired -= OnCombatEvent;
+        }
+
         var clock = new SimClock();
         int seed = HashSeed(enemyMaxHp, damagePerAttack, attackRateAPS, hastePercent, specialIntervalSec, specialDamage);
         var rng = new RngContext(seed);
@@ -157,6 +189,7 @@
         };
 
         battle = new BattleInstance(clock, rng, player, enemy);
+        battle.CombatEventFired += OnCombatEvent;
         digest = null;
     }
 
@@ -183,6 +216,8 @@
         digest = null;
         isRunning = true;
         _initial = false;
+
+        logs.Clear();
 
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
@@ -231,10 +266,37 @@
         }
     }
 
+    private void OnCombatEvent(CombatEvent ev)
+    {
+        var sec = ev.TimeMs / 1000.0;
+        var src = ev.Source == EventSource.Attack ? "Attack" : "Special";
+        var line = $"[{sec:0.00}s] {src} 命中，伤害 {ev.Damage}，敌方HP→ {ev.EnemyHpAfter}，RNGidx={ev.RngIndexAfter}";
+        logs.Add(line);
+        if (logs.Count > MaxLogEntries)
+        {
+            logs.RemoveRange(0, logs.Count - MaxLogEntries);
+        }
+    }
+
+    private void ClearLogs()
+    {
+        logs.Clear();
+    }
+
+    private async Task CopyLogs()
+    {
+        var text = string.Join(Environment.NewLine, logs);
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+    }
+
     public void Dispose()
     {
         _cts?.Cancel();
         _cts?.Dispose();
+        if (battle is not null)
+        {
+            battle.CombatEventFired -= OnCombatEvent;
+        }
     }
 }
 
@@ -253,5 +315,27 @@
         border: 1px dashed #c8ced6;
         padding: 12px;
         border-radius: 6px;
+    }
+
+    .log-header {
+        margin-top: 8px;
+        margin-bottom: 6px;
+    }
+
+    .log-panel {
+        height: 180px;
+        overflow-y: auto;
+        background: #0f172a;
+        color: #e2e8f0;
+        border: 1px solid #1e293b;
+        border-radius: 6px;
+        padding: 8px 10px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
+    .log-line {
+        white-space: pre-wrap;
     }
 </style>

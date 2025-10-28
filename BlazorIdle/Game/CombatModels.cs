@@ -14,6 +14,7 @@ namespace BlazorIdle.Game
         public int TimeMs { get; init; }
         public int Damage { get; init; }
         public int RngIndexAfter { get; init; } // 该事件消耗完 RNG 后的索引
+        public int EnemyHpAfter { get; init; }  // 本次伤害结算后的敌人血量
     }
 
     public sealed class CombatSegment
