@@ -1,0 +1,29 @@
+.userbar {
+    min-height: 3.5rem;               /* 与顶部栏一致 */
+}
+
+.userbar .greet {
+    display: inline-flex;              /* 文字盒子也参与垂直居中 */
+    align-items: center;
+    line-height: 1.25;                 /* 与按钮统一行高 */
+    max-width: 40vw;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 归零任何全局 .btn 外边距干扰，并让按钮内文本垂直居中 */
+.userbar .btn {
+    margin: 0 !important;
+    line-height: 1.25;
+    padding: .35rem .8rem;             /* 紧凑按钮高度 */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (max-width: 640.98px) {
+    .userbar .greet {
+        max-width: 55vw;
+    }
+}

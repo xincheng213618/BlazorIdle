@@ -1,0 +1,33 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using BlazorIdle.Services
+@inject IAuthService AuthService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<AuthorizeView>
+    <Authorized Context="ctx">
+        <div class="userbar d-flex align-items-center justify-content-end w-100 gap-2">
+            <div class="greet small text-muted text-end">
+                你好，@((ctx.User.Identity?.Name) ?? "用户")
+            </div>
+            <button class="btn btn-sm btn-outline-danger userbar-logout d-inline-flex align-items-center justify-content-center"
+                    @onclick="Logout">
+                <span>退出</span>
+            </button>
+        </div>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private async Task Logout()
+    {
+        await AuthService.Logout();
+
+        if (AuthStateProvider is CustomAuthStateProvider custom)
+        {
+            custom.NotifyUserLogout();
+        }
+
+        Navigation.NavigateTo("/login", true);
+    }
+}
