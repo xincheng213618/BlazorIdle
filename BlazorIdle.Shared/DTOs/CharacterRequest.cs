@@ -20,6 +20,88 @@ public class CreateCharacterRequest
 }
 
 /// <summary>
+/// 更新角色数据请求DTO - 用于心跳保存和手动更新
+/// Update character data request DTO - for heartbeat save and manual updates
+/// </summary>
+public class UpdateCharacterRequest
+{
+    /// <summary>
+    /// 角色名称（可选，通常不允许修改）
+    /// Character name (optional, usually not allowed to modify)
+    /// </summary>
+    public string? Name { get; set; }
+
+    // 角色属性 - 可以随游戏进程变化
+    // Character stats - can change during gameplay
+
+    /// <summary>
+    /// 最大生命值
+    /// Maximum HP
+    /// </summary>
+    public int? MaxHp { get; set; }
+
+    /// <summary>
+    /// 攻击速率（每秒攻击次数）
+    /// Attack rate (attacks per second)
+    /// </summary>
+    public double? AttackRateAPS { get; set; }
+
+    /// <summary>
+    /// 每次攻击伤害
+    /// Damage per attack
+    /// </summary>
+    public int? DamagePerAttack { get; set; }
+
+    /// <summary>
+    /// 急速百分比
+    /// Haste percentage
+    /// </summary>
+    public double? HastePercent { get; set; }
+
+    /// <summary>
+    /// 特殊技能冷却时间（秒）
+    /// Special skill cooldown (seconds)
+    /// </summary>
+    public double? SpecialIntervalSec { get; set; }
+
+    /// <summary>
+    /// 特殊技能伤害
+    /// Special skill damage
+    /// </summary>
+    public int? SpecialDamage { get; set; }
+
+    /// <summary>
+    /// 暴击率百分比
+    /// Critical chance percentage
+    /// </summary>
+    public double? CritChancePercent { get; set; }
+
+    /// <summary>
+    /// 暴击伤害倍率
+    /// Critical damage multiplier
+    /// </summary>
+    public double? CritMultiplier { get; set; }
+
+    /// <summary>
+    /// 伤害浮动百分比
+    /// Damage variance percentage
+    /// </summary>
+    public double? VariancePct { get; set; }
+
+    /// <summary>
+    /// 复活时间（秒）
+    /// Revive time (seconds)
+    /// </summary>
+    public double? ReviveSec { get; set; }
+
+    /// <summary>
+    /// 角色库存数据（JSON序列化）
+    /// Character inventory data (JSON serialized)
+    /// </summary>
+    public BlazorIdle.Shared.Models.Inventory? Inventory { get; set; }
+}
+
+/// <summary>
 /// 角色列表响应DTO
 /// Character list response DTO
 /// </summary>

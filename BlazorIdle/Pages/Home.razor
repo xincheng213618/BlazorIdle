@@ -3,6 +3,8 @@
 @using BlazorIdle.Components
 @using BlazorIdle.Shared.Models
 @inject BlazorIdle.Services.ICharacterService CharacterService
+@inject BlazorIdle.Services.IHeartbeatService HeartbeatService
+@implements IDisposable
 
 <PageTitle>Home</PageTitle>
 
@@ -59,12 +61,30 @@
     private CharacterData? selectedCharacter;
     private bool isReady; // 控制首渲染
 
+    /// <summary>
+    /// 组件初始化 - 加载当前选中的角色并启动心跳服务
+    /// Component initialization - load currently selected character and start heartbeat service
+    /// </summary>
     protected override async Task OnInitializedAsync()
     {
+        // 获取当前选中的角色
+        // Get currently selected character
         selectedCharacter = await CharacterService.GetSelectedCharacterAsync();
+        
+        // 如果有选中的角色，启动心跳服务
+        // If a character is selected, start heartbeat service
+        if (selectedCharacter != null)
+        {
+            HeartbeatService.Start(selectedCharacter);
+        }
+        
         isReady = true; // 数据已就绪，再渲染子组件，确保 StartCollapsed 生效
     }
 
+    /// <summary>
+    /// 角色创建完成回调
+    /// Character creation completed callback
+    /// </summary>
     private async Task OnCharacterCreated()
     {
         if (characterSelector != null)
@@ -73,16 +93,42 @@
         }
     }
 
+    /// <summary>
+    /// 角色选择变更回调 - 心跳服务会自动响应角色切换事件
+    /// Character selection changed callback - heartbeat service automatically responds to character switch event
+    /// </summary>
     private void OnCharacterSelected(CharacterData? character)
     {
         selectedCharacter = character;
+        
+        // 心跳服务已通过事件订阅自动处理角色切换
+        // Heartbeat service automatically handles character switch through event subscription
+        // 因此这里不需要手动调用 HeartbeatService.Start/Stop
+        // So no need to manually call HeartbeatService.Start/Stop here
+        
         StateHasChanged();
     }
 
+    /// <summary>
+    /// 角色删除回调
+    /// Character deletion callback
+    /// </summary>
     private async Task OnCharacterDeleted()
     {
         selectedCharacter = await CharacterService.GetSelectedCharacterAsync();
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// 组件释放 - 停止心跳服务
+    /// Component disposal - stop heartbeat service
+    /// </summary>
+    public void Dispose()
+    {
+        // HeartbeatService实现了IDisposable，由DI容器管理生命周期
+        // HeartbeatService implements IDisposable, managed by DI container
+        // 这里无需手动调用Dispose
+        // No need to manually call Dispose here
     }
 }
 
