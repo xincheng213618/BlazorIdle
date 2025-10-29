@@ -15,7 +15,7 @@ namespace BlazorIdle.Game
         EnemyAttack = 3
     }
 
-    public sealed class CombatEvent
+    public class CombatEvent
     {
         public ActorType Attacker { get; init; }
         public ActorType Defender { get; init; }
