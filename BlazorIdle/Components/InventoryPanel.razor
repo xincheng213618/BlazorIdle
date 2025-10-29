@@ -1,20 +1,32 @@
 @using BlazorIdle.Shared.Models
 @using BlazorIdle.Game.Config
 @inject IGameConfigService GameConfig
+@implements IDisposable
 
 <div class="inventory-panel">
-    <div class="panel-header">
+    <div class="panel-header"
+         role="button"
+         @onclick="ToggleCollapse"
+         aria-expanded="@(!isCollapsed)">
         <h5 class="mb-0">
             <span class="icon">🎒</span>
             物品栏 (Inventory)
         </h5>
-        @if (Inventory != null && Inventory.Items.Any())
-        {
-            <small class="text-muted">共 @Inventory.Items.Count 种物品</small>
-        }
+
+        <div class="d-flex align-items-center gap-2">
+            @if (Inventory != null && Inventory.Items.Any())
+            {
+                <small class="text-muted d-none d-sm-inline">共 @Inventory.Items.Count 种物品</small>
+            }
+            <button class="btn btn-sm btn-outline-light"
+                    @onclick:stopPropagation="true"
+                    @onclick="ToggleCollapse">
+                @(isCollapsed ? "展开" : "收起")
+            </button>
+        </div>
     </div>
-    
-    <div class="panel-body">
+
+    <div class="panel-body" style="@(isCollapsed ? "display:none" : null)">
         @if (Inventory == null || !Inventory.Items.Any())
         {
             <div class="empty-state">
@@ -54,18 +66,23 @@
 @code {
     /// <summary>
     /// 要显示的库存数据
-    /// Inventory data to display
     /// </summary>
     [Parameter]
     public Inventory? Inventory { get; set; }
 
+    /// <summary>
+    /// 初始是否折叠（默认不折叠）
+    /// </summary>
+    [Parameter]
+    public bool StartCollapsed { get; set; }
+
     private Inventory? _subscribed;
+    private bool isCollapsed;
 
     protected override async Task OnInitializedAsync()
     {
-        // 确保配置已加载
-        // Ensure configuration is loaded
         await GameConfig.EnsureLoadedAsync();
+        isCollapsed = StartCollapsed;
     }
 
     protected override void OnParametersSet()
@@ -77,6 +94,8 @@
             _subscribed = Inventory;
         }
     }
+
+    private void ToggleCollapse() => isCollapsed = !isCollapsed;
 
     private void OnInvChanged()
         => _ = InvokeAsync(StateHasChanged);
@@ -103,22 +122,31 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        cursor: pointer;
     }
 
-    .panel-header h5 {
-        color: white;
-        font-weight: 600;
-        margin: 0;
-    }
+        .panel-header h5 {
+            color: white;
+            font-weight: 600;
+            margin: 0;
+        }
 
-    .panel-header .icon {
-        font-size: 1.2em;
-        margin-right: 8px;
-    }
+        .panel-header .icon {
+            font-size: 1.2em;
+            margin-right: 8px;
+        }
 
-    .panel-header small {
-        color: rgba(255, 255, 255, 0.9);
-    }
+        .panel-header small {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* 覆盖全局 .btn 的 20px 上边距，保证按钮与标题水平对齐 */
+        .panel-header .btn {
+            margin-top: 0;
+            padding: .25rem .5rem;
+            line-height: 1.2;
+            border: 1px solid rgba(255,255,255,.5);
+        }
 
     .panel-body {
         padding: 15px;
@@ -131,12 +159,12 @@
         padding: 40px 20px;
     }
 
-    .empty-state .icon {
-        font-size: 3em;
-        display: block;
-        margin-bottom: 10px;
-        opacity: 0.3;
-    }
+        .empty-state .icon {
+            font-size: 3em;
+            display: block;
+            margin-bottom: 10px;
+            opacity: 0.3;
+        }
 
     .items-list {
         display: flex;
@@ -155,11 +183,11 @@
         transition: all 0.2s ease;
     }
 
-    .item-entry:hover {
-        background: #e9ecef;
-        transform: translateX(2px);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-    }
+        .item-entry:hover {
+            background: #e9ecef;
+            transform: translateX(2px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
 
     .item-info {
         display: flex;
@@ -206,7 +234,6 @@
         text-align: center;
     }
 
-    /* 滚动条样式 */
     .panel-body::-webkit-scrollbar {
         width: 6px;
     }
@@ -221,7 +248,7 @@
         border-radius: 3px;
     }
 
-    .panel-body::-webkit-scrollbar-thumb:hover {
-        background: #555;
-    }
+        .panel-body::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
 </style>
