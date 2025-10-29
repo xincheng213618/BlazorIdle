@@ -2,6 +2,7 @@ using BlazorIdle.Server.Data;
 using BlazorIdle.Server.Services;
 using BlazorIdle.Shared.DTOs;
 using BlazorIdle.Shared.Models;
+using BlazorIdle.Shared.Validation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,31 +41,29 @@ public class AuthController : ControllerBase
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+            // Sanitize inputs
+            request.Username = ValidationHelper.SanitizeUsername(request.Username);
+            request.Password = ValidationHelper.SanitizePassword(request.Password);
+
+            // Validate username
+            var usernameValidation = ValidationHelper.ValidateUsername(request.Username);
+            if (!usernameValidation.IsValid)
             {
                 return BadRequest(new AuthResponse
                 {
                     Success = false,
-                    Message = "用户名和密码不能为空"
+                    Message = usernameValidation.ErrorMessage
                 });
             }
 
-            // Validate username format (alphanumeric and underscore only, 3-50 characters)
-            if (!System.Text.RegularExpressions.Regex.IsMatch(request.Username, @"^[a-zA-Z0-9_]{3,50}$"))
+            // Validate password
+            var passwordValidation = ValidationHelper.ValidatePassword(request.Password);
+            if (!passwordValidation.IsValid)
             {
                 return BadRequest(new AuthResponse
                 {
                     Success = false,
-                    Message = "用户名只能包含字母、数字和下划线，长度为3-50个字符"
-                });
-            }
-
-            if (request.Password.Length < 6)
-            {
-                return BadRequest(new AuthResponse
-                {
-                    Success = false,
-                    Message = "密码长度至少为6个字符"
+                    Message = passwordValidation.ErrorMessage
                 });
             }
 
@@ -120,17 +119,24 @@ public class AuthController : ControllerBase
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+            // Sanitize inputs
+            request.Username = ValidationHelper.SanitizeUsername(request.Username);
+            request.Password = ValidationHelper.SanitizePassword(request.Password);
+
+            // Validate username format
+            var usernameValidation = ValidationHelper.ValidateUsername(request.Username);
+            if (!usernameValidation.IsValid)
             {
-                return BadRequest(new AuthResponse
+                return Unauthorized(new AuthResponse
                 {
                     Success = false,
-                    Message = "用户名和密码不能为空"
+                    Message = "用户名或密码错误"
                 });
             }
 
-            // Validate username format to prevent log forging
-            if (!System.Text.RegularExpressions.Regex.IsMatch(request.Username, @"^[a-zA-Z0-9_]{1,50}$"))
+            // Validate password format
+            var passwordValidation = ValidationHelper.ValidatePassword(request.Password);
+            if (!passwordValidation.IsValid)
             {
                 return Unauthorized(new AuthResponse
                 {

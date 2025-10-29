@@ -1,6 +1,7 @@
 @page "/login"
 @using BlazorIdle.Services
 @using BlazorIdle.Shared.DTOs
+@using BlazorIdle.Shared.Validation
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IAuthService AuthService
 @inject NavigationManager NavigationManager
@@ -62,6 +63,26 @@
 
         try
         {
+            // Sanitize inputs
+            loginRequest.Username = ValidationHelper.SanitizeUsername(loginRequest.Username);
+            loginRequest.Password = ValidationHelper.SanitizePassword(loginRequest.Password);
+
+            // Validate username
+            var usernameValidation = ValidationHelper.ValidateUsername(loginRequest.Username);
+            if (!usernameValidation.IsValid)
+            {
+                errorMessage = usernameValidation.ErrorMessage;
+                return;
+            }
+
+            // Validate password
+            var passwordValidation = ValidationHelper.ValidatePassword(loginRequest.Password);
+            if (!passwordValidation.IsValid)
+            {
+                errorMessage = passwordValidation.ErrorMessage;
+                return;
+            }
+
             var response = await AuthService.Login(loginRequest);
             
             if (response.Success)

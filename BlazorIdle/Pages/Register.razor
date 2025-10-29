@@ -1,6 +1,7 @@
 @page "/register"
 @using BlazorIdle.Services
 @using BlazorIdle.Shared.DTOs
+@using BlazorIdle.Shared.Validation
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IAuthService AuthService
 @inject NavigationManager NavigationManager
@@ -61,21 +62,24 @@
     {
         errorMessage = string.Empty;
         
-        if (string.IsNullOrWhiteSpace(registerRequest.Username))
+        // Sanitize inputs
+        registerRequest.Username = ValidationHelper.SanitizeUsername(registerRequest.Username);
+        registerRequest.Password = ValidationHelper.SanitizePassword(registerRequest.Password);
+        confirmPassword = ValidationHelper.SanitizePassword(confirmPassword);
+
+        // Validate username
+        var usernameValidation = ValidationHelper.ValidateUsername(registerRequest.Username);
+        if (!usernameValidation.IsValid)
         {
-            errorMessage = "请输入用户名";
+            errorMessage = usernameValidation.ErrorMessage;
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(registerRequest.Password))
+        // Validate password
+        var passwordValidation = ValidationHelper.ValidatePassword(registerRequest.Password);
+        if (!passwordValidation.IsValid)
         {
-            errorMessage = "请输入密码";
-            return;
-        }
-
-        if (registerRequest.Password.Length < 6)
-        {
-            errorMessage = "密码长度至少为6个字符";
+            errorMessage = passwordValidation.ErrorMessage;
             return;
         }
 
