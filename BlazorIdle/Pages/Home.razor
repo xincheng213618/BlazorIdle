@@ -4,7 +4,6 @@
 @using BlazorIdle.Shared.Models
 @inject BlazorIdle.Services.ICharacterService CharacterService
 @inject BlazorIdle.Services.IHeartbeatService HeartbeatService
-@implements IDisposable
 
 <PageTitle>Home</PageTitle>
 
@@ -117,18 +116,6 @@
     {
         selectedCharacter = await CharacterService.GetSelectedCharacterAsync();
         StateHasChanged();
-    }
-
-    /// <summary>
-    /// 组件释放 - 停止心跳服务
-    /// Component disposal - stop heartbeat service
-    /// </summary>
-    public void Dispose()
-    {
-        // HeartbeatService实现了IDisposable，由DI容器管理生命周期
-        // HeartbeatService implements IDisposable, managed by DI container
-        // 这里无需手动调用Dispose
-        // No need to manually call Dispose here
     }
 }
 

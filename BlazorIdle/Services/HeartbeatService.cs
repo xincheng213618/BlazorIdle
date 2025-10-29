@@ -225,6 +225,8 @@ namespace BlazorIdle.Services
         /// <summary>
         /// 定时器触发事件处理
         /// Timer elapsed event handler
+        /// 注意：这是async void方法，仅用于事件处理器
+        /// Note: This is async void method, only for event handlers
         /// </summary>
         private async void OnTimerElapsed(object? sender, ElapsedEventArgs e)
         {
@@ -239,7 +241,18 @@ namespace BlazorIdle.Services
 
             if (characterToSave != null)
             {
-                await SaveCharacterDataAsync(characterToSave);
+                // 捕获所有异常以防止事件处理器崩溃
+                // Catch all exceptions to prevent event handler from crashing
+                try
+                {
+                    await SaveCharacterDataAsync(characterToSave);
+                }
+                catch (Exception ex)
+                {
+                    // 记录顶层异常
+                    // Log top-level exception
+                    _logger.LogError(ex, "Unhandled exception in heartbeat timer elapsed handler");
+                }
             }
         }
 

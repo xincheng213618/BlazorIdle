@@ -46,7 +46,8 @@ builder.Services.AddScoped<ICharacterService, CharacterService>();
 // Add Heartbeat service - Scoped lifetime, independent per user session
 builder.Services.AddScoped<IHeartbeatService, HeartbeatService>();
 
-// Game config service (scoped依赖 HttpClient)
+// 游戏配置服务（依赖 HttpClient）
+// Game config service (depends on HttpClient)
 builder.Services.AddScoped<IGameConfigService, GameConfigService>();
 
 await builder.Build().RunAsync();
