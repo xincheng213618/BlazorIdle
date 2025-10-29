@@ -6,196 +6,205 @@
 @inject IGameConfigService GameConfig
 
 <div class="character-creation-card">
-    <h4>创建角色 (Create Character)</h4>
+    <div class="cc-header d-flex align-items-center justify-content-between"
+         role="button"
+         @onclick="ToggleCollapse"
+         aria-expanded="@(!isCollapsed)">
+        <h5 class="mb-0 text-white d-flex align-items-center">
+            <span class="me-2">🧙</span>
+            创建角色 (Create Character)
+        </h5>
+        <button class="btn btn-sm btn-outline-light"
+                @onclick:stopPropagation="true"
+                @onclick="ToggleCollapse">
+            @(isCollapsed ? "展开" : "收起")
+        </button>
+    </div>
 
-    @if (!configReady)
-    {
-        <div class="text-muted">加载配置中...</div>
-    }
-    else
-    {
-        <!-- 角色槽位信息显示 Character slot information display -->
-        @if (characterSlotInfo != null)
+    <div class="cc-body" style="@(isCollapsed ? "display:none" : null)">
+        @if (!configReady)
         {
-            <div class="character-slots-info mb-3">
-                <div class="slots-progress">
-                    <div class="slots-label">
-                        <span>角色槽位 (Character Slots):</span>
-                        <span class="slots-count @(characterSlotInfo.CanCreateMore ? "text-success" : "text-danger")">
-                            @characterSlotInfo.UsedSlots / @characterSlotInfo.MaxSlots
-                        </span>
-                    </div>
-                    <div class="progress" style="height: 20px;">
-                        <div class="progress-bar @(characterSlotInfo.CanCreateMore ? "bg-success" : "bg-danger")" 
-                             role="progressbar" 
-                             style="width: @((characterSlotInfo.UsedSlots * 100.0 / characterSlotInfo.MaxSlots))%"
-                             aria-valuenow="@characterSlotInfo.UsedSlots" 
-                             aria-valuemin="0" 
-                             aria-valuemax="@characterSlotInfo.MaxSlots">
-                        </div>
-                    </div>
-                </div>
-                @if (!characterSlotInfo.CanCreateMore)
-                {
-                    <div class="alert alert-warning mt-2 mb-0">
-                        <i class="bi bi-exclamation-triangle"></i>
-                        已达到最大角色数量限制！您可以删除现有角色以腾出槽位。
-                    </div>
-                }
-            </div>
-        }
-        
-        @if (showSuccessMessage)
-        {
-            <div class="alert alert-success">
-                角色 <strong>@createdCharacterName</strong> 创建成功！
-            </div>
-            <button class="btn btn-primary" @onclick="ResetForm">继续创建新角色</button>
+            <div class="text-muted">加载配置中...</div>
         }
         else
         {
-            <div class="mb-3">
-                <label class="form-label">角色名称 (Character Name)</label>
-                <input type="text" 
-                       class="form-control" 
-                       @bind="characterName" 
-                       @bind:event="oninput"
-                       placeholder="请输入角色名称"
-                       maxlength="20"
-                       disabled="@(!characterSlotInfo?.CanCreateMore ?? false)" />
-                @if (!string.IsNullOrWhiteSpace(nameError))
-                {
-                    <div class="text-danger small mt-1">@nameError</div>
-                }
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">选择职业 (Select Profession)</label>
-                <select class="form-select" 
-                        @bind="selectedProfessionId"
-                        disabled="@(!characterSlotInfo?.CanCreateMore ?? false)">
-                    <option value="">-- 请选择职业 --</option>
-                    @foreach (var profession in professions)
-                    {
-                        <option value="@profession.Id">@profession.Name - @profession.Desc</option>
-                    }
-                </select>
-                @if (!string.IsNullOrWhiteSpace(professionError))
-                {
-                    <div class="text-danger small mt-1">@professionError</div>
-                }
-            </div>
-
-            @if (!string.IsNullOrWhiteSpace(selectedProfessionId))
+            <!-- 角色槽位信息显示 Character slot information display -->
+            @if (characterSlotInfo != null)
             {
-                var profession = professions.FirstOrDefault(p => p.Id == selectedProfessionId);
-                if (profession != null)
-                {
-                    <div class="profession-preview mb-3">
-                        <h6>职业属性预览 (Profession Stats Preview)</h6>
-                        <div class="stats-grid">
-                            <div class="stat-item">
-                                <span class="stat-label">最大生命值:</span>
-                                <span class="stat-value">@profession.MaxHp</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">攻击速度:</span>
-                                <span class="stat-value">@profession.AttackRateAPS 次/秒</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">攻击伤害:</span>
-                                <span class="stat-value">@profession.DamagePerAttack</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">急速:</span>
-                                <span class="stat-value">@profession.HastePercent%</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">特殊技能间隔:</span>
-                                <span class="stat-value">@profession.SpecialIntervalSec 秒</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">特殊技能伤害:</span>
-                                <span class="stat-value">@profession.SpecialDamage</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">暴击率:</span>
-                                <span class="stat-value">@profession.CritChancePercent%</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">暴击倍率:</span>
-                                <span class="stat-value">@profession.CritMultiplier x</span>
+                <div class="character-slots-info mb-3">
+                    <div class="slots-progress">
+                        <div class="slots-label">
+                            <span>角色槽位 (Character Slots):</span>
+                            <span class="slots-count @(characterSlotInfo.CanCreateMore ? "text-success" : "text-danger")">
+                                @characterSlotInfo.UsedSlots / @characterSlotInfo.MaxSlots
+                            </span>
+                        </div>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar @(characterSlotInfo.CanCreateMore ? "bg-success" : "bg-danger")"
+                                 role="progressbar"
+                                 style="width: @((characterSlotInfo.UsedSlots * 100.0 / characterSlotInfo.MaxSlots))%"
+                                 aria-valuenow="@characterSlotInfo.UsedSlots"
+                                 aria-valuemin="0"
+                                 aria-valuemax="@characterSlotInfo.MaxSlots">
                             </div>
                         </div>
                     </div>
-                }
+                    @if (!characterSlotInfo.CanCreateMore)
+                    {
+                        <div class="alert alert-warning mt-2 mb-0">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            已达到最大角色数量限制！您可以删除现有角色以腾出槽位。
+                        </div>
+                    }
+                </div>
             }
 
-            <div class="d-flex gap-2">
-                <button class="btn btn-success" 
-                        @onclick="CreateCharacter" 
-                        disabled="@(!configReady || isCreating || !(characterSlotInfo?.CanCreateMore ?? false))">
-                    @if (isCreating)
+            @if (showSuccessMessage)
+            {
+                <div class="alert alert-success">
+                    角色 <strong>@createdCharacterName</strong> 创建成功！
+                </div>
+                <button class="btn btn-primary" @onclick="ResetForm">继续创建新角色</button>
+            }
+            else
+            {
+                <div class="mb-3">
+                    <label class="form-label">角色名称 (Character Name)</label>
+                    <input type="text"
+                           class="form-control"
+                           @bind="characterName"
+                           @bind:event="oninput"
+                           placeholder="请输入角色名称"
+                           maxlength="20"
+                           disabled="@(!characterSlotInfo?.CanCreateMore ?? false)" />
+                    @if (!string.IsNullOrWhiteSpace(nameError))
                     {
-                        <span>创建中...</span>
+                        <div class="text-danger small mt-1">@nameError</div>
                     }
-                    else
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">选择职业 (Select Profession)</label>
+                    <select class="form-select"
+                            @bind="selectedProfessionId"
+                            disabled="@(!characterSlotInfo?.CanCreateMore ?? false)">
+                        <option value="">-- 请选择职业 --</option>
+                        @foreach (var profession in professions)
+                        {
+                            <option value="@profession.Id">@profession.Name - @profession.Desc</option>
+                        }
+                    </select>
+                    @if (!string.IsNullOrWhiteSpace(professionError))
                     {
-                        <span>创建角色</span>
+                        <div class="text-danger small mt-1">@professionError</div>
                     }
-                </button>
-                <button class="btn btn-secondary" @onclick="ResetForm">重置</button>
-            </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(selectedProfessionId))
+                {
+                    var profession = professions.FirstOrDefault(p => p.Id == selectedProfessionId);
+                    if (profession != null)
+                    {
+                        <div class="profession-preview mb-3">
+                            <h6>职业属性预览 (Profession Stats Preview)</h6>
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <span class="stat-label">最大生命值:</span>
+                                    <span class="stat-value">@profession.MaxHp</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">攻击速度:</span>
+                                    <span class="stat-value">@profession.AttackRateAPS 次/秒</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">攻击伤害:</span>
+                                    <span class="stat-value">@profession.DamagePerAttack</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">急速:</span>
+                                    <span class="stat-value">@profession.HastePercent%</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">特殊技能间隔:</span>
+                                    <span class="stat-value">@profession.SpecialIntervalSec 秒</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">特殊技能伤害:</span>
+                                    <span class="stat-value">@profession.SpecialDamage</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">暴击率:</span>
+                                    <span class="stat-value">@profession.CritChancePercent%</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">暴击倍率:</span>
+                                    <span class="stat-value">@profession.CritMultiplier x</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success"
+                            @onclick="CreateCharacter"
+                            disabled="@(!configReady || isCreating || !(characterSlotInfo?.CanCreateMore ?? false))">
+                        @if (isCreating)
+                        {
+                            <span>创建中...</span>
+                        }
+                        else
+                        {
+                            <span>创建角色</span>
+                        }
+                    </button>
+                    <button class="btn btn-secondary" @onclick="ResetForm">重置</button>
+                </div>
+            }
         }
-    }
+    </div>
 </div>
 
 @code {
-    /// <summary>
-    /// 角色创建成功后的回调事件
-    /// Callback event after character creation succeeds
-    /// </summary>
     [Parameter]
     public EventCallback OnCharacterCreated { get; set; }
 
-    // 职业列表 Profession list
+    // 新增：默认是否折叠（父可控制）
+    [Parameter]
+    public bool StartCollapsed { get; set; }
+
+    private bool isCollapsed;
+
+    // 职业列表
     private List<ProfessionDef> professions = new();
-    
-    // 角色槽位信息 Character slot information
     private CharacterListResponse? characterSlotInfo;
-    
-    // 表单字段 Form fields
+
+    // 表单字段
     private string characterName = string.Empty;
     private string selectedProfessionId = string.Empty;
-    
-    // 错误信息 Error messages
+
+    // 错误信息
     private string nameError = string.Empty;
     private string professionError = string.Empty;
-    
-    // 状态标志 State flags
+
+    // 状态标志
     private bool configReady = false;
     private bool isCreating = false;
     private bool showSuccessMessage = false;
     private string createdCharacterName = string.Empty;
 
-    /// <summary>
-    /// 组件初始化时加载配置和角色槽位信息
-    /// Load configuration and character slot info on component initialization
-    /// </summary>
     protected override async Task OnInitializedAsync()
     {
         await GameConfig.EnsureLoadedAsync();
         professions = GameConfig.Professions.ToList();
         configReady = professions.Count > 0;
-        
-        // 加载角色槽位信息 Load character slot information
+
+        // 折叠默认值
+        isCollapsed = StartCollapsed;
+
         await LoadCharacterSlotInfo();
     }
 
-    /// <summary>
-    /// 加载角色槽位信息
-    /// Load character slot information
-    /// </summary>
     private async Task LoadCharacterSlotInfo()
     {
         try
@@ -208,10 +217,6 @@
         }
     }
 
-    /// <summary>
-    /// 验证输入数据
-    /// Validate input data
-    /// </summary>
     private bool ValidateInput()
     {
         nameError = string.Empty;
@@ -238,10 +243,6 @@
         return isValid;
     }
 
-    /// <summary>
-    /// 创建角色
-    /// Create character
-    /// </summary>
     private async Task CreateCharacter()
     {
         if (!ValidateInput())
@@ -249,7 +250,6 @@
             return;
         }
 
-        // 检查角色槽位限制 Check character slot limit
         if (characterSlotInfo != null && !characterSlotInfo.CanCreateMore)
         {
             nameError = "已达到最大角色数量限制";
@@ -267,16 +267,14 @@
             }
 
             var response = await CharacterService.CreateCharacterAsync(characterName.Trim(), profession);
-            
+
             if (response != null && response.Success && response.Character != null)
             {
                 createdCharacterName = response.Character.Name;
                 showSuccessMessage = true;
-                
-                // 重新加载角色槽位信息 Reload character slot information
+
                 await LoadCharacterSlotInfo();
 
-                // 通知父组件 Notify parent component
                 if (OnCharacterCreated.HasDelegate)
                 {
                     await OnCharacterCreated.InvokeAsync();
@@ -297,10 +295,6 @@
         }
     }
 
-    /// <summary>
-    /// 重置表单
-    /// Reset form
-    /// </summary>
     private void ResetForm()
     {
         characterName = string.Empty;
@@ -310,6 +304,8 @@
         showSuccessMessage = false;
         createdCharacterName = string.Empty;
     }
+
+    private void ToggleCollapse() => isCollapsed = !isCollapsed;
 }
 
 <style>
@@ -317,9 +313,27 @@
         background: #fff;
         border: 1px solid #e5e5e5;
         border-radius: 8px;
-        padding: 20px;
         margin-bottom: 20px;
         box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        overflow: hidden;
+    }
+
+    .cc-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        padding: 12px 16px;
+        cursor: pointer;
+    }
+
+        .cc-header .btn {
+            margin-top: 0; /* 覆盖全局 .btn 20px 上边距，保证对齐 */
+            padding: .25rem .5rem;
+            line-height: 1.2;
+            border: 1px solid rgba(255,255,255,.5);
+        }
+
+    .cc-body {
+        padding: 20px;
     }
 
     .character-slots-info {
@@ -353,10 +367,10 @@
         padding: 15px;
     }
 
-    .profession-preview h6 {
-        margin-bottom: 10px;
-        color: #495057;
-    }
+        .profession-preview h6 {
+            margin-bottom: 10px;
+            color: #495057;
+        }
 
     .stats-grid {
         display: grid;

@@ -7,78 +7,62 @@
 <PageTitle>Home</PageTitle>
 
 <div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card mb-3">
-                <div class="card-header d-flex align-items-center justify-content-between gap-2 collapsible-header"
-                     role="button"
-                     @onclick="ToggleCollapse"
-                     aria-expanded="@(!isCollapsed)">
-                    <h2 class="mb-0 h5">角色管理 (Character Management)</h2>
-                    <button class="btn btn-sm btn-outline-secondary"
-                            @onclick:stopPropagation="true"
-                            @onclick="ToggleCollapse">
-                        @(isCollapsed ? "展开" : "收起")
-                    </button>
+    @if (isReady)
+    {
+        <div class="row">
+            <div class="col-md-6">
+                <CharacterCreation StartCollapsed="@(selectedCharacter is not null)"
+                                   OnCharacterCreated="OnCharacterCreated" />
+            </div>
+            <div class="col-md-6">
+                <CharacterSelector @ref="characterSelector"
+                                   StartCollapsed="@(selectedCharacter is not null)"
+                                   OnCharacterSelected="OnCharacterSelected"
+                                   OnCharacterDeleted="OnCharacterDeleted" />
+            </div>
+        </div>
+
+        @if (selectedCharacter != null)
+        {
+            <div class="row">
+                <div class="col-12">
+                    <InventoryPanel Inventory="@selectedCharacter.Inventory"
+                                    StartCollapsed="true" />
                 </div>
-                <div class="card-body" style="@(isCollapsed ? "display:none" : null)">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <CharacterCreation OnCharacterCreated="OnCharacterCreated" />
-                        </div>
-                        <div class="col-md-6">
-                            <CharacterSelector @ref="characterSelector"
-                                               OnCharacterSelected="OnCharacterSelected"
-                                               OnCharacterDeleted="OnCharacterDeleted" />
-                        </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <BattleDemo SelectedCharacter="@selectedCharacter" />
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row">
+                <div class="col-12">
+                    <div class="alert alert-warning">
+                        请先创建并选择一个角色，然后开始战斗。
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    @if (selectedCharacter != null)
-    {
-        <div class="row">
-            <div class="col-12">
-                <InventoryPanel Inventory="@selectedCharacter.Inventory"
-                                StartCollapsed="true" />
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-12">
-                <BattleDemo SelectedCharacter="@selectedCharacter" />
-            </div>
-        </div>
+        }
     }
     else
     {
-        <div class="row">
-            <div class="col-12">
-                <div class="alert alert-warning">
-                    请先创建并选择一个角色，然后开始战斗。
-                </div>
-            </div>
-        </div>
+        <div class="text-muted">加载中...</div>
     }
 </div>
 
 @code {
     private CharacterSelector? characterSelector;
     private CharacterData? selectedCharacter;
-    private bool isCollapsed = false; // 默认展开
+    private bool isReady; // 控制首渲染
 
     protected override async Task OnInitializedAsync()
     {
         selectedCharacter = await CharacterService.GetSelectedCharacterAsync();
-        // 有已选角色 -> 默认收起；没有 -> 默认展开
-        isCollapsed = selectedCharacter is not null;
-    }
-
-    private void ToggleCollapse()
-    {
-        isCollapsed = !isCollapsed;
+        isReady = true; // 数据已就绪，再渲染子组件，确保 StartCollapsed 生效
     }
 
     private async Task OnCharacterCreated()
@@ -101,19 +85,16 @@
         StateHasChanged();
     }
 }
-<style>
-    .collapsible-header {
-        cursor: pointer;
-    }
 
-    /* 你原有的全局按钮样式 */
+<style>
+    /* 可保留你的全局按钮样式（如不需要可移除） */
     .btn {
         padding: 10px 20px;
         border: none;
         border-radius: 4px;
         font-size: 14px;
         cursor: pointer;
-        margin-top: 20px; /* 这个会导致 header 内的按钮下沉 */
+        margin-top: 20px;
     }
 
     .btn-danger {
@@ -124,17 +105,4 @@
         .btn-danger:hover {
             background-color: #c82333;
         }
-
-    /* 覆盖 header 内按钮的样式，确保与标题同一水平线 */
-    .collapsible-header h2 {
-        margin: 0;
-        line-height: 1.2;
-    }
-
-    .collapsible-header .btn {
-        margin-top: 0; /* 关键：覆盖全局 20px 的上边距 */
-        padding: .25rem .5rem; /* 更贴近 btn-sm 的高度 */
-        line-height: 1.2;
-        border: 1px solid rgba(108,117,125,.5); /* 保持 outline-secondary 的边框可见 */
-    }
 </style>
