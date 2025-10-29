@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Json;
 using BlazorIdle.Shared.Models;
+using BlazorIdle.Configuration;
 
 namespace BlazorIdle.Game.Config
 {
@@ -31,16 +32,16 @@ namespace BlazorIdle.Game.Config
     public sealed class GameConfigService : IGameConfigService
     {
         private readonly HttpClient _http;
+        private readonly ApiConfiguration _apiConfig;
         private bool _loaded;
         private readonly List<ProfessionDef> _professions = new();
         private readonly List<MonsterDef> _monsters = new();
         private readonly List<ItemDefinition> _items = new();
 
-        private const string ApiBaseUrl = "https://localhost:7056/api/game-config";
-
-        public GameConfigService(HttpClient http)
+        public GameConfigService(HttpClient http, ApiConfiguration apiConfig)
         {
             _http = http;
+            _apiConfig = apiConfig;
         }
 
         public IReadOnlyList<ProfessionDef> Professions => _professions;
@@ -57,7 +58,7 @@ namespace BlazorIdle.Game.Config
             Shared.DTOs.GameConfigResponse? response = null;
             try
             {
-                response = await _http.GetFromJsonAsync<Shared.DTOs.GameConfigResponse>($"{ApiBaseUrl}/all", ct);
+                response = await _http.GetFromJsonAsync<Shared.DTOs.GameConfigResponse>($"{_apiConfig.GameConfigApiUrl}/all", ct);
             }
             catch
             {
