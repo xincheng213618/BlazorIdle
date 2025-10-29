@@ -269,8 +269,14 @@
     private void OnCombatEvent(CombatEvent ev)
     {
         var sec = ev.TimeMs / 1000.0;
-        var who = ev.Attacker == ActorType.Player ? "玩家" : "敌人";
-        var target = ev.Defender == ActorType.Player ? "玩家" : "敌人";
+
+        // 名称解析
+        var charName = string.IsNullOrWhiteSpace(SelectedCharacter?.Name) ? "未知角色" : SelectedCharacter!.Name;
+        var monsterName = currentMonster?.Name
+                          ?? monsters.FirstOrDefault(m => m.Id == selectedMonsterId)?.Name
+                          ?? selectedMonsterId
+                          ?? "未知怪物";
+
         var src = ev.Source switch
         {
             EventSource.Attack => "Attack",
@@ -279,7 +285,16 @@
             _ => "Unknown"
         };
 
-        var line = $"[{sec:0.00}s] {who}-{src} 命中，伤害 {ev.Damage}，{target}HP→ {ev.DefenderHpAfter}，RNGidx={ev.RngIndexAfter}";
+        // 期望格式：攻击者-名称-动作 命中-防御者-名称
+        var attackerSide = ev.Attacker == ActorType.Player ? "玩家" : "怪物";
+        var attackerName = ev.Attacker == ActorType.Player ? charName : monsterName;
+
+        var defenderSide = ev.Defender == ActorType.Player ? "玩家" : "怪物";
+        var defenderName = ev.Defender == ActorType.Player ? charName : monsterName;
+
+        var line =
+            $"[{sec:0.00}s] {attackerSide}:{attackerName} {src} 命中→{defenderSide}:{defenderName}，伤害 {ev.Damage}，{defenderSide}HP→ {ev.DefenderHpAfter}，RNGidx={ev.RngIndexAfter}";
+
         logs.Add(line);
         if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
 
