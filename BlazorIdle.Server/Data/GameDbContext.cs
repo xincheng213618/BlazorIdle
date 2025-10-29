@@ -53,6 +53,14 @@ public class GameDbContext : DbContext
             entity.Property(e => e.UserId).IsRequired();
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => new { e.UserId, e.Name });
+            
+            // 配置库存为 JSON 列 - 不创建单独的表
+            // Configure inventory as JSON column - don't create separate table
+            entity.OwnsOne(e => e.Inventory, inventory =>
+            {
+                inventory.ToJson(); // 存储为 JSON 列
+                inventory.OwnsMany(i => i.Items); // Items 列表也存储在 JSON 中
+            });
         });
     }
 }

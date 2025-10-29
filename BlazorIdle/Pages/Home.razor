@@ -40,7 +40,13 @@
     @if (selectedCharacter != null)
     {
         <div class="row">
-            <div class="col-12">
+            <!-- 物品栏面板 - Inventory Panel -->
+            <div class="col-12 col-lg-4 mb-3">
+                <InventoryPanel Inventory="@selectedCharacter.Inventory" />
+            </div>
+
+            <!-- 战斗面板 - Battle Panel -->
+            <div class="col-12 col-lg-8">
                 <BattleDemo SelectedCharacter="@selectedCharacter" />
             </div>
         </div>

@@ -42,5 +42,11 @@
 
         // 新增：刷新时间（毫秒）
         public int RespawnMs { get; set; } = 3000;
+
+        /// <summary>
+        /// 掉落物列表 - 敌人死亡时掉落的物品配置
+        /// Loot drops list - items dropped when enemy dies
+        /// </summary>
+        public List<Config.LootDrop> LootDrops { get; set; } = new();
     }
 }

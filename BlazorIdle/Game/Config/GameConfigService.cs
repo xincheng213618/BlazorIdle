@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Json;
+using BlazorIdle.Shared.Models;
 
 namespace BlazorIdle.Game.Config
 {
@@ -7,8 +8,22 @@ namespace BlazorIdle.Game.Config
         Task EnsureLoadedAsync(CancellationToken ct = default);
         IReadOnlyList<ProfessionDef> Professions { get; }
         IReadOnlyList<MonsterDef> Monsters { get; }
+        
+        /// <summary>
+        /// 物品定义列表 - 游戏中所有可用的物品
+        /// Item definitions list - all available items in the game
+        /// </summary>
+        IReadOnlyList<ItemDefinition> Items { get; }
+        
         ProfessionDef? GetProfession(string id);
         MonsterDef? GetMonster(string id);
+        
+        /// <summary>
+        /// 获取指定ID的物品定义
+        /// Get item definition by ID
+        /// </summary>
+        ItemDefinition? GetItem(string id);
+        
         string Version { get; }
         bool IsLoaded { get; }
     }
@@ -19,6 +34,7 @@ namespace BlazorIdle.Game.Config
         private bool _loaded;
         private readonly List<ProfessionDef> _professions = new();
         private readonly List<MonsterDef> _monsters = new();
+        private readonly List<ItemDefinition> _items = new();
 
         private const string ApiBaseUrl = "https://localhost:7056/api/game-config";
 
@@ -29,6 +45,7 @@ namespace BlazorIdle.Game.Config
 
         public IReadOnlyList<ProfessionDef> Professions => _professions;
         public IReadOnlyList<MonsterDef> Monsters => _monsters;
+        public IReadOnlyList<ItemDefinition> Items => _items;
 
         public string Version { get; private set; } = "unloaded";
         public bool IsLoaded => _loaded;
@@ -49,6 +66,7 @@ namespace BlazorIdle.Game.Config
 
             var profs = response?.Professions ?? DefaultGameConfig.DefaultProfessions();
             var mons = response?.Monsters ?? DefaultGameConfig.DefaultMonsters();
+            var items = response?.Items ?? new List<ItemDefinition>();
 
             _professions.Clear();
             _professions.AddRange(profs.Where(p => !string.IsNullOrWhiteSpace(p.Id)));
@@ -56,7 +74,10 @@ namespace BlazorIdle.Game.Config
             _monsters.Clear();
             _monsters.AddRange(mons.Where(m => !string.IsNullOrWhiteSpace(m.Id)));
 
-            Version = response?.Version ?? $"p:{_professions.Count}-m:{_monsters.Count}";
+            _items.Clear();
+            _items.AddRange(items.Where(i => !string.IsNullOrWhiteSpace(i.Id)));
+
+            Version = response?.Version ?? $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}";
             _loaded = true;
         }
 
@@ -65,5 +86,8 @@ namespace BlazorIdle.Game.Config
 
         public MonsterDef? GetMonster(string id)
             => _monsters.FirstOrDefault(m => string.Equals(m.Id, id, StringComparison.OrdinalIgnoreCase));
+
+        public ItemDefinition? GetItem(string id)
+            => _items.FirstOrDefault(i => string.Equals(i.Id, id, StringComparison.OrdinalIgnoreCase));
     }
 }
