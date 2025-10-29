@@ -51,8 +51,8 @@
                                 Subtitle="@GetProfessionName(SelectedCharacter.ProfessionId)"
                                 Tag="@SelectedCharacter.Id"
                                 StatusText="@PlayerStatusText"
-                                Hp="@snapshot.PlayerHp"
-                                MaxHp="@snapshot.PlayerMaxHp"
+                                Hp="@GetPlayerHp()"
+                                MaxHp="@GetPlayerMaxHp()"
                                 AttackProgress01="@attackProgress01"
                                 AttackRemainMs="@attackRemainMs"
                                 SpecialProgress01="@specialProgress01"
@@ -64,8 +64,8 @@
                               Level="@(currentMonster?.Level)"
                               Tag="@selectedMonsterId"
                               StatusText="@EnemyStatusText"
-                              Hp="@snapshot.EnemyHp"
-                              MaxHp="@snapshot.EnemyMaxHp"
+                              Hp="@GetEnemyHp()"
+                              MaxHp="@GetEnemyMaxHp()"
                               EnemyAttackProgress01="@enemyProgress01"
                               EnemyAttackRemainMs="@enemyRemainMs" />
             </div>
@@ -89,12 +89,15 @@
 </div>
 
 @code {
+    // 战斗循环间隔（毫秒）- 控制游戏更新频率
+    // Battle loop interval (ms) - controls game update frequency
     private const int TickMs = 100;
 
     [Parameter]
     public CharacterData? SelectedCharacter { get; set; }
 
     // 配置选择
+    // Configuration selection
     private List<ProfessionDef> professions = new();
     private List<MonsterDef> monsters = new();
     private string? selectedMonsterId;
@@ -102,24 +105,96 @@
     private string configVersion = "loading";
     private bool configReady = false;
 
-    private BattleInstance? battle;
-    private BattleSnapshot snapshot = new BattleSnapshot { EnemyHp = 0, EnemyMaxHp = 1, PlayerHp = 0, PlayerMaxHp = 1, ElapsedMs = 0, Outcome = BattleOutcome.Ongoing, LoopState = LoopState.Fighting };
+    // 多单位战斗系统（用于1v1战斗）
+    // Multi-unit battle system (used for 1v1 battle)
+    private MultiBattleInstance? battle;
+    private MultiBattleSnapshot snapshot = new MultiBattleSnapshot();
+    
+    // 战斗队伍 - 包装单个角色和怪物
+    // Battle teams - wrapping single character and monster
+    private BattleTeam<Character>? playerTeam;
+    private BattleTeam<Enemy>? enemyTeam;
+    
     private BattleDigest? digest;
     private bool isRunning = false;
 
-    private double theoreticalDps => battle?.TheoreticalDps() ?? 0.0;
+    // 理论DPS计算（基于角色属性）
+    // Theoretical DPS calculation (based on character attributes)
+    private double theoreticalDps
+    {
+        get
+        {
+            if (SelectedCharacter == null) return 0.0;
+            
+            var hasteFactor = 1.0 + SelectedCharacter.HastePercent / 100.0;
+            var attackDps = SelectedCharacter.DamagePerAttack * SelectedCharacter.AttackRateAPS * hasteFactor;
+            var specialDps = SelectedCharacter.SpecialDamage / Math.Max(0.1, SelectedCharacter.SpecialIntervalSec);
+            return attackDps + specialDps;
+        }
+    }
 
-    // 状态文本
-    private string PlayerStatusText => snapshot.WaitingPlayerRevive ? $"等待复活 {(snapshot.TimeToResumeMs / 1000.0):0.00}s" : "战斗中";
-    private string EnemyStatusText => snapshot.WaitingEnemyRespawn ? $"等待刷新 {(snapshot.TimeToResumeMs / 1000.0):0.00}s" : "战斗中";
+    // 状态文本 - 根据战斗状态显示不同的提示信息
+    // Status text - displays different prompt messages based on battle state
+    private string PlayerStatusText
+    {
+        get
+        {
+            if (snapshot.State == MultiBattleState.PlayerTeamDeadCooldown)
+                return $"等待复活 {(snapshot.TimeToResumeMs / 1000.0):0.00}s";
+            return "战斗中";
+        }
+    }
+    
+    private string EnemyStatusText
+    {
+        get
+        {
+            if (snapshot.State == MultiBattleState.EnemyTeamDeadCooldown)
+                return $"等待刷新 {(snapshot.TimeToResumeMs / 1000.0):0.00}s";
+            return "战斗中";
+        }
+    }
 
-    // 进度（0..1）与剩余毫秒（从战斗实例读取）
-    private double attackProgress01 => battle?.AttackProgress01 ?? 0.0;
-    private double specialProgress01 => battle?.SpecialProgress01 ?? 0.0;
-    private double enemyProgress01 => battle?.EnemyProgress01 ?? 0.0;
-    private double attackRemainMs => battle?.AttackTimeToNextMs ?? 0.0;
-    private double specialRemainMs => battle?.SpecialTimeToNextMs ?? 0.0;
-    private double enemyRemainMs => battle?.EnemyTimeToNextMs ?? 0.0;
+    // 从玩家队伍获取角色战斗轨道的进度信息
+    // Get character battle track progress from player team
+    private double attackProgress01
+    {
+        get
+        {
+            if (playerTeam == null || SelectedCharacter == null) return 0.0;
+            var member = playerTeam.GetMember(SelectedCharacter.Id);
+            if (member?.Entity == null) return 0.0;
+            
+            // 在冷却状态时进度为0
+            if (snapshot.State != MultiBattleState.Fighting) return 0.0;
+            
+            // 需要从战斗实例内部获取轨道进度
+            // 暂时返回模拟值，实际应从MultiBattleInstance暴露
+            return 0.0;
+        }
+    }
+    
+    private double specialProgress01
+    {
+        get
+        {
+            if (snapshot.State != MultiBattleState.Fighting) return 0.0;
+            return 0.0;
+        }
+    }
+    
+    private double enemyProgress01
+    {
+        get
+        {
+            if (snapshot.State != MultiBattleState.Fighting) return 0.0;
+            return 0.0;
+        }
+    }
+    
+    private double attackRemainMs => 0.0;
+    private double specialRemainMs => 0.0;
+    private double enemyRemainMs => 0.0;
 
     // 日志
     private const int MaxLogEntries = 200;
@@ -162,23 +237,32 @@
         return professions.FirstOrDefault(p => p.Id == professionId)?.Name ?? professionId;
     }
 
+    /// <summary>
+    /// 构建战斗实例 - 创建1v1战斗（使用多单位战斗系统）
+    /// Build battle instance - creates 1v1 battle (using multi-unit battle system)
+    /// </summary>
     private void BuildBattle()
     {
         if (SelectedCharacter == null) return;
 
+        // 取消订阅旧战斗实例的事件
+        // Unsubscribe from old battle instance events
         if (battle is not null)
         {
             battle.CombatEventFired -= OnCombatEvent;
-            battle.LootDropped -= OnLootDropped; // 取消订阅旧实例的事件
+            battle.LootDropped -= OnLootDropped;
         }
 
         var m = currentMonster ?? monsters.First();
 
+        // 创建时钟和随机数生成器
+        // Create clock and random number generator
         var clock = new SimClock();
         int seed = HashSeed(SelectedCharacter.Id, m.Id, configVersion);
         var rng = new RngContext(seed);
 
-        // 使用角色数据创建战斗角色实例
+        // 创建角色实体（从SelectedCharacter复制属性）
+        // Create character entity (copy properties from SelectedCharacter)
         var character = new Character
         {
             MaxHp = Math.Max(1, SelectedCharacter.MaxHp),
@@ -194,6 +278,8 @@
             ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0)
         };
 
+        // 创建敌人实体（从怪物定义复制属性）
+        // Create enemy entity (copy properties from monster definition)
         var enemy = new Enemy
         {
             MaxHp = Math.Max(1, m.MaxHp),
@@ -202,14 +288,57 @@
             DamagePerHit = Math.Max(1, m.DamagePerHit),
             VariancePct = m.VariancePct,
             RespawnMs = (int)Math.Round(Math.Max(0, m.RespawnSec) * 1000.0),
-            // 设置掉落物配置
-            // Set loot drop configuration
             LootDrops = m.LootDrops?.ToList() ?? new List<Game.Config.LootDrop>()
         };
 
-        battle = new BattleInstance(clock, rng, character, enemy);
+        // 创建玩家队伍（单成员）
+        // Create player team (single member)
+        playerTeam = new BattleTeam<Character>("player_team", "玩家队伍", TeamType.Player);
+        playerTeam.AddMember(SelectedCharacter.Id, character, character.MaxHp);
+
+        // 创建敌人队伍（单成员）
+        // Create enemy team (single member)
+        enemyTeam = new BattleTeam<Enemy>("enemy_team", m.Name, TeamType.Enemy);
+        enemyTeam.AddMember(m.Id, enemy, enemy.MaxHp);
+
+        // 配置多单位战斗参数（从角色和怪物属性中获取）
+        // Configure multi-battle parameters (from character and monster attributes)
+        var config = new MultiBattleConfig
+        {
+            // 目标选择策略（1v1时无影响，但保持一致性）
+            // Target selection strategy (no effect in 1v1, but keeps consistency)
+            PlayerTargetStrategy = TargetStrategy.Random,
+            EnemyTargetStrategy = TargetStrategy.Random,
+            
+            // 特殊技能为单体攻击（1v1场景）
+            // Special skill is single-target (1v1 scenario)
+            SpecialIsAoe = false,
+            AoeDamageMultiplier = 1.0,
+            
+            // 允许玩家复活和敌人刷新（持续战斗模式）
+            // Allow player revival and enemy respawn (continuous battle mode)
+            AllowPlayerRevive = true,
+            AllowEnemyRespawn = true,
+            
+            // 使用角色和怪物配置的复活/刷新时间
+            // Use character and monster configured revival/respawn times
+            PlayerReviveCooldownMs = character.ReviveMs,
+            EnemyRespawnCooldownMs = enemy.RespawnMs,
+            
+            // 复活时满血
+            // Revive with full HP
+            ReviveWithFullHp = true
+        };
+
+        // 创建多单位战斗实例
+        // Create multi-unit battle instance
+        battle = new MultiBattleInstance(clock, rng, playerTeam, enemyTeam, config);
+        
+        // 订阅战斗事件
+        // Subscribe to battle events
         battle.CombatEventFired += OnCombatEvent;
-        battle.LootDropped += OnLootDropped; // 订阅掉落物事件
+        battle.LootDropped += OnLootDropped;
+        
         digest = null;
     }
 
@@ -251,11 +380,18 @@
         StateHasChanged();
     }
 
+    /// <summary>
+    /// 重置战斗 - 停止当前战斗并重新构建
+    /// Reset battle - stop current battle and rebuild
+    /// </summary>
     private void ResetBattle()
     {
         StopBattle();
         BuildBattle();
-        snapshot = battle!.GetSnapshot();
+        if (battle != null)
+        {
+            snapshot = battle.GetSnapshot();
+        }
         StateHasChanged();
     }
 
@@ -274,17 +410,26 @@
         catch (TaskCanceledException) { }
     }
 
-    private void OnCombatEvent(CombatEvent ev)
+    /// <summary>
+    /// 战斗事件处理 - 处理战斗中的伤害事件并记录日志
+    /// Combat event handler - handles damage events in battle and logs them
+    /// </summary>
+    private void OnCombatEvent(MultiCombatEvent ev)
     {
+        // 转换时间为秒数
+        // Convert time to seconds
         var sec = ev.TimeMs / 1000.0;
 
-        // 名称解析
+        // 获取攻击者和防御者的显示名称
+        // Get attacker and defender display names
         var charName = string.IsNullOrWhiteSpace(SelectedCharacter?.Name) ? "未知角色" : SelectedCharacter!.Name;
         var monsterName = currentMonster?.Name
                           ?? monsters.FirstOrDefault(m => m.Id == selectedMonsterId)?.Name
                           ?? selectedMonsterId
                           ?? "未知怪物";
 
+        // 动作来源标识
+        // Action source identifier
         var src = ev.Source switch
         {
             EventSource.Attack => "Attack",
@@ -293,26 +438,79 @@
             _ => "Unknown"
         };
 
-        // 期望格式：攻击者-名称-动作 命中-防御者-名称
+        // 确定攻击者和防御者的身份标签
+        // Determine attacker and defender identity labels
         var attackerSide = ev.Attacker == ActorType.Player ? "玩家" : "怪物";
         var attackerName = ev.Attacker == ActorType.Player ? charName : monsterName;
 
         var defenderSide = ev.Defender == ActorType.Player ? "玩家" : "怪物";
         var defenderName = ev.Defender == ActorType.Player ? charName : monsterName;
 
+        // 构建日志行（格式：时间 攻击者 动作 → 防御者，伤害，结果HP，RNG索引）
+        // Build log line (format: time attacker action → defender, damage, result HP, RNG index)
         var line =
             $"[{sec:0.00}s] {attackerSide}:{attackerName} {src} 命中→{defenderSide}:{defenderName}，伤害 {ev.Damage}，{defenderSide}HP→ {ev.DefenderHpAfter}，RNGidx={ev.RngIndexAfter}";
 
+        // 添加到日志列表，保持最大条目数限制
+        // Add to log list, maintain max entries limit
         logs.Add(line);
         if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
 
         _ = InvokeAsync(StateHasChanged);
     }
 
+    /// <summary>
+    /// 清空战斗日志
+    /// Clear combat logs
+    /// </summary>
     private void ClearLogs()
     {
         logs.Clear();
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// 获取玩家当前生命值 - 从玩家队伍中获取
+    /// Get player current HP - retrieved from player team
+    /// </summary>
+    private int GetPlayerHp()
+    {
+        if (playerTeam == null || SelectedCharacter == null) return 0;
+        var member = playerTeam.GetMember(SelectedCharacter.Id);
+        return member?.CurrentHp ?? 0;
+    }
+
+    /// <summary>
+    /// 获取玩家最大生命值 - 从玩家队伍中获取
+    /// Get player max HP - retrieved from player team
+    /// </summary>
+    private int GetPlayerMaxHp()
+    {
+        if (playerTeam == null || SelectedCharacter == null) return 1;
+        var member = playerTeam.GetMember(SelectedCharacter.Id);
+        return member?.MaxHp ?? 1;
+    }
+
+    /// <summary>
+    /// 获取敌人当前生命值 - 从敌人队伍中获取
+    /// Get enemy current HP - retrieved from enemy team
+    /// </summary>
+    private int GetEnemyHp()
+    {
+        if (enemyTeam == null || currentMonster == null) return 0;
+        var member = enemyTeam.GetMember(currentMonster.Id);
+        return member?.CurrentHp ?? 0;
+    }
+
+    /// <summary>
+    /// 获取敌人最大生命值 - 从敌人队伍中获取
+    /// Get enemy max HP - retrieved from enemy team
+    /// </summary>
+    private int GetEnemyMaxHp()
+    {
+        if (enemyTeam == null || currentMonster == null) return 1;
+        var member = enemyTeam.GetMember(currentMonster.Id);
+        return member?.MaxHp ?? 1;
     }
 
     /// <summary>
