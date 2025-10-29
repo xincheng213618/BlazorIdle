@@ -1,6 +1,7 @@
 using BlazorIdle.Shared.Models;
 using BlazorIdle.Game.Config;
 using BlazorIdle.Shared.DTOs;
+using BlazorIdle.Configuration;
 using System.Net.Http.Json;
 using System.Net.Http.Headers;
 
@@ -25,12 +26,12 @@ namespace BlazorIdle.Services
 
     public class CharacterService : ICharacterService
     {
-        private const string ApiBaseUrl = "https://localhost:7056/api/character";
         private const string SelectedCharacterKey = "blazoridle_selected_character";
         
         private readonly HttpClient _httpClient;
         private readonly IAuthService _authService;
         private readonly Blazored.LocalStorage.ILocalStorageService _localStorage;
+        private readonly ApiConfiguration _apiConfig;
         private CharacterListResponse? _cachedCharacters;
 
         // 事件实现
@@ -39,11 +40,13 @@ namespace BlazorIdle.Services
         public CharacterService(
             HttpClient httpClient, 
             IAuthService authService,
-            Blazored.LocalStorage.ILocalStorageService localStorage)
+            Blazored.LocalStorage.ILocalStorageService localStorage,
+            ApiConfiguration apiConfig)
         {
             _httpClient = httpClient;
             _authService = authService;
             _localStorage = localStorage;
+            _apiConfig = apiConfig;
         }
 
         /// <summary>
@@ -69,7 +72,7 @@ namespace BlazorIdle.Services
             try
             {
                 await ConfigureAuthHeaderAsync();
-                var response = await _httpClient.GetFromJsonAsync<CharacterListResponse>(ApiBaseUrl);
+                var response = await _httpClient.GetFromJsonAsync<CharacterListResponse>(_apiConfig.CharacterApiUrl);
                 _cachedCharacters = response;
                 return response;
             }
@@ -89,7 +92,7 @@ namespace BlazorIdle.Services
             try
             {
                 await ConfigureAuthHeaderAsync();
-                var response = await _httpClient.GetFromJsonAsync<CharacterResponse>($"{ApiBaseUrl}/{id}");
+                var response = await _httpClient.GetFromJsonAsync<CharacterResponse>($"{_apiConfig.CharacterApiUrl}/{id}");
                 return response?.Character;
             }
             catch (Exception ex)
@@ -115,7 +118,7 @@ namespace BlazorIdle.Services
                     ProfessionId = profession.Id
                 };
                 
-                var response = await _httpClient.PostAsJsonAsync(ApiBaseUrl, request);
+                var response = await _httpClient.PostAsJsonAsync(_apiConfig.CharacterApiUrl, request);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -154,7 +157,7 @@ namespace BlazorIdle.Services
             {
                 await ConfigureAuthHeaderAsync();
                 
-                var response = await _httpClient.DeleteAsync($"{ApiBaseUrl}/{id}");
+                var response = await _httpClient.DeleteAsync($"{_apiConfig.CharacterApiUrl}/{id}");
                 
                 if (response.IsSuccessStatusCode)
                 {

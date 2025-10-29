@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using BlazorIdle.Shared.DTOs;
+using BlazorIdle.Configuration;
 using Blazored.LocalStorage;
 
 namespace BlazorIdle.Services;
@@ -16,21 +17,22 @@ public class AuthService : IAuthService
 {
     private readonly HttpClient _httpClient;
     private readonly ILocalStorageService _localStorage;
+    private readonly ApiConfiguration _apiConfig;
     private const string TokenKey = "authToken";
     private const string UsernameKey = "username";
-    private const string ApiBaseUrl = "https://localhost:7056/api/auth";
 
-    public AuthService(HttpClient httpClient, ILocalStorageService localStorage)
+    public AuthService(HttpClient httpClient, ILocalStorageService localStorage, ApiConfiguration apiConfig)
     {
         _httpClient = httpClient;
         _localStorage = localStorage;
+        _apiConfig = apiConfig;
     }
 
     public async Task<AuthResponse> Login(LoginRequest request)
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync($"{ApiBaseUrl}/login", request);
+            var response = await _httpClient.PostAsJsonAsync($"{_apiConfig.AuthApiUrl}/login", request);
             
             if (response.IsSuccessStatusCode)
             {
@@ -58,7 +60,7 @@ public class AuthService : IAuthService
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync($"{ApiBaseUrl}/register", request);
+            var response = await _httpClient.PostAsJsonAsync($"{_apiConfig.AuthApiUrl}/register", request);
             
             if (response.IsSuccessStatusCode)
             {
