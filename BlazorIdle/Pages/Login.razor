@@ -75,14 +75,6 @@
                 return;
             }
 
-            // Validate password
-            var passwordValidation = ValidationHelper.ValidatePassword(loginRequest.Password);
-            if (!passwordValidation.IsValid)
-            {
-                errorMessage = passwordValidation.ErrorMessage;
-                return;
-            }
-
             var response = await AuthService.Login(loginRequest);
             
             if (response.Success)

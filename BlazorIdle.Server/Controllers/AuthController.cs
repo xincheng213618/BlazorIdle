@@ -134,17 +134,6 @@ public class AuthController : ControllerBase
                 });
             }
 
-            // Validate password format
-            var passwordValidation = ValidationHelper.ValidatePassword(request.Password);
-            if (!passwordValidation.IsValid)
-            {
-                return Unauthorized(new AuthResponse
-                {
-                    Success = false,
-                    Message = "用户名或密码错误"
-                });
-            }
-
             // Find user by username
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
             if (user == null)

@@ -19,19 +19,10 @@ public static class ValidationHelper
             return (false, "用户名不能为空");
         }
 
-        // Trim the username
-        username = username.Trim();
-
         // Check length
         if (username.Length < 3 || username.Length > 50)
         {
             return (false, "用户名长度必须为3-50个字符");
-        }
-
-        // Check if contains spaces
-        if (username.Contains(' '))
-        {
-            return (false, "用户名不能包含空格");
         }
 
         // Check if starts or ends with special symbols (. _ -)
@@ -74,8 +65,8 @@ public static class ValidationHelper
             return (false, "密码长度至少为6个字符");
         }
 
-        // Check if only contains ASCII characters (printable characters from 33-126)
-        // Allow space (32) as well since it's a standard ASCII character
+        // Check if only contains ASCII printable characters (32-126)
+        // This includes space, letters, numbers, and standard symbols
         foreach (char c in password)
         {
             if (c < 32 || c > 126)
