@@ -779,6 +779,112 @@ namespace BlazorIdle.Game
                 segments: _segments
             );
         }
+
+        /// <summary>
+        /// 检查角色战斗轨道是否可用
+        /// Check if character battle track is available
+        /// </summary>
+        /// <returns>如果角色存在且处于战斗状态返回true，否则返回false / Returns true if character exists and is in fighting state, false otherwise</returns>
+        private bool IsCharacterTrackAvailable(string characterId, out CharacterTracks? tracks)
+        {
+            tracks = null;
+            if (!_characterTracks.TryGetValue(characterId, out tracks))
+                return false;
+            
+            return _state == MultiBattleState.Fighting && tracks.IsEnabled;
+        }
+
+        /// <summary>
+        /// 检查敌人战斗轨道是否可用
+        /// Check if enemy battle track is available
+        /// </summary>
+        /// <returns>如果敌人存在且处于战斗状态返回true，否则返回false / Returns true if enemy exists and is in fighting state, false otherwise</returns>
+        private bool IsEnemyTrackAvailable(string enemyId, out EnemyTrack? track)
+        {
+            track = null;
+            if (!_enemyTracks.TryGetValue(enemyId, out track))
+                return false;
+            
+            return _state == MultiBattleState.Fighting && track.IsEnabled;
+        }
+
+        /// <summary>
+        /// 获取指定角色的攻击进度（0-1范围）
+        /// Get attack progress for specified character (0-1 range)
+        /// </summary>
+        /// <returns>返回0.0-1.0之间的进度值，角色不存在或非战斗状态时返回0.0 / Returns progress value between 0.0-1.0, returns 0.0 if character not found or not in fighting state</returns>
+        public double GetCharacterAttackProgress(string characterId)
+        {
+            if (!IsCharacterTrackAvailable(characterId, out var tracks))
+                return 0.0;
+
+            return tracks!.AttackTrack.Progress01(_clock.NowMs);
+        }
+
+        /// <summary>
+        /// 获取指定角色的特殊技能进度（0-1范围）
+        /// Get special skill progress for specified character (0-1 range)
+        /// </summary>
+        /// <returns>返回0.0-1.0之间的进度值，角色不存在或非战斗状态时返回0.0 / Returns progress value between 0.0-1.0, returns 0.0 if character not found or not in fighting state</returns>
+        public double GetCharacterSpecialProgress(string characterId)
+        {
+            if (!IsCharacterTrackAvailable(characterId, out var tracks))
+                return 0.0;
+
+            return tracks!.SpecialTrack.Progress01(_clock.NowMs);
+        }
+
+        /// <summary>
+        /// 获取指定敌人的攻击进度（0-1范围）
+        /// Get attack progress for specified enemy (0-1 range)
+        /// </summary>
+        /// <returns>返回0.0-1.0之间的进度值，敌人不存在或非战斗状态时返回0.0 / Returns progress value between 0.0-1.0, returns 0.0 if enemy not found or not in fighting state</returns>
+        public double GetEnemyAttackProgress(string enemyId)
+        {
+            if (!IsEnemyTrackAvailable(enemyId, out var track))
+                return 0.0;
+
+            return track!.AttackTrack.Progress01(_clock.NowMs);
+        }
+
+        /// <summary>
+        /// 获取指定角色的攻击剩余时间（毫秒）
+        /// Get attack time remaining for specified character (milliseconds)
+        /// </summary>
+        /// <returns>返回剩余时间（毫秒），角色不存在或非战斗状态时返回0.0 / Returns remaining time in milliseconds, returns 0.0 if character not found or not in fighting state</returns>
+        public double GetCharacterAttackTimeRemaining(string characterId)
+        {
+            if (!IsCharacterTrackAvailable(characterId, out var tracks))
+                return 0.0;
+
+            return tracks!.AttackTrack.TimeToNextMs(_clock.NowMs);
+        }
+
+        /// <summary>
+        /// 获取指定角色的特殊技能剩余时间（毫秒）
+        /// Get special skill time remaining for specified character (milliseconds)
+        /// </summary>
+        /// <returns>返回剩余时间（毫秒），角色不存在或非战斗状态时返回0.0 / Returns remaining time in milliseconds, returns 0.0 if character not found or not in fighting state</returns>
+        public double GetCharacterSpecialTimeRemaining(string characterId)
+        {
+            if (!IsCharacterTrackAvailable(characterId, out var tracks))
+                return 0.0;
+
+            return tracks!.SpecialTrack.TimeToNextMs(_clock.NowMs);
+        }
+
+        /// <summary>
+        /// 获取指定敌人的攻击剩余时间（毫秒）
+        /// Get attack time remaining for specified enemy (milliseconds)
+        /// </summary>
+        /// <returns>返回剩余时间（毫秒），敌人不存在或非战斗状态时返回0.0 / Returns remaining time in milliseconds, returns 0.0 if enemy not found or not in fighting state</returns>
+        public double GetEnemyAttackTimeRemaining(string enemyId)
+        {
+            if (!IsEnemyTrackAvailable(enemyId, out var track))
+                return 0.0;
+
+            return track!.AttackTrack.TimeToNextMs(_clock.NowMs);
+        }
     }
 
     /// <summary>
