@@ -166,7 +166,11 @@
     {
         if (SelectedCharacter == null) return;
 
-        if (battle is not null) battle.CombatEventFired -= OnCombatEvent;
+        if (battle is not null)
+        {
+            battle.CombatEventFired -= OnCombatEvent;
+            battle.LootDropped -= OnLootDropped; // 取消订阅旧实例的事件
+        }
 
         var m = currentMonster ?? monsters.First();
 
@@ -197,11 +201,15 @@
             AttackIntervalSec = Math.Max(0.1, m.AttackIntervalSec),
             DamagePerHit = Math.Max(1, m.DamagePerHit),
             VariancePct = m.VariancePct,
-            RespawnMs = (int)Math.Round(Math.Max(0, m.RespawnSec) * 1000.0)
+            RespawnMs = (int)Math.Round(Math.Max(0, m.RespawnSec) * 1000.0),
+            // 设置掉落物配置
+            // Set loot drop configuration
+            LootDrops = m.LootDrops?.ToList() ?? new List<Game.Config.LootDrop>()
         };
 
         battle = new BattleInstance(clock, rng, character, enemy);
         battle.CombatEventFired += OnCombatEvent;
+        battle.LootDropped += OnLootDropped; // 订阅掉落物事件
         digest = null;
     }
 
@@ -307,6 +315,31 @@
         StateHasChanged();
     }
 
+    /// <summary>
+    /// 处理掉落物事件 - 将掉落物添加到角色库存
+    /// Handle loot drop event - add dropped items to character inventory
+    /// </summary>
+    private void OnLootDropped(LootDropEvent lootEvent)
+    {
+        if (SelectedCharacter == null) return;
+
+        // 添加物品到角色库存
+        // Add item to character inventory
+        SelectedCharacter.Inventory.AddItem(lootEvent.ItemId, lootEvent.Quantity);
+
+        var sec = lootEvent.TimeMs / 1000.0;
+        var itemDef = GameConfig.GetItem(lootEvent.ItemId);
+        var itemName = itemDef?.Name ?? lootEvent.ItemId;
+
+        // 记录掉落日志
+        // Log loot drop
+        var logLine = $"[{sec:0.00}s] 💰 获得掉落物: {itemName} x{lootEvent.Quantity}";
+        logs.Add(logLine);
+        if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     // 友好显示用时：<1h 显示 mm:ss.cc；>=1h 显示 hh:mm:ss
     private static string FormatDuration(int ms)
     {
@@ -322,7 +355,11 @@
     {
         _cts?.Cancel();
         _cts?.Dispose();
-        if (battle is not null) battle.CombatEventFired -= OnCombatEvent;
+        if (battle is not null)
+        {
+            battle.CombatEventFired -= OnCombatEvent;
+            battle.LootDropped -= OnLootDropped; // 取消订阅掉落物事件
+        }
     }
 
     public async ValueTask DisposeAsync()

@@ -72,5 +72,12 @@ namespace BlazorIdle.Shared.Models
 
         [JsonPropertyName("reviveSec")]
         public double ReviveSec { get; set; }
+
+        /// <summary>
+        /// 角色库存 - 存储角色拥有的所有物品
+        /// Character inventory - stores all items owned by the character
+        /// </summary>
+        [JsonPropertyName("inventory")]
+        public Inventory Inventory { get; set; } = new Inventory();
     }
 }

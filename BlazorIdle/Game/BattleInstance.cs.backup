@@ -227,10 +227,6 @@ namespace BlazorIdle.Game
         private void EnterEnemyCooldown(int now)
         {
             _loopState = LoopState.EnemyDeadCooldown;
-            // 触发掉落物事件
-            // Trigger loot drop events
-            ProcessLootDrops(now);
-
             _resumeAtMs = now + Math.Max(0, _enemy.RespawnMs);
             // 进入冷却时可选择立即把玩家轨道推进到 now+interval，以便视觉上“清空并静止”
             // 我们在 UI 端已返回 0 进度，这里无需额外处理；真正避免积压由恢复时 Reset(now) 保证。
@@ -243,45 +239,6 @@ namespace BlazorIdle.Game
             // 同上，真正避免积压由恢复时 Reset(now) 保证。
         }
 
-
-        /// <summary>
-        /// 处理掉落物 - 根据配置随机生成掉落物
-        /// Process loot drops - randomly generate loot based on configuration
-        /// </summary>
-        private void ProcessLootDrops(int now)
-        {
-            if (_enemy.LootDrops == null || _enemy.LootDrops.Count == 0)
-                return;
-
-            foreach (var drop in _enemy.LootDrops)
-            {
-                // 检查掉落概率
-                // Check drop chance
-                if (_rng.NextDouble() > drop.DropChance)
-                    continue;
-
-                // 随机掉落数量（在最小和最大之间）
-                // Random drop quantity (between min and max)
-                int quantity = drop.MinQuantity;
-                if (drop.MaxQuantity > drop.MinQuantity)
-                {
-                    quantity = _rng.NextRange(drop.MinQuantity, drop.MaxQuantity);
-                }
-
-                if (quantity > 0)
-                {
-                    // 触发掉落事件
-                    // Trigger loot drop event
-                    var lootEvent = new LootDropEvent
-                    {
-                        TimeMs = now,
-                        ItemId = drop.ItemId,
-                        Quantity = quantity
-                    };
-                    LootDropped?.Invoke(lootEvent);
-                }
-            }
-        }
         private int PlayerRollDamage(int baseDamage, bool allowCrit)
         {
             double dmg = Math.Floor(_rng.Jitter(baseDamage, _player.VariancePct));

@@ -1,0 +1,207 @@
+@using BlazorIdle.Shared.Models
+@using BlazorIdle.Game.Config
+@inject IGameConfigService GameConfig
+
+<div class="inventory-panel">
+    <div class="panel-header">
+        <h5 class="mb-0">
+            <span class="icon">🎒</span>
+            物品栏 (Inventory)
+        </h5>
+        @if (Inventory != null && Inventory.Items.Any())
+        {
+            <small class="text-muted">共 @Inventory.Items.Count 种物品</small>
+        }
+    </div>
+    
+    <div class="panel-body">
+        @if (Inventory == null || !Inventory.Items.Any())
+        {
+            <div class="empty-state">
+                <p class="text-muted mb-0">
+                    <span class="icon">📦</span>
+                    暂无物品
+                </p>
+            </div>
+        }
+        else
+        {
+            <div class="items-list">
+                @foreach (var item in Inventory.Items.OrderBy(i => i.ItemId))
+                {
+                    var itemDef = GameConfig.GetItem(item.ItemId);
+                    <div class="item-entry">
+                        <div class="item-info">
+                            <span class="item-icon">@(itemDef?.Icon ?? "📦")</span>
+                            <div class="item-details">
+                                <div class="item-name">@(itemDef?.Name ?? item.ItemId)</div>
+                                @if (!string.IsNullOrWhiteSpace(itemDef?.Description))
+                                {
+                                    <div class="item-desc">@itemDef.Description</div>
+                                }
+                            </div>
+                        </div>
+                        <div class="item-quantity">
+                            <span class="quantity-badge">×@item.Quantity.ToString("N0")</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// 要显示的库存数据
+    /// Inventory data to display
+    /// </summary>
+    [Parameter]
+    public Inventory? Inventory { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 确保配置已加载
+        // Ensure configuration is loaded
+        await GameConfig.EnsureLoadedAsync();
+    }
+}
+
+<style>
+    .inventory-panel {
+        background: #fff;
+        border: 1px solid #e5e5e5;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        overflow: hidden;
+    }
+
+    .panel-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .panel-header h5 {
+        color: white;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .panel-header .icon {
+        font-size: 1.2em;
+        margin-right: 8px;
+    }
+
+    .panel-header small {
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .panel-body {
+        padding: 15px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+    }
+
+    .empty-state .icon {
+        font-size: 3em;
+        display: block;
+        margin-bottom: 10px;
+        opacity: 0.3;
+    }
+
+    .items-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .item-entry {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border: 1px solid #e9ecef;
+        transition: all 0.2s ease;
+    }
+
+    .item-entry:hover {
+        background: #e9ecef;
+        transform: translateX(2px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+
+    .item-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+    }
+
+    .item-icon {
+        font-size: 2em;
+        line-height: 1;
+    }
+
+    .item-details {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .item-name {
+        font-weight: 600;
+        color: #212529;
+        font-size: 0.95em;
+    }
+
+    .item-desc {
+        font-size: 0.85em;
+        color: #6c757d;
+    }
+
+    .item-quantity {
+        display: flex;
+        align-items: center;
+    }
+
+    .quantity-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9em;
+        min-width: 60px;
+        text-align: center;
+    }
+
+    /* 滚动条样式 */
+    .panel-body::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .panel-body::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+
+    .panel-body::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 3px;
+    }
+
+    .panel-body::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+</style>

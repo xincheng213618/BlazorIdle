@@ -50,5 +50,11 @@ namespace BlazorIdle.Game.Config
 
         // 新增：怪物死亡后的刷新时间（秒）
         [JsonPropertyName("respawnSec")] public double RespawnSec { get; set; } = 3.0;
+
+        /// <summary>
+        /// 掉落物列表 - 怪物死亡时可能掉落的物品
+        /// Loot drops list - items that may drop when monster dies
+        /// </summary>
+        [JsonPropertyName("lootDrops")] public List<LootDrop> LootDrops { get; set; } = new();
     }
 }
