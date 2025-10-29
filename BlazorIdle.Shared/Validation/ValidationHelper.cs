@@ -5,7 +5,9 @@ namespace BlazorIdle.Shared.Validation;
 public static class ValidationHelper
 {
     /// <summary>
-    /// Validates username format according to standard rules:
+    /// Validates username format according to standard rules.
+    /// Note: This method expects the username to already be sanitized (trimmed) via SanitizeUsername.
+    /// Rules:
     /// - Only allows letters, numbers, underscore, dot, and hyphen
     /// - Cannot start or end with . _ -
     /// - Cannot contain consecutive special symbols (.. __ --)
@@ -38,6 +40,7 @@ public static class ValidationHelper
         }
 
         // Check if only contains allowed characters (letters, numbers, underscore, dot, hyphen)
+        // This also rejects spaces and other special characters
         if (!Regex.IsMatch(username, @"^[a-zA-Z0-9._-]+$"))
         {
             return (false, "用户名只能包含字母、数字、点(.)、下划线(_)和连字符(-)");
