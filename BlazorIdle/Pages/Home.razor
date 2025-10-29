@@ -65,6 +65,8 @@
     protected override async Task OnInitializedAsync()
     {
         selectedCharacter = await CharacterService.GetSelectedCharacterAsync();
+        // 有已选角色 -> 默认收起；没有 -> 默认展开
+        isCollapsed = selectedCharacter is not null;
     }
 
     private void ToggleCollapse()
@@ -92,7 +94,6 @@
         StateHasChanged();
     }
 }
-
 <style>
     .collapsible-header {
         cursor: pointer;
