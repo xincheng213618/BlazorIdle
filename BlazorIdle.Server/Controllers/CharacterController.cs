@@ -384,7 +384,10 @@ public class CharacterController : ControllerBase
             // Save changes to database
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation($"User {userId} updated character {character.Id} ({character.Name})");
+            // 使用结构化日志记录，避免日志伪造攻击
+            // Use structured logging to avoid log forging attacks
+            _logger.LogInformation("User {UserId} updated character {CharacterId} ({CharacterName})", 
+                userId, character.Id, character.Name);
 
             return Ok(new CharacterResponse
             {
@@ -395,7 +398,9 @@ public class CharacterController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Failed to update character {id}");
+            // 使用结构化日志记录，避免日志伪造攻击
+            // Use structured logging to avoid log forging attacks
+            _logger.LogError(ex, "Failed to update character with id: {CharacterId}", id);
             return StatusCode(500, new CharacterResponse
             {
                 Success = false,
