@@ -19,6 +19,17 @@ namespace BlazorIdle.Game
         private readonly Dictionary<string, CharacterTracks> _characterTracks = new();
         // 每个怪物的攻击轨道
         private readonly Dictionary<string, EnemyTrack> _enemyTracks = new();
+        /// <summary>
+        /// 获取玩家队伍引用（只读）
+        /// Get player team reference (read-only)
+        /// </summary>
+        public BattleTeam<Character> PlayerTeam => _playerTeam;
+
+        /// <summary>
+        /// 获取敌人队伍引用（只读）
+        /// Get enemy team reference (read-only)
+        /// </summary>
+        public BattleTeam<Enemy> EnemyTeam => _enemyTeam;
 
         // 战斗配置
         private readonly MultiBattleConfig _config;
@@ -707,18 +718,24 @@ namespace BlazorIdle.Game
         /// </summary>
         private string GetCharacterName(string characterId)
         {
-            // TODO: 实现获取角色名称逻辑
+            if (characterId.StartsWith("char_"))
+            {
+                return $"Character_{characterId.Substring(5)}";
+            }
+            else if (characterId.StartsWith("teammate_"))
+            {
+                return $"Character_teammate_{characterId.Substring(9)}";
+            }
             return $"Character_{characterId}";
         }
-
         /// <summary>
         /// 获取敌人名称
         /// Get enemy name
         /// </summary>
         private string GetEnemyName(string enemyId)
         {
-            // TODO: 实现获取敌人名称逻辑
-            return $"Enemy_{enemyId}";
+            // 直接使用传入的 enemyId，因为已经包含了有意义的名称
+            return enemyId.Replace("_", " ");
         }
 
         /// <summary>
