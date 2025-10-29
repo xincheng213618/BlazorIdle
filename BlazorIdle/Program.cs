@@ -20,6 +20,16 @@ var apiConfig = await http.GetFromJsonAsync<Dictionary<string, ApiConfiguration>
 var apiConfiguration = apiConfig?["ApiSettings"] ?? new ApiConfiguration { BaseUrl = "https://localhost:7056" };
 builder.Services.AddSingleton(apiConfiguration);
 
+// 加载心跳配置
+// Load heartbeat configuration
+var heartbeatConfig = await http.GetFromJsonAsync<Dictionary<string, HeartbeatConfiguration>>("appsettings.json");
+var heartbeatConfiguration = heartbeatConfig?["HeartbeatConfig"] ?? new HeartbeatConfiguration 
+{ 
+    SaveIntervalSeconds = 30,
+    EnableAutoSave = true 
+};
+builder.Services.AddSingleton(heartbeatConfiguration);
+
 // Add Blazored LocalStorage
 builder.Services.AddBlazoredLocalStorage();
 
@@ -32,7 +42,12 @@ builder.Services.AddAuthorizationCore();
 // Add Character service
 builder.Services.AddScoped<ICharacterService, CharacterService>();
 
-// Game config service (scoped������ HttpClient)
+// 添加心跳服务 - Scoped生命周期，每个用户会话独立
+// Add Heartbeat service - Scoped lifetime, independent per user session
+builder.Services.AddScoped<IHeartbeatService, HeartbeatService>();
+
+// 游戏配置服务（依赖 HttpClient）
+// Game config service (depends on HttpClient)
 builder.Services.AddScoped<IGameConfigService, GameConfigService>();
 
 await builder.Build().RunAsync();

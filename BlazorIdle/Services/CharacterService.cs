@@ -19,6 +19,7 @@ namespace BlazorIdle.Services
         Task<CharacterResponse?> DeleteCharacterAsync(string id);
         Task<CharacterData?> GetSelectedCharacterAsync();
         Task SetSelectedCharacterAsync(string? characterId);
+        Task<CharacterResponse?> UpdateCharacterAsync(string characterId, CharacterData character);
 
         // 新增：选中角色变更事件
         event Action<CharacterData?>? SelectedCharacterChanged;
@@ -242,6 +243,71 @@ namespace BlazorIdle.Services
             catch (Exception ex)
             {
                 Console.WriteLine($"Error setting selected character: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 更新角色数据 - 用于心跳保存和手动更新
+        /// Update character data - for heartbeat save and manual updates
+        /// </summary>
+        /// <param name="characterId">角色ID</param>
+        /// <param name="character">要更新的角色数据</param>
+        /// <returns>更新结果</returns>
+        public async Task<CharacterResponse?> UpdateCharacterAsync(string characterId, CharacterData character)
+        {
+            try
+            {
+                await ConfigureAuthHeaderAsync();
+
+                // 构建更新请求，包含所有可更新的字段
+                // Build update request with all updatable fields
+                var request = new UpdateCharacterRequest
+                {
+                    // 角色属性
+                    // Character stats
+                    MaxHp = character.MaxHp,
+                    AttackRateAPS = character.AttackRateAPS,
+                    DamagePerAttack = character.DamagePerAttack,
+                    HastePercent = character.HastePercent,
+                    SpecialIntervalSec = character.SpecialIntervalSec,
+                    SpecialDamage = character.SpecialDamage,
+                    CritChancePercent = character.CritChancePercent,
+                    CritMultiplier = character.CritMultiplier,
+                    VariancePct = character.VariancePct,
+                    ReviveSec = character.ReviveSec,
+                    // 库存数据
+                    // Inventory data
+                    Inventory = character.Inventory
+                };
+
+                var response = await _httpClient.PutAsJsonAsync(
+                    $"{_apiConfig.CharacterApiUrl}/{characterId}", 
+                    request);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<CharacterResponse>();
+                    return result;
+                }
+                else
+                {
+                    var errorResult = await response.Content.ReadFromJsonAsync<CharacterResponse>();
+                    Console.WriteLine($"Error updating character: {errorResult?.Message ?? "Unknown error"}");
+                    return errorResult ?? new CharacterResponse
+                    {
+                        Success = false,
+                        Message = "更新角色失败"
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating character {characterId}: {ex.Message}");
+                return new CharacterResponse
+                {
+                    Success = false,
+                    Message = $"更新角色失败: {ex.Message}"
+                };
             }
         }
     }

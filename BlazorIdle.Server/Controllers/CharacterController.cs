@@ -301,4 +301,111 @@ public class CharacterController : ControllerBase
             Message = "角色删除成功"
         });
     }
+
+    /// <summary>
+    /// 更新角色数据 - 用于心跳保存和手动更新
+    /// Update character data - for heartbeat save and manual updates
+    /// 该接口支持部分更新，只更新提供的字段
+    /// This endpoint supports partial updates, only updates provided fields
+    /// </summary>
+    [HttpPut("{id}")]
+    public async Task<ActionResult<CharacterResponse>> UpdateCharacter(
+        string id, 
+        [FromBody] UpdateCharacterRequest request)
+    {
+        var userId = GetCurrentUserId();
+        
+        // 获取角色并验证权限
+        // Get character and verify ownership
+        var character = await _context.Characters
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+
+        if (character == null)
+        {
+            return NotFound(new CharacterResponse
+            {
+                Success = false,
+                Message = "角色不存在或无权修改"
+            });
+        }
+
+        // 更新提供的字段（部分更新模式）
+        // Update provided fields (partial update mode)
+        
+        // 注意：通常不允许修改角色名称，但如果需要可以放开
+        // Note: Usually character name is not allowed to change, but can be enabled if needed
+        // if (!string.IsNullOrWhiteSpace(request.Name))
+        // {
+        //     character.Name = request.Name.Trim();
+        // }
+
+        // 更新角色属性
+        // Update character stats
+        if (request.MaxHp.HasValue)
+            character.MaxHp = request.MaxHp.Value;
+        
+        if (request.AttackRateAPS.HasValue)
+            character.AttackRateAPS = request.AttackRateAPS.Value;
+        
+        if (request.DamagePerAttack.HasValue)
+            character.DamagePerAttack = request.DamagePerAttack.Value;
+        
+        if (request.HastePercent.HasValue)
+            character.HastePercent = request.HastePercent.Value;
+        
+        if (request.SpecialIntervalSec.HasValue)
+            character.SpecialIntervalSec = request.SpecialIntervalSec.Value;
+        
+        if (request.SpecialDamage.HasValue)
+            character.SpecialDamage = request.SpecialDamage.Value;
+        
+        if (request.CritChancePercent.HasValue)
+            character.CritChancePercent = request.CritChancePercent.Value;
+        
+        if (request.CritMultiplier.HasValue)
+            character.CritMultiplier = request.CritMultiplier.Value;
+        
+        if (request.VariancePct.HasValue)
+            character.VariancePct = request.VariancePct.Value;
+        
+        if (request.ReviveSec.HasValue)
+            character.ReviveSec = request.ReviveSec.Value;
+
+        // 更新库存数据
+        // Update inventory data
+        if (request.Inventory != null)
+        {
+            character.Inventory = request.Inventory;
+        }
+
+        try
+        {
+            // 保存更改到数据库
+            // Save changes to database
+            await _context.SaveChangesAsync();
+
+            // 使用结构化日志记录，避免日志伪造攻击
+            // Use structured logging to avoid log forging attacks
+            _logger.LogInformation("User {UserId} updated character {CharacterId} ({CharacterName})", 
+                userId, character.Id, character.Name);
+
+            return Ok(new CharacterResponse
+            {
+                Success = true,
+                Message = "角色数据更新成功",
+                Character = character
+            });
+        }
+        catch (Exception ex)
+        {
+            // 使用结构化日志记录，避免日志伪造攻击
+            // Use structured logging to avoid log forging attacks
+            _logger.LogError(ex, "Failed to update character with id: {CharacterId}", id);
+            return StatusCode(500, new CharacterResponse
+            {
+                Success = false,
+                Message = "更新角色数据失败，请稍后重试"
+            });
+        }
+    }
 }
