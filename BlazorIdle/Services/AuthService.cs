@@ -18,7 +18,7 @@ public class AuthService : IAuthService
     private readonly ILocalStorageService _localStorage;
     private const string TokenKey = "authToken";
     private const string UsernameKey = "username";
-    private const string ApiBaseUrl = "http://localhost:7056/api/auth";
+    private const string ApiBaseUrl = "https://localhost:7056/api/auth";
 
     public AuthService(HttpClient httpClient, ILocalStorageService localStorage)
     {

@@ -25,7 +25,7 @@ namespace BlazorIdle.Services
 
     public class CharacterService : ICharacterService
     {
-        private const string ApiBaseUrl = "http://localhost:7056/api/character";
+        private const string ApiBaseUrl = "https://localhost:7056/api/character";
         private const string SelectedCharacterKey = "blazoridle_selected_character";
         
         private readonly HttpClient _httpClient;
