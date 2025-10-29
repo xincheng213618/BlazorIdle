@@ -1,6 +1,7 @@
 @using BlazorIdle.Shared.Models
 @using BlazorIdle.Services
 @using BlazorIdle.Game.Config
+@using BlazorIdle.Shared.DTOs
 @inject ICharacterService CharacterService
 @inject IGameConfigService GameConfig
 @inject IJSRuntime JSRuntime
@@ -12,7 +13,7 @@
     {
         <div class="text-muted">加载中...</div>
     }
-    else if (characters.Count == 0)
+    else if (characterListResponse == null || characterListResponse.Characters.Count == 0)
     {
         <div class="alert alert-info">
             暂无角色，请先创建一个角色。
@@ -21,7 +22,7 @@
     else
     {
         <div class="character-list">
-            @foreach (var character in characters)
+            @foreach (var character in characterListResponse.Characters)
             {
                 var profession = GetProfession(character.ProfessionId);
                 var isSelected = selectedCharacterId == character.Id;
@@ -62,38 +63,73 @@
 </div>
 
 @code {
+    /// <summary>
+    /// 角色选择变更事件
+    /// Character selection change event
+    /// </summary>
     [Parameter]
     public EventCallback<CharacterData?> OnCharacterSelected { get; set; }
 
+    /// <summary>
+    /// 角色删除事件
+    /// Character deletion event
+    /// </summary>
     [Parameter]
     public EventCallback OnCharacterDeleted { get; set; }
 
-    private List<CharacterData> characters = new();
+    // 角色列表响应 Character list response
+    private CharacterListResponse? characterListResponse;
+    
+    // 当前选中的角色ID Currently selected character ID
     private string? selectedCharacterId;
+    
+    // 加载状态 Loading state
     private bool isLoading = true;
+    
+    // 职业列表 Profession list
     private List<ProfessionDef> professions = new();
 
+    /// <summary>
+    /// 组件初始化时加载数据
+    /// Load data on component initialization
+    /// </summary>
     protected override async Task OnInitializedAsync()
     {
         await LoadData();
     }
 
+    /// <summary>
+    /// 刷新角色列表（供父组件调用）
+    /// Refresh character list (called by parent component)
+    /// </summary>
     public async Task RefreshAsync()
     {
         await LoadData();
     }
 
+    /// <summary>
+    /// 加载角色和职业数据
+    /// Load character and profession data
+    /// </summary>
     private async Task LoadData()
     {
         isLoading = true;
         try
         {
+            // 加载职业配置 Load profession configuration
             await GameConfig.EnsureLoadedAsync();
             professions = GameConfig.Professions.ToList();
 
-            characters = await CharacterService.GetCharactersAsync();
+            // 加载角色列表 Load character list
+            characterListResponse = await CharacterService.GetCharactersAsync();
+            
+            // 获取当前选中的角色 Get currently selected character
             var selected = await CharacterService.GetSelectedCharacterAsync();
             selectedCharacterId = selected?.Id;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
         }
         finally
         {
@@ -101,11 +137,15 @@
         }
     }
 
+    /// <summary>
+    /// 选择或取消选择角色
+    /// Select or deselect a character
+    /// </summary>
     private async Task SelectCharacter(string characterId)
     {
         if (selectedCharacterId == characterId)
         {
-            // 取消选中
+            // 取消选中 Deselect
             selectedCharacterId = null;
             await CharacterService.SetSelectedCharacterAsync(null);
             if (OnCharacterSelected.HasDelegate)
@@ -115,10 +155,11 @@
         }
         else
         {
-            // 选中新角色
+            // 选中新角色 Select new character
             selectedCharacterId = characterId;
             await CharacterService.SetSelectedCharacterAsync(characterId);
-            var character = characters.FirstOrDefault(c => c.Id == characterId);
+            
+            var character = characterListResponse?.Characters.FirstOrDefault(c => c.Id == characterId);
             if (OnCharacterSelected.HasDelegate)
             {
                 await OnCharacterSelected.InvokeAsync(character);
@@ -126,24 +167,49 @@
         }
     }
 
+    /// <summary>
+    /// 删除角色
+    /// Delete a character
+    /// </summary>
     private async Task DeleteCharacter(string characterId)
     {
-        var character = characters.FirstOrDefault(c => c.Id == characterId);
+        var character = characterListResponse?.Characters.FirstOrDefault(c => c.Id == characterId);
         if (character == null) return;
 
-        // Ask for confirmation before deleting
+        // 请求用户确认删除 Ask for user confirmation before deleting
         bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"确定要删除角色 '{character.Name}' 吗？此操作无法撤销。");
         if (!confirmed) return;
 
-        await CharacterService.DeleteCharacterAsync(characterId);
-        await LoadData();
-        
-        if (OnCharacterDeleted.HasDelegate)
+        try
         {
-            await OnCharacterDeleted.InvokeAsync();
+            var response = await CharacterService.DeleteCharacterAsync(characterId);
+            
+            if (response != null && response.Success)
+            {
+                // 重新加载数据 Reload data
+                await LoadData();
+                
+                // 通知父组件 Notify parent component
+                if (OnCharacterDeleted.HasDelegate)
+                {
+                    await OnCharacterDeleted.InvokeAsync();
+                }
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", response?.Message ?? "删除角色失败");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"删除角色失败: {ex.Message}");
         }
     }
 
+    /// <summary>
+    /// 根据职业ID获取职业信息
+    /// Get profession info by profession ID
+    /// </summary>
     private ProfessionDef? GetProfession(string professionId)
     {
         return professions.FirstOrDefault(p => p.Id == professionId);
