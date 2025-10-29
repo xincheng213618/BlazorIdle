@@ -316,24 +316,25 @@
     }
 
     /// <summary>
-    /// 处理掉落物事件 - 将掉落物添加到角色库存
-    /// Handle loot drop event - add dropped items to character inventory
+    /// 处理掉落物事件 - 将掉落物添加到角色库存并记录统一风格的日志
     /// </summary>
     private void OnLootDropped(LootDropEvent lootEvent)
     {
         if (SelectedCharacter == null) return;
 
-        // 添加物品到角色库存
-        // Add item to character inventory
+        // 更新库存
         SelectedCharacter.Inventory.AddItem(lootEvent.ItemId, lootEvent.Quantity);
 
+        // 统一命名与 OnCombatEvent 一致的上下文取值
         var sec = lootEvent.TimeMs / 1000.0;
+        var charName = string.IsNullOrWhiteSpace(SelectedCharacter?.Name) ? "未知角色" : SelectedCharacter!.Name;
+        var monsterName = currentMonster?.Name ?? "未知怪物";
         var itemDef = GameConfig.GetItem(lootEvent.ItemId);
         var itemName = itemDef?.Name ?? lootEvent.ItemId;
 
-        // 记录掉落日志
-        // Log loot drop
-        var logLine = $"[{sec:0.00}s] 💰 获得掉落物: {itemName} x{lootEvent.Quantity}";
+        // 与 OnCombatEvent 风格统一：玩家:角色名 动作 内容
+        var logLine = $"[{sec:0.00}s] 怪物:{monsterName} 掉落物品→玩家:{charName} 获得 {itemName} x{lootEvent.Quantity}";
+
         logs.Add(logLine);
         if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
 

@@ -59,11 +59,31 @@
     [Parameter]
     public Inventory? Inventory { get; set; }
 
+    private Inventory? _subscribed;
+
     protected override async Task OnInitializedAsync()
     {
         // 确保配置已加载
         // Ensure configuration is loaded
         await GameConfig.EnsureLoadedAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(_subscribed, Inventory))
+        {
+            if (_subscribed is not null) _subscribed.Changed -= OnInvChanged;
+            if (Inventory is not null) Inventory.Changed += OnInvChanged;
+            _subscribed = Inventory;
+        }
+    }
+
+    private void OnInvChanged()
+        => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        if (_subscribed is not null) _subscribed.Changed -= OnInvChanged;
     }
 }
 

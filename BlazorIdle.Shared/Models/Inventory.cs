@@ -36,6 +36,8 @@ namespace BlazorIdle.Shared.Models
         [JsonPropertyName("lastUpdated")]
         public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 
+        public event Action? Changed;  // 新增
+
         /// <summary>
         /// 添加物品到库存
         /// Add item to inventory
@@ -66,6 +68,7 @@ namespace BlazorIdle.Shared.Models
             }
 
             LastUpdated = DateTime.UtcNow;
+            Changed?.Invoke(); // 通知
         }
 
         /// <summary>
@@ -95,6 +98,7 @@ namespace BlazorIdle.Shared.Models
             }
 
             LastUpdated = DateTime.UtcNow;
+            Changed?.Invoke(); // 通知
             return true;
         }
 
