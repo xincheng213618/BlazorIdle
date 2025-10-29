@@ -36,7 +36,7 @@ namespace BlazorIdle.Game.Config
         private readonly List<MonsterDef> _monsters = new();
         private readonly List<ItemDefinition> _items = new();
 
-        private const string ApiBaseUrl = "https://localhost:7056/api/game-config";
+        private const string ApiBaseUrl = "http://localhost:7056/api/game-config";
 
         public GameConfigService(HttpClient http)
         {
