@@ -4,6 +4,7 @@ using BlazorIdle.Server.Services;
 using BlazorIdle.Shared.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.StaticFiles; // 新增
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -51,16 +52,21 @@ builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IGameConfigProvider, GameConfigProvider>();
 builder.Services.AddControllers();
 
-// Configure CORS to allow Blazor client
+// CORS: 从配置读取允许的前端域名（同域托管时不会触发跨域，可保持不变）
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowBlazorClient",
-        policy =>
+    options.AddPolicy("AllowBlazorClient", policy =>
+    {
+        if (allowedOrigins.Length > 0)
         {
-            policy.WithOrigins("https://localhost:5001", "http://localhost:5000")
-                  .AllowAnyMethod()
-                  .AllowAnyHeader();
-        });
+            policy.WithOrigins(allowedOrigins).AllowAnyMethod().AllowAnyHeader();
+        }
+        else
+        {
+            policy.WithOrigins("https://localhost:5001", "http://localhost:5000").AllowAnyMethod().AllowAnyHeader();
+        }
+    });
 });
 
 var app = builder.Build();
@@ -71,14 +77,11 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<GameDbContext>();
     var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
     var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-    
+
     dbContext.Database.EnsureCreated();
-    
-    // 从配置文件获取默认角色槽位数
-    // Get default character slots from configuration
+
     var defaultMaxSlots = configuration.GetValue<int>("CharacterConfig:defaultMaxCharacterSlots", 3);
-    
-    // Seed default test user if no users exist
+
     if (!dbContext.Users.Any())
     {
         var defaultUser = new User
@@ -91,7 +94,7 @@ using (var scope = app.Services.CreateScope())
         };
         dbContext.Users.Add(defaultUser);
         dbContext.SaveChanges();
-        
+
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogInformation("Default test user created: test123 / test123123 with {MaxSlots} character slots", defaultMaxSlots);
     }
@@ -107,7 +110,19 @@ app.UseHttpsRedirection();
 app.UseCors("AllowBlazorClient");
 app.UseAuthentication();
 app.UseAuthorization();
+
+// 关键：托管 Blazor 框架文件 + 静态文件 + 前端回退
+app.UseBlazorFrameworkFiles();
+
+// 可选：明确映射 .dat，避免未知类型被拒
+var provider = new FileExtensionContentTypeProvider();
+provider.Mappings[".dat"] = "application/octet-stream";
+app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = provider });
+
+// API
 app.MapControllers();
 
-app.Run();
+// SPA 路由回退到 index.html（前端已复制到 wwwroot）
+app.MapFallbackToFile("index.html");
 
+app.Run();

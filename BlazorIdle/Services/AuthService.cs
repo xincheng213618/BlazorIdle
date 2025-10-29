@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using BlazorIdle.Shared.DTOs;
 using BlazorIdle.Configuration;
@@ -18,14 +19,16 @@ public class AuthService : IAuthService
     private readonly HttpClient _httpClient;
     private readonly ILocalStorageService _localStorage;
     private readonly ApiConfiguration _apiConfig;
+    private readonly CustomAuthStateProvider _authStateProvider;
     private const string TokenKey = "authToken";
     private const string UsernameKey = "username";
 
-    public AuthService(HttpClient httpClient, ILocalStorageService localStorage, ApiConfiguration apiConfig)
+    public AuthService(HttpClient httpClient, ILocalStorageService localStorage, ApiConfiguration apiConfig, CustomAuthStateProvider authStateProvider)
     {
         _httpClient = httpClient;
         _localStorage = localStorage;
         _apiConfig = apiConfig;
+        _authStateProvider = authStateProvider;
     }
 
     public async Task<AuthResponse> Login(LoginRequest request)
@@ -33,7 +36,7 @@ public class AuthService : IAuthService
         try
         {
             var response = await _httpClient.PostAsJsonAsync($"{_apiConfig.AuthApiUrl}/login", request);
-            
+
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
@@ -41,6 +44,10 @@ public class AuthService : IAuthService
                 {
                     await _localStorage.SetItemAsync(TokenKey, result.Token);
                     await _localStorage.SetItemAsync(UsernameKey, result.Username);
+
+                    // 立刻生效：设置默认鉴权头并通知状态变更
+                    _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", result.Token);
+                    _authStateProvider.NotifyUserAuthentication(result.Token);
                 }
                 return result ?? new AuthResponse { Success = false, Message = "Invalid response from server" };
             }
@@ -88,6 +95,8 @@ public class AuthService : IAuthService
     {
         await _localStorage.RemoveItemAsync(TokenKey);
         await _localStorage.RemoveItemAsync(UsernameKey);
+        _httpClient.DefaultRequestHeaders.Authorization = null;
+        _authStateProvider.NotifyUserLogout();
     }
 
     public async Task<string?> GetToken()

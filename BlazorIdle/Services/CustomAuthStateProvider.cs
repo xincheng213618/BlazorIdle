@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
+using System.Net.Http.Headers;
 
 namespace BlazorIdle.Services;
 
@@ -18,31 +19,43 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        var token = await _localStorage.GetItemAsync<string>("authToken");
-
-        if (string.IsNullOrEmpty(token))
+        try
         {
+            var token = await _localStorage.GetItemAsync<string>("authToken");
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+            }
+
+            // 设置默认鉴权头，后续请求会自动带 Bearer
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var claims = ParseClaimsFromJwt(token);
+            var identity = new ClaimsIdentity(claims, "jwt");
+            var user = new ClaimsPrincipal(identity);
+            return new AuthenticationState(user);
+        }
+        catch
+        {
+            // 解析失败时降级为匿名用户，避免抛异常影响页面
             return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
         }
-
-        var claims = ParseClaimsFromJwt(token);
-        var identity = new ClaimsIdentity(claims, "jwt");
-        var user = new ClaimsPrincipal(identity);
-
-        return new AuthenticationState(user);
     }
 
     public void NotifyUserAuthentication(string token)
     {
+        // 刷新默认鉴权头
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
         var claims = ParseClaimsFromJwt(token);
         var identity = new ClaimsIdentity(claims, "jwt");
         var user = new ClaimsPrincipal(identity);
-
         NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(user)));
     }
 
     public void NotifyUserLogout()
     {
+        _httpClient.DefaultRequestHeaders.Authorization = null;
         var anonymousUser = new ClaimsPrincipal(new ClaimsIdentity());
         NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(anonymousUser)));
     }
@@ -50,41 +63,41 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
     private IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
     {
         var claims = new List<Claim>();
-        var payload = jwt.Split('.')[1];
-        var jsonBytes = ParseBase64WithoutPadding(payload);
+
+        // JWT: header.payload.signature，取 payload
+        var parts = jwt.Split('.');
+        if (parts.Length < 2) return claims;
+
+        var payload = parts[1];
+        var jsonBytes = DecodeBase64Url(payload);
+
         var keyValuePairs = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonBytes);
+        if (keyValuePairs is null) return claims;
 
-        if (keyValuePairs != null)
-        {
-            keyValuePairs.TryGetValue(ClaimTypes.Name, out object? name);
-            if (name != null)
-            {
-                claims.Add(new Claim(ClaimTypes.Name, name.ToString()!));
-            }
+        // 常见声明兼容
+        if (keyValuePairs.TryGetValue(ClaimTypes.Name, out var name) && name is not null)
+            claims.Add(new Claim(ClaimTypes.Name, name.ToString()!));
 
-            keyValuePairs.TryGetValue(ClaimTypes.NameIdentifier, out object? userId);
-            if (userId != null)
-            {
-                claims.Add(new Claim(ClaimTypes.NameIdentifier, userId.ToString()!));
-            }
+        if (keyValuePairs.TryGetValue(ClaimTypes.NameIdentifier, out var userId) && userId is not null)
+            claims.Add(new Claim(ClaimTypes.NameIdentifier, userId.ToString()!));
 
-            keyValuePairs.TryGetValue("sub", out object? sub);
-            if (sub != null)
-            {
-                claims.Add(new Claim("sub", sub.ToString()!));
-            }
-        }
+        if (keyValuePairs.TryGetValue("sub", out var sub) && sub is not null)
+            claims.Add(new Claim("sub", sub.ToString()!));
+
+        // 可根据需要映射其他声明
 
         return claims;
     }
 
-    private byte[] ParseBase64WithoutPadding(string base64)
+    // 正确的 Base64Url 解码：替换字符并补齐填充
+    private static byte[] DecodeBase64Url(string input)
     {
-        switch (base64.Length % 4)
-        {
-            case 2: base64 += "=="; break;
-            case 3: base64 += "="; break;
-        }
-        return Convert.FromBase64String(base64);
+        input = input.Replace('-', '+').Replace('_', '/');
+        var pad = input.Length % 4;
+        if (pad == 2) input += "==";
+        else if (pad == 3) input += "=";
+        else if (pad != 0 && pad != 2 && pad != 3)
+            throw new FormatException("Invalid Base64Url string length.");
+        return Convert.FromBase64String(input);
     }
 }
