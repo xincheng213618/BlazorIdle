@@ -11,13 +11,19 @@ namespace BlazorIdle.Server.Services
         Task EnsureLoadedAsync(CancellationToken ct = default);
         IReadOnlyList<ProfessionDef> Professions { get; }
         IReadOnlyList<MonsterDef> Monsters { get; }
-        
+
         /// <summary>
         /// 物品定义列表 - 游戏中所有可用的物品
         /// Item definitions list - all available items in the game
         /// </summary>
         IReadOnlyList<ItemDefinition> Items { get; }
-        
+
+        /// <summary>
+        /// 副本定义列表 - 游戏中所有可用的副本
+        /// Dungeon definitions list - all available dungeons in the game
+        /// </summary>
+        IReadOnlyList<DungeonDef> Dungeons { get; }
+
         string Version { get; }
     }
 }

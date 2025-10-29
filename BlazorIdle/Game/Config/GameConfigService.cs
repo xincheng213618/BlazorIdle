@@ -9,22 +9,34 @@ namespace BlazorIdle.Game.Config
         Task EnsureLoadedAsync(CancellationToken ct = default);
         IReadOnlyList<ProfessionDef> Professions { get; }
         IReadOnlyList<MonsterDef> Monsters { get; }
-        
+
         /// <summary>
         /// 物品定义列表 - 游戏中所有可用的物品
         /// Item definitions list - all available items in the game
         /// </summary>
         IReadOnlyList<ItemDefinition> Items { get; }
-        
+
+        /// <summary>
+        /// 副本定义列表 - 游戏中所有可用的副本
+        /// Dungeon definitions list - all available dungeons in the game
+        /// </summary>
+        IReadOnlyList<DungeonDef> Dungeons { get; }
+
         ProfessionDef? GetProfession(string id);
         MonsterDef? GetMonster(string id);
-        
+
         /// <summary>
         /// 获取指定ID的物品定义
         /// Get item definition by ID
         /// </summary>
         ItemDefinition? GetItem(string id);
-        
+
+        /// <summary>
+        /// 获取指定ID的副本定义
+        /// Get dungeon definition by ID
+        /// </summary>
+        DungeonDef? GetDungeon(string id);
+
         string Version { get; }
         bool IsLoaded { get; }
     }
@@ -37,6 +49,7 @@ namespace BlazorIdle.Game.Config
         private readonly List<ProfessionDef> _professions = new();
         private readonly List<MonsterDef> _monsters = new();
         private readonly List<ItemDefinition> _items = new();
+        private readonly List<DungeonDef> _dungeons = new();
 
         public GameConfigService(HttpClient http, ApiConfiguration apiConfig)
         {
@@ -47,6 +60,7 @@ namespace BlazorIdle.Game.Config
         public IReadOnlyList<ProfessionDef> Professions => _professions;
         public IReadOnlyList<MonsterDef> Monsters => _monsters;
         public IReadOnlyList<ItemDefinition> Items => _items;
+        public IReadOnlyList<DungeonDef> Dungeons => _dungeons;
 
         public string Version { get; private set; } = "unloaded";
         public bool IsLoaded => _loaded;
@@ -68,6 +82,7 @@ namespace BlazorIdle.Game.Config
             var profs = response?.Professions ?? DefaultGameConfig.DefaultProfessions();
             var mons = response?.Monsters ?? DefaultGameConfig.DefaultMonsters();
             var items = response?.Items ?? new List<ItemDefinition>();
+            var dungeons = response?.Dungeons ?? new List<DungeonDef>();
 
             _professions.Clear();
             _professions.AddRange(profs.Where(p => !string.IsNullOrWhiteSpace(p.Id)));
@@ -78,7 +93,10 @@ namespace BlazorIdle.Game.Config
             _items.Clear();
             _items.AddRange(items.Where(i => !string.IsNullOrWhiteSpace(i.Id)));
 
-            Version = response?.Version ?? $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}";
+            _dungeons.Clear();
+            _dungeons.AddRange(dungeons.Where(d => !string.IsNullOrWhiteSpace(d.Id)));
+
+            Version = response?.Version ?? $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}";
             _loaded = true;
         }
 
@@ -90,5 +108,8 @@ namespace BlazorIdle.Game.Config
 
         public ItemDefinition? GetItem(string id)
             => _items.FirstOrDefault(i => string.Equals(i.Id, id, StringComparison.OrdinalIgnoreCase));
+
+        public DungeonDef? GetDungeon(string id)
+            => _dungeons.FirstOrDefault(d => string.Equals(d.Id, id, StringComparison.OrdinalIgnoreCase));
     }
 }

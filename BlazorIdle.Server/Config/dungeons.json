@@ -1,0 +1,198 @@
+﻿[
+  {
+    "id": "beginner_dungeon",
+    "name": "新手副本",
+    "description": "适合新手的入门副本，敌人较弱",
+    "dungeonType": 1,
+    "recommendedLevel": 1,
+    "recommendedPower": 100,
+    "maxTeamSize": 4,
+    "minTeamSize": 1,
+    "allowAutoBattle": true,
+    "allowRevive": true,
+    "repeatCooldownSec": 0,
+    "timeLimitSec": 0,
+    "waves": [
+      {
+        "waveNumber": 1,
+        "name": "史莱姆群",
+        "description": "一群弱小的史莱姆",
+        "waveType": 1,
+        "waveStartDelaySec": 1.5,
+        "waveEndDelaySec": 2.0,
+        "monsterGroups": [
+          {
+            "monsterId": "slime",
+            "count": 3,
+            "spawnDelaySec": 0,
+            "hpMultiplier": 0.8,
+            "damageMultiplier": 0.9,
+            "attackSpeedMultiplier": 1.0,
+            "isElite": false,
+            "isBoss": false
+          }
+        ],
+        "victoryCondition": 1
+      },
+      {
+        "waveNumber": 2,
+        "name": "狼群来袭",
+        "description": "凶猛的狼群",
+        "waveType": 1,
+        "waveStartDelaySec": 2.0,
+        "waveEndDelaySec": 2.0,
+        "monsterGroups": [
+          {
+            "monsterId": "wolf",
+            "count": 2,
+            "spawnDelaySec": 0,
+            "hpMultiplier": 1.0,
+            "damageMultiplier": 1.0,
+            "attackSpeedMultiplier": 1.0,
+            "isElite": false,
+            "isBoss": false
+          }
+        ],
+        "victoryCondition": 1
+      },
+      {
+        "waveNumber": 3,
+        "name": "食人魔Boss",
+        "description": "强大的食人魔首领",
+        "waveType": 3,
+        "waveStartDelaySec": 3.0,
+        "waveEndDelaySec": 2.0,
+        "monsterGroups": [
+          {
+            "monsterId": "ogre",
+            "count": 1,
+            "spawnDelaySec": 0,
+            "hpMultiplier": 1.5,
+            "damageMultiplier": 1.2,
+            "attackSpeedMultiplier": 0.9,
+            "isElite": false,
+            "isBoss": true,
+            "specialDrops": [
+              {
+                "itemId": "gold_coin",
+                "minQuantity": 50,
+                "maxQuantity": 100,
+                "dropChance": 1.0
+              }
+            ]
+          }
+        ],
+        "waveRewards": [
+          {
+            "itemId": "gold_coin",
+            "minQuantity": 20,
+            "maxQuantity": 30,
+            "dropChance": 1.0
+          }
+        ],
+        "victoryCondition": 1
+      }
+    ],
+    "completionRewards": [
+      {
+        "itemId": "gold_coin",
+        "minQuantity": 100,
+        "maxQuantity": 150,
+        "dropChance": 1.0
+      }
+    ],
+    "firstClearRewards": [
+      {
+        "itemId": "gold_coin",
+        "minQuantity": 500,
+        "maxQuantity": 500,
+        "dropChance": 1.0
+      }
+    ]
+  },
+  {
+    "id": "elite_forest",
+    "name": "精英森林",
+    "description": "充满危险的深邃森林，需要更强的实力",
+    "dungeonType": 2,
+    "recommendedLevel": 10,
+    "recommendedPower": 500,
+    "maxTeamSize": 4,
+    "minTeamSize": 2,
+    "allowAutoBattle": true,
+    "allowRevive": true,
+    "repeatCooldownSec": 300,
+    "timeLimitSec": 600,
+    "waves": [
+      {
+        "waveNumber": 1,
+        "name": "森林守卫",
+        "description": "森林的第一道防线",
+        "waveType": 2,
+        "waveStartDelaySec": 2.0,
+        "waveEndDelaySec": 2.5,
+        "monsterGroups": [
+          {
+            "monsterId": "wolf",
+            "count": 3,
+            "spawnDelaySec": 0,
+            "hpMultiplier": 1.5,
+            "damageMultiplier": 1.3,
+            "attackSpeedMultiplier": 1.1,
+            "isElite": true,
+            "isBoss": false
+          },
+          {
+            "monsterId": "slime",
+            "count": 2,
+            "spawnDelaySec": 2.0,
+            "hpMultiplier": 1.2,
+            "damageMultiplier": 1.1,
+            "attackSpeedMultiplier": 1.0,
+            "isElite": false,
+            "isBoss": false
+          }
+        ],
+        "victoryCondition": 1
+      },
+      {
+        "waveNumber": 2,
+        "name": "双重威胁",
+        "description": "两个精英食人魔",
+        "waveType": 2,
+        "waveStartDelaySec": 3.0,
+        "waveEndDelaySec": 2.0,
+        "monsterGroups": [
+          {
+            "monsterId": "ogre",
+            "count": 2,
+            "spawnDelaySec": 0,
+            "hpMultiplier": 1.8,
+            "damageMultiplier": 1.5,
+            "attackSpeedMultiplier": 1.0,
+            "isElite": true,
+            "isBoss": false
+          }
+        ],
+        "waveRewards": [
+          {
+            "itemId": "gold_coin",
+            "minQuantity": 50,
+            "maxQuantity": 80,
+            "dropChance": 1.0
+          }
+        ],
+        "victoryCondition": 1,
+        "timeLimitSec": 120
+      }
+    ],
+    "completionRewards": [
+      {
+        "itemId": "gold_coin",
+        "minQuantity": 300,
+        "maxQuantity": 500,
+        "dropChance": 1.0
+      }
+    ]
+  }
+]
