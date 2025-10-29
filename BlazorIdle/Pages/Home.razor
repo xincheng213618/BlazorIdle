@@ -9,32 +9,36 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <h2 class="mb-4">角色管理 (Character Management)</h2>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-md-6">
-            <CharacterCreation OnCharacterCreated="OnCharacterCreated" />
-        </div>
-        <div class="col-md-6">
-            <CharacterSelector @ref="characterSelector" 
-                             OnCharacterSelected="OnCharacterSelected" 
-                             OnCharacterDeleted="OnCharacterDeleted" />
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between gap-2 collapsible-header"
+                     role="button"
+                     @onclick="ToggleCollapse"
+                     aria-expanded="@(!isCollapsed)">
+                    <h2 class="mb-0 h5">角色管理 (Character Management)</h2>
+                    <button class="btn btn-sm btn-outline-secondary"
+                            @onclick:stopPropagation="true"
+                            @onclick="ToggleCollapse">
+                        @(isCollapsed ? "展开" : "收起")
+                    </button>
+                </div>
+                <div class="card-body" style="@(isCollapsed ? "display:none" : null)">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <CharacterCreation OnCharacterCreated="OnCharacterCreated" />
+                        </div>
+                        <div class="col-md-6">
+                            <CharacterSelector @ref="characterSelector"
+                                               OnCharacterSelected="OnCharacterSelected"
+                                               OnCharacterDeleted="OnCharacterDeleted" />
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     @if (selectedCharacter != null)
     {
-        <div class="row">
-            <div class="col-12">
-                <div class="selected-character-banner">
-                    <h5>当前选中角色: <strong>@selectedCharacter.Name</strong></h5>
-                    <p class="text-muted mb-0">使用此角色进行战斗</p>
-                </div>
-            </div>
-        </div>
-
         <div class="row">
             <div class="col-12">
                 <BattleDemo SelectedCharacter="@selectedCharacter" />
@@ -56,10 +60,16 @@
 @code {
     private CharacterSelector? characterSelector;
     private CharacterData? selectedCharacter;
+    private bool isCollapsed = false; // 默认展开
 
     protected override async Task OnInitializedAsync()
     {
         selectedCharacter = await CharacterService.GetSelectedCharacterAsync();
+    }
+
+    private void ToggleCollapse()
+    {
+        isCollapsed = !isCollapsed;
     }
 
     private async Task OnCharacterCreated()
@@ -84,31 +94,18 @@
 }
 
 <style>
-    .selected-character-banner {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    .collapsible-header {
+        cursor: pointer;
     }
 
-    .selected-character-banner h5 {
-        margin-bottom: 5px;
-        color: white;
-    }
-
-    .selected-character-banner .text-muted {
-        color: rgba(255,255,255,0.8) !important;
-    }
-
+    /* 你原有的全局按钮样式 */
     .btn {
         padding: 10px 20px;
         border: none;
         border-radius: 4px;
         font-size: 14px;
         cursor: pointer;
-        margin-top: 20px;
+        margin-top: 20px; /* 这个会导致 header 内的按钮下沉 */
     }
 
     .btn-danger {
@@ -116,7 +113,20 @@
         color: white;
     }
 
-    .btn-danger:hover {
-        background-color: #c82333;
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+    /* 覆盖 header 内按钮的样式，确保与标题同一水平线 */
+    .collapsible-header h2 {
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .collapsible-header .btn {
+        margin-top: 0; /* 关键：覆盖全局 20px 的上边距 */
+        padding: .25rem .5rem; /* 更贴近 btn-sm 的高度 */
+        line-height: 1.2;
+        border: 1px solid rgba(108,117,125,.5); /* 保持 outline-secondary 的边框可见 */
     }
 </style>

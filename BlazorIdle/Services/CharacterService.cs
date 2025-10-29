@@ -18,6 +18,9 @@ namespace BlazorIdle.Services
         Task<CharacterResponse?> DeleteCharacterAsync(string id);
         Task<CharacterData?> GetSelectedCharacterAsync();
         Task SetSelectedCharacterAsync(string? characterId);
+
+        // 新增：选中角色变更事件
+        event Action<CharacterData?>? SelectedCharacterChanged;
     }
 
     public class CharacterService : ICharacterService
@@ -29,6 +32,9 @@ namespace BlazorIdle.Services
         private readonly IAuthService _authService;
         private readonly Blazored.LocalStorage.ILocalStorageService _localStorage;
         private CharacterListResponse? _cachedCharacters;
+
+        // 事件实现
+        public event Action<CharacterData?>? SelectedCharacterChanged;
 
         public CharacterService(
             HttpClient httpClient, 
@@ -114,7 +120,7 @@ namespace BlazorIdle.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var result = await response.Content.ReadFromJsonAsync<CharacterResponse>();
-                    _cachedCharacters = null; // 清除缓存 Clear cache
+                    _cachedCharacters = null; // 清除缓存
                     return result;
                 }
                 else
@@ -153,14 +159,14 @@ namespace BlazorIdle.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var result = await response.Content.ReadFromJsonAsync<CharacterResponse>();
-                    _cachedCharacters = null; // 清除缓存 Clear cache
-                    
-                    // 如果删除的是当前选中的角色，清除选中状态
-                    // If the deleted character was selected, clear the selection
+                    _cachedCharacters = null; // 清除缓存
+                                        
+                    // 如果删除的是当前选中的角色，清除选中状态并通知
                     var selectedId = await _localStorage.GetItemAsync<string>(SelectedCharacterKey);
                     if (selectedId == id)
                     {
                         await _localStorage.RemoveItemAsync(SelectedCharacterKey);
+                        SelectedCharacterChanged?.Invoke(null);
                     }
                     
                     return result;
@@ -220,10 +226,14 @@ namespace BlazorIdle.Services
                 if (string.IsNullOrWhiteSpace(characterId))
                 {
                     await _localStorage.RemoveItemAsync(SelectedCharacterKey);
+                    SelectedCharacterChanged?.Invoke(null);
                 }
                 else
                 {
                     await _localStorage.SetItemAsync(SelectedCharacterKey, characterId);
+                    // 触发事件时提供完整的角色信息，方便UI显示名称
+                    var character = await GetCharacterAsync(characterId);
+                    SelectedCharacterChanged?.Invoke(character);
                 }
             }
             catch (Exception ex)

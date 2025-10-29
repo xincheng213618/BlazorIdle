@@ -1,24 +1,59 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using BlazorIdle.Services
+@using BlazorIdle.Shared.Models
 @inject IAuthService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
+@inject ICharacterService CharacterService
+@implements IDisposable
 
 <AuthorizeView>
     <Authorized Context="ctx">
-        <div class="userbar d-flex align-items-center justify-content-end w-100 gap-2">
-            <div class="greet small text-muted text-end">
-                你好，@((ctx.User.Identity?.Name) ?? "用户")
+        <div class="userbar d-flex align-items-center justify-content-between w-100 gap-2">
+            <div class="d-flex align-items-center">
+                @if (selectedCharacter is not null)
+                {
+                    <div class="selected-character-pill text-truncate">
+                        <span class="small text-muted me-1">当前角色:</span>
+                        <strong class="small">@selectedCharacter.Name</strong>
+                    </div>
+                }
+                else
+                {
+                    <div class="selected-character-pill text-truncate">
+                        <span class="small text-muted">未选择角色</span>
+                    </div>
+                }
             </div>
-            <button class="btn btn-sm btn-outline-danger userbar-logout d-inline-flex align-items-center justify-content-center"
-                    @onclick="Logout">
-                <span>退出</span>
-            </button>
+
+            <div class="d-flex align-items-center gap-2">
+                <div class="greet small text-muted text-end">
+                    你好，@((ctx.User.Identity?.Name) ?? "用户")
+                </div>
+                <button class="btn btn-sm btn-outline-danger userbar-logout d-inline-flex align-items-center justify-content-center"
+                        @onclick="Logout">
+                    <span>退出</span>
+                </button>
+            </div>
         </div>
     </Authorized>
 </AuthorizeView>
 
 @code {
+    private CharacterData? selectedCharacter;
+
+    protected override async Task OnInitializedAsync()
+    {
+        selectedCharacter = await CharacterService.GetSelectedCharacterAsync();
+        CharacterService.SelectedCharacterChanged += OnSelectedCharacterChanged;
+    }
+
+    private void OnSelectedCharacterChanged(CharacterData? character)
+    {
+        selectedCharacter = character;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     private async Task Logout()
     {
         await AuthService.Logout();
@@ -29,5 +64,10 @@
         }
 
         Navigation.NavigateTo("/login", true);
+    }
+
+    public void Dispose()
+    {
+        CharacterService.SelectedCharacterChanged -= OnSelectedCharacterChanged;
     }
 }

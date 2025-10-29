@@ -27,3 +27,9 @@
         max-width: 55vw;
     }
 }
+
+.selected-character-pill {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background-color: rgba(102, 126, 234, 0.12);
+}
