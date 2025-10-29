@@ -779,6 +779,96 @@ namespace BlazorIdle.Game
                 segments: _segments
             );
         }
+
+        /// <summary>
+        /// 获取指定角色的攻击进度（0-1）
+        /// Get attack progress for specified character (0-1)
+        /// </summary>
+        public double GetCharacterAttackProgress(string characterId)
+        {
+            if (!_characterTracks.TryGetValue(characterId, out var tracks))
+                return 0.0;
+            
+            if (_state != MultiBattleState.Fighting || !tracks.IsEnabled)
+                return 0.0;
+
+            return tracks.AttackTrack.Progress01(_clock.NowMs);
+        }
+
+        /// <summary>
+        /// 获取指定角色的特殊技能进度（0-1）
+        /// Get special skill progress for specified character (0-1)
+        /// </summary>
+        public double GetCharacterSpecialProgress(string characterId)
+        {
+            if (!_characterTracks.TryGetValue(characterId, out var tracks))
+                return 0.0;
+            
+            if (_state != MultiBattleState.Fighting || !tracks.IsEnabled)
+                return 0.0;
+
+            return tracks.SpecialTrack.Progress01(_clock.NowMs);
+        }
+
+        /// <summary>
+        /// 获取指定敌人的攻击进度（0-1）
+        /// Get attack progress for specified enemy (0-1)
+        /// </summary>
+        public double GetEnemyAttackProgress(string enemyId)
+        {
+            if (!_enemyTracks.TryGetValue(enemyId, out var track))
+                return 0.0;
+            
+            if (_state != MultiBattleState.Fighting || !track.IsEnabled)
+                return 0.0;
+
+            return track.AttackTrack.Progress01(_clock.NowMs);
+        }
+
+        /// <summary>
+        /// 获取指定角色的攻击剩余时间（毫秒）
+        /// Get attack time remaining for specified character (milliseconds)
+        /// </summary>
+        public double GetCharacterAttackTimeRemaining(string characterId)
+        {
+            if (!_characterTracks.TryGetValue(characterId, out var tracks))
+                return 0.0;
+            
+            if (_state != MultiBattleState.Fighting || !tracks.IsEnabled)
+                return 0.0;
+
+            return tracks.AttackTrack.TimeToNextMs(_clock.NowMs);
+        }
+
+        /// <summary>
+        /// 获取指定角色的特殊技能剩余时间（毫秒）
+        /// Get special skill time remaining for specified character (milliseconds)
+        /// </summary>
+        public double GetCharacterSpecialTimeRemaining(string characterId)
+        {
+            if (!_characterTracks.TryGetValue(characterId, out var tracks))
+                return 0.0;
+            
+            if (_state != MultiBattleState.Fighting || !tracks.IsEnabled)
+                return 0.0;
+
+            return tracks.SpecialTrack.TimeToNextMs(_clock.NowMs);
+        }
+
+        /// <summary>
+        /// 获取指定敌人的攻击剩余时间（毫秒）
+        /// Get attack time remaining for specified enemy (milliseconds)
+        /// </summary>
+        public double GetEnemyAttackTimeRemaining(string enemyId)
+        {
+            if (!_enemyTracks.TryGetValue(enemyId, out var track))
+                return 0.0;
+            
+            if (_state != MultiBattleState.Fighting || !track.IsEnabled)
+                return 0.0;
+
+            return track.AttackTrack.TimeToNextMs(_clock.NowMs);
+        }
     }
 
     /// <summary>

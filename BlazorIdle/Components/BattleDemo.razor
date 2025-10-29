@@ -155,46 +155,71 @@
         }
     }
 
-    // 从玩家队伍获取角色战斗轨道的进度信息
-    // Get character battle track progress from player team
+    // 从战斗实例获取角色战斗轨道的进度信息（0-1范围）
+    // Get character battle track progress from battle instance (0-1 range)
     private double attackProgress01
     {
         get
         {
-            if (playerTeam == null || SelectedCharacter == null) return 0.0;
-            var member = playerTeam.GetMember(SelectedCharacter.Id);
-            if (member?.Entity == null) return 0.0;
-            
-            // 在冷却状态时进度为0
-            if (snapshot.State != MultiBattleState.Fighting) return 0.0;
-            
-            // 需要从战斗实例内部获取轨道进度
-            // 暂时返回模拟值，实际应从MultiBattleInstance暴露
-            return 0.0;
+            if (battle == null || SelectedCharacter == null) return 0.0;
+            return battle.GetCharacterAttackProgress(SelectedCharacter.Id);
         }
     }
     
+    // 获取特殊技能进度（0-1范围）
+    // Get special skill progress (0-1 range)
     private double specialProgress01
     {
         get
         {
-            if (snapshot.State != MultiBattleState.Fighting) return 0.0;
-            return 0.0;
+            if (battle == null || SelectedCharacter == null) return 0.0;
+            return battle.GetCharacterSpecialProgress(SelectedCharacter.Id);
         }
     }
     
+    // 获取敌人攻击进度（0-1范围）
+    // Get enemy attack progress (0-1 range)
     private double enemyProgress01
     {
         get
         {
-            if (snapshot.State != MultiBattleState.Fighting) return 0.0;
-            return 0.0;
+            if (battle == null || currentMonster == null) return 0.0;
+            return battle.GetEnemyAttackProgress(currentMonster.Id);
         }
     }
     
-    private double attackRemainMs => 0.0;
-    private double specialRemainMs => 0.0;
-    private double enemyRemainMs => 0.0;
+    // 获取角色攻击剩余时间（毫秒）
+    // Get character attack time remaining (milliseconds)
+    private double attackRemainMs
+    {
+        get
+        {
+            if (battle == null || SelectedCharacter == null) return 0.0;
+            return battle.GetCharacterAttackTimeRemaining(SelectedCharacter.Id);
+        }
+    }
+    
+    // 获取特殊技能剩余时间（毫秒）
+    // Get special skill time remaining (milliseconds)
+    private double specialRemainMs
+    {
+        get
+        {
+            if (battle == null || SelectedCharacter == null) return 0.0;
+            return battle.GetCharacterSpecialTimeRemaining(SelectedCharacter.Id);
+        }
+    }
+    
+    // 获取敌人攻击剩余时间（毫秒）
+    // Get enemy attack time remaining (milliseconds)
+    private double enemyRemainMs
+    {
+        get
+        {
+            if (battle == null || currentMonster == null) return 0.0;
+            return battle.GetEnemyAttackTimeRemaining(currentMonster.Id);
+        }
+    }
 
     // 日志
     private const int MaxLogEntries = 200;
