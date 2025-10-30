@@ -22,6 +22,12 @@ namespace BlazorIdle.Game.Config
         /// </summary>
         IReadOnlyList<DungeonDef> Dungeons { get; }
 
+        /// <summary>
+        /// 战斗场景定义列表 - 用于单次战斗的预设场景
+        /// Battle scenario definitions list - preset scenarios for single battles
+        /// </summary>
+        IReadOnlyList<BattleScenarioDef> BattleScenarios { get; }
+
         ProfessionDef? GetProfession(string id);
         MonsterDef? GetMonster(string id);
 
@@ -37,6 +43,12 @@ namespace BlazorIdle.Game.Config
         /// </summary>
         DungeonDef? GetDungeon(string id);
 
+        /// <summary>
+        /// 获取指定ID的战斗场景定义
+        /// Get battle scenario definition by ID
+        /// </summary>
+        BattleScenarioDef? GetBattleScenario(string id);
+
         string Version { get; }
         bool IsLoaded { get; }
     }
@@ -50,6 +62,7 @@ namespace BlazorIdle.Game.Config
         private readonly List<MonsterDef> _monsters = new();
         private readonly List<ItemDefinition> _items = new();
         private readonly List<DungeonDef> _dungeons = new();
+        private readonly List<BattleScenarioDef> _battleScenarios = new();
 
         public GameConfigService(HttpClient http, ApiConfiguration apiConfig)
         {
@@ -61,6 +74,7 @@ namespace BlazorIdle.Game.Config
         public IReadOnlyList<MonsterDef> Monsters => _monsters;
         public IReadOnlyList<ItemDefinition> Items => _items;
         public IReadOnlyList<DungeonDef> Dungeons => _dungeons;
+        public IReadOnlyList<BattleScenarioDef> BattleScenarios => _battleScenarios;
 
         public string Version { get; private set; } = "unloaded";
         public bool IsLoaded => _loaded;
@@ -83,6 +97,7 @@ namespace BlazorIdle.Game.Config
             var mons = response?.Monsters ?? DefaultGameConfig.DefaultMonsters();
             var items = response?.Items ?? new List<ItemDefinition>();
             var dungeons = response?.Dungeons ?? new List<DungeonDef>();
+            var battleScenarios = response?.BattleScenarios ?? new List<BattleScenarioDef>();
 
             _professions.Clear();
             _professions.AddRange(profs.Where(p => !string.IsNullOrWhiteSpace(p.Id)));
@@ -96,7 +111,10 @@ namespace BlazorIdle.Game.Config
             _dungeons.Clear();
             _dungeons.AddRange(dungeons.Where(d => !string.IsNullOrWhiteSpace(d.Id)));
 
-            Version = response?.Version ?? $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}";
+            _battleScenarios.Clear();
+            _battleScenarios.AddRange(battleScenarios.Where(b => !string.IsNullOrWhiteSpace(b.Id)));
+
+            Version = response?.Version ?? $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-b:{_battleScenarios.Count}";
             _loaded = true;
         }
 
@@ -111,5 +129,8 @@ namespace BlazorIdle.Game.Config
 
         public DungeonDef? GetDungeon(string id)
             => _dungeons.FirstOrDefault(d => string.Equals(d.Id, id, StringComparison.OrdinalIgnoreCase));
+
+        public BattleScenarioDef? GetBattleScenario(string id)
+            => _battleScenarios.FirstOrDefault(b => string.Equals(b.Id, id, StringComparison.OrdinalIgnoreCase));
     }
 }

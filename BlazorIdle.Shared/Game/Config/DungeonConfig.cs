@@ -366,4 +366,39 @@ namespace BlazorIdle.Game.Config
         /// </summary>
         Protect = 4
     }
+
+    /// <summary>
+    /// 战斗场景定义 - 用于BattleDemo等单次战斗场景
+    /// Battle scenario definition - used for single battle scenarios like BattleDemo
+    /// </summary>
+    public class BattleScenarioDef
+    {
+        /// <summary>
+        /// 场景唯一标识
+        /// Scenario unique identifier
+        /// </summary>
+        [JsonPropertyName("id")]
+        public string Id { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 场景名称
+        /// Scenario name
+        /// </summary>
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 场景描述
+        /// Scenario description
+        /// </summary>
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
+
+        /// <summary>
+        /// 怪物组列表 - 定义这个场景中出现的所有怪物
+        /// Monster groups list - defines all monsters that appear in this scenario
+        /// </summary>
+        [JsonPropertyName("monsterGroups")]
+        public List<MonsterGroup> MonsterGroups { get; set; } = new();
+    }
 }

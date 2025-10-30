@@ -12,6 +12,7 @@ namespace BlazorIdle.Server.Services
         private readonly List<MonsterDef> _monsters = new();
         private readonly List<ItemDefinition> _items = new();
         private readonly List<DungeonDef> _dungeons = new();
+        private readonly List<BattleScenarioDef> _battleScenarios = new();
         private volatile bool _loaded;
 
         public GameConfigProvider(IHostEnvironment env)
@@ -23,6 +24,7 @@ namespace BlazorIdle.Server.Services
         public IReadOnlyList<MonsterDef> Monsters => _monsters;
         public IReadOnlyList<ItemDefinition> Items => _items;
         public IReadOnlyList<DungeonDef> Dungeons => _dungeons;
+        public IReadOnlyList<BattleScenarioDef> BattleScenarios => _battleScenarios;
         public string Version { get; private set; } = "unloaded";
 
         public async Task EnsureLoadedAsync(CancellationToken ct = default)
@@ -34,11 +36,13 @@ namespace BlazorIdle.Server.Services
             var monPath = Path.Combine(contentRoot, "Config", "monsters.json");
             var itemsPath = Path.Combine(contentRoot, "Config", "items.json");
             var dungeonsPath = Path.Combine(contentRoot, "Config", "dungeons.json");
+            var battleScenariosPath = Path.Combine(contentRoot, "Config", "battleScenarios.json");
 
             List<ProfessionDef>? profs = null;
             List<MonsterDef>? mons = null;
             List<ItemDefinition>? items = null;
             List<DungeonDef>? dungeons = null;
+            List<BattleScenarioDef>? battleScenarios = null;
 
             try
             {
@@ -82,11 +86,23 @@ namespace BlazorIdle.Server.Services
             }
             catch { /* ignore to fallback */ }
 
+            // 加载战斗场景配置
+            try
+            {
+                if (File.Exists(battleScenariosPath))
+                {
+                    await using var s = File.OpenRead(battleScenariosPath);
+                    battleScenarios = await JsonSerializer.DeserializeAsync<List<BattleScenarioDef>>(s, cancellationToken: ct);
+                }
+            }
+            catch { /* ignore to fallback */ }
+
             // fallback to shared defaults
             profs ??= DefaultGameConfig.DefaultProfessions();
             mons ??= DefaultGameConfig.DefaultMonsters();
             items ??= new List<ItemDefinition>();
             dungeons ??= new List<DungeonDef>();
+            battleScenarios ??= new List<BattleScenarioDef>();
 
             _professions.Clear();
             _professions.AddRange(profs.Where(p => !string.IsNullOrWhiteSpace(p.Id)));
@@ -100,7 +116,10 @@ namespace BlazorIdle.Server.Services
             _dungeons.Clear();
             _dungeons.AddRange(dungeons.Where(d => !string.IsNullOrWhiteSpace(d.Id)));
 
-            Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}";
+            _battleScenarios.Clear();
+            _battleScenarios.AddRange(battleScenarios.Where(b => !string.IsNullOrWhiteSpace(b.Id)));
+
+            Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-b:{_battleScenarios.Count}";
             _loaded = true;
         }
     }

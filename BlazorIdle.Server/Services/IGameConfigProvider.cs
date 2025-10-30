@@ -24,6 +24,12 @@ namespace BlazorIdle.Server.Services
         /// </summary>
         IReadOnlyList<DungeonDef> Dungeons { get; }
 
+        /// <summary>
+        /// 战斗场景定义列表 - 用于单次战斗的预设场景
+        /// Battle scenario definitions list - preset scenarios for single battles
+        /// </summary>
+        IReadOnlyList<BattleScenarioDef> BattleScenarios { get; }
+
         string Version { get; }
     }
 }
