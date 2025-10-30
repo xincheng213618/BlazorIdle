@@ -209,9 +209,27 @@
 </div>
 
 @code {
+    // ===== 可配置常量 - Configurable Constants =====
+    
     // 战斗循环间隔（毫秒）- 控制游戏更新频率
     // Battle loop interval (ms) - controls game update frequency
     private const int TickMs = 100;
+    
+    // 自动循环延迟时间（毫秒）- 副本完成后到下次开始的等待时间
+    // Auto-repeat delay time (ms) - waiting time between dungeon completion and next start
+    private const int AutoRepeatDelayMs = 2000;
+    
+    // AOE伤害倍率 - 群体攻击技能对每个目标的伤害比例
+    // AOE damage multiplier - damage ratio of area attacks to each target
+    private const double AoeDamageMultiplier = 0.7;
+    
+    // 默认敌人刷新时间（毫秒）- 当怪物配置中没有指定刷新时间时使用
+    // Default enemy respawn time (ms) - used when monster config doesn't specify respawn time
+    private const int DefaultEnemyRespawnMs = 3000;
+    
+    // 最大日志条目数 - 日志列表保留的最大记录数
+    // Max log entries - maximum number of log records to keep
+    private const int MaxLogEntries = 200;
 
     [Parameter]
     public CharacterData? SelectedCharacter { get; set; }
@@ -366,8 +384,8 @@
         }
     }
 
-    // 日志
-    private const int MaxLogEntries = 200;
+    // 日志列表 - 存储战斗日志
+    // Log list - stores battle logs
     private readonly List<string> logs = new();
 
     private CancellationTokenSource? _cts;
@@ -441,9 +459,7 @@
         }
         else
         {
-            // 自动循环延迟时间（毫秒）- 可配置参数
-            // Auto-repeat delay time (milliseconds) - configurable parameter
-            const int AutoRepeatDelayMs = 2000;
+            // 使用全局配置的自动循环延迟时间 - Use globally configured auto-repeat delay time
             dungeonManager.EnableAutoRepeat(AutoRepeatDelayMs);
             AddLog("系统", "已开启自动循环");
         }
@@ -562,7 +578,7 @@
             // 特殊技能配置 - 多敌人时使用AOE更有效
             // Special skill configuration - AOE is more effective with multiple enemies
             SpecialIsAoe = enemyTeam.TotalCount > 1,
-            AoeDamageMultiplier = 0.7, // AOE伤害倍率 - AOE damage multiplier
+            AoeDamageMultiplier = AoeDamageMultiplier, // AOE伤害倍率 - AOE damage multiplier
             
             // 允许玩家复活和敌人刷新（持续战斗模式）
             // Allow player revival and enemy respawn (continuous battle mode)
@@ -576,7 +592,7 @@
             // Enemy respawn time uses configuration from first monster group in scenario
             EnemyRespawnCooldownMs = enemyTeam.Members.Any() 
                 ? enemyTeam.Members.First().Entity.RespawnMs 
-                : 3000,
+                : DefaultEnemyRespawnMs,
             
             // 复活时满血
             // Revive with full HP
