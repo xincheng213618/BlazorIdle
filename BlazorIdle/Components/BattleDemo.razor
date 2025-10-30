@@ -22,19 +22,141 @@
             <p class="text-muted mb-0">职业: @(GetProfessionName(SelectedCharacter.ProfessionId))</p>
         </div>
 
-        <!-- 战斗场景选择 - 使用monsterGroups概念 -->
-        <!-- Battle scenario selection - using monsterGroups concept -->
+        <!-- 战斗模式选择 - 普通战斗或副本战斗 -->
+        <!-- Battle mode selection - Normal battle or Dungeon battle -->
         <div class="row g-2 mb-3">
             <div class="col-12">
-                <label class="form-label">战斗场景</label>
-                <InputSelect class="form-control" @bind-Value="selectedScenarioId" disabled="@(!configReady || isRunning)" @onchange="OnSelectionChanged">
-                    @foreach (var scenario in battleScenarios)
-                    {
-                        <option value="@scenario.Id">@scenario.Name - @scenario.Description</option>
-                    }
-                </InputSelect>
+                <label class="form-label">战斗模式</label>
+                <div class="btn-group w-100" role="group">
+                    <input type="radio" class="btn-check" name="battleMode" id="normalMode" checked 
+                           @onchange="@(() => OnBattleModeChanged(BattleMode.Normal))" disabled="@isRunning">
+                    <label class="btn btn-outline-primary" for="normalMode">普通战斗</label>
+                    
+                    <input type="radio" class="btn-check" name="battleMode" id="dungeonMode" 
+                           @onchange="@(() => OnBattleModeChanged(BattleMode.Dungeon))" disabled="@isRunning">
+                    <label class="btn btn-outline-primary" for="dungeonMode">副本战斗</label>
+                </div>
             </div>
         </div>
+
+        @if (currentBattleMode == BattleMode.Normal)
+        {
+            <!-- 普通战斗场景选择 - 使用monsterGroups概念 -->
+            <!-- Normal battle scenario selection - using monsterGroups concept -->
+            <div class="row g-2 mb-3">
+                <div class="col-12">
+                    <label class="form-label">战斗场景</label>
+                    <InputSelect class="form-control" @bind-Value="selectedScenarioId" disabled="@(!configReady || isRunning)" @onchange="OnSelectionChanged">
+                        @foreach (var scenario in battleScenarios)
+                        {
+                            <option value="@scenario.Id">@scenario.Name - @scenario.Description</option>
+                        }
+                    </InputSelect>
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- 副本战斗选择 -->
+            <!-- Dungeon battle selection -->
+            <div class="row g-2 mb-3">
+                <div class="col-12">
+                    <label class="form-label">副本选择</label>
+                    <InputSelect class="form-control" @bind-Value="selectedDungeonId" disabled="@(!configReady || isRunning)" @onchange="OnSelectionChanged">
+                        @foreach (var dungeon in dungeons)
+                        {
+                            <option value="@dungeon.Id">
+                                @dungeon.Name 
+                                @if (dungeon.DungeonType == DungeonType.Elite)
+                                {
+                                    <text>(精英)</text>
+                                }
+                                - Lv.@dungeon.RecommendedLevel
+                            </option>
+                        }
+                    </InputSelect>
+                </div>
+            </div>
+
+            <!-- 副本信息显示 -->
+            <!-- Dungeon information display -->
+            @if (currentDungeon != null)
+            {
+                <div class="dungeon-info-panel mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-info me-2">推荐等级: @currentDungeon.RecommendedLevel</span>
+                            @if (currentDungeon.DungeonType == DungeonType.Elite)
+                            {
+                                <span class="badge bg-warning me-2">精英副本</span>
+                            }
+                            <span class="badge bg-secondary">波次: @currentDungeon.Waves.Count</span>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary" 
+                                    @onclick="ToggleAutoRepeat" 
+                                    disabled="@(!isRunning)">
+                                @(dungeonManager?.IsAutoRepeatEnabled == true ? "✓" : "")
+                                自动循环
+                            </button>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(currentDungeon.Description))
+                    {
+                        <div class="text-muted mt-2">@currentDungeon.Description</div>
+                    }
+                </div>
+
+                <!-- 副本进度显示 -->
+                <!-- Dungeon progress display -->
+                @if (dungeonSnapshot != null && isRunning)
+                {
+                    <div class="dungeon-progress-panel mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>波次进度: @GetDungeonWaveProgress()</span>
+                            <span class="badge @GetDungeonStateBadgeClass()">
+                                @GetDungeonStateText()
+                            </span>
+                        </div>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                 style="width: @GetDungeonProgressPercent()%">
+                                @GetDungeonProgressPercent()%
+                            </div>
+                        </div>
+                        
+                        <!-- 副本统计 -->
+                        <!-- Dungeon statistics -->
+                        <div class="row mt-3 g-2">
+                            <div class="col-3">
+                                <div class="stat-mini">
+                                    <div class="stat-label">完成</div>
+                                    <div class="stat-value">@dungeonSnapshot.CompletionCount</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-mini">
+                                    <div class="stat-label">击杀</div>
+                                    <div class="stat-value">@dungeonSnapshot.TotalKills</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-mini">
+                                    <div class="stat-label">死亡</div>
+                                    <div class="stat-value">@dungeonSnapshot.TotalDeaths</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-mini">
+                                    <div class="stat-label">掉落</div>
+                                    <div class="stat-value">@dungeonSnapshot.TotalLoot.Values.Sum()</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        }
 
         <div class="small text-muted mb-3">
             预估玩家输出 DPS：@($"{theoreticalDps:N1}") · 配置版本：@configVersion
@@ -94,6 +216,20 @@
     [Parameter]
     public CharacterData? SelectedCharacter { get; set; }
 
+    /// <summary>
+    /// 战斗模式枚举 - 区分普通战斗和副本战斗
+    /// Battle mode enum - differentiates normal battle and dungeon battle
+    /// </summary>
+    private enum BattleMode
+    {
+        Normal,    // 普通战斗模式
+        Dungeon    // 副本战斗模式
+    }
+
+    // 战斗模式相关
+    // Battle mode related
+    private BattleMode currentBattleMode = BattleMode.Normal;
+
     // 配置选择
     // Configuration selection
     private List<ProfessionDef> professions = new();
@@ -104,8 +240,16 @@
     private string configVersion = "loading";
     private bool configReady = false;
 
-    // 多单位战斗系统（用于1v1战斗）
-    // Multi-unit battle system (used for 1v1 battle)
+    // 副本战斗相关配置
+    // Dungeon battle related configuration
+    private List<DungeonDef> dungeons = new();
+    private string? selectedDungeonId;
+    private DungeonDef? currentDungeon => dungeons.FirstOrDefault(d => d.Id == selectedDungeonId);
+    private DungeonManager? dungeonManager;
+    private DungeonSnapshot? dungeonSnapshot;
+
+    // 多单位战斗系统（用于普通战斗和副本战斗）
+    // Multi-unit battle system (used for normal battle and dungeon battle)
     private MultiBattleInstance? battle;
     private MultiBattleSnapshot snapshot = new MultiBattleSnapshot();
     
@@ -228,15 +372,21 @@
 
     private CancellationTokenSource? _cts;
 
+    /// <summary>
+    /// 组件初始化 - 加载游戏配置数据
+    /// Component initialization - load game configuration data
+    /// </summary>
     protected override async Task OnInitializedAsync()
     {
         await GameConfig.EnsureLoadedAsync();
         professions = GameConfig.Professions.ToList();
         monsters = GameConfig.Monsters.ToList();
         battleScenarios = GameConfig.BattleScenarios.ToList();
+        dungeons = GameConfig.Dungeons.ToList(); // 加载副本配置 - Load dungeon configuration
         configVersion = GameConfig.Version;
 
         selectedScenarioId = battleScenarios.FirstOrDefault()?.Id;
+        selectedDungeonId = dungeons.FirstOrDefault()?.Id;
 
         configReady = battleScenarios.Count > 0 && monsters.Count > 0;
 
@@ -254,9 +404,50 @@
         }
     }
 
+    /// <summary>
+    /// 选择变更回调 - 场景或副本选择变更时重置战斗
+    /// Selection change callback - reset battle when scenario or dungeon selection changes
+    /// </summary>
     private void OnSelectionChanged(ChangeEventArgs _)
     {
         if (!isRunning) ResetBattle();
+    }
+
+    /// <summary>
+    /// 战斗模式变更处理 - 切换普通战斗和副本战斗
+    /// Battle mode change handler - switch between normal and dungeon battle
+    /// </summary>
+    private void OnBattleModeChanged(BattleMode mode)
+    {
+        if (isRunning) return; // 战斗中不允许切换 - Don't allow switching during battle
+        
+        currentBattleMode = mode;
+        ResetBattle();
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// 切换副本自动循环 - 启用或禁用副本自动重复
+    /// Toggle dungeon auto-repeat - enable or disable dungeon auto-repeat
+    /// </summary>
+    private void ToggleAutoRepeat()
+    {
+        if (dungeonManager == null) return;
+
+        if (dungeonManager.IsAutoRepeatEnabled)
+        {
+            dungeonManager.DisableAutoRepeat();
+            AddLog("系统", "已关闭自动循环");
+        }
+        else
+        {
+            // 自动循环延迟时间（毫秒）- 可配置参数
+            // Auto-repeat delay time (milliseconds) - configurable parameter
+            const int AutoRepeatDelayMs = 2000;
+            dungeonManager.EnableAutoRepeat(AutoRepeatDelayMs);
+            AddLog("系统", "已开启自动循环");
+        }
+        StateHasChanged();
     }
 
     private string GetProfessionName(string professionId)
@@ -404,6 +595,66 @@
         digest = null;
     }
 
+    /// <summary>
+    /// 构建副本战斗 - 创建副本管理器和玩家队伍
+    /// Build dungeon battle - create dungeon manager and player team
+    /// </summary>
+    private void BuildDungeonBattle()
+    {
+        if (SelectedCharacter == null || currentDungeon == null) return;
+
+        // 清理旧的副本管理器 - Clean up old dungeon manager
+        if (dungeonManager != null)
+        {
+            dungeonManager.CombatEventFired -= OnCombatEvent;
+            dungeonManager.LootDropped -= OnLootDropped;
+            dungeonManager.WaveChanged -= OnDungeonWaveChanged;
+            dungeonManager.DungeonCompleted -= OnDungeonCompleted;
+        }
+
+        // 创建时钟和随机数生成器 - Create clock and random number generator
+        var clock = new SimClock();
+        int seed = HashSeed(SelectedCharacter.Id, currentDungeon.Id, configVersion);
+        var rng = new RngContext(seed);
+
+        // 创建角色实体（从SelectedCharacter复制属性）
+        // Create character entity (copy properties from SelectedCharacter)
+        var character = new Character
+        {
+            MaxHp = Math.Max(1, SelectedCharacter.MaxHp),
+            Hp = Math.Max(1, SelectedCharacter.MaxHp),
+            AttackRateAPS = SelectedCharacter.AttackRateAPS,
+            DamagePerAttack = SelectedCharacter.DamagePerAttack,
+            HastePercent = SelectedCharacter.HastePercent,
+            SpecialIntervalSec = SelectedCharacter.SpecialIntervalSec,
+            SpecialDamage = SelectedCharacter.SpecialDamage,
+            CritChancePercent = SelectedCharacter.CritChancePercent,
+            CritMultiplier = SelectedCharacter.CritMultiplier,
+            VariancePct = SelectedCharacter.VariancePct,
+            ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0)
+        };
+
+        // 创建玩家队伍（单成员 - 1VN模式）
+        // Create player team (single member - 1VN mode)
+        playerTeam = new BattleTeam<Character>("player_team", "玩家队伍", TeamType.Player);
+        playerTeam.AddMember(SelectedCharacter.Id, character, character.MaxHp);
+
+        // 创建副本管理器 - Create dungeon manager
+        dungeonManager = new DungeonManager(currentDungeon, clock, rng, playerTeam, GameConfig);
+
+        // 订阅副本事件 - Subscribe to dungeon events
+        dungeonManager.CombatEventFired += OnCombatEvent;
+        dungeonManager.LootDropped += OnLootDropped;
+        dungeonManager.WaveChanged += OnDungeonWaveChanged;
+        dungeonManager.DungeonCompleted += OnDungeonCompleted;
+
+        dungeonSnapshot = null;
+    }
+
+    /// <summary>
+    /// 生成哈希种子 - 用于确定性随机数生成
+    /// Generate hash seed - for deterministic random number generation
+    /// </summary>
     private int HashSeed(params object[] arr)
     {
         unchecked
@@ -414,31 +665,69 @@
         }
     }
 
+    /// <summary>
+    /// 开始战斗 - 根据当前模式启动普通战斗或副本战斗
+    /// Start battle - starts normal battle or dungeon battle based on current mode
+    /// </summary>
     private void StartBattle()
     {
         if (!configReady || isRunning) return;
 
-        BuildBattle();
-        battle!.Start();
-        snapshot = battle!.GetSnapshot();
-        digest = null;
-        isRunning = true;
-
         logs.Clear();
+
+        if (currentBattleMode == BattleMode.Normal)
+        {
+            // 普通战斗模式 - Normal battle mode
+            BuildBattle();
+            battle!.Start();
+            snapshot = battle!.GetSnapshot();
+            digest = null;
+        }
+        else
+        {
+            // 副本战斗模式 - Dungeon battle mode
+            BuildDungeonBattle();
+            dungeonManager!.StartDungeon();
+            dungeonSnapshot = dungeonManager.GetSnapshot();
+        }
+
+        isRunning = true;
 
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
         _ = RunLoopAsync(_cts.Token);
     }
 
+    /// <summary>
+    /// 停止战斗 - 停止当前战斗并清理资源
+    /// Stop battle - stops current battle and cleans up resources
+    /// </summary>
     private void StopBattle()
     {
         if (!isRunning) return;
         isRunning = false;
-        battle?.Stop();
         _cts?.Cancel();
-        snapshot = battle!.GetSnapshot();
-        digest ??= battle!.BuildDigest();
+
+        if (currentBattleMode == BattleMode.Normal)
+        {
+            // 停止普通战斗 - Stop normal battle
+            battle?.Stop();
+            if (battle != null)
+            {
+                snapshot = battle.GetSnapshot();
+                digest ??= battle.BuildDigest();
+            }
+        }
+        else
+        {
+            // 停止副本战斗 - Stop dungeon battle
+            dungeonManager?.StopDungeon();
+            if (dungeonManager != null)
+            {
+                dungeonSnapshot = dungeonManager.GetSnapshot();
+            }
+        }
+
         StateHasChanged();
     }
 
@@ -449,14 +738,31 @@
     private void ResetBattle()
     {
         StopBattle();
-        BuildBattle();
-        if (battle != null)
+
+        if (currentBattleMode == BattleMode.Normal)
         {
-            snapshot = battle.GetSnapshot();
+            BuildBattle();
+            if (battle != null)
+            {
+                snapshot = battle.GetSnapshot();
+            }
         }
+        else
+        {
+            BuildDungeonBattle();
+            if (dungeonManager != null)
+            {
+                dungeonSnapshot = dungeonManager.GetSnapshot();
+            }
+        }
+
         StateHasChanged();
     }
 
+    /// <summary>
+    /// 战斗循环 - 定期更新战斗状态
+    /// Battle loop - periodically updates battle state
+    /// </summary>
     private async Task RunLoopAsync(CancellationToken token)
     {
         try
@@ -464,8 +770,32 @@
             while (!token.IsCancellationRequested && isRunning)
             {
                 await Task.Delay(TickMs, token);
-                battle!.AdvanceTick(TickMs);
-                snapshot = battle!.GetSnapshot();
+
+                if (currentBattleMode == BattleMode.Normal)
+                {
+                    // 普通战斗循环 - Normal battle loop
+                    battle!.AdvanceTick(TickMs);
+                    snapshot = battle!.GetSnapshot();
+                }
+                else
+                {
+                    // 副本战斗循环 - Dungeon battle loop
+                    dungeonManager!.AdvanceTick(TickMs);
+                    dungeonSnapshot = dungeonManager.GetSnapshot();
+                    
+                    // 更新敌人队伍引用用于UI显示 - Update enemy team reference for UI display
+                    if (dungeonSnapshot?.CurrentEnemyTeam != null)
+                    {
+                        enemyTeam = dungeonSnapshot.CurrentEnemyTeam;
+                        
+                        // 获取副本战斗的快照用于进度条显示 - Get dungeon battle snapshot for progress display
+                        if (dungeonSnapshot.BattleSnapshot != null)
+                        {
+                            snapshot = dungeonSnapshot.BattleSnapshot;
+                        }
+                    }
+                }
+
                 await InvokeAsync(StateHasChanged);
             }
         }
@@ -634,7 +964,143 @@
         _ = InvokeAsync(StateHasChanged);
     }
 
-    // 友好显示用时：<1h 显示 mm:ss.cc；>=1h 显示 hh:mm:ss
+    /// <summary>
+    /// 副本波次变更事件处理 - 记录波次状态变更
+    /// Dungeon wave change event handler - logs wave status changes
+    /// </summary>
+    private void OnDungeonWaveChanged(DungeonWaveEvent ev)
+    {
+        var changeText = ev.ChangeType switch
+        {
+            WaveChangeType.Preparing => "准备",
+            WaveChangeType.Started => "开始",
+            WaveChangeType.Completed => "完成",
+            _ => ""
+        };
+        
+        AddLog("波次", $"{changeText} {ev.WaveName}");
+    }
+
+    /// <summary>
+    /// 副本完成事件处理 - 记录副本完成或失败
+    /// Dungeon complete event handler - logs dungeon completion or failure
+    /// </summary>
+    private void OnDungeonCompleted(DungeonCompleteEvent ev)
+    {
+        if (ev.Success)
+        {
+            AddLog("系统", $"副本通关！第 {ev.CompletionCount} 次完成");
+        }
+        else
+        {
+            AddLog("系统", "副本失败！");
+        }
+    }
+
+    /// <summary>
+    /// 添加日志 - 统一的日志添加方法
+    /// Add log - unified log adding method
+    /// </summary>
+    private void AddLog(string source, string message)
+    {
+        var time = currentBattleMode == BattleMode.Dungeon && dungeonSnapshot != null
+            ? dungeonSnapshot.ElapsedMs
+            : snapshot.ElapsedMs;
+        
+        var timeStr = $"[{time / 1000.0:F1}s]";
+        var logLine = $"{timeStr} [{source}] {message}";
+        
+        logs.Add(logLine);
+        if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
+    }
+
+    /// <summary>
+    /// 获取副本波次进度显示文本
+    /// Get dungeon wave progress display text
+    /// </summary>
+    private string GetDungeonWaveProgress()
+    {
+        if (dungeonSnapshot == null) return "0 / 0";
+        
+        int currentWave = dungeonSnapshot.CurrentWaveIndex + 1;
+        int totalWaves = dungeonSnapshot.TotalWaves;
+        
+        // 处理完成状态 - Handle completion state
+        if (dungeonSnapshot.State == DungeonState.Completed ||
+            dungeonSnapshot.State == DungeonState.CompletionDelay)
+        {
+            return $"{totalWaves} / {totalWaves}";
+        }
+        
+        // 确保不会显示超过总波次数 - Ensure not displaying beyond total waves
+        currentWave = Math.Min(currentWave, totalWaves);
+        return $"{currentWave} / {totalWaves}";
+    }
+
+    /// <summary>
+    /// 获取副本进度百分比
+    /// Get dungeon progress percentage
+    /// </summary>
+    private int GetDungeonProgressPercent()
+    {
+        if (dungeonSnapshot == null || dungeonSnapshot.TotalWaves == 0) return 0;
+        
+        int currentWave = dungeonSnapshot.CurrentWaveIndex + 1;
+        if (dungeonSnapshot.State == DungeonState.Completed ||
+            dungeonSnapshot.State == DungeonState.CompletionDelay)
+        {
+            return 100;
+        }
+        
+        return Math.Min(100, (int)(currentWave * 100.0 / dungeonSnapshot.TotalWaves));
+    }
+
+    /// <summary>
+    /// 获取副本状态文本
+    /// Get dungeon state text
+    /// </summary>
+    private string GetDungeonStateText()
+    {
+        if (dungeonSnapshot == null) return "未开始";
+        
+        return dungeonSnapshot.State switch
+        {
+            DungeonState.NotStarted => "未开始",
+            DungeonState.Preparing => "准备中",
+            DungeonState.WaveStartDelay => "波次准备",
+            DungeonState.Fighting => "战斗中",
+            DungeonState.WaveEndDelay => "波次结束",
+            DungeonState.CompletionDelay => "等待重新开始",
+            DungeonState.Completed => "已完成",
+            DungeonState.Failed => "失败",
+            DungeonState.Stopped => "已停止",
+            _ => dungeonSnapshot.State.ToString()
+        };
+    }
+
+    /// <summary>
+    /// 获取副本状态徽章样式类
+    /// Get dungeon state badge CSS class
+    /// </summary>
+    private string GetDungeonStateBadgeClass()
+    {
+        if (dungeonSnapshot == null) return "bg-secondary";
+        
+        return dungeonSnapshot.State switch
+        {
+            DungeonState.Fighting => "bg-danger",
+            DungeonState.Completed => "bg-success",
+            DungeonState.Failed => "bg-dark",
+            DungeonState.Preparing or DungeonState.WaveStartDelay or DungeonState.WaveEndDelay => "bg-warning",
+            DungeonState.CompletionDelay => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+
+    /// <summary>
+    /// 友好显示用时 - 格式化时间显示
+    /// Format duration display - formats time display
+    /// </summary>
     private static string FormatDuration(int ms)
     {
         var ts = TimeSpan.FromMilliseconds(ms);
@@ -645,14 +1111,27 @@
         return $"{ts.Minutes:00}:{ts.Seconds:00}.{ts.Milliseconds / 10:00}";
     }
 
+    /// <summary>
+    /// 资源清理 - 取消订阅事件和释放资源
+    /// Resource cleanup - unsubscribe events and dispose resources
+    /// </summary>
     public void Dispose()
     {
         _cts?.Cancel();
         _cts?.Dispose();
+        
         if (battle is not null)
         {
             battle.CombatEventFired -= OnCombatEvent;
-            battle.LootDropped -= OnLootDropped; // 取消订阅掉落物事件
+            battle.LootDropped -= OnLootDropped;
+        }
+        
+        if (dungeonManager is not null)
+        {
+            dungeonManager.CombatEventFired -= OnCombatEvent;
+            dungeonManager.LootDropped -= OnLootDropped;
+            dungeonManager.WaveChanged -= OnDungeonWaveChanged;
+            dungeonManager.DungeonCompleted -= OnDungeonCompleted;
         }
     }
 
@@ -742,5 +1221,38 @@
         font-weight: bold;
         color: white;
         text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    }
+
+    /* 副本战斗相关样式 - Dungeon battle related styles */
+    .dungeon-info-panel {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 15px;
+        border-left: 4px solid #0d6efd;
+    }
+
+    .dungeon-progress-panel {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 15px;
+    }
+
+    .stat-mini {
+        background: white;
+        border-radius: 4px;
+        padding: 10px;
+        text-align: center;
+    }
+
+    .stat-mini .stat-label {
+        font-size: 0.85em;
+        color: #6c757d;
+        margin-bottom: 5px;
+    }
+
+    .stat-mini .stat-value {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #212529;
     }
 </style>
