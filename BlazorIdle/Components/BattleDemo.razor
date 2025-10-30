@@ -61,24 +61,11 @@
             </div>
 
             <div class="col-12 col-lg-6">
-                <!-- 敌人队伍面板 - 显示所有敌人 -->
-                <!-- Enemy team panel - display all enemies -->
-                <div class="team-panel enemy-team">
-                    <h5>敌人队伍 (@(enemyTeam?.AliveCount ?? 0) / @(enemyTeam?.TotalCount ?? 0))</h5>
-                    @if (enemyTeam != null)
-                    {
-                        @foreach (var member in enemyTeam.Members)
-                        {
-                            <div class="member-card @(member.IsDead ? "dead" : "")">
-                                <div class="member-name">@GetEnemyDisplayName(member.Id)</div>
-                                <div class="hp-bar">
-                                    <div class="hp-fill enemy" style="width: @(member.HpPercent * 100)%"></div>
-                                    <span class="hp-text">@member.CurrentHp / @member.MaxHp</span>
-                                </div>
-                            </div>
-                        }
-                    }
-                </div>
+                <!-- 敌人队伍面板（组件化） -->
+                <EnemyTeamPanel Title="敌人队伍"
+                                Team="@enemyTeam"
+                                Battle="@battle"
+                                NameResolver="@GetEnemyDisplayName" />
             </div>
         </div>
 
@@ -505,22 +492,27 @@
             _ => "未知"
         };
 
-        // 使用事件中提供的名称（MultiBattleInstance已经提供）
-        // Use names provided in the event (already provided by MultiBattleInstance)
-        var attackerName = ev.AttackerName ?? "未知";
-        var defenderName = ev.DefenderName ?? "未知";
+        // 名称解析：玩家用当前选中角色名，敌人用配置解析名；其余回退到事件名/ID
+        // Name resolve: player uses selected character name, enemy uses config display name; fallback to event name/ID
+        var attackerName = ev.Attacker == ActorType.Player
+            ? (SelectedCharacter?.Name ?? ev.AttackerName ?? ev.AttackerId)
+            : (GetEnemyDisplayName(ev.AttackerId) ?? ev.AttackerName ?? ev.AttackerId);
+
+        var defenderName = ev.Defender == ActorType.Player
+            ? (SelectedCharacter?.Name ?? ev.DefenderName ?? ev.DefenderId)
+            : (GetEnemyDisplayName(ev.DefenderId) ?? ev.DefenderName ?? ev.DefenderId);
 
         // 构建日志行（格式：时间 攻击者 动作 → 防御者，伤害，结果HP）
         // Build log line (format: time attacker action → defender, damage, result HP)
         var line = $"[{sec:0.00}s] {attackerName} {src} 命中→{defenderName}，伤害 {ev.Damage}，{defenderName}HP→ {ev.DefenderHpAfter}";
-        
+
         // 如果是AOE攻击，添加标记
         // Add marker if it's an AOE attack
         if (ev.IsAoe)
         {
             line += " [AOE]";
         }
-        
+
         // 如果造成击杀，添加标记
         // Add marker if it causes a kill
         if (ev.IsKill)
@@ -687,10 +679,10 @@
         border-radius: 4px;
     }
 
-    .character-info h5 {
-        margin-bottom: 5px;
-        color: #212529;
-    }
+        .character-info h5 {
+            margin-bottom: 5px;
+            color: #212529;
+        }
 
     .team-panel {
         background: #f8f9fa;
@@ -709,7 +701,7 @@
         border-radius: 4px;
         padding: 10px;
         margin-bottom: 10px;
-        transition: opacity 0.3s;
+        transition: opacity 0.3s, transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
     }
 
         .member-card.dead {

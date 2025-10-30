@@ -1,0 +1,204 @@
+﻿@using BlazorIdle.Game
+@inherits ComponentBase
+
+<div class="team-panel enemy-team">
+    <h5>@Title (@(Team?.AliveCount ?? 0) / @(Team?.TotalCount ?? 0))</h5>
+
+    @if (Team is null || Team.Members.Count == 0)
+    {
+        <div class="text-muted small">无敌人</div>
+    }
+    else
+    {
+        <div class="enemy-grid">
+            @foreach (var m in Team.Members)
+            {
+                var isSelected = string.Equals(SelectedId, m.Id, StringComparison.Ordinal);
+                <div class="enemy-card member-card @(isSelected ? "selected" : "condensed") @(m.IsDead ? "dead" : "")"
+                     role="button"
+                     title="@ResolveName(m.Id)"
+                     @onclick="@(() => Select(m.Id))">
+                    <div class="member-name">@ResolveName(m.Id)</div>
+
+                    <div class="hp-bar mb-1">
+                        <div class="hp-fill enemy" style="width: @(m.HpPercent * 100)%"></div>
+                        <span class="hp-text">@m.CurrentHp / @m.MaxHp</span>
+                    </div>
+
+                    @if (isSelected)
+                    {
+                        <div class="details">
+                            <div class="d-flex justify-content-between small text-muted mb-1">
+                                <span>状态：@(m.IsDead ? "已阵亡" : "存活")</span>
+                                <span>ID：@m.Id</span>
+                            </div>
+
+                            @if (!m.IsDead)
+                            {
+                                <div class="small">
+                                    <div class="text-muted mb-1">攻击进度</div>
+                                    <div class="progress" style="height:8px;">
+                                        <div class="progress-bar bg-danger @((ShouldDisableTransition(m) || IsWrapNow(m.Id)) ? "no-transition" : null)"
+                                             @key="@($"{m.Id}-{GetReviveVersion(m.Id)}")"
+                                             role="progressbar"
+                                             style="width: @(GetProgress01ForRender(m.Id) * 100)%"
+                                             aria-valuemin="0" aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                    <div class="text-end text-muted mt-1">
+                                        下次攻击：@((int)Math.Round(GetEnemyRemainMs(m.Id))) ms
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code
+{
+    [Parameter] public string Title { get; set; } = "敌人队伍";
+    [Parameter] public BattleTeam<Enemy>? Team { get; set; }
+    [Parameter] public MultiBattleInstance? Battle { get; set; }
+
+    // 名称解析（如 Slime#1）
+    [Parameter] public Func<string, string>? NameResolver { get; set; }
+
+    // 可选：外部双向绑定当前选中的怪
+    [Parameter] public string? SelectedId { get; set; }
+    [Parameter] public EventCallback<string?> SelectedIdChanged { get; set; }
+
+    // 内部：追踪存活状态与复活版本号（死->活 时+1，用于强制重建进度条DOM）
+    private readonly Dictionary<string, bool> _isAlive = new();
+    private readonly Dictionary<string, int> _reviveVersion = new();
+
+    // 敌人进度：上次值与本次是否回环
+    private readonly Dictionary<string, double> _lastEnemyProgress = new();
+    private readonly Dictionary<string, bool> _wrapNow = new();
+
+    // 当前战斗状态（用于冷却/阵亡时禁用过渡）
+    private MultiBattleState _battleState = MultiBattleState.NotStarted;
+
+    protected override void OnParametersSet()
+    {
+        _battleState = Battle?.GetSnapshot().State ?? MultiBattleState.NotStarted;
+
+        if (Team is null || Team.Members.Count == 0)
+            return;
+
+        // 默认选中：优先第一个存活，否则第一个
+        if (string.IsNullOrWhiteSpace(SelectedId) || Team.GetMember(SelectedId) is null)
+        {
+            SelectedId = Team.GetAliveMemberIds().FirstOrDefault() ?? Team.Members.First().Id;
+        }
+
+        // 更新存活快照与复活版本
+        foreach (var m in Team.Members)
+        {
+            var nowAlive = !m.IsDead;
+            if (_isAlive.TryGetValue(m.Id, out var wasAlive))
+            {
+                if (!wasAlive && nowAlive)
+                {
+                    // 死->活：复活，递增版本号，强制重建进度条元素，使其从0开始
+                    _reviveVersion[m.Id] = _reviveVersion.GetValueOrDefault(m.Id) + 1;
+
+                    // 复活后清理回环状态与上次进度，避免误判
+                    _wrapNow[m.Id] = false;
+                    _lastEnemyProgress[m.Id] = 0.0;
+                }
+                _isAlive[m.Id] = nowAlive;
+            }
+            else
+            {
+                _isAlive[m.Id] = nowAlive;
+                _reviveVersion.TryAdd(m.Id, 0);
+            }
+        }
+
+        // 计算回环：如果进度从大跳到小，则本帧禁用过渡，瞬间归零
+        const double Eps = 0.0001;
+        foreach (var m in Team.Members)
+        {
+            var p = Math.Clamp(GetEnemyProgress01(m.Id), 0, 1);
+            var last = _lastEnemyProgress.GetValueOrDefault(m.Id);
+            _wrapNow[m.Id] = p + Eps < last;
+            _lastEnemyProgress[m.Id] = p;
+        }
+    }
+
+    private string ResolveName(string enemyId)
+        => NameResolver?.Invoke(enemyId) ?? enemyId;
+
+    private void Select(string enemyId)
+    {
+        if (SelectedId == enemyId) return;
+        SelectedId = enemyId;
+        if (SelectedIdChanged.HasDelegate)
+        {
+            SelectedIdChanged.InvokeAsync(SelectedId);
+        }
+        StateHasChanged();
+    }
+
+    private double GetEnemyProgress01(string enemyId)
+        => Battle?.GetEnemyAttackProgress(enemyId) ?? 0.0;
+
+    private double GetEnemyRemainMs(string enemyId)
+        => Battle?.GetEnemyAttackTimeRemaining(enemyId) ?? 0.0;
+
+    private int GetReviveVersion(string enemyId)
+        => _reviveVersion.GetValueOrDefault(enemyId);
+
+    // 回环标记（仅当前帧生效）
+    private bool IsWrapNow(string enemyId)
+        => _wrapNow.TryGetValue(enemyId, out var wrap) && wrap;
+
+    // 本帧用于渲染的进度（与回环检测一致）
+    private double GetProgress01ForRender(string enemyId)
+        => Math.Clamp(_lastEnemyProgress.GetValueOrDefault(enemyId), 0, 1);
+
+    // 非战斗（冷却）或阵亡时禁用过渡，立即归零；恢复战斗后自动启用过渡
+    private bool ShouldDisableTransition(BattleMember<Enemy> member)
+        => member.IsDead || _battleState != MultiBattleState.Fighting;
+}
+
+<style>
+    .enemy-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 10px;
+    }
+
+    .enemy-card.selected {
+        border-color: #dc3545;
+        box-shadow: 0 2px 8px rgba(220, 53, 69, 0.15);
+        transform: translateZ(0);
+    }
+
+    .enemy-card.condensed .details {
+        display: none;
+    }
+
+    .enemy-card.condensed .member-name {
+        font-size: 0.9em;
+    }
+
+    .enemy-card.dead {
+        opacity: 0.6;
+        background: #f8d7da;
+    }
+
+    /* 敌人进度条过渡：与 CharacterPanel 一致，前进更灵敏 */
+    .enemy-team .progress-bar {
+        transition: width 120ms linear;
+    }
+
+    /* 禁用进度条过渡（冷却/阵亡/回环时） */
+    .progress-bar.no-transition {
+        transition: none !important;
+    }
+</style>

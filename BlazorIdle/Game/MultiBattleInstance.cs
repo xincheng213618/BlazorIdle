@@ -580,10 +580,14 @@ namespace BlazorIdle.Game
                 // 复活玩家队伍
                 _playerTeam.ReviveAll(_config.ReviveWithFullHp);
 
-                // 重置玩家轨道
+                // 对称重置：玩家与敌人轨道全部重置到 now，避免冷却期间积压触发
                 foreach (var tracks in _characterTracks.Values)
                 {
                     tracks.Reset(now);
+                }
+                foreach (var track in _enemyTracks.Values)
+                {
+                    track.Reset(now);
                 }
 
                 _state = MultiBattleState.Fighting;
@@ -593,10 +597,14 @@ namespace BlazorIdle.Game
                 // 刷新敌人队伍
                 _enemyTeam.ReviveAll(true);
 
-                // 重置敌人轨道
+                // 对称重置：敌人与玩家轨道全部重置到 now，避免冷却期间积压触发
                 foreach (var track in _enemyTracks.Values)
                 {
                     track.Reset(now);
+                }
+                foreach (var tracks in _characterTracks.Values)
+                {
+                    tracks.Reset(now);
                 }
 
                 _state = MultiBattleState.Fighting;
