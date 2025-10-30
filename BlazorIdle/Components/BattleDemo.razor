@@ -27,12 +27,12 @@
         <div class="row g-2 mb-3">
             <div class="col-12">
                 <label class="form-label">战斗模式</label>
-                <div class="btn-group w-100" role="group">
-                    <input type="radio" class="btn-check" name="battleMode" id="normalMode" checked 
+                <div class="btn-group w-100 battle-mode-group" role="group">
+                    <input type="radio" class="btn-check" name="battleMode" id="normalMode" checked
                            @onchange="@(() => OnBattleModeChanged(BattleMode.Normal))" disabled="@isRunning">
                     <label class="btn btn-outline-primary" for="normalMode">普通战斗</label>
-                    
-                    <input type="radio" class="btn-check" name="battleMode" id="dungeonMode" 
+
+                    <input type="radio" class="btn-check" name="battleMode" id="dungeonMode"
                            @onchange="@(() => OnBattleModeChanged(BattleMode.Dungeon))" disabled="@isRunning">
                     <label class="btn btn-outline-primary" for="dungeonMode">副本战斗</label>
                 </div>
@@ -66,7 +66,7 @@
                         @foreach (var dungeon in dungeons)
                         {
                             <option value="@dungeon.Id">
-                                @dungeon.Name 
+                                @dungeon.Name
                                 @if (dungeon.DungeonType == DungeonType.Elite)
                                 {
                                     <text>(精英)</text>
@@ -92,14 +92,6 @@
                             }
                             <span class="badge bg-secondary">波次: @currentDungeon.Waves.Count</span>
                         </div>
-                        <div>
-                            <button class="btn btn-sm btn-outline-primary" 
-                                    @onclick="ToggleAutoRepeat" 
-                                    disabled="@(!isRunning)">
-                                @(dungeonManager?.IsAutoRepeatEnabled == true ? "✓" : "")
-                                自动循环
-                            </button>
-                        </div>
                     </div>
                     @if (!string.IsNullOrEmpty(currentDungeon.Description))
                     {
@@ -124,7 +116,7 @@
                                 @GetDungeonProgressPercent()%
                             </div>
                         </div>
-                        
+
                         <!-- 副本统计 -->
                         <!-- Dungeon statistics -->
                         <div class="row mt-3 g-2">
@@ -210,23 +202,23 @@
 
 @code {
     // ===== 可配置常量 - Configurable Constants =====
-    
+
     // 战斗循环间隔（毫秒）- 控制游戏更新频率
     // Battle loop interval (ms) - controls game update frequency
     private const int TickMs = 100;
-    
+
     // 自动循环延迟时间（毫秒）- 副本完成后到下次开始的等待时间
     // Auto-repeat delay time (ms) - waiting time between dungeon completion and next start
     private const int AutoRepeatDelayMs = 2000;
-    
+
     // AOE伤害倍率 - 群体攻击技能对每个目标的伤害比例
     // AOE damage multiplier - damage ratio of area attacks to each target
     private const double AoeDamageMultiplier = 0.7;
-    
+
     // 默认敌人刷新时间（毫秒）- 当怪物配置中没有指定刷新时间时使用
     // Default enemy respawn time (ms) - used when monster config doesn't specify respawn time
     private const int DefaultEnemyRespawnMs = 3000;
-    
+
     // 最大日志条目数 - 日志列表保留的最大记录数
     // Max log entries - maximum number of log records to keep
     private const int MaxLogEntries = 200;
@@ -236,7 +228,7 @@
 
     /// <summary>
     /// 战斗模式枚举 - 区分普通战斗和副本战斗
-    /// Battle mode enum - differentiates normal battle and dungeon battle
+    /// Battle mode enum - differentiates normal and dungeon battle
     /// </summary>
     private enum BattleMode
     {
@@ -270,12 +262,12 @@
     // Multi-unit battle system (used for normal battle and dungeon battle)
     private MultiBattleInstance? battle;
     private MultiBattleSnapshot snapshot = new MultiBattleSnapshot();
-    
+
     // 战斗队伍 - 包装单个角色和怪物
     // Battle teams - wrapping single character and monster
     private BattleTeam<Character>? playerTeam;
     private BattleTeam<Enemy>? enemyTeam;
-    
+
     private BattleDigest? digest;
     private bool isRunning = false;
 
@@ -286,7 +278,7 @@
         get
         {
             if (SelectedCharacter == null) return 0.0;
-            
+
             var hasteFactor = 1.0 + SelectedCharacter.HastePercent / 100.0;
             var attackDps = SelectedCharacter.DamagePerAttack * SelectedCharacter.AttackRateAPS * hasteFactor;
             var specialDps = SelectedCharacter.SpecialDamage / Math.Max(0.1, SelectedCharacter.SpecialIntervalSec);
@@ -305,7 +297,7 @@
             return "战斗中";
         }
     }
-    
+
     private string EnemyStatusText
     {
         get
@@ -326,7 +318,7 @@
             return battle.GetCharacterAttackProgress(SelectedCharacter.Id);
         }
     }
-    
+
     // 获取角色特殊技能进度
     // Get character special skill progress
     private double specialProgress01
@@ -337,7 +329,7 @@
             return battle.GetCharacterSpecialProgress(SelectedCharacter.Id);
         }
     }
-    
+
     // 获取敌人攻击进度 - 暂时不显示（多敌人情况下）
     // Get enemy attack progress - not displayed for now (in multi-enemy scenario)
     private double enemyProgress01
@@ -349,7 +341,7 @@
             return 0.0;
         }
     }
-    
+
     // 获取角色攻击剩余时间
     // Get character attack time remaining
     private double attackRemainMs
@@ -360,7 +352,7 @@
             return battle.GetCharacterAttackTimeRemaining(SelectedCharacter.Id);
         }
     }
-    
+
     // 获取角色特殊技能剩余时间
     // Get character special skill time remaining
     private double specialRemainMs
@@ -371,7 +363,7 @@
             return battle.GetCharacterSpecialTimeRemaining(SelectedCharacter.Id);
         }
     }
-    
+
     // 获取敌人攻击剩余时间 - 暂时不显示（多敌人情况下）
     // Get enemy attack time remaining - not displayed for now (in multi-enemy scenario)
     private double enemyRemainMs
@@ -438,31 +430,9 @@
     private void OnBattleModeChanged(BattleMode mode)
     {
         if (isRunning) return; // 战斗中不允许切换 - Don't allow switching during battle
-        
+
         currentBattleMode = mode;
         ResetBattle();
-        StateHasChanged();
-    }
-
-    /// <summary>
-    /// 切换副本自动循环 - 启用或禁用副本自动重复
-    /// Toggle dungeon auto-repeat - enable or disable dungeon auto-repeat
-    /// </summary>
-    private void ToggleAutoRepeat()
-    {
-        if (dungeonManager == null) return;
-
-        if (dungeonManager.IsAutoRepeatEnabled)
-        {
-            dungeonManager.DisableAutoRepeat();
-            AddLog("系统", "已关闭自动循环");
-        }
-        else
-        {
-            // 使用全局配置的自动循环延迟时间 - Use globally configured auto-repeat delay time
-            dungeonManager.EnableAutoRepeat(AutoRepeatDelayMs);
-            AddLog("系统", "已开启自动循环");
-        }
         StateHasChanged();
     }
 
@@ -518,7 +488,7 @@
         // 创建敌人队伍（使用monsterGroups）
         // Create enemy team (using monsterGroups)
         enemyTeam = new BattleTeam<Enemy>("enemy_team", currentScenario.Name, TeamType.Enemy);
-        
+
         // 遍历场景中的所有怪物组
         // Iterate through all monster groups in the scenario
         int enemyIndex = 0;
@@ -534,7 +504,7 @@
             for (int i = 0; i < monsterGroup.Count; i++)
             {
                 enemyIndex++;
-                
+
                 // 应用倍率计算怪物属性
                 // Apply multipliers to calculate monster attributes
                 int maxHp = (int)Math.Round(Math.Max(1, monsterDef.MaxHp) * monsterGroup.HpMultiplier);
@@ -557,7 +527,7 @@
                 // 生成唯一的怪物ID（怪物类型_索引）
                 // Generate unique monster ID (monsterType_index)
                 string enemyId = $"{monsterGroup.MonsterId}_{enemyIndex}";
-                
+
                 // 添加到敌人队伍
                 // Add to enemy team
                 enemyTeam.AddMember(enemyId, enemy, enemy.MaxHp);
@@ -574,26 +544,26 @@
             // 敌人随机选择目标
             // Enemies select targets randomly
             EnemyTargetStrategy = TargetStrategy.Random,
-            
+
             // 特殊技能配置 - 多敌人时使用AOE更有效
             // Special skill configuration - AOE is more effective with multiple enemies
             SpecialIsAoe = enemyTeam.TotalCount > 1,
             AoeDamageMultiplier = AoeDamageMultiplier, // AOE伤害倍率 - AOE damage multiplier
-            
+
             // 允许玩家复活和敌人刷新（持续战斗模式）
             // Allow player revival and enemy respawn (continuous battle mode)
             AllowPlayerRevive = true,
             AllowEnemyRespawn = true,
-            
+
             // 使用角色配置的复活时间
             // Use character configured revival time
             PlayerReviveCooldownMs = character.ReviveMs,
             // 敌人刷新时间使用场景中第一个怪物组的配置
             // Enemy respawn time uses configuration from first monster group in scenario
-            EnemyRespawnCooldownMs = enemyTeam.Members.Any() 
-                ? enemyTeam.Members.First().Entity.RespawnMs 
+            EnemyRespawnCooldownMs = enemyTeam.Members.Any()
+                ? enemyTeam.Members.First().Entity.RespawnMs
                 : DefaultEnemyRespawnMs,
-            
+
             // 复活时满血
             // Revive with full HP
             ReviveWithFullHp = true
@@ -602,12 +572,12 @@
         // 创建多单位战斗实例
         // Create multi-unit battle instance
         battle = new MultiBattleInstance(clock, rng, playerTeam, enemyTeam, config);
-        
+
         // 订阅战斗事件
         // Subscribe to battle events
         battle.CombatEventFired += OnCombatEvent;
         battle.LootDropped += OnLootDropped;
-        
+
         digest = null;
     }
 
@@ -657,6 +627,9 @@
 
         // 创建副本管理器 - Create dungeon manager
         dungeonManager = new DungeonManager(currentDungeon, clock, rng, playerTeam, GameConfig);
+
+        // 默认开启自动循环
+        dungeonManager.EnableAutoRepeat(AutoRepeatDelayMs);
 
         // 订阅副本事件 - Subscribe to dungeon events
         dungeonManager.CombatEventFired += OnCombatEvent;
@@ -736,8 +709,11 @@
         }
         else
         {
-            // 停止副本战斗 - Stop dungeon battle
+            // 停止副本战斗
             dungeonManager?.StopDungeon();
+            // 清空 UI 持有的战斗引用
+            battle = null;
+
             if (dungeonManager != null)
             {
                 dungeonSnapshot = dungeonManager.GetSnapshot();
@@ -754,6 +730,9 @@
     private void ResetBattle()
     {
         StopBattle();
+
+        // 统一清空旧引用
+        battle = null;
 
         if (currentBattleMode == BattleMode.Normal)
         {
@@ -798,13 +777,19 @@
                     // 副本战斗循环 - Dungeon battle loop
                     dungeonManager!.AdvanceTick(TickMs);
                     dungeonSnapshot = dungeonManager.GetSnapshot();
-                    
-                    // 更新敌人队伍引用用于UI显示 - Update enemy team reference for UI display
+
+                    // 更新敌人队伍引用用于UI显示
                     if (dungeonSnapshot?.CurrentEnemyTeam != null)
                     {
                         enemyTeam = dungeonSnapshot.CurrentEnemyTeam;
-                        
-                        // 获取副本战斗的快照用于进度条显示 - Get dungeon battle snapshot for progress display
+
+                        // 同步当前副本战斗实例到 UI（用于进度条）
+                        if (dungeonManager.CurrentBattle is not null)
+                        {
+                            battle = dungeonManager.CurrentBattle;
+                        }
+
+                        // 获取副本战斗快照用于进度条显示
                         if (dungeonSnapshot.BattleSnapshot != null)
                         {
                             snapshot = dungeonSnapshot.BattleSnapshot;
@@ -873,7 +858,7 @@
 
         _ = InvokeAsync(StateHasChanged);
     }
-    
+
     /// <summary>
     /// 获取敌人显示名称 - 从ID中提取怪物类型并获取对应名称
     /// Get enemy display name - extracts monster type from ID and gets corresponding name
@@ -993,7 +978,7 @@
             WaveChangeType.Completed => "完成",
             _ => ""
         };
-        
+
         AddLog("波次", $"{changeText} {ev.WaveName}");
     }
 
@@ -1022,10 +1007,10 @@
         var time = currentBattleMode == BattleMode.Dungeon && dungeonSnapshot != null
             ? dungeonSnapshot.ElapsedMs
             : snapshot.ElapsedMs;
-        
+
         var timeStr = $"[{time / 1000.0:F1}s]";
         var logLine = $"{timeStr} [{source}] {message}";
-        
+
         logs.Add(logLine);
         if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
     }
@@ -1037,17 +1022,17 @@
     private string GetDungeonWaveProgress()
     {
         if (dungeonSnapshot == null) return "0 / 0";
-        
+
         int currentWave = dungeonSnapshot.CurrentWaveIndex + 1;
         int totalWaves = dungeonSnapshot.TotalWaves;
-        
+
         // 处理完成状态 - Handle completion state
         if (dungeonSnapshot.State == DungeonState.Completed ||
             dungeonSnapshot.State == DungeonState.CompletionDelay)
         {
             return $"{totalWaves} / {totalWaves}";
         }
-        
+
         // 确保不会显示超过总波次数 - Ensure not displaying beyond total waves
         currentWave = Math.Min(currentWave, totalWaves);
         return $"{currentWave} / {totalWaves}";
@@ -1060,14 +1045,14 @@
     private int GetDungeonProgressPercent()
     {
         if (dungeonSnapshot == null || dungeonSnapshot.TotalWaves == 0) return 0;
-        
+
         int currentWave = dungeonSnapshot.CurrentWaveIndex + 1;
         if (dungeonSnapshot.State == DungeonState.Completed ||
             dungeonSnapshot.State == DungeonState.CompletionDelay)
         {
             return 100;
         }
-        
+
         return Math.Min(100, (int)(currentWave * 100.0 / dungeonSnapshot.TotalWaves));
     }
 
@@ -1078,7 +1063,7 @@
     private string GetDungeonStateText()
     {
         if (dungeonSnapshot == null) return "未开始";
-        
+
         return dungeonSnapshot.State switch
         {
             DungeonState.NotStarted => "未开始",
@@ -1101,7 +1086,7 @@
     private string GetDungeonStateBadgeClass()
     {
         if (dungeonSnapshot == null) return "bg-secondary";
-        
+
         return dungeonSnapshot.State switch
         {
             DungeonState.Fighting => "bg-danger",
@@ -1135,13 +1120,13 @@
     {
         _cts?.Cancel();
         _cts?.Dispose();
-        
+
         if (battle is not null)
         {
             battle.CombatEventFired -= OnCombatEvent;
             battle.LootDropped -= OnLootDropped;
         }
-        
+
         if (dungeonManager is not null)
         {
             dungeonManager.CombatEventFired -= OnCombatEvent;
@@ -1260,15 +1245,49 @@
         text-align: center;
     }
 
-    .stat-mini .stat-label {
-        font-size: 0.85em;
-        color: #6c757d;
-        margin-bottom: 5px;
+        .stat-mini .stat-label {
+            font-size: 0.85em;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .stat-mini .stat-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #212529;
+        }
+
+    /* ——— 战斗模式按钮视觉增强 ——— */
+    .battle-mode-group .btn {
+        font-weight: 600;
+        padding: 0.55rem 0.75rem;
+        transition: all 120ms ease-in-out;
     }
 
-    .stat-mini .stat-value {
-        font-size: 1.2em;
-        font-weight: bold;
-        color: #212529;
+    /* 未选中：浅蓝底 + 浅蓝边，文字主色系 */
+    .battle-card .battle-mode-group .btn-check:not(:checked) + .btn-outline-primary {
+        background-color: #f6faff; /* 浅且不突兀的底色 */
+        border-color: #cfe2ff;
+        color: #0b5ed7;
+    }
+
+        .battle-card .battle-mode-group .btn-check:not(:checked) + .btn-outline-primary:hover {
+            background-color: #e9f2ff;
+            border-color: #bfd6ff;
+            color: #0954c6;
+        }
+
+    /* 选中：保持实心主色并稍微强调 */
+    .battle-card .battle-mode-group .btn-check:checked + .btn-outline-primary {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+        color: #fff;
+        box-shadow: 0 0 0 .16rem rgba(13,110,253,.2);
+    }
+
+    /* 禁用态：轻微淡化但仍保留底色提示 */
+    .battle-card .battle-mode-group .btn-check:disabled + .btn-outline-primary {
+        opacity: .85;
+        cursor: not-allowed;
     }
 </style>

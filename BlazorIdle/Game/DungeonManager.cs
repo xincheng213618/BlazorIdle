@@ -95,6 +95,8 @@ namespace BlazorIdle.Game
         /// </summary>
         public int CompletionCount => _completionCount;
 
+        // 新增：对 UI 暴露当前战斗实例（只读）
+        public MultiBattleInstance? CurrentBattle => _currentBattle;
         /// <summary>
         /// 开始副本
         /// Start dungeon
