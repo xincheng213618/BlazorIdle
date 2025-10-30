@@ -22,14 +22,15 @@
             <p class="text-muted mb-0">职业: @(GetProfessionName(SelectedCharacter.ProfessionId))</p>
         </div>
 
-        <!-- 怪物选择 -->
+        <!-- 战斗场景选择 - 使用monsterGroups概念 -->
+        <!-- Battle scenario selection - using monsterGroups concept -->
         <div class="row g-2 mb-3">
-            <div class="col-6">
-                <label class="form-label">怪物</label>
-                <InputSelect class="form-control" @bind-Value="selectedMonsterId" disabled="@(!configReady || isRunning)" @onchange="OnSelectionChanged">
-                    @foreach (var m in monsters)
+            <div class="col-12">
+                <label class="form-label">战斗场景</label>
+                <InputSelect class="form-control" @bind-Value="selectedScenarioId" disabled="@(!configReady || isRunning)" @onchange="OnSelectionChanged">
+                    @foreach (var scenario in battleScenarios)
                     {
-                        <option value="@m.Id">@m.Name</option>
+                        <option value="@scenario.Id">@scenario.Name - @scenario.Description</option>
                     }
                 </InputSelect>
             </div>
@@ -60,14 +61,24 @@
             </div>
 
             <div class="col-12 col-lg-6">
-                <MonsterPanel Title="@currentMonster?.Name"
-                              Level="@(currentMonster?.Level)"
-                              Tag="@selectedMonsterId"
-                              StatusText="@EnemyStatusText"
-                              Hp="@GetEnemyHp()"
-                              MaxHp="@GetEnemyMaxHp()"
-                              EnemyAttackProgress01="@enemyProgress01"
-                              EnemyAttackRemainMs="@enemyRemainMs" />
+                <!-- 敌人队伍面板 - 显示所有敌人 -->
+                <!-- Enemy team panel - display all enemies -->
+                <div class="team-panel enemy-team">
+                    <h5>敌人队伍 (@(enemyTeam?.AliveCount ?? 0) / @(enemyTeam?.TotalCount ?? 0))</h5>
+                    @if (enemyTeam != null)
+                    {
+                        @foreach (var member in enemyTeam.Members)
+                        {
+                            <div class="member-card @(member.IsDead ? "dead" : "")">
+                                <div class="member-name">@GetEnemyDisplayName(member.Id)</div>
+                                <div class="hp-bar">
+                                    <div class="hp-fill enemy" style="width: @(member.HpPercent * 100)%"></div>
+                                    <span class="hp-text">@member.CurrentHp / @member.MaxHp</span>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
             </div>
         </div>
 
@@ -100,8 +111,9 @@
     // Configuration selection
     private List<ProfessionDef> professions = new();
     private List<MonsterDef> monsters = new();
-    private string? selectedMonsterId;
-    private MonsterDef? currentMonster => monsters.FirstOrDefault(m => m.Id == selectedMonsterId);
+    private List<BattleScenarioDef> battleScenarios = new();
+    private string? selectedScenarioId;
+    private BattleScenarioDef? currentScenario => battleScenarios.FirstOrDefault(s => s.Id == selectedScenarioId);
     private string configVersion = "loading";
     private bool configReady = false;
 
@@ -177,14 +189,15 @@
         }
     }
     
-    // 获取敌人攻击进度
-    // Get enemy attack progress
+    // 获取敌人攻击进度 - 暂时不显示（多敌人情况下）
+    // Get enemy attack progress - not displayed for now (in multi-enemy scenario)
     private double enemyProgress01
     {
         get
         {
-            if (battle == null || currentMonster == null) return 0.0;
-            return battle.GetEnemyAttackProgress(currentMonster.Id);
+            // 多敌人场景下不显示单个敌人的进度
+            // Don't display individual enemy progress in multi-enemy scenario
+            return 0.0;
         }
     }
     
@@ -210,14 +223,15 @@
         }
     }
     
-    // 获取敌人攻击剩余时间
-    // Get enemy attack time remaining
+    // 获取敌人攻击剩余时间 - 暂时不显示（多敌人情况下）
+    // Get enemy attack time remaining - not displayed for now (in multi-enemy scenario)
     private double enemyRemainMs
     {
         get
         {
-            if (battle == null || currentMonster == null) return 0.0;
-            return battle.GetEnemyAttackTimeRemaining(currentMonster.Id);
+            // 多敌人场景下不显示单个敌人的进度
+            // Don't display individual enemy progress in multi-enemy scenario
+            return 0.0;
         }
     }
 
@@ -232,11 +246,12 @@
         await GameConfig.EnsureLoadedAsync();
         professions = GameConfig.Professions.ToList();
         monsters = GameConfig.Monsters.ToList();
+        battleScenarios = GameConfig.BattleScenarios.ToList();
         configVersion = GameConfig.Version;
 
-        selectedMonsterId = monsters.FirstOrDefault()?.Id;
+        selectedScenarioId = battleScenarios.FirstOrDefault()?.Id;
 
-        configReady = monsters.Count > 0;
+        configReady = battleScenarios.Count > 0 && monsters.Count > 0;
 
         if (SelectedCharacter != null)
         {
@@ -263,12 +278,12 @@
     }
 
     /// <summary>
-    /// 构建战斗实例 - 创建1v1战斗（使用多单位战斗系统）
-    /// Build battle instance - creates 1v1 battle (using multi-unit battle system)
+    /// 构建战斗实例 - 使用monsterGroups创建多对多战斗
+    /// Build battle instance - creates multi-unit battle using monsterGroups
     /// </summary>
     private void BuildBattle()
     {
-        if (SelectedCharacter == null) return;
+        if (SelectedCharacter == null || currentScenario == null) return;
 
         // 取消订阅旧战斗实例的事件
         // Unsubscribe from old battle instance events
@@ -278,12 +293,10 @@
             battle.LootDropped -= OnLootDropped;
         }
 
-        var m = currentMonster ?? monsters.First();
-
         // 创建时钟和随机数生成器
         // Create clock and random number generator
         var clock = new SimClock();
-        int seed = HashSeed(SelectedCharacter.Id, m.Id, configVersion);
+        int seed = HashSeed(SelectedCharacter.Id, currentScenario.Id, configVersion);
         var rng = new RngContext(seed);
 
         // 创建角色实体（从SelectedCharacter复制属性）
@@ -303,52 +316,89 @@
             ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0)
         };
 
-        // 创建敌人实体（从怪物定义复制属性）
-        // Create enemy entity (copy properties from monster definition)
-        var enemy = new Enemy
-        {
-            MaxHp = Math.Max(1, m.MaxHp),
-            Hp = Math.Max(1, m.MaxHp),
-            AttackIntervalSec = Math.Max(0.1, m.AttackIntervalSec),
-            DamagePerHit = Math.Max(1, m.DamagePerHit),
-            VariancePct = m.VariancePct,
-            RespawnMs = (int)Math.Round(Math.Max(0, m.RespawnSec) * 1000.0),
-            LootDrops = m.LootDrops?.ToList() ?? new List<Game.Config.LootDrop>()
-        };
-
         // 创建玩家队伍（单成员）
         // Create player team (single member)
         playerTeam = new BattleTeam<Character>("player_team", "玩家队伍", TeamType.Player);
         playerTeam.AddMember(SelectedCharacter.Id, character, character.MaxHp);
 
-        // 创建敌人队伍（单成员）
-        // Create enemy team (single member)
-        enemyTeam = new BattleTeam<Enemy>("enemy_team", m.Name, TeamType.Enemy);
-        enemyTeam.AddMember(m.Id, enemy, enemy.MaxHp);
+        // 创建敌人队伍（使用monsterGroups）
+        // Create enemy team (using monsterGroups)
+        enemyTeam = new BattleTeam<Enemy>("enemy_team", currentScenario.Name, TeamType.Enemy);
+        
+        // 遍历场景中的所有怪物组
+        // Iterate through all monster groups in the scenario
+        int enemyIndex = 0;
+        foreach (var monsterGroup in currentScenario.MonsterGroups)
+        {
+            // 获取怪物定义
+            // Get monster definition
+            var monsterDef = GameConfig.GetMonster(monsterGroup.MonsterId);
+            if (monsterDef == null) continue;
 
-        // 配置多单位战斗参数（从角色和怪物属性中获取）
-        // Configure multi-battle parameters (from character and monster attributes)
+            // 根据count创建多个怪物实例
+            // Create multiple monster instances based on count
+            for (int i = 0; i < monsterGroup.Count; i++)
+            {
+                enemyIndex++;
+                
+                // 应用倍率计算怪物属性
+                // Apply multipliers to calculate monster attributes
+                int maxHp = (int)Math.Round(Math.Max(1, monsterDef.MaxHp) * monsterGroup.HpMultiplier);
+                int damagePerHit = (int)Math.Round(Math.Max(1, monsterDef.DamagePerHit) * monsterGroup.DamageMultiplier);
+                double attackInterval = Math.Max(0.1, monsterDef.AttackIntervalSec / monsterGroup.AttackSpeedMultiplier);
+
+                // 创建敌人实体
+                // Create enemy entity
+                var enemy = new Enemy
+                {
+                    MaxHp = maxHp,
+                    Hp = maxHp,
+                    AttackIntervalSec = attackInterval,
+                    DamagePerHit = damagePerHit,
+                    VariancePct = monsterDef.VariancePct,
+                    RespawnMs = (int)Math.Round(Math.Max(0, monsterDef.RespawnSec) * 1000.0),
+                    LootDrops = monsterGroup.SpecialDrops?.ToList() ?? monsterDef.LootDrops?.ToList() ?? new List<Game.Config.LootDrop>()
+                };
+
+                // 生成唯一的怪物ID（怪物类型_索引）
+                // Generate unique monster ID (monsterType_index)
+                string enemyId = $"{monsterGroup.MonsterId}_{enemyIndex}";
+                
+                // 添加到敌人队伍
+                // Add to enemy team
+                enemyTeam.AddMember(enemyId, enemy, enemy.MaxHp);
+            }
+        }
+
+        // 配置多单位战斗参数（适应多对多战斗）
+        // Configure multi-battle parameters (adapted for multi-unit battles)
         var config = new MultiBattleConfig
         {
-            // 目标选择策略（1v1时无影响，但保持一致性）
-            // Target selection strategy (no effect in 1v1, but keeps consistency)
-            PlayerTargetStrategy = TargetStrategy.Random,
+            // 目标选择策略 - 玩家优先攻击生命值最低的敌人
+            // Target selection strategy - player prioritizes lowest HP enemies
+            PlayerTargetStrategy = TargetStrategy.LowestHp,
+            // 敌人随机选择目标
+            // Enemies select targets randomly
             EnemyTargetStrategy = TargetStrategy.Random,
             
-            // 特殊技能为单体攻击（1v1场景）
-            // Special skill is single-target (1v1 scenario)
-            SpecialIsAoe = false,
-            AoeDamageMultiplier = 1.0,
+            // 特殊技能配置 - 多敌人时使用AOE更有效
+            // Special skill configuration - AOE is more effective with multiple enemies
+            SpecialIsAoe = enemyTeam.TotalCount > 1,
+            AoeDamageMultiplier = 0.7, // AOE伤害倍率 - AOE damage multiplier
             
             // 允许玩家复活和敌人刷新（持续战斗模式）
             // Allow player revival and enemy respawn (continuous battle mode)
             AllowPlayerRevive = true,
             AllowEnemyRespawn = true,
             
-            // 使用角色和怪物配置的复活/刷新时间
-            // Use character and monster configured revival/respawn times
+            // 使用角色配置的复活时间
+            // Use character configured revival time
             PlayerReviveCooldownMs = character.ReviveMs,
-            EnemyRespawnCooldownMs = enemy.RespawnMs,
+            // 敌人刷新时间使用场景中第一个怪物组的配置
+            // Enemy respawn time uses configuration from first monster group in scenario
+            EnemyRespawnCooldownMs = enemyTeam.Members.Any() 
+                ? enemyTeam.Members.First().Entity.RespawnMs 
+                : 3000,
             
             // 复活时满血
             // Revive with full HP
@@ -445,36 +495,38 @@
         // Convert time to seconds
         var sec = ev.TimeMs / 1000.0;
 
-        // 获取攻击者和防御者的显示名称
-        // Get attacker and defender display names
-        var charName = string.IsNullOrWhiteSpace(SelectedCharacter?.Name) ? "未知角色" : SelectedCharacter!.Name;
-        var monsterName = currentMonster?.Name
-                          ?? monsters.FirstOrDefault(m => m.Id == selectedMonsterId)?.Name
-                          ?? selectedMonsterId
-                          ?? "未知怪物";
-
         // 动作来源标识
         // Action source identifier
         var src = ev.Source switch
         {
-            EventSource.Attack => "Attack",
-            EventSource.Special => "Special",
-            EventSource.EnemyAttack => "EnemyAtk",
-            _ => "Unknown"
+            EventSource.Attack => "普攻",
+            EventSource.Special => "特技",
+            EventSource.EnemyAttack => "攻击",
+            _ => "未知"
         };
 
-        // 确定攻击者和防御者的身份标签
-        // Determine attacker and defender identity labels
-        var attackerSide = ev.Attacker == ActorType.Player ? "玩家" : "怪物";
-        var attackerName = ev.Attacker == ActorType.Player ? charName : monsterName;
+        // 使用事件中提供的名称（MultiBattleInstance已经提供）
+        // Use names provided in the event (already provided by MultiBattleInstance)
+        var attackerName = ev.AttackerName ?? "未知";
+        var defenderName = ev.DefenderName ?? "未知";
 
-        var defenderSide = ev.Defender == ActorType.Player ? "玩家" : "怪物";
-        var defenderName = ev.Defender == ActorType.Player ? charName : monsterName;
-
-        // 构建日志行（格式：时间 攻击者 动作 → 防御者，伤害，结果HP，RNG索引）
-        // Build log line (format: time attacker action → defender, damage, result HP, RNG index)
-        var line =
-            $"[{sec:0.00}s] {attackerSide}:{attackerName} {src} 命中→{defenderSide}:{defenderName}，伤害 {ev.Damage}，{defenderSide}HP→ {ev.DefenderHpAfter}，RNGidx={ev.RngIndexAfter}";
+        // 构建日志行（格式：时间 攻击者 动作 → 防御者，伤害，结果HP）
+        // Build log line (format: time attacker action → defender, damage, result HP)
+        var line = $"[{sec:0.00}s] {attackerName} {src} 命中→{defenderName}，伤害 {ev.Damage}，{defenderName}HP→ {ev.DefenderHpAfter}";
+        
+        // 如果是AOE攻击，添加标记
+        // Add marker if it's an AOE attack
+        if (ev.IsAoe)
+        {
+            line += " [AOE]";
+        }
+        
+        // 如果造成击杀，添加标记
+        // Add marker if it causes a kill
+        if (ev.IsKill)
+        {
+            line += " [击杀!]";
+        }
 
         // 添加到日志列表，保持最大条目数限制
         // Add to log list, maintain max entries limit
@@ -482,6 +534,30 @@
         if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
 
         _ = InvokeAsync(StateHasChanged);
+    }
+    
+    /// <summary>
+    /// 获取敌人显示名称 - 从ID中提取怪物类型并获取对应名称
+    /// Get enemy display name - extracts monster type from ID and gets corresponding name
+    /// </summary>
+    private string GetEnemyDisplayName(string enemyId)
+    {
+        // enemyId格式为 "monsterId_index"，例如 "slime_1"
+        // enemyId format is "monsterId_index", e.g., "slime_1"
+        var parts = enemyId.Split('_');
+        if (parts.Length >= 2)
+        {
+            var monsterId = parts[0];
+            var index = parts[1];
+            var monsterDef = GameConfig.GetMonster(monsterId);
+            if (monsterDef != null)
+            {
+                // 返回格式："怪物名称#索引"
+                // Return format: "MonsterName#index"
+                return $"{monsterDef.Name}#{index}";
+            }
+        }
+        return enemyId;
     }
 
     /// <summary>
@@ -517,46 +593,48 @@
     }
 
     /// <summary>
-    /// 获取敌人当前生命值 - 从敌人队伍中获取
-    /// Get enemy current HP - retrieved from enemy team
+    /// 获取敌人当前生命值 - 多敌人场景下返回总和
+    /// Get enemy current HP - returns sum in multi-enemy scenario
     /// </summary>
     private int GetEnemyHp()
     {
-        if (enemyTeam == null || currentMonster == null) return 0;
-        var member = enemyTeam.GetMember(currentMonster.Id);
-        return member?.CurrentHp ?? 0;
+        if (enemyTeam == null) return 0;
+        return enemyTeam.Members.Sum(m => m.CurrentHp);
     }
 
     /// <summary>
-    /// 获取敌人最大生命值 - 从敌人队伍中获取
-    /// Get enemy max HP - retrieved from enemy team
+    /// 获取敌人最大生命值 - 多敌人场景下返回总和
+    /// Get enemy max HP - returns sum in multi-enemy scenario
     /// </summary>
     private int GetEnemyMaxHp()
     {
-        if (enemyTeam == null || currentMonster == null) return 1;
-        var member = enemyTeam.GetMember(currentMonster.Id);
-        return member?.MaxHp ?? 1;
+        if (enemyTeam == null) return 1;
+        var total = enemyTeam.Members.Sum(m => m.MaxHp);
+        return total > 0 ? total : 1;
     }
 
     /// <summary>
     /// 处理掉落物事件 - 将掉落物添加到角色库存并记录统一风格的日志
+    /// Handle loot drop event - adds loot to character inventory and logs it
     /// </summary>
     private void OnLootDropped(LootDropEvent lootEvent)
     {
         if (SelectedCharacter == null) return;
 
         // 更新库存
+        // Update inventory
         SelectedCharacter.Inventory.AddItem(lootEvent.ItemId, lootEvent.Quantity);
 
-        // 统一命名与 OnCombatEvent 一致的上下文取值
+        // 获取时间、角色名和物品名
+        // Get time, character name, and item name
         var sec = lootEvent.TimeMs / 1000.0;
         var charName = string.IsNullOrWhiteSpace(SelectedCharacter?.Name) ? "未知角色" : SelectedCharacter!.Name;
-        var monsterName = currentMonster?.Name ?? "未知怪物";
         var itemDef = GameConfig.GetItem(lootEvent.ItemId);
         var itemName = itemDef?.Name ?? lootEvent.ItemId;
 
-        // 与 OnCombatEvent 风格统一：玩家:角色名 动作 内容
-        var logLine = $"[{sec:0.00}s] 怪物:{monsterName} 掉落物品→玩家:{charName} 获得 {itemName} x{lootEvent.Quantity}";
+        // 构建日志行
+        // Build log line
+        var logLine = $"[{sec:0.00}s] {charName} 获得掉落 {itemName} x{lootEvent.Quantity}";
 
         logs.Add(logLine);
         if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
@@ -612,5 +690,65 @@
     .character-info h5 {
         margin-bottom: 5px;
         color: #212529;
+    }
+
+    .team-panel {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+
+    .enemy-team {
+        border-left: 4px solid #dc3545;
+    }
+
+    .member-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 10px;
+        margin-bottom: 10px;
+        transition: opacity 0.3s;
+    }
+
+        .member-card.dead {
+            opacity: 0.5;
+            background: #f8d7da;
+        }
+
+    .member-name {
+        font-weight: bold;
+        margin-bottom: 5px;
+        font-size: 0.9em;
+    }
+
+    .hp-bar {
+        position: relative;
+        height: 20px;
+        background: #e9ecef;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .hp-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #28a745, #20c997);
+        transition: width 0.3s ease;
+    }
+
+        .hp-fill.enemy {
+            background: linear-gradient(90deg, #dc3545, #c82333);
+        }
+
+    .hp-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 0.75em;
+        font-weight: bold;
+        color: white;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
     }
 </style>

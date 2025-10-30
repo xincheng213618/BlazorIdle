@@ -29,7 +29,8 @@ namespace BlazorIdle.Server.Controllers
                 Professions = _provider.Professions.ToList(),
                 Monsters = _provider.Monsters.ToList(),
                 Items = _provider.Items.ToList(),
-                Dungeons = _provider.Dungeons.ToList() // 添加副本配置到响应
+                Dungeons = _provider.Dungeons.ToList(),
+                BattleScenarios = _provider.BattleScenarios.ToList() // 添加战斗场景配置到响应
             };
             return Ok(dto);
         }

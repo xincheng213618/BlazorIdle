@@ -21,5 +21,11 @@ namespace BlazorIdle.Shared.DTOs
         /// Dungeon definitions list - all available dungeons in the game
         /// </summary>
         public List<DungeonDef> Dungeons { get; set; } = new();
+
+        /// <summary>
+        /// 战斗场景定义列表 - 用于单次战斗的预设场景
+        /// Battle scenario definitions list - preset scenarios for single battles
+        /// </summary>
+        public List<BattleScenarioDef> BattleScenarios { get; set; } = new();
     }
 }

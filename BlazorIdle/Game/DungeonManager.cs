@@ -23,11 +23,9 @@ namespace BlazorIdle.Game
         private int _currentWaveIndex = -1;
         private DungeonWave? _currentWave;
         private MultiBattleInstance? _currentBattle;
-        private BattleTeam<Enemy>? _currentEnemyTeam;  // 添加成员变量
+        private BattleTeam<Enemy>? _currentEnemyTeam;  // 当前敌人队伍引用
 
         // 波次计时器
-        private int _waveStartDelayMs = 0;
-        private int _waveEndDelayMs = 0;
         private int _nextActionAtMs = 0;
 
         // 副本统计
