@@ -1,0 +1,162 @@
+@using System.Linq
+@using BlazorIdle.Game
+@using BlazorIdle.Game.Config
+
+@if (Dungeon != null)
+{
+    <div class="dungeon-info-panel mb-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <span class="badge bg-info me-2">推荐等级: @Dungeon.RecommendedLevel</span>
+                @if (Dungeon.DungeonType == DungeonType.Elite)
+                {
+                    <span class="badge bg-warning me-2">精英副本</span>
+                }
+                <span class="badge bg-secondary">波次: @Dungeon.Waves.Count</span>
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(Dungeon.Description))
+        {
+            <div class="text-muted mt-2">@Dungeon.Description</div>
+        }
+    </div>
+
+    @if (Snapshot != null && IsRunning)
+    {
+        <div class="dungeon-progress-panel mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span>波次进度: @GetWaveProgressText()</span>
+                <span class="badge @GetStateBadgeClass()">
+                    @GetStateText()
+                </span>
+            </div>
+            <div class="progress" style="height: 25px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated"
+                     style="width: @GetProgressPercent()%">
+                    @GetProgressPercent()%
+                </div>
+            </div>
+
+            <div class="row mt-3 g-2">
+                <div class="col-3">
+                    <div class="stat-mini">
+                        <div class="stat-label">完成</div>
+                        <div class="stat-value">@Snapshot.CompletionCount</div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="stat-mini">
+                        <div class="stat-label">击杀</div>
+                        <div class="stat-value">@Snapshot.TotalKills</div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="stat-mini">
+                        <div class="stat-label">死亡</div>
+                        <div class="stat-value">@Snapshot.TotalDeaths</div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="stat-mini">
+                        <div class="stat-label">掉落</div>
+                        <div class="stat-value">@Snapshot.TotalLoot.Values.Sum()</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public DungeonDef? Dungeon { get; set; }
+    [Parameter] public DungeonSnapshot? Snapshot { get; set; }
+    [Parameter] public bool IsRunning { get; set; }
+
+    private string GetWaveProgressText()
+    {
+        if (Snapshot == null) return "0 / 0";
+        var total = Snapshot.TotalWaves;
+        if (total <= 0) return "0 / 0";
+
+        if (Snapshot.State is DungeonState.Completed or DungeonState.CompletionDelay)
+            return $"{total} / {total}";
+
+        var current = Math.Min(Snapshot.CurrentWaveIndex + 1, total);
+        return $"{current} / {total}";
+    }
+
+    private int GetProgressPercent()
+    {
+        if (Snapshot == null || Snapshot.TotalWaves == 0) return 0;
+        if (Snapshot.State is DungeonState.Completed or DungeonState.CompletionDelay) return 100;
+
+        var current = Math.Min(Snapshot.CurrentWaveIndex + 1, Snapshot.TotalWaves);
+        return Math.Min(100, (int)(current * 100.0 / Snapshot.TotalWaves));
+    }
+
+    private string GetStateText()
+    {
+        if (Snapshot == null) return "未开始";
+        return Snapshot.State switch
+        {
+            DungeonState.NotStarted => "未开始",
+            DungeonState.Preparing => "准备中",
+            DungeonState.WaveStartDelay => "波次准备",
+            DungeonState.Fighting => "战斗中",
+            DungeonState.WaveEndDelay => "波次结束",
+            DungeonState.CompletionDelay => "等待重新开始",
+            DungeonState.Completed => "已完成",
+            DungeonState.Failed => "失败",
+            DungeonState.Stopped => "已停止",
+            _ => Snapshot.State.ToString()
+        };
+    }
+
+    private string GetStateBadgeClass()
+    {
+        if (Snapshot == null) return "bg-secondary";
+        return Snapshot.State switch
+        {
+            DungeonState.Fighting => "bg-danger",
+            DungeonState.Completed => "bg-success",
+            DungeonState.Failed => "bg-dark",
+            DungeonState.Preparing or DungeonState.WaveStartDelay or DungeonState.WaveEndDelay => "bg-warning",
+            DungeonState.CompletionDelay => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+}
+
+<style>
+    .dungeon-info-panel {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 15px;
+        border-left: 4px solid #0d6efd;
+    }
+
+    .dungeon-progress-panel {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 15px;
+    }
+
+    .stat-mini {
+        background: white;
+        border-radius: 4px;
+        padding: 10px;
+        text-align: center;
+    }
+
+    .stat-mini .stat-label {
+        font-size: 0.85em;
+        color: #6c757d;
+        margin-bottom: 5px;
+    }
+
+    .stat-mini .stat-value {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #212529;
+    }
+</style>

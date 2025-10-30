@@ -1,0 +1,90 @@
+.team-panel {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.enemy-team {
+    border-left: 4px solid #dc3545;
+}
+
+/* 网格与卡片状态 */
+.enemy-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+}
+
+.member-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 10px;
+    margin-bottom: 10px;
+    transition: opacity 0.3s, transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.member-card.dead {
+    opacity: 0.6;
+    background: #f8d7da;
+}
+
+.enemy-card.selected {
+    border-color: #dc3545;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.15);
+    transform: translateZ(0);
+}
+
+.enemy-card.condensed .details {
+    display: none;
+}
+
+.enemy-card.condensed .member-name {
+    font-size: 0.9em;
+}
+
+/* 文本与血条 */
+.member-name {
+    font-weight: bold;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+}
+
+.hp-bar {
+    position: relative;
+    height: 20px;
+    background: #e9ecef;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.hp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #28a745, #20c997);
+    transition: width 0.3s ease;
+}
+
+.hp-fill.enemy {
+    background: linear-gradient(90deg, #dc3545, #c82333);
+}
+
+.hp-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.75em;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+/* 进度条过渡控制（与 CharacterPanel 保持一致） */
+.enemy-team .progress-bar {
+    transition: width 120ms linear;
+}
+
+.progress-bar.no-transition {
+    transition: none !important;
+}

@@ -166,7 +166,23 @@ namespace BlazorIdle.Game
         /// </summary>
         public void AdvanceTick(int tickMs)
         {
-            _clock.AdvanceBy(tickMs);
+            // 根据状态决定是否需要手动推进时钟
+            // 战斗状态下，MultiBattleInstance 会自己管理时钟推进
+            bool shouldAdvanceClock = _state switch
+            {
+                DungeonState.Fighting => false,  // 战斗时由 MultiBattleInstance 管理时钟
+                DungeonState.NotStarted => false,
+                DungeonState.Completed => false,
+                DungeonState.Failed => false,
+                DungeonState.Stopped => false,
+                _ => true  // 其他状态需要手动推进
+            };
+
+            if (shouldAdvanceClock)
+            {
+                _clock.AdvanceBy(tickMs);
+            }
+
             int now = _clock.NowMs;
 
             switch (_state)
@@ -181,6 +197,7 @@ namespace BlazorIdle.Game
                 case DungeonState.Fighting:
                     if (_currentBattle != null)
                     {
+                        // 战斗实例会自己推进时钟
                         _currentBattle.AdvanceTick(tickMs);
                         CheckWaveCompletion();
                     }
@@ -206,6 +223,10 @@ namespace BlazorIdle.Game
                             FireProgressEvent();
                         }
                     }
+                    break;
+
+                case DungeonState.Preparing:
+                    // 准备状态也需要推进时钟
                     break;
             }
         }
@@ -439,9 +460,8 @@ namespace BlazorIdle.Game
             _currentWaveIndex = -1;
             _state = DungeonState.Preparing;
 
-            // 重置时钟而不是重新记录开始时间
-            _clock.Reset();
-            _dungeonStartTimeMs = 0;
+            // 不重置时钟，记录新一轮的开始时间
+            _dungeonStartTimeMs = _clock.NowMs;
 
             // 恢复玩家队伍
             _playerTeam.ReviveAll(true);
@@ -689,8 +709,6 @@ namespace BlazorIdle.Game
         public DungeonSnapshot GetSnapshot()
         {
             var battleSnapshot = _currentBattle?.GetSnapshot();
-
-            // 确保当前波次索引不会超过总波次数
             int displayWaveIndex = Math.Min(_currentWaveIndex, _dungeonDef.Waves.Count - 1);
 
             return new DungeonSnapshot
@@ -700,14 +718,14 @@ namespace BlazorIdle.Game
                 State = _state,
                 CurrentWaveIndex = displayWaveIndex,
                 TotalWaves = _dungeonDef.Waves.Count,
-                ElapsedMs = _clock.NowMs,  // 直接使用时钟的当前时间
+                ElapsedMs = _clock.NowMs - _dungeonStartTimeMs,  // 计算相对于本轮开始的时间
                 CompletionCount = _completionCount,
                 TotalKills = _totalKills,
                 TotalDeaths = _totalDeaths,
                 TotalLoot = new Dictionary<string, int>(_totalLoot),
                 AutoRepeatEnabled = _autoRepeatEnabled,
                 BattleSnapshot = battleSnapshot,
-                CurrentEnemyTeam = _currentEnemyTeam  // 添加当前敌人队伍引用
+                CurrentEnemyTeam = _currentEnemyTeam
             };
         }
     }
