@@ -82,11 +82,12 @@ SpecialIsAoe = enemyTeam.TotalCount > 1,        // 多敌人时自动启用AOE
 
 **文件**: `BlazorIdle/Game/DungeonManager.cs`
 
-移除未使用的字段：
+移除未使用的字段（清理编译警告）：
 - `_waveStartDelayMs` 
 - `_waveEndDelayMs`
 
-这些字段已经被 `_nextActionAtMs` 替代。
+这些字段在声明后被赋值但从未使用，实际的波次延迟计时由 `_nextActionAtMs` 统一管理。
+移除这些字段消除了 CS0414 编译警告。
 
 ## 参数可配置性 (Parameter Configurability)
 
@@ -146,7 +147,7 @@ SpecialIsAoe = enemyTeam.TotalCount > 1,        // 多敌人时自动启用AOE
    - 启动应用，选择角色
    - 在 BattleDemo 中测试所有9种战斗场景
    - 验证多敌人显示和战斗逻辑
-   - 验证 AOE 技能在多敌人时自动启用
+   - 验证AOE技能在多敌人时自动启用
 
 2. **配置测试**
    - 修改 `battleScenarios.json` 中的倍率参数
