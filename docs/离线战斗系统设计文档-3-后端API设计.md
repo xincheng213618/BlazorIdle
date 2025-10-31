@@ -679,14 +679,30 @@ namespace BlazorIdle.Server.Services
 
 ### 2.3 OfflineBattleSimulator
 
+**重要说明**：本服务**直接复用** `BlazorIdle.Shared` 项目中的战斗引擎，无需重复实现战斗逻辑。
+
+**代码共享架构**：
+```
+BlazorIdle.Shared/Game/          ← 战斗引擎核心（前后端共享）
+├── BattleInstance.cs            ← 单次战斗实例
+├── DungeonManager.cs            ← 副本管理器
+├── MultiBattleInstance.cs       ← 多单位战斗
+├── RngContext.cs                ← 随机数生成器
+├── Clock.cs                     ← 游戏时钟
+└── Config/                      ← 游戏配置
+
+BlazorIdle.Server/Services/
+└── OfflineBattleSimulator.cs    ← 仅负责状态重建和模拟调度
+```
+
 ```csharp
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using BlazorIdle.Game;
-using BlazorIdle.Game.Config;
+using BlazorIdle.Shared.Game;              // ← 引用共享的战斗引擎
+using BlazorIdle.Shared.Game.Config;       // ← 引用共享的配置
 using BlazorIdle.Shared.DTOs;
 
 namespace BlazorIdle.Server.Services
@@ -698,6 +714,10 @@ namespace BlazorIdle.Server.Services
             int offlineDurationSeconds);
     }
 
+    /// <summary>
+    /// 离线战斗模拟器
+    /// 复用 BlazorIdle.Shared 中的战斗引擎，无需重复实现
+    /// </summary>
     public class OfflineBattleSimulator : IOfflineBattleSimulator
     {
         private readonly IGameConfigService _gameConfig;
@@ -793,21 +813,50 @@ namespace BlazorIdle.Server.Services
             }
         }
 
+        /// <summary>
+        /// 重建战斗状态
+        /// 使用 BlazorIdle.Shared 中的战斗引擎类
+        /// </summary>
         private async Task<(DungeonManager?, Character?)> RebuildBattleStateAsync(
             BattleStateData savedState)
         {
             // 实现战斗状态重建逻辑
-            // 这里需要根据savedState重新创建DungeonManager和Character
-            // 具体实现取决于现有的战斗系统架构
+            // 使用共享的 DungeonManager、BattleInstance 等类
             
-            // 伪代码示例：
             // 1. 从配置获取副本定义
-            // 2. 创建角色实例
-            // 3. 创建DungeonManager
-            // 4. 恢复状态（波次、血量、时钟等）
+            var dungeonDef = _gameConfig.GetDungeon(savedState.DungeonId);
+            if (dungeonDef == null)
+            {
+                _logger.LogError("Dungeon not found: {DungeonId}", savedState.DungeonId);
+                return (null, null);
+            }
+
+            // 2. 创建时钟和随机数生成器（使用共享类）
+            var clock = new SimClock();
+            var rng = new RngContext(savedState.BattleState?.RngSeed ?? 0);
+            rng.SetIndex(savedState.BattleState?.RngIndex ?? 0);
+
+            // 3. 创建角色实例（使用共享的 Character 类）
+            var character = new Character
+            {
+                MaxHp = savedState.BattleState?.PlayerTeam?.Members[0]?.MaxHp ?? 1000,
+                Hp = savedState.BattleState?.PlayerTeam?.Members[0]?.CurrentHp ?? 1000,
+                // ... 其他属性从 savedState 恢复
+            };
+
+            // 4. 创建玩家队伍（使用共享的 BattleTeam 类）
+            var playerTeam = new BattleTeam<Character>("player_team", "玩家队伍", TeamType.Player);
+            playerTeam.AddMember("player_1", character, character.MaxHp);
+
+            // 5. 创建副本管理器（使用共享的 DungeonManager 类）
+            var dungeonManager = new DungeonManager(dungeonDef, clock, rng, playerTeam, _gameConfig);
             
-            await Task.CompletedTask; // 占位
-            return (null, null);
+            // 6. 恢复副本状态（波次、时钟等）
+            // 这里需要扩展 DungeonManager 以支持状态恢复
+            // 或者通过快速推进到保存的状态
+            
+            await Task.CompletedTask;
+            return (dungeonManager, character);
         }
 
         private BattleStateData ConvertToStateData(
