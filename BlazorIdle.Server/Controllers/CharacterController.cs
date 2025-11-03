@@ -231,9 +231,9 @@ public class CharacterController : ControllerBase
         // Initialize profession progress for all professions - each character has all professions
         character.Professions = new Dictionary<string, ProfessionProgress>();
         
-        // TODO: 加载经验曲线配置
-        // TODO: Load experience curve config
-        long initialExperienceToNext = 100; // 默认值，后续应从配置加载
+        // 从配置加载经验曲线
+        // Load experience curve from config
+        long experienceToLevel2 = _gameConfig.GetExperienceRequired(2);
         
         foreach (var prof in _gameConfig.Professions)
         {
@@ -243,7 +243,7 @@ public class CharacterController : ControllerBase
                 Type = prof.Type,
                 Level = 1,
                 Experience = 0,
-                ExperienceToNext = initialExperienceToNext
+                ExperienceToNext = experienceToLevel2
             };
         }
 

@@ -20,6 +20,7 @@ builder.Services.AddDbContext<GameDbContext>(options =>
 // Register custom services
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IExperienceService, ExperienceService>();
 
 // Configure JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");
