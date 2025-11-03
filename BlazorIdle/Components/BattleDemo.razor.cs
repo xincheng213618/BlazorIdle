@@ -12,25 +12,25 @@ namespace BlazorIdle.Components
 {
     public partial class BattleDemo
     {
-        // ===== ¿ÉÅäÖÃ³£Á¿ - Configurable Constants =====
+        // ===== ï¿½ï¿½ï¿½ï¿½ï¿½Ã³ï¿½ï¿½ï¿½ - Configurable Constants =====
 
-        // Õ½¶·Ñ­»·¼ä¸ô£¨ºÁÃë£©- ¿ØÖÆÓÎÏ·¸üĞÂÆµÂÊ
+        // Õ½ï¿½ï¿½Ñ­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ë£©- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½ï¿½ï¿½ï¿½Æµï¿½ï¿½
         // Battle loop interval (ms) - controls game update frequency
         private const int TickMs = 100;
 
-        // ×Ô¶¯Ñ­»·ÑÓ³ÙÊ±¼ä£¨ºÁÃë£©- ¸±±¾Íê³Éºóµ½ÏÂ´Î¿ªÊ¼µÄµÈ´ıÊ±¼ä
+        // ï¿½Ô¶ï¿½Ñ­ï¿½ï¿½ï¿½Ó³ï¿½Ê±ï¿½ä£¨ï¿½ï¿½ï¿½ë£©- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Éºï¿½ï¿½Â´Î¿ï¿½Ê¼ï¿½ÄµÈ´ï¿½Ê±ï¿½ï¿½
         // Auto-repeat delay time (ms) - waiting time between dungeon completion and next start
         private const int AutoRepeatDelayMs = 2000;
 
-        // AOEÉËº¦±¶ÂÊ - ÈºÌå¹¥»÷¼¼ÄÜ¶ÔÃ¿¸öÄ¿±êµÄÉËº¦±ÈÀı
+        // AOEï¿½Ëºï¿½ï¿½ï¿½ï¿½ï¿½ - Èºï¿½å¹¥ï¿½ï¿½ï¿½ï¿½ï¿½Ü¶ï¿½Ã¿ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½ï¿½Ëºï¿½ï¿½ï¿½ï¿½ï¿½
         // AOE damage multiplier - damage ratio of area attacks to each target
         private const double AoeDamageMultiplier = 0.7;
 
-        // Ä¬ÈÏµĞÈËË¢ĞÂÊ±¼ä£¨ºÁÃë£©- µ±¹ÖÎïÅäÖÃÖĞÃ»ÓĞÖ¸¶¨Ë¢ĞÂÊ±¼äÊ±Ê¹ÓÃ
+        // Ä¬ï¿½Ïµï¿½ï¿½ï¿½Ë¢ï¿½ï¿½Ê±ï¿½ä£¨ï¿½ï¿½ï¿½ë£©- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½Ö¸ï¿½ï¿½Ë¢ï¿½ï¿½Ê±ï¿½ï¿½Ê±Ê¹ï¿½ï¿½
         // Default enemy respawn time (ms) - used when monster config doesn't specify respawn time
         private const int DefaultEnemyRespawnMs = 3000;
 
-        // ×î´óÈÕÖ¾ÌõÄ¿Êı - ÈÕÖ¾ÁĞ±í±£ÁôµÄ×î´ó¼ÇÂ¼Êı
+        // ï¿½ï¿½ï¿½ï¿½ï¿½Ö¾ï¿½ï¿½Ä¿ï¿½ï¿½ - ï¿½ï¿½Ö¾ï¿½Ğ±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â¼ï¿½ï¿½
         // Max log entries - maximum number of log records to keep
         private const int MaxLogEntries = 200;
 
@@ -38,20 +38,20 @@ namespace BlazorIdle.Components
         public CharacterData? SelectedCharacter { get; set; }
 
         /// <summary>
-        /// Õ½¶·Ä£Ê½Ã¶¾Ù - Çø·ÖÆÕÍ¨Õ½¶·ºÍ¸±±¾Õ½¶·
+        /// Õ½ï¿½ï¿½Ä£Ê½Ã¶ï¿½ï¿½ - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¨Õ½ï¿½ï¿½ï¿½Í¸ï¿½ï¿½ï¿½Õ½ï¿½ï¿½
         /// Battle mode enum - differentiates normal and dungeon battle
         /// </summary>
         private enum BattleMode
         {
-            Normal,    // ÆÕÍ¨Õ½¶·Ä£Ê½
-            Dungeon    // ¸±±¾Õ½¶·Ä£Ê½
+            Normal,    // ï¿½ï¿½Í¨Õ½ï¿½ï¿½Ä£Ê½
+            Dungeon    // ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½Ä£Ê½
         }
 
-        // Õ½¶·Ä£Ê½Ïà¹Ø
+        // Õ½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½
         // Battle mode related
         private BattleMode currentBattleMode = BattleMode.Normal;
 
-        // ÅäÖÃÑ¡Ôñ
+        // ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½
         // Configuration selection
         private List<ProfessionDef> professions = new();
         private List<MonsterDef> monsters = new();
@@ -61,7 +61,7 @@ namespace BlazorIdle.Components
         private string configVersion = "loading";
         private bool configReady = false;
 
-        // ¸±±¾Õ½¶·Ïà¹ØÅäÖÃ
+        // ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         // Dungeon battle related configuration
         private List<DungeonDef> dungeons = new();
         private string? selectedDungeonId;
@@ -69,12 +69,12 @@ namespace BlazorIdle.Components
         private DungeonManager? dungeonManager;
         private DungeonSnapshot? dungeonSnapshot;
 
-        // ¶àµ¥Î»Õ½¶·ÏµÍ³£¨ÓÃÓÚÆÕÍ¨Õ½¶·ºÍ¸±±¾Õ½¶·£©
+        // ï¿½àµ¥Î»Õ½ï¿½ï¿½ÏµÍ³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¨Õ½ï¿½ï¿½ï¿½Í¸ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½
         // Multi-unit battle system (used for normal battle and dungeon battle)
         private MultiBattleInstance? battle;
         private MultiBattleSnapshot snapshot = new MultiBattleSnapshot();
 
-        // Õ½¶·¶ÓÎé - °ü×°µ¥¸ö½ÇÉ«ºÍ¹ÖÎï
+        // Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ - ï¿½ï¿½×°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«ï¿½Í¹ï¿½ï¿½ï¿½
         // Battle teams - wrapping single character and monster
         private BattleTeam<Character>? playerTeam;
         private BattleTeam<Enemy>? enemyTeam;
@@ -82,7 +82,7 @@ namespace BlazorIdle.Components
         private BattleDigest? digest;
         private bool isRunning = false;
 
-        // ÀíÂÛDPS¼ÆËã£¨»ùÓÚ½ÇÉ«ÊôĞÔ£©
+        // ï¿½ï¿½ï¿½ï¿½DPSï¿½ï¿½ï¿½ã£¨ï¿½ï¿½ï¿½Ú½ï¿½É«ï¿½ï¿½ï¿½Ô£ï¿½
         // Theoretical DPS calculation (based on character attributes)
         private double theoreticalDps
         {
@@ -97,15 +97,15 @@ namespace BlazorIdle.Components
             }
         }
 
-        // ×´Ì¬ÎÄ±¾ - ¸ù¾İÕ½¶·×´Ì¬ÏÔÊ¾²»Í¬µÄÌáÊ¾ĞÅÏ¢
+        // ×´Ì¬ï¿½Ä±ï¿½ - ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½×´Ì¬ï¿½ï¿½Ê¾ï¿½ï¿½Í¬ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½Ï¢
         // Status text - displays different prompt messages based on battle state
         private string PlayerStatusText
         {
             get
             {
                 if (snapshot.State == MultiBattleState.PlayerTeamDeadCooldown)
-                    return $"µÈ´ı¸´»î {(snapshot.TimeToResumeMs / 1000.0):0.00}s";
-                return "Õ½¶·ÖĞ";
+                    return $"ï¿½È´ï¿½ï¿½ï¿½ï¿½ï¿½ {(snapshot.TimeToResumeMs / 1000.0):0.00}s";
+                return "Õ½ï¿½ï¿½ï¿½ï¿½";
             }
         }
 
@@ -114,12 +114,12 @@ namespace BlazorIdle.Components
             get
             {
                 if (snapshot.State == MultiBattleState.EnemyTeamDeadCooldown)
-                    return $"µÈ´ıË¢ĞÂ {(snapshot.TimeToResumeMs / 1000.0):0.00}s";
-                return "Õ½¶·ÖĞ";
+                    return $"ï¿½È´ï¿½Ë¢ï¿½ï¿½ {(snapshot.TimeToResumeMs / 1000.0):0.00}s";
+                return "Õ½ï¿½ï¿½ï¿½ï¿½";
             }
         }
 
-        // ´ÓÕ½¶·ÊµÀı»ñÈ¡½ÇÉ«¹¥»÷½ø¶È
+        // ï¿½ï¿½Õ½ï¿½ï¿½Êµï¿½ï¿½ï¿½ï¿½È¡ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         // Get character attack progress from battle instance
         private double attackProgress01
         {
@@ -130,7 +130,7 @@ namespace BlazorIdle.Components
             }
         }
 
-        // »ñÈ¡½ÇÉ«ÌØÊâ¼¼ÄÜ½ø¶È
+        // ï¿½ï¿½È¡ï¿½ï¿½É«ï¿½ï¿½ï¿½â¼¼ï¿½Ü½ï¿½ï¿½ï¿½
         // Get character special skill progress
         private double specialProgress01
         {
@@ -141,11 +141,11 @@ namespace BlazorIdle.Components
             }
         }
 
-        // »ñÈ¡µĞÈË¹¥»÷½ø¶È - ÔİÊ±²»ÏÔÊ¾£¨¶àµĞÈËÇé¿öÏÂ£©
+        // ï¿½ï¿½È¡ï¿½ï¿½ï¿½Ë¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ - ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â£ï¿½
         // Get enemy attack progress - not displayed for now (in multi-enemy scenario)
         private double enemyProgress01 => 0.0;
 
-        // »ñÈ¡½ÇÉ«¹¥»÷Ê£ÓàÊ±¼ä
+        // ï¿½ï¿½È¡ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½Ê£ï¿½ï¿½Ê±ï¿½ï¿½
         // Get character attack time remaining
         private double attackRemainMs
         {
@@ -156,7 +156,7 @@ namespace BlazorIdle.Components
             }
         }
 
-        // »ñÈ¡½ÇÉ«ÌØÊâ¼¼ÄÜÊ£ÓàÊ±¼ä
+        // ï¿½ï¿½È¡ï¿½ï¿½É«ï¿½ï¿½ï¿½â¼¼ï¿½ï¿½Ê£ï¿½ï¿½Ê±ï¿½ï¿½
         // Get character special skill time remaining
         private double specialRemainMs
         {
@@ -167,18 +167,18 @@ namespace BlazorIdle.Components
             }
         }
 
-        // »ñÈ¡µĞÈË¹¥»÷Ê£ÓàÊ±¼ä - ÔİÊ±²»ÏÔÊ¾£¨¶àµĞÈËÇé¿öÏÂ£©
+        // ï¿½ï¿½È¡ï¿½ï¿½ï¿½Ë¹ï¿½ï¿½ï¿½Ê£ï¿½ï¿½Ê±ï¿½ï¿½ - ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â£ï¿½
         // Get enemy attack time remaining - not displayed for now (in multi-enemy scenario)
         private double enemyRemainMs => 0.0;
 
-        // ÈÕÖ¾ÁĞ±í - ´æ´¢Õ½¶·ÈÕÖ¾
+        // ï¿½ï¿½Ö¾ï¿½Ğ±ï¿½ - ï¿½æ´¢Õ½ï¿½ï¿½ï¿½ï¿½Ö¾
         // Log list - stores battle logs
         private readonly List<string> logs = new();
 
         private CancellationTokenSource? _cts;
 
         /// <summary>
-        /// ×é¼ş³õÊ¼»¯ - ¼ÓÔØÓÎÏ·ÅäÖÃÊı¾İ
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½ - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         /// Component initialization - load game configuration data
         /// </summary>
         protected override async Task OnInitializedAsync()
@@ -187,7 +187,7 @@ namespace BlazorIdle.Components
             professions = GameConfig.Professions.ToList();
             monsters = GameConfig.Monsters.ToList();
             battleScenarios = GameConfig.BattleScenarios.ToList();
-            dungeons = GameConfig.Dungeons.ToList(); // ¼ÓÔØ¸±±¾ÅäÖÃ - Load dungeon configuration
+            dungeons = GameConfig.Dungeons.ToList(); // ï¿½ï¿½ï¿½Ø¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ - Load dungeon configuration
             configVersion = GameConfig.Version;
 
             selectedScenarioId = battleScenarios.FirstOrDefault()?.Id;
@@ -210,7 +210,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// Ñ¡Ôñ±ä¸ü»Øµ÷ - ³¡¾°»ò¸±±¾Ñ¡Ôñ±ä¸üÊ±ÖØÖÃÕ½¶·
+        /// Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½ - ï¿½ï¿½ï¿½ï¿½ï¿½ò¸±±ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½
         /// Selection change callback - reset battle when scenario or dungeon selection changes
         /// </summary>
         private void OnSelectionChanged(ChangeEventArgs _)
@@ -219,12 +219,12 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// Õ½¶·Ä£Ê½±ä¸ü´¦Àí - ÇĞ»»ÆÕÍ¨Õ½¶·ºÍ¸±±¾Õ½¶·
+        /// Õ½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ - ï¿½Ğ»ï¿½ï¿½ï¿½Í¨Õ½ï¿½ï¿½ï¿½Í¸ï¿½ï¿½ï¿½Õ½ï¿½ï¿½
         /// Battle mode change handler - switch between normal and dungeon battle
         /// </summary>
         private void OnBattleModeChanged(BattleMode mode)
         {
-            if (isRunning) return; // Õ½¶·ÖĞ²»ÔÊĞíÇĞ»» - Don't allow switching during battle
+            if (isRunning) return; // Õ½ï¿½ï¿½ï¿½Ğ²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ğ»ï¿½ - Don't allow switching during battle
 
             currentBattleMode = mode;
             ResetBattle();
@@ -237,26 +237,26 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ¹¹½¨Õ½¶·ÊµÀı - Ê¹ÓÃmonsterGroups´´½¨¶à¶Ô¶àÕ½¶·
+        /// ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½Êµï¿½ï¿½ - Ê¹ï¿½ï¿½monsterGroupsï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¶ï¿½Õ½ï¿½ï¿½
         /// Build battle instance - creates multi-unit battle using monsterGroups
         /// </summary>
         private void BuildBattle()
         {
             if (SelectedCharacter == null || currentScenario == null) return;
 
-            // È¡Ïû¶©ÔÄ¾ÉÕ½¶·ÊµÀıµÄÊÂ¼ş
+            // È¡ï¿½ï¿½ï¿½ï¿½ï¿½Ä¾ï¿½Õ½ï¿½ï¿½Êµï¿½ï¿½ï¿½ï¿½ï¿½Â¼ï¿½
             if (battle is not null)
             {
                 battle.CombatEventFired -= OnCombatEvent;
                 battle.LootDropped -= OnLootDropped;
             }
 
-            // ´´½¨Ê±ÖÓºÍËæ»úÊıÉú³ÉÆ÷
+            // ï¿½ï¿½ï¿½ï¿½Ê±ï¿½Óºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             var clock = new SimClock();
             int seed = HashSeed(SelectedCharacter.Id, currentScenario.Id, configVersion);
             var rng = new RngContext(seed);
 
-            // ´´½¨½ÇÉ«ÊµÌå
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«Êµï¿½ï¿½
             var character = new Character
             {
                 MaxHp = Math.Max(1, SelectedCharacter.MaxHp),
@@ -272,14 +272,14 @@ namespace BlazorIdle.Components
                 ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0)
             };
 
-            // Íæ¼Ò¶ÓÎé
-            playerTeam = new BattleTeam<Character>("player_team", "Íæ¼Ò¶ÓÎé", TeamType.Player);
+            // ï¿½ï¿½Ò¶ï¿½ï¿½ï¿½
+            playerTeam = new BattleTeam<Character>("player_team", "ï¿½ï¿½Ò¶ï¿½ï¿½ï¿½", TeamType.Player);
             playerTeam.AddMember(SelectedCharacter.Id, character, character.MaxHp);
 
-            // µĞÈË¶ÓÎé
+            // ï¿½ï¿½ï¿½Ë¶ï¿½ï¿½ï¿½
             enemyTeam = new BattleTeam<Enemy>("enemy_team", currentScenario.Name, TeamType.Enemy);
 
-            // ¹ÖÎï×é
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             int enemyIndex = 0;
             foreach (var monsterGroup in currentScenario.MonsterGroups)
             {
@@ -310,8 +310,9 @@ namespace BlazorIdle.Components
                 }
             }
 
-            // Õ½¶·ÅäÖÃ
-            var config = new MultiBattleConfig
+            // æˆ˜æ–—é…ç½® - ä¼˜å…ˆä½¿ç”¨åœºæ™¯é…ç½®ï¼Œå¦åˆ™ä½¿ç”¨é»˜è®¤å€¼
+            // Battle config - use scenario config if available, otherwise use defaults
+            var config = currentScenario.BattleConfig ?? new MultiBattleConfig
             {
                 PlayerTargetStrategy = TargetStrategy.LowestHp,
                 EnemyTargetStrategy = TargetStrategy.Random,
@@ -326,7 +327,17 @@ namespace BlazorIdle.Components
                 ReviveWithFullHp = true
             };
 
-            // ´´½¨Õ½¶·ÊµÀı²¢¶©ÔÄÊÂ¼ş
+            // å¦‚æœä½¿ç”¨äº†é…ç½®æ–‡ä»¶çš„ battleConfigï¼Œä»éœ€æ ¹æ®å®é™…æƒ…å†µè¦†ç›–æŸäº›å±æ€§
+            // If using battleConfig from config file, still override certain properties based on actual values
+            if (currentScenario.BattleConfig != null)
+            {
+                config.PlayerReviveCooldownMs = character.ReviveMs;
+                config.EnemyRespawnCooldownMs = enemyTeam.Members.Any()
+                    ? enemyTeam.Members.First().Entity.RespawnMs
+                    : DefaultEnemyRespawnMs;
+            }
+
+            // ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½Êµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â¼ï¿½
             battle = new MultiBattleInstance(clock, rng, playerTeam, enemyTeam, config);
             battle.CombatEventFired += OnCombatEvent;
             battle.LootDropped += OnLootDropped;
@@ -335,14 +346,14 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ¹¹½¨¸±±¾Õ½¶· - ´´½¨¸±±¾¹ÜÀíÆ÷ºÍÍæ¼Ò¶ÓÎé
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò¶ï¿½ï¿½ï¿½
         /// Build dungeon battle - create dungeon manager and player team
         /// </summary>
         private void BuildDungeonBattle()
         {
             if (SelectedCharacter == null || currentDungeon == null) return;
 
-            // ÇåÀí¾ÉµÄ¸±±¾¹ÜÀíÆ÷
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ÉµÄ¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             if (dungeonManager != null)
             {
                 dungeonManager.CombatEventFired -= OnCombatEvent;
@@ -370,12 +381,12 @@ namespace BlazorIdle.Components
                 ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0)
             };
 
-            playerTeam = new BattleTeam<Character>("player_team", "Íæ¼Ò¶ÓÎé", TeamType.Player);
+            playerTeam = new BattleTeam<Character>("player_team", "ï¿½ï¿½Ò¶ï¿½ï¿½ï¿½", TeamType.Player);
             playerTeam.AddMember(SelectedCharacter.Id, character, character.MaxHp);
 
             dungeonManager = new DungeonManager(currentDungeon, clock, rng, playerTeam, GameConfig);
 
-            // Ä¬ÈÏ¿ªÆô×Ô¶¯Ñ­»·
+            // Ä¬ï¿½Ï¿ï¿½ï¿½ï¿½ï¿½Ô¶ï¿½Ñ­ï¿½ï¿½
             dungeonManager.EnableAutoRepeat(AutoRepeatDelayMs);
 
             dungeonManager.CombatEventFired += OnCombatEvent;
@@ -387,7 +398,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// Éú³É¹şÏ£ÖÖ×Ó - ÓÃÓÚÈ·¶¨ĞÔËæ»úÊıÉú³É
+        /// ï¿½ï¿½ï¿½É¹ï¿½Ï£ï¿½ï¿½ï¿½ï¿½ - ï¿½ï¿½ï¿½ï¿½È·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         /// Generate hash seed - for deterministic random number generation
         /// </summary>
         private int HashSeed(params object[] arr)
@@ -401,7 +412,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ¿ªÊ¼Õ½¶· - ¸ù¾İµ±Ç°Ä£Ê½Æô¶¯ÆÕÍ¨Õ½¶·»ò¸±±¾Õ½¶·
+        /// ï¿½ï¿½Ê¼Õ½ï¿½ï¿½ - ï¿½ï¿½ï¿½İµï¿½Ç°Ä£Ê½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¨Õ½ï¿½ï¿½ï¿½ò¸±±ï¿½Õ½ï¿½ï¿½
         /// Start battle - starts normal battle or dungeon battle based on current mode
         /// </summary>
         private void StartBattle()
@@ -432,7 +443,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// Í£Ö¹Õ½¶· - Í£Ö¹µ±Ç°Õ½¶·²¢ÇåÀí×ÊÔ´
+        /// Í£Ö¹Õ½ï¿½ï¿½ - Í£Ö¹ï¿½ï¿½Ç°Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô´
         /// Stop battle - stops current battle and cleans up resources
         /// </summary>
         private void StopBattle()
@@ -465,7 +476,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ÖØÖÃÕ½¶· - Í£Ö¹µ±Ç°Õ½¶·²¢ÖØĞÂ¹¹½¨
+        /// ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ - Í£Ö¹ï¿½ï¿½Ç°Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â¹ï¿½ï¿½ï¿½
         /// Reset battle - stop current battle and rebuild
         /// </summary>
         private void ResetBattle()
@@ -495,7 +506,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// Õ½¶·Ñ­»· - ¶¨ÆÚ¸üĞÂÕ½¶·×´Ì¬
+        /// Õ½ï¿½ï¿½Ñ­ï¿½ï¿½ - ï¿½ï¿½ï¿½Ú¸ï¿½ï¿½ï¿½Õ½ï¿½ï¿½×´Ì¬
         /// Battle loop - periodically updates battle state
         /// </summary>
         private async Task RunLoopAsync(CancellationToken token)
@@ -539,7 +550,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// Õ½¶·ÊÂ¼ş´¦Àí - ´¦ÀíÕ½¶·ÖĞµÄÉËº¦ÊÂ¼ş²¢¼ÇÂ¼ÈÕÖ¾
+        /// Õ½ï¿½ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½ï¿½ - ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½Ğµï¿½ï¿½Ëºï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½ï¿½Â¼ï¿½ï¿½Ö¾
         /// Combat event handler - handles damage events in battle and logs them
         /// </summary>
         private void OnCombatEvent(MultiCombatEvent ev)
@@ -548,9 +559,9 @@ namespace BlazorIdle.Components
 
             var src = ev.Source switch
             {
-                EventSource.Attack => "ÆÕ¹¥",
-                EventSource.Special => "ÌØ¼¼",
-                EventSource.EnemyAttack => "¹¥»÷",
+                EventSource.Attack => "ï¿½Õ¹ï¿½",
+                EventSource.Special => "ï¿½Ø¼ï¿½",
+                EventSource.EnemyAttack => "ï¿½ï¿½ï¿½ï¿½",
                 _ => "Î´Öª"
             };
 
@@ -562,10 +573,10 @@ namespace BlazorIdle.Components
                 ? (SelectedCharacter?.Name ?? ev.DefenderName ?? ev.DefenderId)
                 : (GetEnemyDisplayName(ev.DefenderId) ?? ev.DefenderName ?? ev.DefenderId);
 
-            var line = $"[{sec:0.00}s] {attackerName} {src} ÃüÖĞ¡ú{defenderName}£¬ÉËº¦ {ev.Damage}£¬{defenderName}HP¡ú {ev.DefenderHpAfter}";
+            var line = $"[{sec:0.00}s] {attackerName} {src} ï¿½ï¿½ï¿½Ğ¡ï¿½{defenderName}ï¿½ï¿½ï¿½Ëºï¿½ {ev.Damage}ï¿½ï¿½{defenderName}HPï¿½ï¿½ {ev.DefenderHpAfter}";
 
             if (ev.IsAoe) line += " [AOE]";
-            if (ev.IsKill) line += " [»÷É±!]";
+            if (ev.IsKill) line += " [ï¿½ï¿½É±!]";
 
             logs.Add(line);
             if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
@@ -574,7 +585,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// »ñÈ¡µĞÈËÏÔÊ¾Ãû³Æ - ´ÓIDÖĞÌáÈ¡¹ÖÎïÀàĞÍ²¢»ñÈ¡¶ÔÓ¦Ãû³Æ
+        /// ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½ - ï¿½ï¿½IDï¿½ï¿½ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í²ï¿½ï¿½ï¿½È¡ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½
         /// Get enemy display name - extracts monster type from ID and gets corresponding name
         /// </summary>
         private string GetEnemyDisplayName(string enemyId)
@@ -594,7 +605,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// Çå¿ÕÕ½¶·ÈÕÖ¾
+        /// ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½Ö¾
         /// Clear combat logs
         /// </summary>
         private void ClearLogs()
@@ -604,7 +615,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// »ñÈ¡Íæ¼Òµ±Ç°ÉúÃüÖµ - ´ÓÍæ¼Ò¶ÓÎéÖĞ»ñÈ¡
+        /// ï¿½ï¿½È¡ï¿½ï¿½Òµï¿½Ç°ï¿½ï¿½ï¿½ï¿½Öµ - ï¿½ï¿½ï¿½ï¿½Ò¶ï¿½ï¿½ï¿½ï¿½Ğ»ï¿½È¡
         /// Get player current HP - retrieved from player team
         /// </summary>
         private int GetPlayerHp()
@@ -615,7 +626,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// »ñÈ¡Íæ¼Ò×î´óÉúÃüÖµ - ´ÓÍæ¼Ò¶ÓÎéÖĞ»ñÈ¡
+        /// ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ - ï¿½ï¿½ï¿½ï¿½Ò¶ï¿½ï¿½ï¿½ï¿½Ğ»ï¿½È¡
         /// Get player max HP - retrieved from player team
         /// </summary>
         private int GetPlayerMaxHp()
@@ -626,7 +637,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// »ñÈ¡µĞÈËµ±Ç°ÉúÃüÖµ - ¶àµĞÈË³¡¾°ÏÂ·µ»Ø×ÜºÍ
+        /// ï¿½ï¿½È¡ï¿½ï¿½ï¿½Ëµï¿½Ç°ï¿½ï¿½ï¿½ï¿½Öµ - ï¿½ï¿½ï¿½ï¿½Ë³ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½ï¿½ï¿½Üºï¿½
         /// Get enemy current HP - returns sum in multi-enemy scenario
         /// </summary>
         private int GetEnemyHp()
@@ -636,7 +647,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// »ñÈ¡µĞÈË×î´óÉúÃüÖµ - ¶àµĞÈË³¡¾°ÏÂ·µ»Ø×ÜºÍ
+        /// ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ - ï¿½ï¿½ï¿½ï¿½Ë³ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½ï¿½ï¿½Üºï¿½
         /// Get enemy max HP - returns sum in multi-enemy scenario
         /// </summary>
         private int GetEnemyMaxHp()
@@ -647,7 +658,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ´¦ÀíµôÂäÎïÊÂ¼ş - ½«µôÂäÎïÌí¼Óµ½½ÇÉ«¿â´æ²¢¼ÇÂ¼Í³Ò»·ç¸ñµÄÈÕÖ¾
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â¼ï¿½ - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Óµï¿½ï¿½ï¿½É«ï¿½ï¿½æ²¢ï¿½ï¿½Â¼Í³Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¾
         /// Handle loot drop event - adds loot to character inventory and logs it
         /// </summary>
         private void OnLootDropped(LootDropEvent lootEvent)
@@ -657,11 +668,11 @@ namespace BlazorIdle.Components
             SelectedCharacter.Inventory.AddItem(lootEvent.ItemId, lootEvent.Quantity);
 
             var sec = lootEvent.TimeMs / 1000.0;
-            var charName = string.IsNullOrWhiteSpace(SelectedCharacter?.Name) ? "Î´Öª½ÇÉ«" : SelectedCharacter!.Name;
+            var charName = string.IsNullOrWhiteSpace(SelectedCharacter?.Name) ? "Î´Öªï¿½ï¿½É«" : SelectedCharacter!.Name;
             var itemDef = GameConfig.GetItem(lootEvent.ItemId);
             var itemName = itemDef?.Name ?? lootEvent.ItemId;
 
-            var logLine = $"[{sec:0.00}s] {charName} »ñµÃµôÂä {itemName} x{lootEvent.Quantity}";
+            var logLine = $"[{sec:0.00}s] {charName} ï¿½ï¿½Ãµï¿½ï¿½ï¿½ {itemName} x{lootEvent.Quantity}";
 
             logs.Add(logLine);
             if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
@@ -670,40 +681,40 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ¸±±¾²¨´Î±ä¸üÊÂ¼ş´¦Àí - ¼ÇÂ¼²¨´Î×´Ì¬±ä¸ü
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î±ï¿½ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½ï¿½ - ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½
         /// Dungeon wave change event handler - logs wave status changes
         /// </summary>
         private void OnDungeonWaveChanged(DungeonWaveEvent ev)
         {
             var changeText = ev.ChangeType switch
             {
-                WaveChangeType.Preparing => "×¼±¸",
-                WaveChangeType.Started => "¿ªÊ¼",
-                WaveChangeType.Completed => "Íê³É",
+                WaveChangeType.Preparing => "×¼ï¿½ï¿½",
+                WaveChangeType.Started => "ï¿½ï¿½Ê¼",
+                WaveChangeType.Completed => "ï¿½ï¿½ï¿½",
                 _ => ""
             };
 
-            AddLog("²¨´Î", $"{changeText} {ev.WaveName}");
+            AddLog("ï¿½ï¿½ï¿½ï¿½", $"{changeText} {ev.WaveName}");
         }
 
         /// <summary>
-        /// ¸±±¾Íê³ÉÊÂ¼ş´¦Àí - ¼ÇÂ¼¸±±¾Íê³É»òÊ§°Ü
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½ï¿½ - ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É»ï¿½Ê§ï¿½ï¿½
         /// Dungeon complete event handler - logs dungeon completion or failure
         /// </summary>
         private void OnDungeonCompleted(DungeonCompleteEvent ev)
         {
             if (ev.Success)
             {
-                AddLog("ÏµÍ³", $"¸±±¾Í¨¹Ø£¡µÚ {ev.CompletionCount} ´ÎÍê³É");
+                AddLog("ÏµÍ³", $"ï¿½ï¿½ï¿½ï¿½Í¨ï¿½Ø£ï¿½ï¿½ï¿½ {ev.CompletionCount} ï¿½ï¿½ï¿½ï¿½ï¿½");
             }
             else
             {
-                AddLog("ÏµÍ³", "¸±±¾Ê§°Ü£¡");
+                AddLog("ÏµÍ³", "ï¿½ï¿½ï¿½ï¿½Ê§ï¿½Ü£ï¿½");
             }
         }
 
         /// <summary>
-        /// Ìí¼ÓÈÕÖ¾ - Í³Ò»µÄÈÕÖ¾Ìí¼Ó·½·¨
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¾ - Í³Ò»ï¿½ï¿½ï¿½ï¿½Ö¾ï¿½ï¿½ï¿½Ó·ï¿½ï¿½ï¿½
         /// Add log - unified log adding method
         /// </summary>
         private void AddLog(string source, string message)
@@ -720,7 +731,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// »ñÈ¡¸±±¾²¨´Î½ø¶ÈÏÔÊ¾ÎÄ±¾
+        /// ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½Ä±ï¿½
         /// Get dungeon wave progress display text
         /// </summary>
         private string GetDungeonWaveProgress()
@@ -741,7 +752,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// »ñÈ¡¸±±¾½ø¶È°Ù·Ö±È
+        /// ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È°Ù·Ö±ï¿½
         /// Get dungeon progress percentage
         /// </summary>
         private int GetDungeonProgressPercent()
@@ -759,30 +770,30 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// »ñÈ¡¸±±¾×´Ì¬ÎÄ±¾
+        /// ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½Ä±ï¿½
         /// Get dungeon state text
         /// </summary>
         private string GetDungeonStateText()
         {
-            if (dungeonSnapshot == null) return "Î´¿ªÊ¼";
+            if (dungeonSnapshot == null) return "Î´ï¿½ï¿½Ê¼";
 
             return dungeonSnapshot.State switch
             {
-                DungeonState.NotStarted => "Î´¿ªÊ¼",
-                DungeonState.Preparing => "×¼±¸ÖĞ",
-                DungeonState.WaveStartDelay => "²¨´Î×¼±¸",
-                DungeonState.Fighting => "Õ½¶·ÖĞ",
-                DungeonState.WaveEndDelay => "²¨´Î½áÊø",
-                DungeonState.CompletionDelay => "µÈ´ıÖØĞÂ¿ªÊ¼",
-                DungeonState.Completed => "ÒÑÍê³É",
-                DungeonState.Failed => "Ê§°Ü",
-                DungeonState.Stopped => "ÒÑÍ£Ö¹",
+                DungeonState.NotStarted => "Î´ï¿½ï¿½Ê¼",
+                DungeonState.Preparing => "×¼ï¿½ï¿½ï¿½ï¿½",
+                DungeonState.WaveStartDelay => "ï¿½ï¿½ï¿½ï¿½×¼ï¿½ï¿½",
+                DungeonState.Fighting => "Õ½ï¿½ï¿½ï¿½ï¿½",
+                DungeonState.WaveEndDelay => "ï¿½ï¿½ï¿½Î½ï¿½ï¿½ï¿½",
+                DungeonState.CompletionDelay => "ï¿½È´ï¿½ï¿½ï¿½ï¿½Â¿ï¿½Ê¼",
+                DungeonState.Completed => "ï¿½ï¿½ï¿½ï¿½ï¿½",
+                DungeonState.Failed => "Ê§ï¿½ï¿½",
+                DungeonState.Stopped => "ï¿½ï¿½Í£Ö¹",
                 _ => dungeonSnapshot.State.ToString()
             };
         }
 
         /// <summary>
-        /// »ñÈ¡¸±±¾×´Ì¬»ÕÕÂÑùÊ½Àà
+        /// ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½ï¿½ï¿½
         /// Get dungeon state badge CSS class
         /// </summary>
         private string GetDungeonStateBadgeClass()
@@ -801,7 +812,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ÓÑºÃÏÔÊ¾ÓÃÊ± - ¸ñÊ½»¯Ê±¼äÏÔÊ¾
+        /// ï¿½Ñºï¿½ï¿½ï¿½Ê¾ï¿½ï¿½Ê± - ï¿½ï¿½Ê½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½Ê¾
         /// Format duration display - formats time display
         /// </summary>
         private static string FormatDuration(int ms)
@@ -814,7 +825,7 @@ namespace BlazorIdle.Components
             return $"{ts.Minutes:00}:{ts.Seconds:00}.{ts.Milliseconds / 10:00}";
         }
 
-        // ×ÊÔ´ÇåÀí - È¡Ïû¶©ÔÄÊÂ¼şºÍÊÍ·Å×ÊÔ´
+        // ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½ - È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½Í·ï¿½ï¿½ï¿½Ô´
         public void Dispose()
         {
             _cts?.Cancel();

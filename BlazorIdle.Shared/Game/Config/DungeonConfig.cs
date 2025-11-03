@@ -113,6 +113,13 @@ namespace BlazorIdle.Game.Config
         /// </summary>
         [JsonPropertyName("timeLimitSec")]
         public double TimeLimitSec { get; set; } = 0;
+
+        /// <summary>
+        /// 战斗配置（可选，不设置则使用默认值）
+        /// Battle configuration (optional, uses defaults if not set)
+        /// </summary>
+        [JsonPropertyName("battleConfig")]
+        public MultiBattleConfig? BattleConfig { get; set; }
     }
 
     /// <summary>
@@ -400,5 +407,12 @@ namespace BlazorIdle.Game.Config
         /// </summary>
         [JsonPropertyName("monsterGroups")]
         public List<MonsterGroup> MonsterGroups { get; set; } = new();
+
+        /// <summary>
+        /// 战斗配置（可选，不设置则使用默认值）
+        /// Battle configuration (optional, uses defaults if not set)
+        /// </summary>
+        [JsonPropertyName("battleConfig")]
+        public MultiBattleConfig? BattleConfig { get; set; }
     }
 }

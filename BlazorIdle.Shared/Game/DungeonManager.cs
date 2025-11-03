@@ -268,8 +268,9 @@ namespace BlazorIdle.Game
             // 创建并保存敌人队伍引用
             _currentEnemyTeam = CreateEnemyTeam(_currentWave);
 
-            // 创建战斗配置
-            var battleConfig = new MultiBattleConfig
+            // 创建战斗配置 - 优先使用副本配置，否则使用默认值
+            // Create battle config - use dungeon config if available, otherwise use defaults
+            var battleConfig = _dungeonDef.BattleConfig ?? new MultiBattleConfig
             {
                 PlayerTargetStrategy = TargetStrategy.LowestHp,
                 EnemyTargetStrategy = TargetStrategy.Random,
@@ -279,6 +280,14 @@ namespace BlazorIdle.Game
                 AllowEnemyRespawn = false, // 副本中敌人不复活
                 PlayerReviveCooldownMs = 5000
             };
+
+            // 如果使用了配置文件的 battleConfig，仍需根据副本设置覆盖某些属性
+            // If using battleConfig from config file, still override certain properties based on dungeon settings
+            if (_dungeonDef.BattleConfig != null)
+            {
+                battleConfig.AllowPlayerRevive = _dungeonDef.AllowRevive;
+                battleConfig.AllowEnemyRespawn = false; // 副本中敌人总是不复活 / Enemies never respawn in dungeons
+            }
 
             // 清理旧战斗
             if (_currentBattle != null)

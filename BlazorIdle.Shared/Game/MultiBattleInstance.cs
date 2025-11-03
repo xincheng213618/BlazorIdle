@@ -909,54 +909,63 @@ namespace BlazorIdle.Game
         /// 玩家目标选择策略
         /// Player target selection strategy
         /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("playerTargetStrategy")]
         public TargetStrategy PlayerTargetStrategy { get; set; } = TargetStrategy.Random;
 
         /// <summary>
         /// 敌人目标选择策略
         /// Enemy target selection strategy
         /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("enemyTargetStrategy")]
         public TargetStrategy EnemyTargetStrategy { get; set; } = TargetStrategy.Random;
 
         /// <summary>
         /// 特殊技能是否为AOE
         /// Whether special skill is AOE
         /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("specialIsAoe")]
         public bool SpecialIsAoe { get; set; } = true;
 
         /// <summary>
         /// AOE伤害倍率
         /// AOE damage multiplier
         /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("aoeDamageMultiplier")]
         public double AoeDamageMultiplier { get; set; } = 0.8;
 
         /// <summary>
         /// 是否允许玩家复活
         /// Whether to allow player revival
         /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("allowPlayerRevive")]
         public bool AllowPlayerRevive { get; set; } = true;
 
         /// <summary>
         /// 是否允许敌人刷新
         /// Whether to allow enemy respawn
         /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("allowEnemyRespawn")]
         public bool AllowEnemyRespawn { get; set; } = true;
 
         /// <summary>
         /// 玩家复活冷却时间（毫秒）
         /// Player revive cooldown in milliseconds
         /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("playerReviveCooldownMs")]
         public int PlayerReviveCooldownMs { get; set; } = 5000;
 
         /// <summary>
         /// 敌人刷新冷却时间（毫秒）
         /// Enemy respawn cooldown in milliseconds
         /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("enemyRespawnCooldownMs")]
         public int EnemyRespawnCooldownMs { get; set; } = 3000;
 
         /// <summary>
         /// 复活时是否满血
         /// Whether to revive with full HP
         /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("reviveWithFullHp")]
         public bool ReviveWithFullHp { get; set; } = true;
     }
 
