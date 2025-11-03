@@ -289,7 +289,9 @@ namespace BlazorIdle.Game
             // 创建新战斗
             _currentBattle = new MultiBattleInstance(_clock, _rng, _playerTeam, _currentEnemyTeam, battleConfig);
             SubscribeBattleEvents();
-            _currentBattle.Start();
+            // 不重置玩家队伍状态，保持波次之间的血量
+            // Don't reset player team state, preserve HP between waves
+            _currentBattle.Start(resetPlayerTeam: false);
 
             // 触发事件
             FireWaveChangedEvent(WaveChangeType.Started);

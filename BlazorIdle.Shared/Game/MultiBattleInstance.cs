@@ -122,7 +122,8 @@ namespace BlazorIdle.Game
         /// 开始战斗
         /// Start battle
         /// </summary>
-        public void Start()
+        /// <param name="resetPlayerTeam">是否重置玩家队伍状态（默认true）/ Whether to reset player team state (default true)</param>
+        public void Start(bool resetPlayerTeam = true)
         {
             if (_running) return;
 
@@ -132,7 +133,10 @@ namespace BlazorIdle.Game
             _resumeAtMs = 0;
 
             // 重置队伍状态
-            _playerTeam.Reset();
+            if (resetPlayerTeam)
+            {
+                _playerTeam.Reset();
+            }
             _enemyTeam.Reset();
 
             // 重置所有轨道
