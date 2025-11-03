@@ -22,15 +22,18 @@ public class CharacterController : ControllerBase
     private readonly GameDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly ILogger<CharacterController> _logger;
+    private readonly BlazorIdle.Server.Services.IGameConfigProvider _gameConfig;
 
     public CharacterController(
         GameDbContext context,
         IConfiguration configuration,
-        ILogger<CharacterController> logger)
+        ILogger<CharacterController> logger,
+        BlazorIdle.Server.Services.IGameConfigProvider gameConfig)
     {
         _context = context;
         _configuration = configuration;
         _logger = logger;
+        _gameConfig = gameConfig;
     }
 
     /// <summary>
@@ -182,36 +185,19 @@ public class CharacterController : ControllerBase
             });
         }
 
-        // 从配置文件加载职业数据进行验证
-        // Load profession data from config file for validation
-        ProfessionDef? profession = null;
-        try
-        {
-            // 使用IWebHostEnvironment获取更可靠的路径
-            // Use IWebHostEnvironment for more reliable path resolution
-            var professionsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "professions.json");
-            if (System.IO.File.Exists(professionsPath))
-            {
-                var professionsJson = await System.IO.File.ReadAllTextAsync(professionsPath);
-                var options = new System.Text.Json.JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                };
-                var professions = System.Text.Json.JsonSerializer.Deserialize<List<ProfessionDef>>(professionsJson, options);
-                profession = professions?.FirstOrDefault(p => p.Id == request.ProfessionId);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to load profession config");
-        }
-
-        if (profession == null)
+        // 加载并验证职业配置
+        // Load and validate profession config
+        await _gameConfig.EnsureLoadedAsync();
+        
+        // 根据用户请求的职业ID获取初始职业
+        // Get initial profession based on user requested profession ID
+        var defaultProfession = _gameConfig.GetProfession(request.ProfessionId);
+        if (defaultProfession == null || defaultProfession.Type != ProfessionType.Combat)
         {
             return BadRequest(new CharacterResponse
             {
                 Success = false,
-                Message = "无效的职业选择"
+                Message = "无效的职业选择，必须选择一个战斗职业"
             });
         }
 
@@ -224,19 +210,42 @@ public class CharacterController : ControllerBase
             Name = request.Name.Trim(),
             ProfessionId = request.ProfessionId,
             CreatedAt = DateTime.UtcNow,
-            // 从职业模板复制初始属性
-            // Copy initial stats from profession template
-            MaxHp = profession.MaxHp,
-            AttackRateAPS = profession.AttackRateAPS,
-            DamagePerAttack = profession.DamagePerAttack,
-            HastePercent = profession.HastePercent,
-            SpecialIntervalSec = profession.SpecialIntervalSec,
-            SpecialDamage = profession.SpecialDamage,
-            CritChancePercent = profession.CritChancePercent,
-            CritMultiplier = profession.CritMultiplier,
-            VariancePct = profession.VariancePct,
-            ReviveSec = profession.ReviveSec
+            // 从默认职业模板复制初始属性
+            // Copy initial stats from default profession template
+            MaxHp = defaultProfession.MaxHp,
+            AttackRateAPS = defaultProfession.AttackRateAPS,
+            DamagePerAttack = defaultProfession.DamagePerAttack,
+            HastePercent = defaultProfession.HastePercent,
+            SpecialIntervalSec = defaultProfession.SpecialIntervalSec,
+            SpecialDamage = defaultProfession.SpecialDamage,
+            CritChancePercent = defaultProfession.CritChancePercent,
+            CritMultiplier = defaultProfession.CritMultiplier,
+            VariancePct = defaultProfession.VariancePct,
+            ReviveSec = defaultProfession.ReviveSec,
+            // 设置默认激活职业为用户选择的职业
+            // Set active profession to user's choice
+            ActiveCombatProfessionId = request.ProfessionId
         };
+
+        // 初始化所有职业的进度数据 - 每个角色同时拥有所有职业
+        // Initialize profession progress for all professions - each character has all professions
+        character.Professions = new Dictionary<string, ProfessionProgress>();
+        
+        // TODO: 加载经验曲线配置
+        // TODO: Load experience curve config
+        long initialExperienceToNext = 100; // 默认值，后续应从配置加载
+        
+        foreach (var prof in _gameConfig.Professions)
+        {
+            character.Professions[prof.Id] = new ProfessionProgress
+            {
+                ProfessionId = prof.Id,
+                Type = prof.Type,
+                Level = 1,
+                Experience = 0,
+                ExperienceToNext = initialExperienceToNext
+            };
+        }
 
         // 保存角色到数据库
         // Save character to database
@@ -376,6 +385,20 @@ public class CharacterController : ControllerBase
         if (request.Inventory != null)
         {
             character.Inventory = request.Inventory;
+        }
+
+        // 更新职业数据
+        // Update profession data
+        if (request.Professions != null)
+        {
+            character.Professions = request.Professions;
+        }
+
+        // 更新激活的战斗职业
+        // Update active combat profession
+        if (!string.IsNullOrEmpty(request.ActiveCombatProfessionId))
+        {
+            character.ActiveCombatProfessionId = request.ActiveCombatProfessionId;
         }
 
         try

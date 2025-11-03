@@ -277,7 +277,11 @@ namespace BlazorIdle.Services
                     ReviveSec = character.ReviveSec,
                     // 库存数据
                     // Inventory data
-                    Inventory = character.Inventory
+                    Inventory = character.Inventory,
+                    // 职业数据
+                    // Profession data
+                    Professions = character.Professions,
+                    ActiveCombatProfessionId = character.ActiveCombatProfessionId
                 };
 
                 var response = await _httpClient.PutAsJsonAsync(
