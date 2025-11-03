@@ -31,7 +31,8 @@ namespace BlazorIdle.Server.Controllers
                 Items = _provider.Items.ToList(),
                 Dungeons = _provider.Dungeons.ToList(),
                 BattleScenarios = _provider.BattleScenarios.ToList(),
-                BattleConfigs = _provider.BattleConfigs.ToList() // 添加战斗配置到响应（内部配置）
+                BattleConfigs = _provider.BattleConfigs.ToList(), // 添加战斗配置到响应（内部配置）
+                MaxProfessionLevel = _provider.MaxProfessionLevel
             };
             return Ok(dto);
         }

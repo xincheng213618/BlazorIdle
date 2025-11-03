@@ -55,6 +55,12 @@ namespace BlazorIdle.Server.Services
         /// </summary>
         long GetExperienceRequired(int level);
 
+        /// <summary>
+        /// 职业最大等级限制
+        /// Maximum profession level limit
+        /// </summary>
+        int MaxProfessionLevel { get; }
+
         string Version { get; }
         bool IsLoaded { get; }
     }

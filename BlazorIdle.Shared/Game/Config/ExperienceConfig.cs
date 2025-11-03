@@ -21,6 +21,13 @@ namespace BlazorIdle.Game.Config
         /// </summary>
         [JsonPropertyName("experienceMultiplier")]
         public double ExperienceMultiplier { get; set; } = 1.0;
+
+        /// <summary>
+        /// 职业最大等级 - 限制职业可达到的最高等级
+        /// Max profession level - limits the maximum level a profession can reach
+        /// </summary>
+        [JsonPropertyName("maxProfessionLevel")]
+        public int MaxProfessionLevel { get; set; } = 100;
     }
 
     /// <summary>

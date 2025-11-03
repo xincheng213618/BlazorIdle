@@ -743,7 +743,8 @@ namespace BlazorIdle.Components
 
             // 检查升级
             bool leveledUp = false;
-            while (progress.Experience >= progress.ExperienceToNext && progress.Level < 100)
+            int maxLevel = GameConfig.MaxProfessionLevel;
+            while (progress.Experience >= progress.ExperienceToNext && progress.Level < maxLevel)
             {
                 // 升级
                 progress.Level++;

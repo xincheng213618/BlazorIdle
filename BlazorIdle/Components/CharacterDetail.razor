@@ -85,7 +85,7 @@
                             @if (progress != null)
                             {
                                 <div class="prof-progress">
-                                    <span>等级 @progress.Level</span>
+                                    <span>等级 @progress.Level <small class="text-muted">(Max: @GameConfig.MaxProfessionLevel)</small></span>
                                     <span class="exp-info">经验: @progress.Experience / @progress.ExperienceToNext</span>
                                 </div>
                                 <div class="progress" style="height: 6px;">
@@ -113,7 +113,7 @@
                             @if (progress != null)
                             {
                                 <div class="prof-progress">
-                                    <span>等级 @progress.Level</span>
+                                    <span>等级 @progress.Level <small class="text-muted">(Max: @GameConfig.MaxProfessionLevel)</small></span>
                                     <span class="exp-info">经验: @progress.Experience / @progress.ExperienceToNext</span>
                                 </div>
                                 <div class="progress" style="height: 6px;">

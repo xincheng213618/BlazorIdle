@@ -15,6 +15,7 @@ namespace BlazorIdle.Server.Services
         private readonly List<BattleScenarioDef> _battleScenarios = new();
         private readonly List<BattleConfigDef> _battleConfigs = new();
         private readonly List<LevelExperienceRequirement> _experienceCurve = new();
+        private int _maxProfessionLevel = 100;
         private volatile bool _loaded;
 
         public GameConfigProvider(IHostEnvironment env)
@@ -29,6 +30,7 @@ namespace BlazorIdle.Server.Services
         public IReadOnlyList<BattleScenarioDef> BattleScenarios => _battleScenarios;
         public IReadOnlyList<BattleConfigDef> BattleConfigs => _battleConfigs;
         public IReadOnlyList<LevelExperienceRequirement> ExperienceCurve => _experienceCurve;
+        public int MaxProfessionLevel => _maxProfessionLevel;
         public string Version { get; private set; } = "unloaded";
 
         public async Task EnsureLoadedAsync(CancellationToken ct = default)
@@ -43,6 +45,7 @@ namespace BlazorIdle.Server.Services
             var battleScenariosPath = Path.Combine(contentRoot, "Config", "battleScenarios.json");
             var battleConfigsPath = Path.Combine(contentRoot, "Config", "battleConfigs.json");
             var experienceCurvePath = Path.Combine(contentRoot, "Config", "experienceCurve.json");
+            var professionLimitsPath = Path.Combine(contentRoot, "Config", "professionLimits.json");
 
             List<ProfessionDef>? profs = null;
             List<MonsterDef>? mons = null;
@@ -51,6 +54,7 @@ namespace BlazorIdle.Server.Services
             List<BattleScenarioDef>? battleScenarios = null;
             List<BattleConfigDef>? battleConfigs = null;
             List<LevelExperienceRequirement>? experienceCurve = null;
+            ExperienceConfig? professionLimits = null;
 
             try
             {
@@ -127,6 +131,17 @@ namespace BlazorIdle.Server.Services
             }
             catch { /* ignore to fallback */ }
 
+            // 加载职业限制配置
+            try
+            {
+                if (File.Exists(professionLimitsPath))
+                {
+                    await using var s = File.OpenRead(professionLimitsPath);
+                    professionLimits = await JsonSerializer.DeserializeAsync<ExperienceConfig>(s, cancellationToken: ct);
+                }
+            }
+            catch { /* ignore to fallback */ }
+
             // fallback to shared defaults
             profs ??= DefaultGameConfig.DefaultProfessions();
             mons ??= DefaultGameConfig.DefaultMonsters();
@@ -157,7 +172,10 @@ namespace BlazorIdle.Server.Services
             _experienceCurve.Clear();
             _experienceCurve.AddRange(experienceCurve.OrderBy(e => e.Level));
 
-            Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-exp:{_experienceCurve.Count}";
+            // 设置职业最大等级
+            _maxProfessionLevel = professionLimits?.MaxProfessionLevel ?? 100;
+
+            Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-exp:{_experienceCurve.Count}-maxLvl:{_maxProfessionLevel}";
             _loaded = true;
         }
 
