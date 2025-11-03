@@ -268,26 +268,49 @@ namespace BlazorIdle.Game
             // 创建并保存敌人队伍引用
             _currentEnemyTeam = CreateEnemyTeam(_currentWave);
 
-            // 创建战斗配置 - 优先使用副本配置，否则使用默认值
-            // Create battle config - use dungeon config if available, otherwise use defaults
-            var battleConfig = _dungeonDef.BattleConfig ?? new MultiBattleConfig
+            // 创建战斗配置 - 优先使用 battleConfigId，其次使用嵌入的 battleConfig，最后使用默认值
+            // Create battle config - prioritize battleConfigId, then embedded battleConfig, finally defaults
+            MultiBattleConfig battleConfig;
+            
+            if (!string.IsNullOrEmpty(_dungeonDef.BattleConfigId))
             {
-                PlayerTargetStrategy = TargetStrategy.LowestHp,
-                EnemyTargetStrategy = TargetStrategy.Random,
-                SpecialIsAoe = true,
-                AoeDamageMultiplier = 0.75,
-                AllowPlayerRevive = _dungeonDef.AllowRevive,
-                AllowEnemyRespawn = false, // 副本中敌人不复活
-                PlayerReviveCooldownMs = 5000
-            };
-
-            // 如果使用了配置文件的 battleConfig，仍需根据副本设置覆盖某些属性
-            // If using battleConfig from config file, still override certain properties based on dungeon settings
-            if (_dungeonDef.BattleConfig != null)
-            {
-                battleConfig.AllowPlayerRevive = _dungeonDef.AllowRevive;
-                battleConfig.AllowEnemyRespawn = false; // 副本中敌人总是不复活 / Enemies never respawn in dungeons
+                // 从配置服务获取战斗配置
+                var configDef = _gameConfig.GetBattleConfig(_dungeonDef.BattleConfigId);
+                battleConfig = configDef?.ToMultiBattleConfig() ?? new MultiBattleConfig
+                {
+                    PlayerTargetStrategy = TargetStrategy.LowestHp,
+                    EnemyTargetStrategy = TargetStrategy.Random,
+                    SpecialIsAoe = true,
+                    AoeDamageMultiplier = 0.75,
+                    AllowPlayerRevive = _dungeonDef.AllowRevive,
+                    AllowEnemyRespawn = false,
+                    PlayerReviveCooldownMs = 5000
+                };
             }
+            else if (_dungeonDef.BattleConfig != null)
+            {
+                // 使用嵌入的配置（向后兼容）
+                battleConfig = _dungeonDef.BattleConfig;
+            }
+            else
+            {
+                // 使用默认配置
+                battleConfig = new MultiBattleConfig
+                {
+                    PlayerTargetStrategy = TargetStrategy.LowestHp,
+                    EnemyTargetStrategy = TargetStrategy.Random,
+                    SpecialIsAoe = true,
+                    AoeDamageMultiplier = 0.75,
+                    AllowPlayerRevive = _dungeonDef.AllowRevive,
+                    AllowEnemyRespawn = false,
+                    PlayerReviveCooldownMs = 5000
+                };
+            }
+
+            // 副本特定的覆盖设置
+            // Dungeon-specific overrides
+            battleConfig.AllowPlayerRevive = _dungeonDef.AllowRevive;
+            battleConfig.AllowEnemyRespawn = false; // 副本中敌人总是不复活 / Enemies never respawn in dungeons
 
             // 清理旧战斗
             if (_currentBattle != null)

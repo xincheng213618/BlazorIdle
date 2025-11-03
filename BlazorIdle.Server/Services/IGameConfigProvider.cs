@@ -30,6 +30,20 @@ namespace BlazorIdle.Server.Services
         /// </summary>
         IReadOnlyList<BattleScenarioDef> BattleScenarios { get; }
 
+        /// <summary>
+        /// 战斗配置定义列表 - 可复用的战斗参数配置（内部配置）
+        /// Battle configuration definitions list - reusable battle parameter configurations (internal config)
+        /// </summary>
+        IReadOnlyList<BattleConfigDef> BattleConfigs { get; }
+
+        ProfessionDef? GetProfession(string id);
+        MonsterDef? GetMonster(string id);
+        ItemDefinition? GetItem(string id);
+        DungeonDef? GetDungeon(string id);
+        BattleScenarioDef? GetBattleScenario(string id);
+        BattleConfigDef? GetBattleConfig(string id);
+
         string Version { get; }
+        bool IsLoaded { get; }
     }
 }

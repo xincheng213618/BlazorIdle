@@ -120,6 +120,13 @@ namespace BlazorIdle.Game.Config
         /// </summary>
         [JsonPropertyName("battleConfig")]
         public MultiBattleConfig? BattleConfig { get; set; }
+
+        /// <summary>
+        /// 战斗配置ID（引用 battleConfigs.json 中的配置）
+        /// Battle configuration ID (references config in battleConfigs.json)
+        /// </summary>
+        [JsonPropertyName("battleConfigId")]
+        public string? BattleConfigId { get; set; }
     }
 
     /// <summary>
@@ -414,5 +421,123 @@ namespace BlazorIdle.Game.Config
         /// </summary>
         [JsonPropertyName("battleConfig")]
         public MultiBattleConfig? BattleConfig { get; set; }
+
+        /// <summary>
+        /// 战斗配置ID（引用 battleConfigs.json 中的配置）
+        /// Battle configuration ID (references config in battleConfigs.json)
+        /// </summary>
+        [JsonPropertyName("battleConfigId")]
+        public string? BattleConfigId { get; set; }
+    }
+
+    /// <summary>
+    /// 战斗配置定义 - 可复用的战斗参数配置
+    /// Battle configuration definition - reusable battle parameter configuration
+    /// </summary>
+    public class BattleConfigDef
+    {
+        /// <summary>
+        /// 配置唯一标识
+        /// Configuration unique identifier
+        /// </summary>
+        [JsonPropertyName("id")]
+        public string Id { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 配置名称
+        /// Configuration name
+        /// </summary>
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 配置描述
+        /// Configuration description
+        /// </summary>
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
+
+        /// <summary>
+        /// 玩家目标选择策略
+        /// Player target selection strategy
+        /// </summary>
+        [JsonPropertyName("playerTargetStrategy")]
+        public TargetStrategy PlayerTargetStrategy { get; set; } = TargetStrategy.Random;
+
+        /// <summary>
+        /// 敌人目标选择策略
+        /// Enemy target selection strategy
+        /// </summary>
+        [JsonPropertyName("enemyTargetStrategy")]
+        public TargetStrategy EnemyTargetStrategy { get; set; } = TargetStrategy.Random;
+
+        /// <summary>
+        /// 特殊技能是否为AOE
+        /// Whether special skill is AOE
+        /// </summary>
+        [JsonPropertyName("specialIsAoe")]
+        public bool SpecialIsAoe { get; set; } = true;
+
+        /// <summary>
+        /// AOE伤害倍率
+        /// AOE damage multiplier
+        /// </summary>
+        [JsonPropertyName("aoeDamageMultiplier")]
+        public double AoeDamageMultiplier { get; set; } = 0.8;
+
+        /// <summary>
+        /// 是否允许玩家复活
+        /// Whether to allow player revival
+        /// </summary>
+        [JsonPropertyName("allowPlayerRevive")]
+        public bool AllowPlayerRevive { get; set; } = true;
+
+        /// <summary>
+        /// 是否允许敌人刷新
+        /// Whether to allow enemy respawn
+        /// </summary>
+        [JsonPropertyName("allowEnemyRespawn")]
+        public bool AllowEnemyRespawn { get; set; } = true;
+
+        /// <summary>
+        /// 玩家复活冷却时间（毫秒）
+        /// Player revive cooldown in milliseconds
+        /// </summary>
+        [JsonPropertyName("playerReviveCooldownMs")]
+        public int PlayerReviveCooldownMs { get; set; } = 5000;
+
+        /// <summary>
+        /// 敌人刷新冷却时间（毫秒）
+        /// Enemy respawn cooldown in milliseconds
+        /// </summary>
+        [JsonPropertyName("enemyRespawnCooldownMs")]
+        public int EnemyRespawnCooldownMs { get; set; } = 3000;
+
+        /// <summary>
+        /// 复活时是否满血
+        /// Whether to revive with full HP
+        /// </summary>
+        [JsonPropertyName("reviveWithFullHp")]
+        public bool ReviveWithFullHp { get; set; } = true;
+
+        /// <summary>
+        /// 转换为 MultiBattleConfig
+        /// Convert to MultiBattleConfig
+        /// </summary>
+        public MultiBattleConfig ToMultiBattleConfig()
+        {
+            return new MultiBattleConfig
+            {
+                PlayerTargetStrategy = PlayerTargetStrategy,
+                EnemyTargetStrategy = EnemyTargetStrategy,
+                SpecialIsAoe = SpecialIsAoe,
+                AoeDamageMultiplier = AoeDamageMultiplier,
+                AllowPlayerRevive = AllowPlayerRevive,
+                AllowEnemyRespawn = AllowEnemyRespawn,
+                PlayerReviveCooldownMs = PlayerReviveCooldownMs,
+                EnemyRespawnCooldownMs = EnemyRespawnCooldownMs,
+                ReviveWithFullHp = ReviveWithFullHp
+            };
+        }
     }
 }

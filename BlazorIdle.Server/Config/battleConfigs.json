@@ -1,0 +1,56 @@
+﻿[
+  {
+    "id": "default",
+    "name": "默认战斗配置",
+    "description": "标准战斗配置，适用于大多数场景",
+    "playerTargetStrategy": 1,
+    "enemyTargetStrategy": 1,
+    "specialIsAoe": true,
+    "aoeDamageMultiplier": 0.8,
+    "allowPlayerRevive": true,
+    "allowEnemyRespawn": true,
+    "playerReviveCooldownMs": 5000,
+    "enemyRespawnCooldownMs": 3000,
+    "reviveWithFullHp": true
+  },
+  {
+    "id": "tactical",
+    "name": "战术配置",
+    "description": "针对低血量目标，适合精英副本",
+    "playerTargetStrategy": 2,
+    "enemyTargetStrategy": 1,
+    "specialIsAoe": true,
+    "aoeDamageMultiplier": 0.6,
+    "allowPlayerRevive": true,
+    "allowEnemyRespawn": false,
+    "playerReviveCooldownMs": 8000,
+    "reviveWithFullHp": true
+  },
+  {
+    "id": "survival",
+    "name": "生存配置",
+    "description": "适合高难度战斗，复活不满血",
+    "playerTargetStrategy": 3,
+    "enemyTargetStrategy": 1,
+    "specialIsAoe": true,
+    "aoeDamageMultiplier": 0.75,
+    "allowPlayerRevive": true,
+    "allowEnemyRespawn": true,
+    "playerReviveCooldownMs": 6000,
+    "enemyRespawnCooldownMs": 4000,
+    "reviveWithFullHp": false
+  },
+  {
+    "id": "dungeon_normal",
+    "name": "普通副本配置",
+    "description": "适用于普通副本，敌人不复活",
+    "playerTargetStrategy": 2,
+    "enemyTargetStrategy": 1,
+    "specialIsAoe": true,
+    "aoeDamageMultiplier": 0.75,
+    "allowPlayerRevive": true,
+    "allowEnemyRespawn": false,
+    "playerReviveCooldownMs": 5000,
+    "reviveWithFullHp": true
+  }
+]

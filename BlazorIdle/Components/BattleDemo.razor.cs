@@ -310,32 +310,59 @@ namespace BlazorIdle.Components
                 }
             }
 
-            // 战斗配置 - 优先使用场景配置，否则使用默认值
-            // Battle config - use scenario config if available, otherwise use defaults
-            var config = currentScenario.BattleConfig ?? new MultiBattleConfig
+            // 战斗配置 - 优先使用 battleConfigId，其次使用嵌入的 battleConfig，最后使用默认值
+            // Battle config - prioritize battleConfigId, then embedded battleConfig, finally defaults
+            MultiBattleConfig config;
+            
+            if (!string.IsNullOrEmpty(currentScenario.BattleConfigId))
             {
-                PlayerTargetStrategy = TargetStrategy.LowestHp,
-                EnemyTargetStrategy = TargetStrategy.Random,
-                SpecialIsAoe = enemyTeam.TotalCount > 1,
-                AoeDamageMultiplier = AoeDamageMultiplier,
-                AllowPlayerRevive = true,
-                AllowEnemyRespawn = true,
-                PlayerReviveCooldownMs = character.ReviveMs,
-                EnemyRespawnCooldownMs = enemyTeam.Members.Any()
-                    ? enemyTeam.Members.First().Entity.RespawnMs
-                    : DefaultEnemyRespawnMs,
-                ReviveWithFullHp = true
-            };
-
-            // 如果使用了配置文件的 battleConfig，仍需根据实际情况覆盖某些属性
-            // If using battleConfig from config file, still override certain properties based on actual values
-            if (currentScenario.BattleConfig != null)
-            {
-                config.PlayerReviveCooldownMs = character.ReviveMs;
-                config.EnemyRespawnCooldownMs = enemyTeam.Members.Any()
-                    ? enemyTeam.Members.First().Entity.RespawnMs
-                    : DefaultEnemyRespawnMs;
+                // 从配置服务获取战斗配置
+                var configDef = GameConfig.GetBattleConfig(currentScenario.BattleConfigId);
+                config = configDef?.ToMultiBattleConfig() ?? new MultiBattleConfig
+                {
+                    PlayerTargetStrategy = TargetStrategy.LowestHp,
+                    EnemyTargetStrategy = TargetStrategy.Random,
+                    SpecialIsAoe = enemyTeam.TotalCount > 1,
+                    AoeDamageMultiplier = AoeDamageMultiplier,
+                    AllowPlayerRevive = true,
+                    AllowEnemyRespawn = true,
+                    PlayerReviveCooldownMs = character.ReviveMs,
+                    EnemyRespawnCooldownMs = enemyTeam.Members.Any()
+                        ? enemyTeam.Members.First().Entity.RespawnMs
+                        : DefaultEnemyRespawnMs,
+                    ReviveWithFullHp = true
+                };
             }
+            else if (currentScenario.BattleConfig != null)
+            {
+                // 使用嵌入的配置（向后兼容）
+                config = currentScenario.BattleConfig;
+            }
+            else
+            {
+                // 使用默认配置
+                config = new MultiBattleConfig
+                {
+                    PlayerTargetStrategy = TargetStrategy.LowestHp,
+                    EnemyTargetStrategy = TargetStrategy.Random,
+                    SpecialIsAoe = enemyTeam.TotalCount > 1,
+                    AoeDamageMultiplier = AoeDamageMultiplier,
+                    AllowPlayerRevive = true,
+                    AllowEnemyRespawn = true,
+                    PlayerReviveCooldownMs = character.ReviveMs,
+                    EnemyRespawnCooldownMs = enemyTeam.Members.Any()
+                        ? enemyTeam.Members.First().Entity.RespawnMs
+                        : DefaultEnemyRespawnMs,
+                    ReviveWithFullHp = true
+                };
+            }
+
+            // 根据实际情况覆盖某些属性
+            // Override certain properties based on actual values
+            config.PlayerReviveCooldownMs = character.ReviveMs;
+            config.EnemyRespawnCooldownMs = enemyTeam.Members.Any()
+                ? enemyTeam.Members.First().Entity.RespawnMs
+                : DefaultEnemyRespawnMs;
 
             // 创建战斗实例并订阅事件
             battle = new MultiBattleInstance(clock, rng, playerTeam, enemyTeam, config);

@@ -30,7 +30,8 @@ namespace BlazorIdle.Server.Controllers
                 Monsters = _provider.Monsters.ToList(),
                 Items = _provider.Items.ToList(),
                 Dungeons = _provider.Dungeons.ToList(),
-                BattleScenarios = _provider.BattleScenarios.ToList() // 添加战斗场景配置到响应
+                BattleScenarios = _provider.BattleScenarios.ToList(),
+                BattleConfigs = _provider.BattleConfigs.ToList() // 添加战斗配置到响应（内部配置）
             };
             return Ok(dto);
         }

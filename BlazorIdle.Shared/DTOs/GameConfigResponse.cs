@@ -27,5 +27,11 @@ namespace BlazorIdle.Shared.DTOs
         /// Battle scenario definitions list - preset scenarios for single battles
         /// </summary>
         public List<BattleScenarioDef> BattleScenarios { get; set; } = new();
+
+        /// <summary>
+        /// 战斗配置定义列表 - 可复用的战斗参数配置（内部配置，不向用户公开）
+        /// Battle configuration definitions list - reusable battle parameter configurations (internal config, not exposed to users)
+        /// </summary>
+        public List<BattleConfigDef> BattleConfigs { get; set; } = new();
     }
 }
