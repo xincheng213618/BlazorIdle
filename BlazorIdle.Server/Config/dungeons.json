@@ -12,6 +12,7 @@
     "allowRevive": true,
     "repeatCooldownSec": 0,
     "timeLimitSec": 0,
+    "battleConfigId": "dungeon_normal",
     "waves": [
       {
         "waveNumber": 1,
@@ -123,6 +124,7 @@
     "allowRevive": true,
     "repeatCooldownSec": 300,
     "timeLimitSec": 600,
+    "battleConfigId": "dungeon_normal",
     "waves": [
       {
         "waveNumber": 1,

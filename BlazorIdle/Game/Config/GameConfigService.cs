@@ -14,6 +14,7 @@ namespace BlazorIdle.Game.Config
         private readonly List<ItemDefinition> _items = new();
         private readonly List<DungeonDef> _dungeons = new();
         private readonly List<BattleScenarioDef> _battleScenarios = new();
+        private readonly List<BattleConfigDef> _battleConfigs = new();
 
         public GameConfigService(HttpClient http, ApiConfiguration apiConfig)
         {
@@ -26,6 +27,7 @@ namespace BlazorIdle.Game.Config
         public IReadOnlyList<ItemDefinition> Items => _items;
         public IReadOnlyList<DungeonDef> Dungeons => _dungeons;
         public IReadOnlyList<BattleScenarioDef> BattleScenarios => _battleScenarios;
+        public IReadOnlyList<BattleConfigDef> BattleConfigs => _battleConfigs;
 
         public string Version { get; private set; } = "unloaded";
         public bool IsLoaded => _loaded;
@@ -49,6 +51,7 @@ namespace BlazorIdle.Game.Config
             var items = response?.Items ?? new List<ItemDefinition>();
             var dungeons = response?.Dungeons ?? new List<DungeonDef>();
             var battleScenarios = response?.BattleScenarios ?? new List<BattleScenarioDef>();
+            var battleConfigs = response?.BattleConfigs ?? new List<BattleConfigDef>();
 
             _professions.Clear();
             _professions.AddRange(profs.Where(p => !string.IsNullOrWhiteSpace(p.Id)));
@@ -65,7 +68,10 @@ namespace BlazorIdle.Game.Config
             _battleScenarios.Clear();
             _battleScenarios.AddRange(battleScenarios.Where(b => !string.IsNullOrWhiteSpace(b.Id)));
 
-            Version = response?.Version ?? $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-b:{_battleScenarios.Count}";
+            _battleConfigs.Clear();
+            _battleConfigs.AddRange(battleConfigs.Where(b => !string.IsNullOrWhiteSpace(b.Id)));
+
+            Version = response?.Version ?? $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}";
             _loaded = true;
         }
 
@@ -83,5 +89,8 @@ namespace BlazorIdle.Game.Config
 
         public BattleScenarioDef? GetBattleScenario(string id)
             => _battleScenarios.FirstOrDefault(b => string.Equals(b.Id, id, StringComparison.OrdinalIgnoreCase));
+
+        public BattleConfigDef? GetBattleConfig(string id)
+            => _battleConfigs.FirstOrDefault(b => string.Equals(b.Id, id, StringComparison.OrdinalIgnoreCase));
     }
 }

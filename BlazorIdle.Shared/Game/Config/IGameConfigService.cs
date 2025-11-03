@@ -26,6 +26,12 @@ namespace BlazorIdle.Game.Config
         /// </summary>
         IReadOnlyList<BattleScenarioDef> BattleScenarios { get; }
 
+        /// <summary>
+        /// 战斗配置定义列表 - 可复用的战斗参数配置
+        /// Battle configuration definitions list - reusable battle parameter configurations
+        /// </summary>
+        IReadOnlyList<BattleConfigDef> BattleConfigs { get; }
+
         ProfessionDef? GetProfession(string id);
         MonsterDef? GetMonster(string id);
 
@@ -46,6 +52,12 @@ namespace BlazorIdle.Game.Config
         /// Get battle scenario definition by ID
         /// </summary>
         BattleScenarioDef? GetBattleScenario(string id);
+
+        /// <summary>
+        /// 获取指定ID的战斗配置定义
+        /// Get battle configuration definition by ID
+        /// </summary>
+        BattleConfigDef? GetBattleConfig(string id);
 
         string Version { get; }
         bool IsLoaded { get; }
