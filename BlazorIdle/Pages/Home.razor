@@ -26,6 +26,16 @@
         @if (selectedCharacter != null)
         {
             <div class="row">
+                <div class="col-md-6">
+                    <ProfessionSelector Character="@selectedCharacter"
+                                        OnProfessionSwitched="OnProfessionSwitched" />
+                </div>
+                <div class="col-md-6">
+                    <CharacterDetail Character="@selectedCharacter" />
+                </div>
+            </div>
+
+            <div class="row">
                 <div class="col-12">
                     <InventoryPanel Inventory="@selectedCharacter.Inventory"
                                     StartCollapsed="true" />
@@ -115,6 +125,16 @@
     private async Task OnCharacterDeleted()
     {
         selectedCharacter = await CharacterService.GetSelectedCharacterAsync();
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// 职业切换回调 - 更新当前角色数据
+    /// Profession switched callback - update current character data
+    /// </summary>
+    private void OnProfessionSwitched(CharacterData updatedCharacter)
+    {
+        selectedCharacter = updatedCharacter;
         StateHasChanged();
     }
 }
