@@ -3,6 +3,7 @@
     "id": "single_slime",
     "name": "单个史莱姆",
     "description": "对战一只基础史莱姆，适合新手",
+    "battleConfigId": "default",
     "monsterGroups": [
       {
         "monsterId": "slime",
@@ -20,6 +21,7 @@
     "id": "three_slimes",
     "name": "三个史莱姆",
     "description": "对战三只史莱姆，练习一打多",
+    "battleConfigId": "default",
     "monsterGroups": [
       {
         "monsterId": "slime",
@@ -37,6 +39,7 @@
     "id": "single_wolf",
     "name": "单个野狼",
     "description": "对战一只攻速较快的野狼",
+    "battleConfigId": "default",
     "monsterGroups": [
       {
         "monsterId": "wolf",
@@ -54,6 +57,7 @@
     "id": "wolf_pack",
     "name": "狼群",
     "description": "对战两只凶猛的野狼",
+    "battleConfigId": "default",
     "monsterGroups": [
       {
         "monsterId": "wolf",
@@ -71,6 +75,7 @@
     "id": "single_ogre",
     "name": "单个食人魔",
     "description": "对战一只血厚伤重的食人魔",
+    "battleConfigId": "default",
     "monsterGroups": [
       {
         "monsterId": "ogre",
@@ -88,6 +93,7 @@
     "id": "mixed_encounter",
     "name": "混合遭遇",
     "description": "同时对战史莱姆和野狼",
+    "battleConfigId": "default",
     "monsterGroups": [
       {
         "monsterId": "slime",
@@ -115,6 +121,7 @@
     "id": "elite_ogre",
     "name": "精英食人魔",
     "description": "对战一只强化的精英食人魔",
+    "battleConfigId": "default",
     "monsterGroups": [
       {
         "monsterId": "ogre",
@@ -132,6 +139,7 @@
     "id": "boss_ogre",
     "name": "Boss食人魔",
     "description": "对战强大的食人魔首领",
+    "battleConfigId": "default",
     "monsterGroups": [
       {
         "monsterId": "ogre",
@@ -157,7 +165,7 @@
     "id": "horde",
     "name": "怪物群",
     "description": "大量敌人的混合群体，极具挑战",
-    "battleConfigId": "survival",
+    "battleConfigId": "default",
     "monsterGroups": [
       {
         "monsterId": "slime",

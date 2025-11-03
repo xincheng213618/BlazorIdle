@@ -3,7 +3,7 @@
     "id": "default",
     "name": "默认战斗配置",
     "description": "标准战斗配置，适用于大多数场景",
-    "playerTargetStrategy": 1,
+    "playerTargetStrategy": 2,
     "enemyTargetStrategy": 1,
     "specialIsAoe": true,
     "aoeDamageMultiplier": 0.8,
@@ -50,7 +50,7 @@
     "aoeDamageMultiplier": 0.75,
     "allowPlayerRevive": true,
     "allowEnemyRespawn": false,
-    "playerReviveCooldownMs": 5000,
+    "playerReviveCooldownMs": 10000,
     "reviveWithFullHp": true
   }
 ]

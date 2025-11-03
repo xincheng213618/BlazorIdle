@@ -12,16 +12,7 @@
     "allowRevive": true,
     "repeatCooldownSec": 0,
     "timeLimitSec": 0,
-    "battleConfig": {
-      "playerTargetStrategy": 2,
-      "enemyTargetStrategy": 1,
-      "specialIsAoe": true,
-      "aoeDamageMultiplier": 0.5,
-      "allowPlayerRevive": true,
-      "allowEnemyRespawn": false,
-      "playerReviveCooldownMs": 8000,
-      "reviveWithFullHp": true
-    },
+    "battleConfigId": "dungeon_normal",
     "waves": [
       {
         "waveNumber": 1,
@@ -133,7 +124,7 @@
     "allowRevive": true,
     "repeatCooldownSec": 300,
     "timeLimitSec": 600,
-    "battleConfigId": "tactical",
+    "battleConfigId": "dungeon_normal",
     "waves": [
       {
         "waveNumber": 1,
