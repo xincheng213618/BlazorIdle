@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using BlazorIdle.Shared.Models;
 
 namespace BlazorIdle.Game.Config
 {
@@ -7,6 +8,10 @@ namespace BlazorIdle.Game.Config
         [JsonPropertyName("id")] public string Id { get; set; } = string.Empty;
         [JsonPropertyName("name")] public string Name { get; set; } = string.Empty;
         [JsonPropertyName("desc")] public string? Desc { get; set; }
+        
+        // 职业类型 - 战斗职业或非战斗职业
+        // Profession type - combat or non-combat
+        [JsonPropertyName("type")] public ProfessionType Type { get; set; } = ProfessionType.Combat;
 
         // 生存
         [JsonPropertyName("maxHp")] public int MaxHp { get; set; } = 200;
@@ -56,5 +61,11 @@ namespace BlazorIdle.Game.Config
         /// Loot drops list - items that may drop when monster dies
         /// </summary>
         [JsonPropertyName("lootDrops")] public List<LootDrop> LootDrops { get; set; } = new();
+
+        /// <summary>
+        /// 基础经验值 - 击败怪物后获得的经验
+        /// Base experience - experience gained after defeating monster
+        /// </summary>
+        [JsonPropertyName("baseExperience")] public long BaseExperience { get; set; } = 50;
     }
 }
