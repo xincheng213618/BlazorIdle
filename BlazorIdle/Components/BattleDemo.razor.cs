@@ -249,6 +249,7 @@ namespace BlazorIdle.Components
             {
                 battle.CombatEventFired -= OnCombatEvent;
                 battle.LootDropped -= OnLootDropped;
+                battle.ExperienceGained -= OnExperienceGained;
             }
 
             // 构建时钟和随机数上下文
@@ -368,6 +369,7 @@ namespace BlazorIdle.Components
             battle = new MultiBattleInstance(clock, rng, playerTeam, enemyTeam, config);
             battle.CombatEventFired += OnCombatEvent;
             battle.LootDropped += OnLootDropped;
+            battle.ExperienceGained += OnExperienceGained;
 
             digest = null;
         }
@@ -385,6 +387,7 @@ namespace BlazorIdle.Components
             {
                 dungeonManager.CombatEventFired -= OnCombatEvent;
                 dungeonManager.LootDropped -= OnLootDropped;
+                dungeonManager.ExperienceGained -= OnExperienceGained;
                 dungeonManager.WaveChanged -= OnDungeonWaveChanged;
                 dungeonManager.DungeonCompleted -= OnDungeonCompleted;
             }
@@ -418,6 +421,7 @@ namespace BlazorIdle.Components
 
             dungeonManager.CombatEventFired += OnCombatEvent;
             dungeonManager.LootDropped += OnLootDropped;
+            dungeonManager.ExperienceGained += OnExperienceGained;
             dungeonManager.WaveChanged += OnDungeonWaveChanged;
             dungeonManager.DungeonCompleted += OnDungeonCompleted;
 
@@ -709,6 +713,61 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
+        /// 处理经验获得事件 - 将经验添加到对应职业并记录日志
+        /// Handle experience gain event - adds experience to profession and logs it
+        /// </summary>
+        private void OnExperienceGained(ExperienceGainEvent expEvent)
+        {
+            if (SelectedCharacter == null) return;
+
+            // 获取对应职业的进度
+            if (!SelectedCharacter.Professions.TryGetValue(expEvent.ProfessionId, out var progress))
+            {
+                return;
+            }
+
+            // TODO: 应用增益系数（预留给未来的buff系统）
+            // TODO: Apply multiplier (reserved for future buff system)
+            double multiplier = 0.0;
+            long actualExp = (long)(expEvent.BaseExperience * (1.0 + multiplier));
+
+            // 添加经验
+            progress.Experience += actualExp;
+
+            // 检查升级
+            bool leveledUp = false;
+            while (progress.Experience >= progress.ExperienceToNext && progress.Level < 100)
+            {
+                // 升级
+                progress.Level++;
+                progress.Experience -= progress.ExperienceToNext;
+                
+                // 更新下一级所需经验（简化实现，使用固定增长）
+                // TODO: 应该从经验曲线配置加载
+                progress.ExperienceToNext = (long)(progress.ExperienceToNext * 1.5);
+                
+                leveledUp = true;
+            }
+
+            // 记录日志
+            var sec = expEvent.TimeMs / 1000.0;
+            var charName = string.IsNullOrWhiteSpace(SelectedCharacter?.Name) ? "未知角色" : SelectedCharacter!.Name;
+            var profDef = GameConfig.Professions.FirstOrDefault(p => p.Id == expEvent.ProfessionId);
+            var profName = profDef?.Name ?? expEvent.ProfessionId;
+
+            var logLine = $"[{sec:0.00}s] {charName} ({profName}) 获得 {actualExp} 经验";
+            if (leveledUp)
+            {
+                logLine += $" - 🎉 升级到 Lv.{progress.Level}！";
+            }
+
+            logs.Add(logLine);
+            if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
+
+            _ = InvokeAsync(StateHasChanged);
+        }
+
+        /// <summary>
         /// 副本波次变更事件 - 记录波次状态
         /// Dungeon wave change event handler - logs wave status changes
         /// </summary>
@@ -863,12 +922,14 @@ namespace BlazorIdle.Components
             {
                 battle.CombatEventFired -= OnCombatEvent;
                 battle.LootDropped -= OnLootDropped;
+                battle.ExperienceGained -= OnExperienceGained;
             }
 
             if (dungeonManager is not null)
             {
                 dungeonManager.CombatEventFired -= OnCombatEvent;
                 dungeonManager.LootDropped -= OnLootDropped;
+                dungeonManager.ExperienceGained -= OnExperienceGained;
                 dungeonManager.WaveChanged -= OnDungeonWaveChanged;
                 dungeonManager.DungeonCompleted -= OnDungeonCompleted;
             }

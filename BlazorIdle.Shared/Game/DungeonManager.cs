@@ -45,6 +45,7 @@ namespace BlazorIdle.Game
         public event Action<DungeonCompleteEvent>? DungeonCompleted;
         public event Action<MultiCombatEvent>? CombatEventFired;
         public event Action<LootDropEvent>? LootDropped;
+        public event Action<ExperienceGainEvent>? ExperienceGained;
         public event Action<DungeonStatsEvent>? StatsUpdated;
 
         /// <summary>
@@ -600,6 +601,7 @@ namespace BlazorIdle.Game
 
             _currentBattle.CombatEventFired += OnCombatEvent;
             _currentBattle.LootDropped += OnLootDropped;
+            _currentBattle.ExperienceGained += OnExperienceGained;
             _currentBattle.TeamStatusChanged += OnTeamStatusChanged;
         }
 
@@ -613,6 +615,7 @@ namespace BlazorIdle.Game
 
             _currentBattle.CombatEventFired -= OnCombatEvent;
             _currentBattle.LootDropped -= OnLootDropped;
+            _currentBattle.ExperienceGained -= OnExperienceGained;
             _currentBattle.TeamStatusChanged -= OnTeamStatusChanged;
         }
 
@@ -649,6 +652,15 @@ namespace BlazorIdle.Game
             RecordLoot(ev.ItemId, ev.Quantity);
             LootDropped?.Invoke(ev);
             FireStatsEvent();
+        }
+
+        /// <summary>
+        /// 处理经验获得事件
+        /// Handle experience gain event
+        /// </summary>
+        private void OnExperienceGained(ExperienceGainEvent ev)
+        {
+            ExperienceGained?.Invoke(ev);
         }
 
         /// <summary>

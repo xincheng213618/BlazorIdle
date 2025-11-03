@@ -297,8 +297,8 @@ namespace BlazorIdle.Game
         {
             if (_enemy.BaseExperience <= 0) return;
 
-            // 触发经验事件，实际计算由服务端完成
-            // Trigger experience event, actual calculation done on server
+            // 触发经验事件，客户端本地计算经验和升级（类似掉落物处理）
+            // Trigger experience event, client-side calculates experience and level-up (similar to loot drops)
             var expEvent = new ExperienceGainEvent
             {
                 TimeMs = now,
