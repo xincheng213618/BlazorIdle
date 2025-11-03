@@ -20,6 +20,7 @@ namespace BlazorIdle.Services
         Task<CharacterData?> GetSelectedCharacterAsync();
         Task SetSelectedCharacterAsync(string? characterId);
         Task<CharacterResponse?> UpdateCharacterAsync(string characterId, CharacterData character);
+        Task<CharacterResponse?> SwitchProfessionAsync(string characterId, string professionId);
 
         // 新增：选中角色变更事件
         event Action<CharacterData?>? SelectedCharacterChanged;
@@ -311,6 +312,64 @@ namespace BlazorIdle.Services
                 {
                     Success = false,
                     Message = $"更新角色失败: {ex.Message}"
+                };
+            }
+        }
+
+        /// <summary>
+        /// 切换战斗职业
+        /// Switch combat profession
+        /// </summary>
+        /// <param name="characterId">角色ID</param>
+        /// <param name="professionId">要切换到的职业ID</param>
+        /// <returns>切换结果</returns>
+        public async Task<CharacterResponse?> SwitchProfessionAsync(string characterId, string professionId)
+        {
+            try
+            {
+                await ConfigureAuthHeaderAsync();
+
+                var request = new SwitchProfessionRequest
+                {
+                    ProfessionId = professionId
+                };
+
+                var response = await _httpClient.PostAsJsonAsync(
+                    $"{_apiConfig.CharacterApiUrl}/{characterId}/switch-profession",
+                    request);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<CharacterResponse>();
+                    
+                    // 清除缓存并触发更新事件
+                    // Clear cache and trigger update event
+                    _cachedCharacters = null;
+                    if (result?.Character != null)
+                    {
+                        SelectedCharacterChanged?.Invoke(result.Character);
+                    }
+                    
+                    return result;
+                }
+                else
+                {
+                    var errorResult = await response.Content.ReadFromJsonAsync<CharacterResponse>();
+                    Console.WriteLine($"Error switching profession: {errorResult?.Message ?? "Unknown error"}");
+                    return errorResult ?? new CharacterResponse
+                    {
+                        Success = false,
+                        Message = "切换职业失败"
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error switching profession for character {characterId}: {ex.Message}");
+                return new CharacterResponse
+                {
+                    Success = false,
+                    Message = $"切换职业失败: {ex.Message}"
                 };
             }
         }

@@ -431,4 +431,120 @@ public class CharacterController : ControllerBase
             });
         }
     }
+
+    /// <summary>
+    /// 切换战斗职业 - 只能在非战斗/非活动状态下切换
+    /// Switch combat profession - can only switch when not in battle or activity
+    /// </summary>
+    [HttpPost("{id}/switch-profession")]
+    public async Task<ActionResult<CharacterResponse>> SwitchProfession(
+        string id,
+        [FromBody] SwitchProfessionRequest request)
+    {
+        var userId = GetCurrentUserId();
+
+        // 获取角色并验证权限
+        // Get character and verify ownership
+        var character = await _context.Characters
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+
+        if (character == null)
+        {
+            return NotFound(new CharacterResponse
+            {
+                Success = false,
+                Message = "角色不存在或无权修改"
+            });
+        }
+
+        // 验证职业ID
+        // Validate profession ID
+        if (string.IsNullOrWhiteSpace(request.ProfessionId))
+        {
+            return BadRequest(new CharacterResponse
+            {
+                Success = false,
+                Message = "职业ID不能为空"
+            });
+        }
+
+        // 加载职业配置
+        // Load profession config
+        await _gameConfig.EnsureLoadedAsync();
+        var profession = _gameConfig.GetProfession(request.ProfessionId);
+
+        if (profession == null)
+        {
+            return BadRequest(new CharacterResponse
+            {
+                Success = false,
+                Message = "无效的职业ID"
+            });
+        }
+
+        // 验证职业类型 - 只能切换到战斗职业
+        // Validate profession type - can only switch to combat professions
+        if (profession.Type != ProfessionType.Combat)
+        {
+            return BadRequest(new CharacterResponse
+            {
+                Success = false,
+                Message = "只能切换到战斗职业"
+            });
+        }
+
+        // 验证角色是否拥有该职业
+        // Verify character has this profession
+        if (!character.Professions.ContainsKey(request.ProfessionId))
+        {
+            return BadRequest(new CharacterResponse
+            {
+                Success = false,
+                Message = "角色未拥有该职业"
+            });
+        }
+
+        // 更新激活的战斗职业
+        // Update active combat profession
+        character.ActiveCombatProfessionId = request.ProfessionId;
+
+        // 更新角色战斗属性为新职业的基础属性
+        // Update character combat stats to new profession's base stats
+        // 注意：暂时不考虑等级成长，使用职业基础属性
+        // Note: Not considering level growth for now, using base profession stats
+        character.MaxHp = profession.MaxHp;
+        character.AttackRateAPS = profession.AttackRateAPS;
+        character.DamagePerAttack = profession.DamagePerAttack;
+        character.HastePercent = profession.HastePercent;
+        character.SpecialIntervalSec = profession.SpecialIntervalSec;
+        character.SpecialDamage = profession.SpecialDamage;
+        character.CritChancePercent = profession.CritChancePercent;
+        character.CritMultiplier = profession.CritMultiplier;
+        character.VariancePct = profession.VariancePct;
+        character.ReviveSec = profession.ReviveSec;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("User {UserId} switched character {CharacterId} to profession {ProfessionId}",
+                userId, character.Id, request.ProfessionId);
+
+            return Ok(new CharacterResponse
+            {
+                Success = true,
+                Message = $"成功切换到职业：{profession.Name}",
+                Character = character
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to switch profession for character {CharacterId}", id);
+            return StatusCode(500, new CharacterResponse
+            {
+                Success = false,
+                Message = "切换职业失败，请稍后重试"
+            });
+        }
+    }
 }

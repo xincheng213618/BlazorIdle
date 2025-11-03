@@ -168,3 +168,16 @@ public class CharacterResponse
     /// </summary>
     public BlazorIdle.Shared.Models.CharacterData? Character { get; set; }
 }
+
+/// <summary>
+/// 切换战斗职业请求DTO
+/// Switch combat profession request DTO
+/// </summary>
+public class SwitchProfessionRequest
+{
+    /// <summary>
+    /// 要切换到的职业ID
+    /// Profession ID to switch to
+    /// </summary>
+    public string ProfessionId { get; set; } = string.Empty;
+}
