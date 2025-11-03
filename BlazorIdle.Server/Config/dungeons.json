@@ -123,6 +123,16 @@
     "allowRevive": true,
     "repeatCooldownSec": 300,
     "timeLimitSec": 600,
+    "battleConfig": {
+      "playerTargetStrategy": 2,
+      "enemyTargetStrategy": 1,
+      "specialIsAoe": true,
+      "aoeDamageMultiplier": 0.6,
+      "allowPlayerRevive": true,
+      "allowEnemyRespawn": false,
+      "playerReviveCooldownMs": 8000,
+      "reviveWithFullHp": true
+    },
     "waves": [
       {
         "waveNumber": 1,

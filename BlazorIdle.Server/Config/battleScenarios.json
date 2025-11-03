@@ -157,6 +157,17 @@
     "id": "horde",
     "name": "怪物群",
     "description": "大量敌人的混合群体，极具挑战",
+    "battleConfig": {
+      "playerTargetStrategy": 3,
+      "enemyTargetStrategy": 1,
+      "specialIsAoe": true,
+      "aoeDamageMultiplier": 0.75,
+      "allowPlayerRevive": true,
+      "allowEnemyRespawn": true,
+      "playerReviveCooldownMs": 6000,
+      "enemyRespawnCooldownMs": 4000,
+      "reviveWithFullHp": false
+    },
     "monsterGroups": [
       {
         "monsterId": "slime",
