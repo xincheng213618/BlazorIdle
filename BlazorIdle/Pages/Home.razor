@@ -44,7 +44,8 @@
 
             <div class="row">
                 <div class="col-12">
-                    <BattleDemo SelectedCharacter="@selectedCharacter" />
+                    <BattleDemo SelectedCharacter="@selectedCharacter"
+                                OnCharacterDataChanged="OnCharacterDataChanged" />
                 </div>
             </div>
         }
@@ -135,6 +136,17 @@
     private void OnProfessionSwitched(CharacterData updatedCharacter)
     {
         selectedCharacter = updatedCharacter;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// 角色数据变更回调 - 触发UI更新（如经验/等级变化）
+    /// Character data changed callback - trigger UI update (e.g., experience/level changes)
+    /// </summary>
+    private void OnCharacterDataChanged(CharacterData updatedCharacter)
+    {
+        // 角色对象引用没变，但内容已更新，触发重新渲染
+        // Character object reference unchanged, but content updated, trigger re-render
         StateHasChanged();
     }
 }

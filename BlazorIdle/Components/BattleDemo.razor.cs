@@ -37,6 +37,9 @@ namespace BlazorIdle.Components
         [Parameter]
         public CharacterData? SelectedCharacter { get; set; }
 
+        [Parameter]
+        public EventCallback<CharacterData> OnCharacterDataChanged { get; set; }
+
         /// <summary>
         /// 战斗模式枚举 - 区分普通战斗与副本战斗
         /// Battle mode enum - differentiates normal and dungeon battle
@@ -270,7 +273,8 @@ namespace BlazorIdle.Components
                 CritChancePercent = SelectedCharacter.CritChancePercent,
                 CritMultiplier = SelectedCharacter.CritMultiplier,
                 VariancePct = SelectedCharacter.VariancePct,
-                ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0)
+                ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0),
+                ActiveCombatProfessionId = SelectedCharacter.ActiveCombatProfessionId
             };
 
             // 玩家队伍
@@ -410,7 +414,8 @@ namespace BlazorIdle.Components
                 CritChancePercent = SelectedCharacter.CritChancePercent,
                 CritMultiplier = SelectedCharacter.CritMultiplier,
                 VariancePct = SelectedCharacter.VariancePct,
-                ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0)
+                ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0),
+                ActiveCombatProfessionId = SelectedCharacter.ActiveCombatProfessionId
             };
 
             playerTeam = new BattleTeam<Character>("player_team", "玩家队伍", TeamType.Player);
@@ -765,6 +770,13 @@ namespace BlazorIdle.Components
 
             logs.Add(logLine);
             if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
+
+            // 通知父组件角色数据已更改
+            // Notify parent component that character data has changed
+            if (OnCharacterDataChanged.HasDelegate && SelectedCharacter != null)
+            {
+                _ = OnCharacterDataChanged.InvokeAsync(SelectedCharacter);
+            }
 
             _ = InvokeAsync(StateHasChanged);
         }
