@@ -303,7 +303,9 @@ namespace BlazorIdle.Components
                         DamagePerHit = damagePerHit,
                         VariancePct = monsterDef.VariancePct,
                         RespawnMs = (int)Math.Round(Math.Max(0, monsterDef.RespawnSec) * 1000.0),
-                        LootDrops = monsterGroup.SpecialDrops?.ToList() ?? monsterDef.LootDrops?.ToList() ?? new List<Game.Config.LootDrop>()
+                        LootDrops = monsterGroup.SpecialDrops?.ToList() ?? monsterDef.LootDrops?.ToList() ?? new List<Game.Config.LootDrop>(),
+                        BaseExperience = monsterDef.BaseExperience,
+                        MonsterId = monsterDef.Id
                     };
 
                     string enemyId = $"{monsterGroup.MonsterId}_{enemyIndex}";
@@ -793,6 +795,20 @@ namespace BlazorIdle.Components
             if (ev.Success)
             {
                 AddLog("系统", $"副本通关，第 {ev.CompletionCount} 次完成");
+                
+                // 处理副本完成经验奖励
+                // Handle dungeon completion experience reward
+                if (currentDungeon != null && currentDungeon.CompletionExperience > 0 && SelectedCharacter != null)
+                {
+                    var expEvent = new ExperienceGainEvent
+                    {
+                        TimeMs = dungeonSnapshot?.ElapsedMs ?? 0,
+                        ProfessionId = SelectedCharacter.ActiveCombatProfessionId,
+                        BaseExperience = currentDungeon.CompletionExperience,
+                        MonsterId = null
+                    };
+                    OnExperienceGained(expEvent);
+                }
             }
             else
             {

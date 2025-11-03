@@ -364,7 +364,9 @@ namespace BlazorIdle.Game
                         DamagePerHit = (int)(monsterDef.DamagePerHit * monsterGroup.DamageMultiplier),
                         VariancePct = monsterDef.VariancePct,
                         RespawnMs = 0, // 副本中不复活
-                        LootDrops = monsterGroup.SpecialDrops ?? monsterDef.LootDrops
+                        LootDrops = monsterGroup.SpecialDrops ?? monsterDef.LootDrops,
+                        BaseExperience = monsterDef.BaseExperience,
+                        MonsterId = monsterDef.Id
                     };
 
                     // 生成敌人ID - 使用更有意义的名称
