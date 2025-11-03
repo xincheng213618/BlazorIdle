@@ -12,25 +12,25 @@ namespace BlazorIdle.Components
 {
     public partial class BattleDemo
     {
-        // ===== �����ó��� - Configurable Constants =====
+        // ===== 可配置常量 - Configurable Constants =====
 
-        // ս��ѭ����������룩- ������Ϸ����Ƶ��
+        // 战斗循环间隔（毫秒）- 控制游戏更新频率
         // Battle loop interval (ms) - controls game update frequency
         private const int TickMs = 100;
 
-        // �Զ�ѭ���ӳ�ʱ�䣨���룩- ������ɺ��´ο�ʼ�ĵȴ�ʱ��
+        // 自动循环延迟时间（毫秒）- 地牢完成后到下次开始的等待时间
         // Auto-repeat delay time (ms) - waiting time between dungeon completion and next start
         private const int AutoRepeatDelayMs = 2000;
 
-        // AOE�˺����� - Ⱥ�幥�����ܶ�ÿ��Ŀ����˺�����
+        // AOE伤害倍率 - 群体技能对每个目标的伤害比例
         // AOE damage multiplier - damage ratio of area attacks to each target
         private const double AoeDamageMultiplier = 0.7;
 
-        // Ĭ�ϵ���ˢ��ʱ�䣨���룩- ������������û��ָ��ˢ��ʱ��ʱʹ��
+        // 默认敌人刷新时间（毫秒）- 当怪物配置未指定刷新时间时使用
         // Default enemy respawn time (ms) - used when monster config doesn't specify respawn time
         private const int DefaultEnemyRespawnMs = 3000;
 
-        // �����־��Ŀ�� - ��־�б�����������¼��
+        // 最大日志条目 - 保留的日志记录数量上限
         // Max log entries - maximum number of log records to keep
         private const int MaxLogEntries = 200;
 
@@ -38,20 +38,20 @@ namespace BlazorIdle.Components
         public CharacterData? SelectedCharacter { get; set; }
 
         /// <summary>
-        /// ս��ģʽö�� - ������ͨս���͸���ս��
+        /// 战斗模式枚举 - 区分普通战斗与副本战斗
         /// Battle mode enum - differentiates normal and dungeon battle
         /// </summary>
         private enum BattleMode
         {
-            Normal,    // ��ͨս��ģʽ
-            Dungeon    // ����ս��ģʽ
+            Normal,    // 普通战斗模式
+            Dungeon    // 副本战斗模式
         }
 
-        // ս��ģʽ���
+        // 战斗模式相关
         // Battle mode related
         private BattleMode currentBattleMode = BattleMode.Normal;
 
-        // ����ѡ��
+        // 配置选择
         // Configuration selection
         private List<ProfessionDef> professions = new();
         private List<MonsterDef> monsters = new();
@@ -61,7 +61,7 @@ namespace BlazorIdle.Components
         private string configVersion = "loading";
         private bool configReady = false;
 
-        // ����ս���������
+        // 副本战斗配置
         // Dungeon battle related configuration
         private List<DungeonDef> dungeons = new();
         private string? selectedDungeonId;
@@ -69,12 +69,12 @@ namespace BlazorIdle.Components
         private DungeonManager? dungeonManager;
         private DungeonSnapshot? dungeonSnapshot;
 
-        // �൥λս��ϵͳ��������ͨս���͸���ս����
+        // 多单位战斗系统（用于普通战斗与副本战斗）
         // Multi-unit battle system (used for normal battle and dungeon battle)
         private MultiBattleInstance? battle;
         private MultiBattleSnapshot snapshot = new MultiBattleSnapshot();
 
-        // ս������ - ��װ������ɫ�͹���
+        // 战斗队伍 - 封装玩家与敌人
         // Battle teams - wrapping single character and monster
         private BattleTeam<Character>? playerTeam;
         private BattleTeam<Enemy>? enemyTeam;
@@ -82,7 +82,7 @@ namespace BlazorIdle.Components
         private BattleDigest? digest;
         private bool isRunning = false;
 
-        // ����DPS���㣨���ڽ�ɫ���ԣ�
+        // 理论DPS计算（基于角色属性）
         // Theoretical DPS calculation (based on character attributes)
         private double theoreticalDps
         {
@@ -97,15 +97,15 @@ namespace BlazorIdle.Components
             }
         }
 
-        // ״̬�ı� - ����ս��״̬��ʾ��ͬ����ʾ��Ϣ
+        // 状态文本 - 根据战斗状态显示不同提示
         // Status text - displays different prompt messages based on battle state
         private string PlayerStatusText
         {
             get
             {
                 if (snapshot.State == MultiBattleState.PlayerTeamDeadCooldown)
-                    return $"�ȴ����� {(snapshot.TimeToResumeMs / 1000.0):0.00}s";
-                return "ս����";
+                    return $"等待复活 {(snapshot.TimeToResumeMs / 1000.0):0.00}s";
+                return "作战中";
             }
         }
 
@@ -114,12 +114,12 @@ namespace BlazorIdle.Components
             get
             {
                 if (snapshot.State == MultiBattleState.EnemyTeamDeadCooldown)
-                    return $"�ȴ�ˢ�� {(snapshot.TimeToResumeMs / 1000.0):0.00}s";
-                return "ս����";
+                    return $"等待刷新 {(snapshot.TimeToResumeMs / 1000.0):0.00}s";
+                return "作战中";
             }
         }
 
-        // ��ս��ʵ����ȡ��ɫ��������
+        // 从战斗实例获取角色攻击进度
         // Get character attack progress from battle instance
         private double attackProgress01
         {
@@ -130,7 +130,7 @@ namespace BlazorIdle.Components
             }
         }
 
-        // ��ȡ��ɫ���⼼�ܽ���
+        // 获取角色技能进度
         // Get character special skill progress
         private double specialProgress01
         {
@@ -141,11 +141,11 @@ namespace BlazorIdle.Components
             }
         }
 
-        // ��ȡ���˹������� - ��ʱ����ʾ�����������£�
+        // 获取敌人攻击进度 - 暂不显示（多敌人场景）
         // Get enemy attack progress - not displayed for now (in multi-enemy scenario)
         private double enemyProgress01 => 0.0;
 
-        // ��ȡ��ɫ����ʣ��ʱ��
+        // 获取角色攻击剩余时间
         // Get character attack time remaining
         private double attackRemainMs
         {
@@ -156,7 +156,7 @@ namespace BlazorIdle.Components
             }
         }
 
-        // ��ȡ��ɫ���⼼��ʣ��ʱ��
+        // 获取角色技能剩余时间
         // Get character special skill time remaining
         private double specialRemainMs
         {
@@ -167,18 +167,18 @@ namespace BlazorIdle.Components
             }
         }
 
-        // ��ȡ���˹���ʣ��ʱ�� - ��ʱ����ʾ�����������£�
+        // 获取敌人攻击剩余时间 - 暂不显示（多敌人场景）
         // Get enemy attack time remaining - not displayed for now (in multi-enemy scenario)
         private double enemyRemainMs => 0.0;
 
-        // ��־�б� - �洢ս����־
+        // 日志列表 - 存储战斗日志
         // Log list - stores battle logs
         private readonly List<string> logs = new();
 
         private CancellationTokenSource? _cts;
 
         /// <summary>
-        /// �����ʼ�� - ������Ϸ��������
+        /// 组件初始化 - 加载游戏配置数据
         /// Component initialization - load game configuration data
         /// </summary>
         protected override async Task OnInitializedAsync()
@@ -187,7 +187,7 @@ namespace BlazorIdle.Components
             professions = GameConfig.Professions.ToList();
             monsters = GameConfig.Monsters.ToList();
             battleScenarios = GameConfig.BattleScenarios.ToList();
-            dungeons = GameConfig.Dungeons.ToList(); // ���ظ������� - Load dungeon configuration
+            dungeons = GameConfig.Dungeons.ToList(); // 加载副本配置 - Load dungeon configuration
             configVersion = GameConfig.Version;
 
             selectedScenarioId = battleScenarios.FirstOrDefault()?.Id;
@@ -210,7 +210,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ѡ�����ص� - �����򸱱�ѡ����ʱ����ս��
+        /// 选择变更回调 - 在场景或副本选择变更时重置战斗
         /// Selection change callback - reset battle when scenario or dungeon selection changes
         /// </summary>
         private void OnSelectionChanged(ChangeEventArgs _)
@@ -219,12 +219,12 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ս��ģʽ������� - �л���ͨս���͸���ս��
+        /// 战斗模式切换处理 - 切换普通战斗或副本战斗
         /// Battle mode change handler - switch between normal and dungeon battle
         /// </summary>
         private void OnBattleModeChanged(BattleMode mode)
         {
-            if (isRunning) return; // ս���в������л� - Don't allow switching during battle
+            if (isRunning) return; // 战斗中不允许切换 - Don't allow switching during battle
 
             currentBattleMode = mode;
             ResetBattle();
@@ -237,26 +237,26 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ����ս��ʵ�� - ʹ��monsterGroups������Զ�ս��
+        /// 构建战斗实例 - 使用 monsterGroups 创建多单位战斗
         /// Build battle instance - creates multi-unit battle using monsterGroups
         /// </summary>
         private void BuildBattle()
         {
             if (SelectedCharacter == null || currentScenario == null) return;
 
-            // ȡ�����ľ�ս��ʵ�����¼�
+            // 取消旧的战斗实例事件
             if (battle is not null)
             {
                 battle.CombatEventFired -= OnCombatEvent;
                 battle.LootDropped -= OnLootDropped;
             }
 
-            // ����ʱ�Ӻ������������
+            // 构建时钟和随机数上下文
             var clock = new SimClock();
             int seed = HashSeed(SelectedCharacter.Id, currentScenario.Id, configVersion);
             var rng = new RngContext(seed);
 
-            // ������ɫʵ��
+            // 构造角色实体
             var character = new Character
             {
                 MaxHp = Math.Max(1, SelectedCharacter.MaxHp),
@@ -272,14 +272,14 @@ namespace BlazorIdle.Components
                 ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0)
             };
 
-            // ��Ҷ���
-            playerTeam = new BattleTeam<Character>("player_team", "��Ҷ���", TeamType.Player);
+            // 玩家队伍
+            playerTeam = new BattleTeam<Character>("player_team", "玩家队伍", TeamType.Player);
             playerTeam.AddMember(SelectedCharacter.Id, character, character.MaxHp);
 
-            // ���˶���
+            // 敌人队伍
             enemyTeam = new BattleTeam<Enemy>("enemy_team", currentScenario.Name, TeamType.Enemy);
 
-            // ������
+            // 敌人
             int enemyIndex = 0;
             foreach (var monsterGroup in currentScenario.MonsterGroups)
             {
@@ -337,7 +337,7 @@ namespace BlazorIdle.Components
                     : DefaultEnemyRespawnMs;
             }
 
-            // ����ս��ʵ���������¼�
+            // 创建战斗实例并订阅事件
             battle = new MultiBattleInstance(clock, rng, playerTeam, enemyTeam, config);
             battle.CombatEventFired += OnCombatEvent;
             battle.LootDropped += OnLootDropped;
@@ -346,14 +346,14 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ��������ս�� - ������������������Ҷ���
+        /// 构建副本战斗 - 创建副本管理器和玩家队伍
         /// Build dungeon battle - create dungeon manager and player team
         /// </summary>
         private void BuildDungeonBattle()
         {
             if (SelectedCharacter == null || currentDungeon == null) return;
 
-            // �����ɵĸ���������
+            // 取消已有的副本事件订阅
             if (dungeonManager != null)
             {
                 dungeonManager.CombatEventFired -= OnCombatEvent;
@@ -381,12 +381,12 @@ namespace BlazorIdle.Components
                 ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0)
             };
 
-            playerTeam = new BattleTeam<Character>("player_team", "��Ҷ���", TeamType.Player);
+            playerTeam = new BattleTeam<Character>("player_team", "玩家队伍", TeamType.Player);
             playerTeam.AddMember(SelectedCharacter.Id, character, character.MaxHp);
 
             dungeonManager = new DungeonManager(currentDungeon, clock, rng, playerTeam, GameConfig);
 
-            // Ĭ�Ͽ����Զ�ѭ��
+            // 默认开启自动循环
             dungeonManager.EnableAutoRepeat(AutoRepeatDelayMs);
 
             dungeonManager.CombatEventFired += OnCombatEvent;
@@ -398,7 +398,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ���ɹ�ϣ���� - ����ȷ�������������
+        /// 生成哈希种子 - 用于确定性随机数
         /// Generate hash seed - for deterministic random number generation
         /// </summary>
         private int HashSeed(params object[] arr)
@@ -412,7 +412,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ��ʼս�� - ���ݵ�ǰģʽ������ͨս���򸱱�ս��
+        /// 开始战斗 - 根据当前模式启动普通战斗或副本战斗
         /// Start battle - starts normal battle or dungeon battle based on current mode
         /// </summary>
         private void StartBattle()
@@ -443,7 +443,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ֹͣս�� - ֹͣ��ǰս����������Դ
+        /// 停止战斗 - 停止当前战斗并清理资源
         /// Stop battle - stops current battle and cleans up resources
         /// </summary>
         private void StopBattle()
@@ -476,7 +476,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ����ս�� - ֹͣ��ǰս�������¹���
+        /// 重置战斗 - 停止当前战斗并重新构建
         /// Reset battle - stop current battle and rebuild
         /// </summary>
         private void ResetBattle()
@@ -506,7 +506,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ս��ѭ�� - ���ڸ���ս��״̬
+        /// 战斗循环 - 定期更新战斗状态
         /// Battle loop - periodically updates battle state
         /// </summary>
         private async Task RunLoopAsync(CancellationToken token)
@@ -550,7 +550,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ս���¼����� - ����ս���е��˺��¼�����¼��־
+        /// 战斗事件处理 - 处理伤害事件并记录日志
         /// Combat event handler - handles damage events in battle and logs them
         /// </summary>
         private void OnCombatEvent(MultiCombatEvent ev)
@@ -559,10 +559,10 @@ namespace BlazorIdle.Components
 
             var src = ev.Source switch
             {
-                EventSource.Attack => "�չ�",
-                EventSource.Special => "�ؼ�",
-                EventSource.EnemyAttack => "����",
-                _ => "δ֪"
+                EventSource.Attack => "普攻",
+                EventSource.Special => "技能",
+                EventSource.EnemyAttack => "攻击",
+                _ => "未知"
             };
 
             var attackerName = ev.Attacker == ActorType.Player
@@ -573,10 +573,11 @@ namespace BlazorIdle.Components
                 ? (SelectedCharacter?.Name ?? ev.DefenderName ?? ev.DefenderId)
                 : (GetEnemyDisplayName(ev.DefenderId) ?? ev.DefenderName ?? ev.DefenderId);
 
-            var line = $"[{sec:0.00}s] {attackerName} {src} ���С�{defenderName}���˺� {ev.Damage}��{defenderName}HP�� {ev.DefenderHpAfter}";
+            var line =
+                $"[{sec:0.00}s] {attackerName} {src} 对 {defenderName} 造成 {ev.Damage} 伤害，{defenderName} HP：{ev.DefenderHpAfter}";
 
             if (ev.IsAoe) line += " [AOE]";
-            if (ev.IsKill) line += " [��ɱ!]";
+            if (ev.IsKill) line += " [击杀!]";
 
             logs.Add(line);
             if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
@@ -585,7 +586,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ��ȡ������ʾ���� - ��ID����ȡ�������Ͳ���ȡ��Ӧ����
+        /// 获取敌人显示名 - 从ID提取怪物类型并返回对应名称
         /// Get enemy display name - extracts monster type from ID and gets corresponding name
         /// </summary>
         private string GetEnemyDisplayName(string enemyId)
@@ -605,7 +606,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ���ս����־
+        /// 清空战斗日志
         /// Clear combat logs
         /// </summary>
         private void ClearLogs()
@@ -615,7 +616,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ��ȡ��ҵ�ǰ����ֵ - ����Ҷ����л�ȡ
+        /// 获取玩家当前生命值 - 从玩家队伍读取
         /// Get player current HP - retrieved from player team
         /// </summary>
         private int GetPlayerHp()
@@ -626,7 +627,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ��ȡ����������ֵ - ����Ҷ����л�ȡ
+        /// 获取玩家最大生命值 - 从玩家队伍读取
         /// Get player max HP - retrieved from player team
         /// </summary>
         private int GetPlayerMaxHp()
@@ -637,7 +638,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ��ȡ���˵�ǰ����ֵ - ����˳����·����ܺ�
+        /// 获取敌人当前生命值 - 多敌人场景返回总和
         /// Get enemy current HP - returns sum in multi-enemy scenario
         /// </summary>
         private int GetEnemyHp()
@@ -647,7 +648,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ��ȡ�����������ֵ - ����˳����·����ܺ�
+        /// 获取敌人最大生命值 - 多敌人场景返回总和
         /// Get enemy max HP - returns sum in multi-enemy scenario
         /// </summary>
         private int GetEnemyMaxHp()
@@ -658,7 +659,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// �����������¼� - �����������ӵ���ɫ��沢��¼ͳһ������־
+        /// 战利品掉落事件 - 添加到角色背包并记录统一格式日志
         /// Handle loot drop event - adds loot to character inventory and logs it
         /// </summary>
         private void OnLootDropped(LootDropEvent lootEvent)
@@ -668,11 +669,11 @@ namespace BlazorIdle.Components
             SelectedCharacter.Inventory.AddItem(lootEvent.ItemId, lootEvent.Quantity);
 
             var sec = lootEvent.TimeMs / 1000.0;
-            var charName = string.IsNullOrWhiteSpace(SelectedCharacter?.Name) ? "δ֪��ɫ" : SelectedCharacter!.Name;
+            var charName = string.IsNullOrWhiteSpace(SelectedCharacter?.Name) ? "未知角色" : SelectedCharacter!.Name;
             var itemDef = GameConfig.GetItem(lootEvent.ItemId);
             var itemName = itemDef?.Name ?? lootEvent.ItemId;
 
-            var logLine = $"[{sec:0.00}s] {charName} ��õ��� {itemName} x{lootEvent.Quantity}";
+            var logLine = $"[{sec:0.00}s] {charName} 获得了 {itemName} x{lootEvent.Quantity}";
 
             logs.Add(logLine);
             if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
@@ -681,40 +682,40 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// �������α���¼����� - ��¼����״̬���
+        /// 副本波次变更事件 - 记录波次状态
         /// Dungeon wave change event handler - logs wave status changes
         /// </summary>
         private void OnDungeonWaveChanged(DungeonWaveEvent ev)
         {
             var changeText = ev.ChangeType switch
             {
-                WaveChangeType.Preparing => "׼��",
-                WaveChangeType.Started => "��ʼ",
-                WaveChangeType.Completed => "���",
+                WaveChangeType.Preparing => "准备",
+                WaveChangeType.Started => "开始",
+                WaveChangeType.Completed => "完成",
                 _ => ""
             };
 
-            AddLog("����", $"{changeText} {ev.WaveName}");
+            AddLog("副本", $"{changeText} {ev.WaveName}");
         }
 
         /// <summary>
-        /// ��������¼����� - ��¼������ɻ�ʧ��
+        /// 副本完成事件 - 记录副本完成或失败
         /// Dungeon complete event handler - logs dungeon completion or failure
         /// </summary>
         private void OnDungeonCompleted(DungeonCompleteEvent ev)
         {
             if (ev.Success)
             {
-                AddLog("ϵͳ", $"����ͨ�أ��� {ev.CompletionCount} �����");
+                AddLog("系统", $"副本通关，第 {ev.CompletionCount} 次完成");
             }
             else
             {
-                AddLog("ϵͳ", "����ʧ�ܣ�");
+                AddLog("系统", "副本失败");
             }
         }
 
         /// <summary>
-        /// ������־ - ͳһ����־���ӷ���
+        /// 添加日志 - 统一日志格式
         /// Add log - unified log adding method
         /// </summary>
         private void AddLog(string source, string message)
@@ -731,7 +732,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ��ȡ�������ν�����ʾ�ı�
+        /// 获取副本波次进度显示文本
         /// Get dungeon wave progress display text
         /// </summary>
         private string GetDungeonWaveProgress()
@@ -752,7 +753,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ��ȡ�������Ȱٷֱ�
+        /// 获取副本进度百分比
         /// Get dungeon progress percentage
         /// </summary>
         private int GetDungeonProgressPercent()
@@ -770,30 +771,30 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// ��ȡ����״̬�ı�
+        /// 获取副本状态文本
         /// Get dungeon state text
         /// </summary>
         private string GetDungeonStateText()
         {
-            if (dungeonSnapshot == null) return "δ��ʼ";
+            if (dungeonSnapshot == null) return "未开始";
 
             return dungeonSnapshot.State switch
             {
-                DungeonState.NotStarted => "δ��ʼ",
-                DungeonState.Preparing => "׼����",
-                DungeonState.WaveStartDelay => "����׼��",
-                DungeonState.Fighting => "ս����",
-                DungeonState.WaveEndDelay => "���ν���",
-                DungeonState.CompletionDelay => "�ȴ����¿�ʼ",
-                DungeonState.Completed => "�����",
-                DungeonState.Failed => "ʧ��",
-                DungeonState.Stopped => "��ֹͣ",
+                DungeonState.NotStarted => "未开始",
+                DungeonState.Preparing => "准备中",
+                DungeonState.WaveStartDelay => "波次准备",
+                DungeonState.Fighting => "作战中",
+                DungeonState.WaveEndDelay => "波次间隔",
+                DungeonState.CompletionDelay => "等待重新开始",
+                DungeonState.Completed => "已完成",
+                DungeonState.Failed => "失败",
+                DungeonState.Stopped => "已停止",
                 _ => dungeonSnapshot.State.ToString()
             };
         }
 
         /// <summary>
-        /// ��ȡ����״̬������ʽ��
+        /// 获取副本状态徽章样式类
         /// Get dungeon state badge CSS class
         /// </summary>
         private string GetDungeonStateBadgeClass()
@@ -812,7 +813,7 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// �Ѻ���ʾ��ʱ - ��ʽ��ʱ����ʾ
+        /// 时长显示格式化
         /// Format duration display - formats time display
         /// </summary>
         private static string FormatDuration(int ms)
@@ -825,7 +826,7 @@ namespace BlazorIdle.Components
             return $"{ts.Minutes:00}:{ts.Seconds:00}.{ts.Milliseconds / 10:00}";
         }
 
-        // ��Դ���� - ȡ�������¼����ͷ���Դ
+        // 资源清理 - 取消事件并释放资源
         public void Dispose()
         {
             _cts?.Cancel();
