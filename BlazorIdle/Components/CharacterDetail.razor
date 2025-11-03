@@ -1,0 +1,275 @@
+@using BlazorIdle.Shared.Models
+@using BlazorIdle.Game.Config
+@using BlazorIdle.Services
+@inject IGameConfigService GameConfig
+
+<div class="character-detail-card">
+    <div class="cd-header">
+        <h5 class="mb-0">
+            <span class="me-2">📊</span>
+            角色详情 @(character != null ? $"- {character.Name}" : "")
+        </h5>
+    </div>
+
+    <div class="cd-body">
+        @if (character == null)
+        {
+            <div class="text-muted">请先选择一个角色...</div>
+        }
+        else if (!configReady)
+        {
+            <div class="text-muted">加载配置中...</div>
+        }
+        else
+        {
+            <!-- 当前激活职业的战斗属性 -->
+            <div class="section">
+                <h6 class="section-title">当前战斗属性 (Combat Stats)</h6>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">职业:</span>
+                        <span class="stat-value">@GetProfessionName(character.ActiveCombatProfessionId) ⭐</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">最大生命值:</span>
+                        <span class="stat-value">@character.MaxHp</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">攻击速率:</span>
+                        <span class="stat-value">@character.AttackRateAPS 次/秒</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">攻击伤害:</span>
+                        <span class="stat-value">@character.DamagePerAttack</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">急速:</span>
+                        <span class="stat-value">@character.HastePercent%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">特殊技能间隔:</span>
+                        <span class="stat-value">@character.SpecialIntervalSec 秒</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">特殊技能伤害:</span>
+                        <span class="stat-value">@character.SpecialDamage</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">暴击率:</span>
+                        <span class="stat-value">@character.CritChancePercent%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">暴击倍率:</span>
+                        <span class="stat-value">@character.CritMultiplier x</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 战斗职业列表 -->
+            <div class="section">
+                <h6 class="section-title">战斗职业 (Combat Professions)</h6>
+                <div class="profession-list">
+                    @foreach (var prof in combatProfessions)
+                    {
+                        var progress = character.Professions.GetValueOrDefault(prof.Id);
+                        var isActive = character.ActiveCombatProfessionId == prof.Id;
+                        
+                        <div class="profession-detail @(isActive ? "active" : "")">
+                            <div class="prof-name">
+                                @prof.Name
+                                @if (isActive)
+                                {
+                                    <span class="badge bg-success ms-2">激活</span>
+                                }
+                            </div>
+                            @if (progress != null)
+                            {
+                                <div class="prof-progress">
+                                    <span>等级 @progress.Level <small class="text-muted">(Max: @GameConfig.MaxProfessionLevel)</small></span>
+                                    <span class="exp-info">经验: @progress.Experience / @progress.ExperienceToNext</span>
+                                </div>
+                                <div class="progress" style="height: 6px;">
+                                    <div class="progress-bar bg-primary" 
+                                         role="progressbar" 
+                                         style="width: @(GetExpPercentage(progress))%">
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- 非战斗职业列表 -->
+            <div class="section">
+                <h6 class="section-title">非战斗职业 (Non-Combat Professions)</h6>
+                <div class="profession-list">
+                    @foreach (var prof in nonCombatProfessions)
+                    {
+                        var progress = character.Professions.GetValueOrDefault(prof.Id);
+                        
+                        <div class="profession-detail">
+                            <div class="prof-name">@prof.Name</div>
+                            @if (progress != null)
+                            {
+                                <div class="prof-progress">
+                                    <span>等级 @progress.Level <small class="text-muted">(Max: @GameConfig.MaxProfessionLevel)</small></span>
+                                    <span class="exp-info">经验: @progress.Experience / @progress.ExperienceToNext</span>
+                                </div>
+                                <div class="progress" style="height: 6px;">
+                                    <div class="progress-bar bg-info" 
+                                         role="progressbar" 
+                                         style="width: @(GetExpPercentage(progress))%">
+                                    </div>
+                                </div>
+                            }
+                            <div class="prof-note">
+                                <small class="text-muted">未来将解锁采集点和配方</small>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public CharacterData? Character { get; set; }
+
+    private CharacterData? character;
+    private List<ProfessionDef> combatProfessions = new();
+    private List<ProfessionDef> nonCombatProfessions = new();
+    private bool configReady = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GameConfig.EnsureLoadedAsync();
+        combatProfessions = GameConfig.Professions
+            .Where(p => p.Type == ProfessionType.Combat)
+            .ToList();
+        nonCombatProfessions = GameConfig.Professions
+            .Where(p => p.Type == ProfessionType.NonCombat)
+            .ToList();
+        configReady = true;
+    }
+
+    protected override void OnParametersSet()
+    {
+        character = Character;
+    }
+
+    private double GetExpPercentage(ProfessionProgress progress)
+    {
+        if (progress.ExperienceToNext <= 0) return 100;
+        return Math.Min(100, (progress.Experience * 100.0) / progress.ExperienceToNext);
+    }
+
+    private string GetProfessionName(string profId)
+    {
+        var prof = combatProfessions.FirstOrDefault(p => p.Id == profId) 
+                   ?? nonCombatProfessions.FirstOrDefault(p => p.Id == profId);
+        return prof?.Name ?? profId;
+    }
+}
+
+<style>
+    .character-detail-card {
+        background: #fff;
+        border: 1px solid #e5e5e5;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+
+    .cd-header {
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        color: #fff;
+        padding: 12px 16px;
+    }
+
+    .cd-body {
+        padding: 20px;
+    }
+
+    .section {
+        margin-bottom: 24px;
+    }
+
+    .section:last-child {
+        margin-bottom: 0;
+    }
+
+    .section-title {
+        color: #495057;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 12px;
+    }
+
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    .stat-value {
+        font-weight: 600;
+        color: #212529;
+    }
+
+    .profession-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .profession-detail {
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border: 1px solid #dee2e6;
+    }
+
+    .profession-detail.active {
+        background: #f0fff4;
+        border-color: #28a745;
+    }
+
+    .prof-name {
+        font-weight: 600;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+    }
+
+    .prof-progress {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin-bottom: 6px;
+    }
+
+    .exp-info {
+        font-size: 0.8rem;
+    }
+
+    .prof-note {
+        margin-top: 6px;
+    }
+</style>

@@ -87,6 +87,13 @@ namespace BlazorIdle.Game.Config
         public List<LootDrop>? FirstClearRewards { get; set; }
 
         /// <summary>
+        /// 通关额外经验奖励 - 完成副本后给予的额外经验值
+        /// Completion bonus experience - extra experience awarded upon completing dungeon
+        /// </summary>
+        [JsonPropertyName("completionExperience")]
+        public long CompletionExperience { get; set; } = 0;
+
+        /// <summary>
         /// 重复刷新冷却时间（秒）
         /// Repeat cooldown time (seconds)
         /// </summary>

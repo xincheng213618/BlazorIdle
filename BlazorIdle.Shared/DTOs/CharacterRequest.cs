@@ -99,6 +99,18 @@ public class UpdateCharacterRequest
     /// Character inventory data (JSON serialized)
     /// </summary>
     public BlazorIdle.Shared.Models.Inventory? Inventory { get; set; }
+
+    /// <summary>
+    /// 职业进度数据 - 所有职业的等级和经验
+    /// Profession progress data - levels and experience for all professions
+    /// </summary>
+    public Dictionary<string, BlazorIdle.Shared.Models.ProfessionProgress>? Professions { get; set; }
+
+    /// <summary>
+    /// 当前激活的战斗职业ID
+    /// Currently active combat profession ID
+    /// </summary>
+    public string? ActiveCombatProfessionId { get; set; }
 }
 
 /// <summary>
@@ -155,4 +167,17 @@ public class CharacterResponse
     /// Character data (returned on successful creation or retrieval)
     /// </summary>
     public BlazorIdle.Shared.Models.CharacterData? Character { get; set; }
+}
+
+/// <summary>
+/// 切换战斗职业请求DTO
+/// Switch combat profession request DTO
+/// </summary>
+public class SwitchProfessionRequest
+{
+    /// <summary>
+    /// 要切换到的职业ID
+    /// Profession ID to switch to
+    /// </summary>
+    public string ProfessionId { get; set; } = string.Empty;
 }

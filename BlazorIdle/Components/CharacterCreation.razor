@@ -83,67 +83,11 @@
                     }
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">选择职业 (Select Profession)</label>
-                    <select class="form-select"
-                            @bind="selectedProfessionId"
-                            disabled="@(!characterSlotInfo?.CanCreateMore ?? false)">
-                        <option value="">-- 请选择职业 --</option>
-                        @foreach (var profession in professions)
-                        {
-                            <option value="@profession.Id">@profession.Name - @profession.Desc</option>
-                        }
-                    </select>
-                    @if (!string.IsNullOrWhiteSpace(professionError))
-                    {
-                        <div class="text-danger small mt-1">@professionError</div>
-                    }
+                <div class="alert alert-info mb-3">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>提示：</strong>创建的角色将拥有所有职业（战士、法师、游侠等），默认激活战士职业。
+                    您可以在战斗前通过职业选择界面切换职业。
                 </div>
-
-                @if (!string.IsNullOrWhiteSpace(selectedProfessionId))
-                {
-                    var profession = professions.FirstOrDefault(p => p.Id == selectedProfessionId);
-                    if (profession != null)
-                    {
-                        <div class="profession-preview mb-3">
-                            <h6>职业属性预览 (Profession Stats Preview)</h6>
-                            <div class="stats-grid">
-                                <div class="stat-item">
-                                    <span class="stat-label">最大生命值:</span>
-                                    <span class="stat-value">@profession.MaxHp</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">攻击速度:</span>
-                                    <span class="stat-value">@profession.AttackRateAPS 次/秒</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">攻击伤害:</span>
-                                    <span class="stat-value">@profession.DamagePerAttack</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">急速:</span>
-                                    <span class="stat-value">@profession.HastePercent%</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">特殊技能间隔:</span>
-                                    <span class="stat-value">@profession.SpecialIntervalSec 秒</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">特殊技能伤害:</span>
-                                    <span class="stat-value">@profession.SpecialDamage</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">暴击率:</span>
-                                    <span class="stat-value">@profession.CritChancePercent%</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">暴击倍率:</span>
-                                    <span class="stat-value">@profession.CritMultiplier x</span>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                }
 
                 <div class="d-flex gap-2">
                     <button class="btn btn-success"
@@ -181,11 +125,10 @@
 
     // 表单字段
     private string characterName = string.Empty;
-    private string selectedProfessionId = string.Empty;
+    private string defaultProfessionId = "warrior"; // 默认战士职业
 
     // 错误信息
     private string nameError = string.Empty;
-    private string professionError = string.Empty;
 
     // 状态标志
     private bool configReady = false;
@@ -220,7 +163,6 @@
     private bool ValidateInput()
     {
         nameError = string.Empty;
-        professionError = string.Empty;
         bool isValid = true;
 
         if (string.IsNullOrWhiteSpace(characterName))
@@ -231,12 +173,6 @@
         else if (characterName.Length < 2)
         {
             nameError = "角色名称至少需要2个字符";
-            isValid = false;
-        }
-
-        if (string.IsNullOrWhiteSpace(selectedProfessionId))
-        {
-            professionError = "请选择一个职业";
             isValid = false;
         }
 
@@ -259,11 +195,18 @@
         isCreating = true;
         try
         {
-            var profession = professions.FirstOrDefault(p => p.Id == selectedProfessionId);
+            // 使用默认战士职业创建角色
+            // 角色将自动拥有所有职业，战士为默认激活职业
+            var profession = professions.FirstOrDefault(p => p.Id == defaultProfessionId);
             if (profession == null)
             {
-                professionError = "无效的职业选择";
-                return;
+                // 如果找不到默认职业，使用第一个战斗职业
+                profession = professions.FirstOrDefault(p => p.Type == ProfessionType.Combat);
+                if (profession == null)
+                {
+                    nameError = "无效的职业配置";
+                    return;
+                }
             }
 
             var response = await CharacterService.CreateCharacterAsync(characterName.Trim(), profession);
@@ -298,9 +241,7 @@
     private void ResetForm()
     {
         characterName = string.Empty;
-        selectedProfessionId = string.Empty;
         nameError = string.Empty;
-        professionError = string.Empty;
         showSuccessMessage = false;
         createdCharacterName = string.Empty;
     }

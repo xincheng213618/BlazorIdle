@@ -79,6 +79,12 @@ namespace BlazorIdle.Game
         /// </summary>
         public event Action<LootDropEvent>? LootDropped;
 
+        /// <summary>
+        /// 经验获得事件 - 怪物死亡时触发
+        /// Experience gain event - triggered when monster dies
+        /// </summary>
+        public event Action<ExperienceGainEvent>? ExperienceGained;
+
         public BattleInstance(IGameClock clock, RngContext rng, Character player, Enemy enemy)
         {
             _clock = clock;
@@ -282,6 +288,27 @@ namespace BlazorIdle.Game
                 }
             }
         }
+
+        /// <summary>
+        /// 处理经验获得 - 怪物死亡时触发
+        /// Process experience gain - triggered when monster dies
+        /// </summary>
+        private void ProcessExperienceGain(int now)
+        {
+            if (_enemy.BaseExperience <= 0) return;
+
+            // 触发经验事件，客户端本地计算经验和升级（类似掉落物处理）
+            // Trigger experience event, client-side calculates experience and level-up (similar to loot drops)
+            var expEvent = new ExperienceGainEvent
+            {
+                TimeMs = now,
+                ProfessionId = _player.ActiveCombatProfessionId,
+                BaseExperience = _enemy.BaseExperience,
+                MonsterId = _enemy.MonsterId
+            };
+            ExperienceGained?.Invoke(expEvent);
+        }
+        
         private int PlayerRollDamage(int baseDamage, bool allowCrit)
         {
             double dmg = Math.Floor(_rng.Jitter(baseDamage, _player.VariancePct));

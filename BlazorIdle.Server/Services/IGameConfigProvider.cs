@@ -43,6 +43,24 @@ namespace BlazorIdle.Server.Services
         BattleScenarioDef? GetBattleScenario(string id);
         BattleConfigDef? GetBattleConfig(string id);
 
+        /// <summary>
+        /// 经验曲线 - 等级与所需经验的映射
+        /// Experience curve - mapping of levels to required experience
+        /// </summary>
+        IReadOnlyList<BlazorIdle.Game.Config.LevelExperienceRequirement> ExperienceCurve { get; }
+
+        /// <summary>
+        /// 获取指定等级所需的经验值
+        /// Get experience required for a specific level
+        /// </summary>
+        long GetExperienceRequired(int level);
+
+        /// <summary>
+        /// 职业最大等级限制
+        /// Maximum profession level limit
+        /// </summary>
+        int MaxProfessionLevel { get; }
+
         string Version { get; }
         bool IsLoaded { get; }
     }

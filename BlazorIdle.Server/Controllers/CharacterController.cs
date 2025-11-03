@@ -22,15 +22,18 @@ public class CharacterController : ControllerBase
     private readonly GameDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly ILogger<CharacterController> _logger;
+    private readonly BlazorIdle.Server.Services.IGameConfigProvider _gameConfig;
 
     public CharacterController(
         GameDbContext context,
         IConfiguration configuration,
-        ILogger<CharacterController> logger)
+        ILogger<CharacterController> logger,
+        BlazorIdle.Server.Services.IGameConfigProvider gameConfig)
     {
         _context = context;
         _configuration = configuration;
         _logger = logger;
+        _gameConfig = gameConfig;
     }
 
     /// <summary>
@@ -182,36 +185,19 @@ public class CharacterController : ControllerBase
             });
         }
 
-        // 从配置文件加载职业数据进行验证
-        // Load profession data from config file for validation
-        ProfessionDef? profession = null;
-        try
-        {
-            // 使用IWebHostEnvironment获取更可靠的路径
-            // Use IWebHostEnvironment for more reliable path resolution
-            var professionsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "professions.json");
-            if (System.IO.File.Exists(professionsPath))
-            {
-                var professionsJson = await System.IO.File.ReadAllTextAsync(professionsPath);
-                var options = new System.Text.Json.JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                };
-                var professions = System.Text.Json.JsonSerializer.Deserialize<List<ProfessionDef>>(professionsJson, options);
-                profession = professions?.FirstOrDefault(p => p.Id == request.ProfessionId);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to load profession config");
-        }
-
-        if (profession == null)
+        // 加载并验证职业配置
+        // Load and validate profession config
+        await _gameConfig.EnsureLoadedAsync();
+        
+        // 根据用户请求的职业ID获取初始职业
+        // Get initial profession based on user requested profession ID
+        var defaultProfession = _gameConfig.GetProfession(request.ProfessionId);
+        if (defaultProfession == null || defaultProfession.Type != ProfessionType.Combat)
         {
             return BadRequest(new CharacterResponse
             {
                 Success = false,
-                Message = "无效的职业选择"
+                Message = "无效的职业选择，必须选择一个战斗职业"
             });
         }
 
@@ -224,19 +210,42 @@ public class CharacterController : ControllerBase
             Name = request.Name.Trim(),
             ProfessionId = request.ProfessionId,
             CreatedAt = DateTime.UtcNow,
-            // 从职业模板复制初始属性
-            // Copy initial stats from profession template
-            MaxHp = profession.MaxHp,
-            AttackRateAPS = profession.AttackRateAPS,
-            DamagePerAttack = profession.DamagePerAttack,
-            HastePercent = profession.HastePercent,
-            SpecialIntervalSec = profession.SpecialIntervalSec,
-            SpecialDamage = profession.SpecialDamage,
-            CritChancePercent = profession.CritChancePercent,
-            CritMultiplier = profession.CritMultiplier,
-            VariancePct = profession.VariancePct,
-            ReviveSec = profession.ReviveSec
+            // 从默认职业模板复制初始属性
+            // Copy initial stats from default profession template
+            MaxHp = defaultProfession.MaxHp,
+            AttackRateAPS = defaultProfession.AttackRateAPS,
+            DamagePerAttack = defaultProfession.DamagePerAttack,
+            HastePercent = defaultProfession.HastePercent,
+            SpecialIntervalSec = defaultProfession.SpecialIntervalSec,
+            SpecialDamage = defaultProfession.SpecialDamage,
+            CritChancePercent = defaultProfession.CritChancePercent,
+            CritMultiplier = defaultProfession.CritMultiplier,
+            VariancePct = defaultProfession.VariancePct,
+            ReviveSec = defaultProfession.ReviveSec,
+            // 设置默认激活职业为用户选择的职业
+            // Set active profession to user's choice
+            ActiveCombatProfessionId = request.ProfessionId
         };
+
+        // 初始化所有职业的进度数据 - 每个角色同时拥有所有职业
+        // Initialize profession progress for all professions - each character has all professions
+        character.Professions = new Dictionary<string, ProfessionProgress>();
+        
+        // 从配置加载经验曲线
+        // Load experience curve from config
+        long experienceToLevel2 = _gameConfig.GetExperienceRequired(2);
+        
+        foreach (var prof in _gameConfig.Professions)
+        {
+            character.Professions[prof.Id] = new ProfessionProgress
+            {
+                ProfessionId = prof.Id,
+                Type = prof.Type,
+                Level = 1,
+                Experience = 0,
+                ExperienceToNext = experienceToLevel2
+            };
+        }
 
         // 保存角色到数据库
         // Save character to database
@@ -378,6 +387,20 @@ public class CharacterController : ControllerBase
             character.Inventory = request.Inventory;
         }
 
+        // 更新职业数据
+        // Update profession data
+        if (request.Professions != null)
+        {
+            character.Professions = request.Professions;
+        }
+
+        // 更新激活的战斗职业
+        // Update active combat profession
+        if (!string.IsNullOrEmpty(request.ActiveCombatProfessionId))
+        {
+            character.ActiveCombatProfessionId = request.ActiveCombatProfessionId;
+        }
+
         try
         {
             // 保存更改到数据库
@@ -405,6 +428,122 @@ public class CharacterController : ControllerBase
             {
                 Success = false,
                 Message = "更新角色数据失败，请稍后重试"
+            });
+        }
+    }
+
+    /// <summary>
+    /// 切换战斗职业 - 只能在非战斗/非活动状态下切换
+    /// Switch combat profession - can only switch when not in battle or activity
+    /// </summary>
+    [HttpPost("{id}/switch-profession")]
+    public async Task<ActionResult<CharacterResponse>> SwitchProfession(
+        string id,
+        [FromBody] SwitchProfessionRequest request)
+    {
+        var userId = GetCurrentUserId();
+
+        // 获取角色并验证权限
+        // Get character and verify ownership
+        var character = await _context.Characters
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+
+        if (character == null)
+        {
+            return NotFound(new CharacterResponse
+            {
+                Success = false,
+                Message = "角色不存在或无权修改"
+            });
+        }
+
+        // 验证职业ID
+        // Validate profession ID
+        if (string.IsNullOrWhiteSpace(request.ProfessionId))
+        {
+            return BadRequest(new CharacterResponse
+            {
+                Success = false,
+                Message = "职业ID不能为空"
+            });
+        }
+
+        // 加载职业配置
+        // Load profession config
+        await _gameConfig.EnsureLoadedAsync();
+        var profession = _gameConfig.GetProfession(request.ProfessionId);
+
+        if (profession == null)
+        {
+            return BadRequest(new CharacterResponse
+            {
+                Success = false,
+                Message = "无效的职业ID"
+            });
+        }
+
+        // 验证职业类型 - 只能切换到战斗职业
+        // Validate profession type - can only switch to combat professions
+        if (profession.Type != ProfessionType.Combat)
+        {
+            return BadRequest(new CharacterResponse
+            {
+                Success = false,
+                Message = "只能切换到战斗职业"
+            });
+        }
+
+        // 验证角色是否拥有该职业
+        // Verify character has this profession
+        if (!character.Professions.ContainsKey(request.ProfessionId))
+        {
+            return BadRequest(new CharacterResponse
+            {
+                Success = false,
+                Message = "角色未拥有该职业"
+            });
+        }
+
+        // 更新激活的战斗职业
+        // Update active combat profession
+        character.ActiveCombatProfessionId = request.ProfessionId;
+
+        // 更新角色战斗属性为新职业的基础属性
+        // Update character combat stats to new profession's base stats
+        // 注意：暂时不考虑等级成长，使用职业基础属性
+        // Note: Not considering level growth for now, using base profession stats
+        character.MaxHp = profession.MaxHp;
+        character.AttackRateAPS = profession.AttackRateAPS;
+        character.DamagePerAttack = profession.DamagePerAttack;
+        character.HastePercent = profession.HastePercent;
+        character.SpecialIntervalSec = profession.SpecialIntervalSec;
+        character.SpecialDamage = profession.SpecialDamage;
+        character.CritChancePercent = profession.CritChancePercent;
+        character.CritMultiplier = profession.CritMultiplier;
+        character.VariancePct = profession.VariancePct;
+        character.ReviveSec = profession.ReviveSec;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("User {UserId} switched character {CharacterId} to profession {ProfessionId}",
+                userId, character.Id, request.ProfessionId);
+
+            return Ok(new CharacterResponse
+            {
+                Success = true,
+                Message = $"成功切换到职业：{profession.Name}",
+                Character = character
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to switch profession for character {CharacterId}", id);
+            return StatusCode(500, new CharacterResponse
+            {
+                Success = false,
+                Message = "切换职业失败，请稍后重试"
             });
         }
     }

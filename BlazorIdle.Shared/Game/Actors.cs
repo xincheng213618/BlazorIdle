@@ -25,6 +25,13 @@
 
         // 新增：复活时间（毫秒）
         public int ReviveMs { get; set; } = 5000;
+
+        // 职业系统
+        /// <summary>
+        /// 当前激活的战斗职业ID - 用于经验分配
+        /// Currently active combat profession ID - used for experience allocation
+        /// </summary>
+        public string ActiveCombatProfessionId { get; set; } = "warrior";
     }
 
     // 敌人
@@ -48,5 +55,17 @@
         /// Loot drops list - items dropped when enemy dies
         /// </summary>
         public List<Config.LootDrop> LootDrops { get; set; } = new();
+
+        /// <summary>
+        /// 基础经验值 - 击败敌人后获得的经验
+        /// Base experience - experience gained after defeating enemy
+        /// </summary>
+        public long BaseExperience { get; set; } = 0;
+
+        /// <summary>
+        /// 敌人ID - 用于追踪经验来源
+        /// Enemy ID - used to track experience source
+        /// </summary>
+        public string? MonsterId { get; set; }
     }
 }

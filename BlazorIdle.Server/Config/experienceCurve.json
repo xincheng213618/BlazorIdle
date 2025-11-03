@@ -1,0 +1,22 @@
+[
+  { "level": 1, "experienceRequired": 0 },
+  { "level": 2, "experienceRequired": 100 },
+  { "level": 3, "experienceRequired": 250 },
+  { "level": 4, "experienceRequired": 450 },
+  { "level": 5, "experienceRequired": 700 },
+  { "level": 6, "experienceRequired": 1000 },
+  { "level": 7, "experienceRequired": 1350 },
+  { "level": 8, "experienceRequired": 1750 },
+  { "level": 9, "experienceRequired": 2200 },
+  { "level": 10, "experienceRequired": 2700 },
+  { "level": 11, "experienceRequired": 3300 },
+  { "level": 12, "experienceRequired": 4000 },
+  { "level": 13, "experienceRequired": 4800 },
+  { "level": 14, "experienceRequired": 5700 },
+  { "level": 15, "experienceRequired": 6700 },
+  { "level": 16, "experienceRequired": 7800 },
+  { "level": 17, "experienceRequired": 9000 },
+  { "level": 18, "experienceRequired": 10300 },
+  { "level": 19, "experienceRequired": 11700 },
+  { "level": 20, "experienceRequired": 13200 }
+]

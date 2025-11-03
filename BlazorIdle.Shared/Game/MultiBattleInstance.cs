@@ -59,6 +59,7 @@ namespace BlazorIdle.Game
         // 事件
         public event Action<MultiCombatEvent>? CombatEventFired;
         public event Action<LootDropEvent>? LootDropped;
+        public event Action<ExperienceGainEvent>? ExperienceGained;
         public event Action<TeamStatusEvent>? TeamStatusChanged;
 
         /// <summary>
@@ -428,10 +429,11 @@ namespace BlazorIdle.Game
             // 触发事件
             CombatEventFired?.Invoke(ev);
 
-            // 如果击杀，处理掉落物
+            // 如果击杀，处理掉落物和经验
             if (isKill)
             {
                 ProcessLootDrops(defenderId, defender.Entity);
+                ProcessExperienceGain(defenderId, defender.Entity, attackerId);
             }
         }
 
@@ -649,6 +651,28 @@ namespace BlazorIdle.Game
                     LootDropped?.Invoke(lootEvent);
                 }
             }
+        }
+
+        /// <summary>
+        /// 处理经验获得 - 怪物死亡时触发
+        /// Process experience gain - triggered when monster dies
+        /// </summary>
+        private void ProcessExperienceGain(string enemyId, Enemy enemy, string attackerId)
+        {
+            if (enemy.BaseExperience <= 0) return;
+
+            // 获取击杀者的职业ID
+            var attacker = _playerTeam.Members.FirstOrDefault(m => m.Id == attackerId);
+            if (attacker == null) return;
+
+            var expEvent = new ExperienceGainEvent
+            {
+                TimeMs = _clock.NowMs,
+                ProfessionId = attacker.Entity.ActiveCombatProfessionId,
+                BaseExperience = enemy.BaseExperience,
+                MonsterId = enemy.MonsterId
+            };
+            ExperienceGained?.Invoke(expEvent);
         }
 
         /// <summary>

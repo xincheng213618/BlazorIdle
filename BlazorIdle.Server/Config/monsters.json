@@ -9,6 +9,7 @@
     "damagePerHit": 8,
     "variancePct": 0.05,
     "respawnSec": 2.5,
+    "baseExperience": 5,
     "lootDrops": [
       {
         "itemId": "gold_coin",
@@ -28,6 +29,7 @@
     "damagePerHit": 11,
     "variancePct": 0.06,
     "respawnSec": 3.0,
+    "baseExperience": 7,
     "lootDrops": [
       {
         "itemId": "gold_coin",
@@ -47,6 +49,7 @@
     "damagePerHit": 18,
     "variancePct": 0.05,
     "respawnSec": 4.0,
+    "baseExperience": 10,
     "lootDrops": [
       {
         "itemId": "gold_coin",

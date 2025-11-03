@@ -33,5 +33,11 @@ namespace BlazorIdle.Shared.DTOs
         /// Battle configuration definitions list - reusable battle parameter configurations (internal config, not exposed to users)
         /// </summary>
         public List<BattleConfigDef> BattleConfigs { get; set; } = new();
+
+        /// <summary>
+        /// 职业最大等级限制
+        /// Maximum profession level limit
+        /// </summary>
+        public int MaxProfessionLevel { get; set; } = 100;
     }
 }

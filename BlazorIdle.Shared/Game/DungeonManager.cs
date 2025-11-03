@@ -45,6 +45,7 @@ namespace BlazorIdle.Game
         public event Action<DungeonCompleteEvent>? DungeonCompleted;
         public event Action<MultiCombatEvent>? CombatEventFired;
         public event Action<LootDropEvent>? LootDropped;
+        public event Action<ExperienceGainEvent>? ExperienceGained;
         public event Action<DungeonStatsEvent>? StatsUpdated;
 
         /// <summary>
@@ -363,7 +364,9 @@ namespace BlazorIdle.Game
                         DamagePerHit = (int)(monsterDef.DamagePerHit * monsterGroup.DamageMultiplier),
                         VariancePct = monsterDef.VariancePct,
                         RespawnMs = 0, // 副本中不复活
-                        LootDrops = monsterGroup.SpecialDrops ?? monsterDef.LootDrops
+                        LootDrops = monsterGroup.SpecialDrops ?? monsterDef.LootDrops,
+                        BaseExperience = monsterDef.BaseExperience,
+                        MonsterId = monsterDef.Id
                     };
 
                     // 生成敌人ID - 使用更有意义的名称
@@ -600,6 +603,7 @@ namespace BlazorIdle.Game
 
             _currentBattle.CombatEventFired += OnCombatEvent;
             _currentBattle.LootDropped += OnLootDropped;
+            _currentBattle.ExperienceGained += OnExperienceGained;
             _currentBattle.TeamStatusChanged += OnTeamStatusChanged;
         }
 
@@ -613,6 +617,7 @@ namespace BlazorIdle.Game
 
             _currentBattle.CombatEventFired -= OnCombatEvent;
             _currentBattle.LootDropped -= OnLootDropped;
+            _currentBattle.ExperienceGained -= OnExperienceGained;
             _currentBattle.TeamStatusChanged -= OnTeamStatusChanged;
         }
 
@@ -649,6 +654,15 @@ namespace BlazorIdle.Game
             RecordLoot(ev.ItemId, ev.Quantity);
             LootDropped?.Invoke(ev);
             FireStatsEvent();
+        }
+
+        /// <summary>
+        /// 处理经验获得事件
+        /// Handle experience gain event
+        /// </summary>
+        private void OnExperienceGained(ExperienceGainEvent ev)
+        {
+            ExperienceGained?.Invoke(ev);
         }
 
         /// <summary>

@@ -58,6 +58,37 @@ namespace BlazorIdle.Game
         public string? MonsterId { get; init; }
     }
 
+    /// <summary>
+    /// 经验获得事件 - 怪物死亡时触发，通知获得的经验值
+    /// Experience gain event - triggered when monster dies, notifies experience gained
+    /// </summary>
+    public sealed class ExperienceGainEvent
+    {
+        /// <summary>
+        /// 事件发生时间（毫秒）
+        /// Event time in milliseconds
+        /// </summary>
+        public int TimeMs { get; init; }
+
+        /// <summary>
+        /// 获得经验的职业ID
+        /// Profession ID that gained experience
+        /// </summary>
+        public string ProfessionId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 获得的基础经验值（未应用增益）
+        /// Base experience gained (before multiplier)
+        /// </summary>
+        public long BaseExperience { get; init; }
+
+        /// <summary>
+        /// 经验来源怪物ID（可选）
+        /// Source monster ID (optional)
+        /// </summary>
+        public string? MonsterId { get; init; }
+    }
+
     public sealed class CombatSegment
     {
         public int StartMs { get; init; }

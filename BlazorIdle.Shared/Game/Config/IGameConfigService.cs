@@ -59,6 +59,12 @@ namespace BlazorIdle.Game.Config
         /// </summary>
         BattleConfigDef? GetBattleConfig(string id);
 
+        /// <summary>
+        /// 职业最大等级限制
+        /// Maximum profession level limit
+        /// </summary>
+        int MaxProfessionLevel { get; }
+
         string Version { get; }
         bool IsLoaded { get; }
     }

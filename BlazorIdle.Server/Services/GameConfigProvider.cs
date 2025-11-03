@@ -14,6 +14,8 @@ namespace BlazorIdle.Server.Services
         private readonly List<DungeonDef> _dungeons = new();
         private readonly List<BattleScenarioDef> _battleScenarios = new();
         private readonly List<BattleConfigDef> _battleConfigs = new();
+        private readonly List<LevelExperienceRequirement> _experienceCurve = new();
+        private int _maxProfessionLevel = 100;
         private volatile bool _loaded;
 
         public GameConfigProvider(IHostEnvironment env)
@@ -27,6 +29,8 @@ namespace BlazorIdle.Server.Services
         public IReadOnlyList<DungeonDef> Dungeons => _dungeons;
         public IReadOnlyList<BattleScenarioDef> BattleScenarios => _battleScenarios;
         public IReadOnlyList<BattleConfigDef> BattleConfigs => _battleConfigs;
+        public IReadOnlyList<LevelExperienceRequirement> ExperienceCurve => _experienceCurve;
+        public int MaxProfessionLevel => _maxProfessionLevel;
         public string Version { get; private set; } = "unloaded";
 
         public async Task EnsureLoadedAsync(CancellationToken ct = default)
@@ -40,6 +44,8 @@ namespace BlazorIdle.Server.Services
             var dungeonsPath = Path.Combine(contentRoot, "Config", "dungeons.json");
             var battleScenariosPath = Path.Combine(contentRoot, "Config", "battleScenarios.json");
             var battleConfigsPath = Path.Combine(contentRoot, "Config", "battleConfigs.json");
+            var experienceCurvePath = Path.Combine(contentRoot, "Config", "experienceCurve.json");
+            var professionLimitsPath = Path.Combine(contentRoot, "Config", "professionLimits.json");
 
             List<ProfessionDef>? profs = null;
             List<MonsterDef>? mons = null;
@@ -47,6 +53,8 @@ namespace BlazorIdle.Server.Services
             List<DungeonDef>? dungeons = null;
             List<BattleScenarioDef>? battleScenarios = null;
             List<BattleConfigDef>? battleConfigs = null;
+            List<LevelExperienceRequirement>? experienceCurve = null;
+            ExperienceConfig? professionLimits = null;
 
             try
             {
@@ -112,6 +120,28 @@ namespace BlazorIdle.Server.Services
             }
             catch { /* ignore to fallback */ }
 
+            // 加载经验曲线配置
+            try
+            {
+                if (File.Exists(experienceCurvePath))
+                {
+                    await using var s = File.OpenRead(experienceCurvePath);
+                    experienceCurve = await JsonSerializer.DeserializeAsync<List<LevelExperienceRequirement>>(s, cancellationToken: ct);
+                }
+            }
+            catch { /* ignore to fallback */ }
+
+            // 加载职业限制配置
+            try
+            {
+                if (File.Exists(professionLimitsPath))
+                {
+                    await using var s = File.OpenRead(professionLimitsPath);
+                    professionLimits = await JsonSerializer.DeserializeAsync<ExperienceConfig>(s, cancellationToken: ct);
+                }
+            }
+            catch { /* ignore to fallback */ }
+
             // fallback to shared defaults
             profs ??= DefaultGameConfig.DefaultProfessions();
             mons ??= DefaultGameConfig.DefaultMonsters();
@@ -119,6 +149,7 @@ namespace BlazorIdle.Server.Services
             dungeons ??= new List<DungeonDef>();
             battleScenarios ??= new List<BattleScenarioDef>();
             battleConfigs ??= new List<BattleConfigDef>();
+            experienceCurve ??= CreateDefaultExperienceCurve();
 
             _professions.Clear();
             _professions.AddRange(profs.Where(p => !string.IsNullOrWhiteSpace(p.Id)));
@@ -138,8 +169,25 @@ namespace BlazorIdle.Server.Services
             _battleConfigs.Clear();
             _battleConfigs.AddRange(battleConfigs.Where(b => !string.IsNullOrWhiteSpace(b.Id)));
 
-            Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}";
+            _experienceCurve.Clear();
+            _experienceCurve.AddRange(experienceCurve.OrderBy(e => e.Level));
+
+            // 设置职业最大等级
+            _maxProfessionLevel = professionLimits?.MaxProfessionLevel ?? 100;
+
+            Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-exp:{_experienceCurve.Count}-maxLvl:{_maxProfessionLevel}";
             _loaded = true;
+        }
+
+        private static List<LevelExperienceRequirement> CreateDefaultExperienceCurve()
+        {
+            var curve = new List<LevelExperienceRequirement>();
+            for (int level = 1; level <= 20; level++)
+            {
+                long expRequired = level == 1 ? 0 : (long)(100 * Math.Pow(1.5, level - 2));
+                curve.Add(new LevelExperienceRequirement { Level = level, ExperienceRequired = expRequired });
+            }
+            return curve;
         }
 
         public ProfessionDef? GetProfession(string id) => _professions.FirstOrDefault(p => p.Id == id);
@@ -148,6 +196,20 @@ namespace BlazorIdle.Server.Services
         public DungeonDef? GetDungeon(string id) => _dungeons.FirstOrDefault(d => d.Id == id);
         public BattleScenarioDef? GetBattleScenario(string id) => _battleScenarios.FirstOrDefault(b => b.Id == id);
         public BattleConfigDef? GetBattleConfig(string id) => _battleConfigs.FirstOrDefault(b => b.Id == id);
+        
+        public long GetExperienceRequired(int level)
+        {
+            var requirement = _experienceCurve.FirstOrDefault(e => e.Level == level);
+            if (requirement != null) return requirement.ExperienceRequired;
+            
+            // If level not in curve, extrapolate
+            if (level <= 1) return 0;
+            var lastLevel = _experienceCurve.LastOrDefault();
+            if (lastLevel == null) return 100 * level;
+            
+            // Simple extrapolation
+            return (long)(lastLevel.ExperienceRequired * Math.Pow(1.5, level - lastLevel.Level));
+        }
 
         public bool IsLoaded => _loaded;
     }

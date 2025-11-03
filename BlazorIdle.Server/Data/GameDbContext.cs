@@ -61,6 +61,22 @@ public class GameDbContext : DbContext
                 inventory.ToJson(); // 存储为 JSON 列
                 inventory.OwnsMany(i => i.Items); // Items 列表也存储在 JSON 中
             });
+
+            // 配置职业进度为 JSON 列 - 存储 Dictionary<string, ProfessionProgress>
+            // Configure profession progress as JSON column - store Dictionary<string, ProfessionProgress>
+            entity.Property(e => e.Professions)
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, ProfessionProgress>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<string, ProfessionProgress>()
+                )
+                .HasColumnType("TEXT");
+
+            // 配置激活的战斗职业ID
+            // Configure active combat profession ID
+            entity.Property(e => e.ActiveCombatProfessionId)
+                .IsRequired()
+                .HasMaxLength(50)
+                .HasDefaultValue("warrior");
         });
     }
 }

@@ -79,5 +79,19 @@ namespace BlazorIdle.Shared.Models
         /// </summary>
         [JsonPropertyName("inventory")]
         public Inventory Inventory { get; set; } = new Inventory();
+
+        /// <summary>
+        /// 所有职业的进度数据 - 每个角色同时拥有所有职业
+        /// Progress data for all professions - each character has all professions simultaneously
+        /// </summary>
+        [JsonPropertyName("professions")]
+        public Dictionary<string, ProfessionProgress> Professions { get; set; } = new Dictionary<string, ProfessionProgress>();
+
+        /// <summary>
+        /// 当前激活的战斗职业ID - 用于战斗时的属性计算
+        /// Currently active combat profession ID - used for battle stat calculation
+        /// </summary>
+        [JsonPropertyName("activeCombatProfessionId")]
+        public string ActiveCombatProfessionId { get; set; } = "warrior";
     }
 }
