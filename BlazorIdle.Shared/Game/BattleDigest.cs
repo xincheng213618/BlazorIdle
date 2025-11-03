@@ -16,6 +16,18 @@ namespace BlazorIdle.Game
         public int Seed { get; init; }
         public int SegmentCount { get; init; }
 
+        /// <summary>
+        /// 获得的总基础经验值 - 服务端将应用增益系数
+        /// Total base experience gained - server will apply multiplier
+        /// </summary>
+        public long TotalBaseExperience { get; init; }
+
+        /// <summary>
+        /// 经验接收职业ID
+        /// Profession ID receiving experience
+        /// </summary>
+        public string ProfessionId { get; init; } = string.Empty;
+
         public double AverageDps => DurationMs <= 0 ? 0 : TotalDamage / (DurationMs / 1000.0);
 
         public static BattleDigest FromSegments(
