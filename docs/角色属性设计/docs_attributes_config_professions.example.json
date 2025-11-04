@@ -1,0 +1,71 @@
+{
+  "warrior": {
+    "displayMainStat": "力量",
+    "mainStat": { "base": 10, "perLevel": 5 },
+    "baseline": {
+      "baseDamage": 12,
+      "baseSpecialDamage": 8,
+      "baseAPS": 1.1,
+      "baseHp": 200,
+      "baseSpecialIntervalSec": 6.0,
+      "critBase": 0.05,
+      "variance": 0.05,
+      "reviveSec": 5.0
+    },
+    "weights": {
+      "damagePerAttackPerMain": 1.2,
+      "specialDamagePerMain": 0.6,
+      "hastePercentPerMain": 0.002,
+      "critChancePercentPerMain": 0.001,
+      "maxHpPerMain": 12,
+      "critCap": 0.6,
+      "hasteCap": 0.4
+    }
+  },
+  "mage": {
+    "displayMainStat": "法强",
+    "mainStat": { "base": 12, "perLevel": 4 },
+    "baseline": {
+      "baseDamage": 9,
+      "baseSpecialDamage": 14,
+      "baseAPS": 1.0,
+      "baseHp": 160,
+      "baseSpecialIntervalSec": 5.0,
+      "critBase": 0.05,
+      "variance": 0.05,
+      "reviveSec": 5.0
+    },
+    "weights": {
+      "damagePerAttackPerMain": 0.6,
+      "specialDamagePerMain": 1.3,
+      "hastePercentPerMain": 0.0015,
+      "critChancePercentPerMain": 0.0008,
+      "maxHpPerMain": 8,
+      "critCap": 0.6,
+      "hasteCap": 0.4
+    }
+  },
+  "ranger": {
+    "displayMainStat": "敏捷",
+    "mainStat": { "base": 11, "perLevel": 4 },
+    "baseline": {
+      "baseDamage": 10,
+      "baseSpecialDamage": 10,
+      "baseAPS": 1.2,
+      "baseHp": 180,
+      "baseSpecialIntervalSec": 4.5,
+      "critBase": 0.05,
+      "variance": 0.05,
+      "reviveSec": 5.0
+    },
+    "weights": {
+      "damagePerAttackPerMain": 0.9,
+      "specialDamagePerMain": 0.7,
+      "hastePercentPerMain": 0.003,
+      "critChancePercentPerMain": 0.0012,
+      "maxHpPerMain": 10,
+      "critCap": 0.6,
+      "hasteCap": 0.4
+    }
+  }
+}
