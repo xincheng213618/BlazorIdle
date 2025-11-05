@@ -22,23 +22,48 @@
 
 ## 工作内容
 
-### 任务5.1：创建属性显示组件
+### 任务5.1：更新现有CharacterDetail组件
 
-**位置**：`BlazorIdle/Shared/Components/CharacterStats.razor`
+**位置**：`BlazorIdle/Components/CharacterDetail.razor`
 
 **说明**：
-- 创建可复用的属性显示组件
-- 支持实时更新
-- 美观的UI设计
+- 更新现有的CharacterDetail组件以显示新的属性系统
+- 添加主属性、耐力、急速、暴击等属性显示
+- 支持属性实时更新
+- 保持现有的UI风格
 
-**组件代码**：
+**更新代码**：
+
+在现有的CharacterDetail.razor中更新"当前战斗属性"部分：
 
 ```razor
-@using BlazorIdle.Shared.Game
-@inject ICharacterAttributeService AttributeService
-@inject IProfessionAttributeService ProfessionService
+<!-- 基础属性部分 - 新增 -->
+<div class="section">
+    <h6 class="section-title">基础属性 (Base Attributes)</h6>
+    <div class="stats-grid">
+        <div class="stat-item">
+            <span class="stat-label">@calculatedAttrs.MainStatName:</span>
+            <span class="stat-value">@calculatedAttrs.MainStatTotal</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">耐力:</span>
+            <span class="stat-value">@calculatedAttrs.StaminaTotal</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">急速等级:</span>
+            <span class="stat-value">@calculatedAttrs.HasteRating</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">暴击等级:</span>
+            <span class="stat-value">@calculatedAttrs.CritRating</span>
+        </div>
+    </div>
+</div>
 
-<div class="character-stats">
+<!-- 当前战斗属性 - 更新此部分 -->
+<div class="section">
+    <h6 class="section-title">战斗属性 (Combat Stats)</h6>
+    <div class="stats-grid">
     @if (character != null && calculatedAttrs != null)
     {
         <div class="stats-header">
@@ -467,7 +492,65 @@
 
 ---
 
-### 任务5.3：添加属性变化提示
+### 任务5.3：实现属性实时更新
+
+**说明**：
+- 确保角色属性变化时，CharacterDetail组件能实时更新
+- 订阅属性变化事件
+- 自动刷新显示
+
+**实现代码**：
+
+在CharacterDetail.razor的@code部分添加：
+
+```csharp
+@code {
+    private CalculatedAttributes? calculatedAttrs;
+
+    protected override void OnInitialized()
+    {
+        // 订阅属性变化事件
+        AttributeService.AttributesChanged += OnAttributesChanged;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        character = Character;
+        if (character != null)
+        {
+            await RefreshAttributesAsync();
+        }
+    }
+
+    private async Task RefreshAttributesAsync()
+    {
+        if (character == null) return;
+        
+        calculatedAttrs = await AttributeService.CalculateAttributesAsync(character);
+        StateHasChanged();
+    }
+
+    private async void OnAttributesChanged(object? sender, EventArgs e)
+    {
+        await RefreshAttributesAsync();
+    }
+
+    public void Dispose()
+    {
+        AttributeService.AttributesChanged -= OnAttributesChanged;
+    }
+}
+```
+
+**检查点**：
+- [ ] 组件订阅属性变化事件
+- [ ] 属性变化时自动刷新
+- [ ] 正确实现IDisposable
+- [ ] StateHasChanged正确调用
+
+---
+
+### 任务5.4：添加属性变化提示（可选）
 
 **说明**：
 - 当属性变化时显示动画提示
@@ -632,353 +715,7 @@
 
 ---
 
-### 任务5.4：添加属性对比功能
-
-**说明**：
-- 在切换职业前显示属性对比
-- 帮助玩家做出决策
-
-**组件实现**：
-
-创建 `StatComparison.razor`：
-
-```razor
-@using BlazorIdle.Shared.Game
-
-<div class="stat-comparison">
-    <div class="comparison-header">
-        <div class="profession-label">
-            <span>@currentProfessionName</span>
-            <span class="level">Lv.@currentLevel</span>
-        </div>
-        <div class="vs">VS</div>
-        <div class="profession-label">
-            <span>@targetProfessionName</span>
-            <span class="level">Lv.@targetLevel</span>
-        </div>
-    </div>
-
-    <div class="comparison-stats">
-        @foreach (var stat in comparisonStats)
-        {
-            <div class="stat-row">
-                <span class="stat-name">@stat.Name</span>
-                <div class="stat-values">
-                    <span class="value current">@stat.CurrentValue</span>
-                    <span class="arrow @stat.ChangeDirection">
-                        @(stat.ChangeDirection == "increase" ? "→" : stat.ChangeDirection == "decrease" ? "←" : "=")
-                    </span>
-                    <span class="value target">@stat.TargetValue</span>
-                    @if (stat.ChangePercent != 0)
-                    {
-                        <span class="change-percent @stat.ChangeDirection">
-                            (@(stat.ChangePercent > 0 ? "+" : "")@stat.ChangePercent.ToString("F1")%)
-                        </span>
-                    }
-                </div>
-            </div>
-        }
-    </div>
-</div>
-
-@code {
-    [Parameter]
-    public CalculatedAttributes? CurrentStats { get; set; }
-
-    [Parameter]
-    public CalculatedAttributes? TargetStats { get; set; }
-
-    [Parameter]
-    public string CurrentProfessionName { get; set; } = "";
-
-    [Parameter]
-    public string TargetProfessionName { get; set; } = "";
-
-    [Parameter]
-    public int CurrentLevel { get; set; }
-
-    [Parameter]
-    public int TargetLevel { get; set; }
-
-    private List<ComparisonStat> comparisonStats = new();
-
-    protected override void OnParametersSet()
-    {
-        if (CurrentStats != null && TargetStats != null)
-        {
-            BuildComparison();
-        }
-    }
-
-    private void BuildComparison()
-    {
-        comparisonStats = new List<ComparisonStat>
-        {
-            CreateComparison("生命", CurrentStats!.MaxHp, TargetStats!.MaxHp),
-            CreateComparison("伤害", CurrentStats.DamagePerAttack, TargetStats.DamagePerAttack),
-            CreateComparison("暴击", CurrentStats.CritChancePercent * 100, TargetStats.CritChancePercent * 100, "%"),
-            CreateComparison("急速", CurrentStats.HastePercent * 100, TargetStats.HastePercent * 100, "%"),
-            CreateComparison("技能伤害", CurrentStats.SpecialDamage, TargetStats.SpecialDamage),
-            CreateComparison("总DPS", 
-                AttributeCalculator.CalculateTotalDPS(CurrentStats),
-                AttributeCalculator.CalculateTotalDPS(TargetStats),
-                "", 1)
-        };
-    }
-
-    private ComparisonStat CreateComparison(string name, double current, double target, string suffix = "", int decimals = 0)
-    {
-        var changePercent = current != 0 ? ((target - current) / current * 100) : 0;
-        var direction = target > current ? "increase" : target < current ? "decrease" : "same";
-
-        return new ComparisonStat
-        {
-            Name = name,
-            CurrentValue = current.ToString($"F{decimals}") + suffix,
-            TargetValue = target.ToString($"F{decimals}") + suffix,
-            ChangePercent = changePercent,
-            ChangeDirection = direction
-        };
-    }
-
-    private class ComparisonStat
-    {
-        public string Name { get; set; } = "";
-        public string CurrentValue { get; set; } = "";
-        public string TargetValue { get; set; } = "";
-        public double ChangePercent { get; set; }
-        public string ChangeDirection { get; set; } = "";
-    }
-}
-
-<style>
-    .stat-comparison {
-        background: white;
-        border-radius: 8px;
-        padding: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    .comparison-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-        padding-bottom: 15px;
-        border-bottom: 2px solid #eee;
-    }
-
-    .profession-label {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        font-weight: bold;
-        font-size: 16px;
-    }
-
-    .profession-label .level {
-        font-size: 12px;
-        color: #666;
-    }
-
-    .vs {
-        font-weight: bold;
-        font-size: 20px;
-        color: #999;
-    }
-
-    .comparison-stats {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .stat-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px;
-        background: #f8f9fa;
-        border-radius: 4px;
-    }
-
-    .stat-name {
-        font-weight: 500;
-        min-width: 80px;
-    }
-
-    .stat-values {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .value {
-        font-weight: bold;
-        min-width: 60px;
-        text-align: right;
-    }
-
-    .value.current {
-        color: #666;
-    }
-
-    .value.target {
-        color: #333;
-    }
-
-    .arrow {
-        font-size: 20px;
-        font-weight: bold;
-    }
-
-    .arrow.increase {
-        color: #4CAF50;
-    }
-
-    .arrow.decrease {
-        color: #f44336;
-    }
-
-    .arrow.same {
-        color: #999;
-    }
-
-    .change-percent {
-        font-size: 12px;
-        font-weight: bold;
-        padding: 2px 6px;
-        border-radius: 4px;
-    }
-
-    .change-percent.increase {
-        color: #4CAF50;
-        background: rgba(76, 175, 80, 0.1);
-    }
-
-    .change-percent.decrease {
-        color: #f44336;
-        background: rgba(244, 67, 54, 0.1);
-    }
-</style>
-```
-
-**使用场景**：
-
-在职业切换对话框中显示对比：
-
-```razor
-<div class="switch-profession-dialog">
-    <h3>切换职业</h3>
-    
-    <StatComparison
-        CurrentStats="@currentStats"
-        TargetStats="@targetStats"
-        CurrentProfessionName="@currentProfession"
-        TargetProfessionName="@targetProfession"
-        CurrentLevel="@currentLevel"
-        TargetLevel="@targetLevel" />
-    
-    <div class="actions">
-        <button @onclick="ConfirmSwitch">确认切换</button>
-        <button @onclick="Cancel">取消</button>
-    </div>
-</div>
-```
-
-**检查点**：
-- [ ] 对比组件创建完成
-- [ ] 集成到切换对话框
-- [ ] 显示所有关键属性对比
-- [ ] 变化方向和百分比清晰
-
----
-
-### 任务5.5：添加简化属性显示
-
-**说明**：
-- 在不需要详细信息的地方显示简化属性
-- 例如角色列表、战斗界面等
-
-**组件实现**：
-
-创建 `CharacterStatsCompact.razor`：
-
-```razor
-<div class="stats-compact">
-    <div class="stat-item">
-        <span class="icon">❤️</span>
-        <span class="value">@character.MaxHp</span>
-    </div>
-    <div class="stat-item">
-        <span class="icon">⚔️</span>
-        <span class="value">@character.DamagePerAttack</span>
-    </div>
-    <div class="stat-item">
-        <span class="icon">💥</span>
-        <span class="value">@((character.CritChancePercent * 100).ToString("F0"))%</span>
-    </div>
-    <div class="stat-item">
-        <span class="icon">⚡</span>
-        <span class="value">@totalDPS.ToString("F0") DPS</span>
-    </div>
-</div>
-
-@code {
-    [Parameter]
-    public CharacterData character { get; set; } = null!;
-
-    private double totalDPS => CalculateDPS();
-
-    private double CalculateDPS()
-    {
-        // 简化计算
-        var basicDPS = character.DamagePerAttack * character.AttackRateAPS * 
-                      (1 + character.HastePercent) * 
-                      (1 + character.CritChancePercent * (character.CritMultiplier - 1));
-        
-        var skillDPS = character.SpecialDamage / character.SpecialIntervalSec;
-        
-        return basicDPS + skillDPS;
-    }
-}
-
-<style>
-    .stats-compact {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-        padding: 8px;
-        background: rgba(0, 0, 0, 0.05);
-        border-radius: 4px;
-    }
-
-    .stat-item {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-
-    .stat-item .icon {
-        font-size: 16px;
-    }
-
-    .stat-item .value {
-        font-weight: bold;
-        font-size: 14px;
-    }
-</style>
-```
-
-**检查点**：
-- [ ] 简化组件创建完成
-- [ ] 可以在各处复用
-- [ ] 显示核心信息
-- [ ] 样式简洁
-
----
-
-### 任务5.6：UI测试
+### 任务5.5：UI测试
 
 **测试场景**：
 
@@ -1008,25 +745,21 @@
 
 完成以下所有检查点后，阶段五即告完成：
 
-- [ ] 属性显示组件创建完成且美观
-- [ ] 成功集成到主界面
-- [ ] 显示所有核心属性
+- [ ] CharacterDetail组件已更新显示新属性
+- [ ] 显示主属性、耐力、急速等级、暴击等级
 - [ ] 显示DPS统计
-- [ ] 属性变化提示正常
-- [ ] 属性对比功能正常
-- [ ] 简化显示组件可用
+- [ ] 属性实时更新功能正常
 - [ ] 所有测试通过
 
 ## 预计工时
 
-- 任务5.1：2小时
+- 任务5.1：1.5小时
 - 任务5.2：0.5小时
 - 任务5.3：1小时
-- 任务5.4：1.5小时
+- 任务5.4：0.5小时（可选）
 - 任务5.5：0.5小时
-- 任务5.6：0.5小时
 
-**总计**：6小时（约一个工作日）
+**总计**：4小时（约半个工作日）
 
 ## 注意事项
 
