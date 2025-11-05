@@ -1,0 +1,127 @@
+@page "/test/attributes"
+@inject IProfessionAttributeService ProfessionAttributeService
+@inject ICharacterAttributeService CharacterAttributeService
+@using BlazorIdle.Services
+@using BlazorIdle.Shared.Game
+@using BlazorIdle.Shared.Models
+
+<PageTitle>属性计算测试</PageTitle>
+
+<h3>属性计算测试</h3>
+
+<button class="btn btn-primary" @onclick="RunTests">运行测试</button>
+
+<pre style="background: #f5f5f5; padding: 20px; margin-top: 20px; border-radius: 5px;">@testOutput</pre>
+
+@code {
+    private string testOutput = "";
+
+    private async Task RunTests()
+    {
+        testOutput = "开始测试...\n";
+        StateHasChanged();
+        await Task.Delay(100);
+
+        try
+        {
+            // 测试1：加载配置
+            testOutput += "\n[测试1] 加载职业配置...\n";
+            var configs = await ProfessionAttributeService.GetAllConfigsAsync();
+            testOutput += $"✓ 加载了 {configs.Count} 个职业配置\n";
+
+            // 测试2：计算战士属性
+            testOutput += "\n[测试2] 计算战士属性 (Level 1-10)...\n";
+            if (configs.TryGetValue("warrior", out var warriorConfig))
+            {
+                for (int level = 1; level <= 10; level++)
+                {
+                    var attrs = AttributeCalculator.Calculate(level, warriorConfig);
+                    var dps = AttributeCalculator.CalculateTotalDPS(attrs);
+                    
+                    testOutput += $"Lv{level}: 力量={attrs.MainStatTotal}, 耐力={attrs.StaminaTotal}, " +
+                                 $"伤害={attrs.DamagePerAttack}, HP={attrs.MaxHp}, " +
+                                 $"暴击={attrs.CritChancePercent:P1}, 急速={attrs.HastePercent:P1}, " +
+                                 $"DPS={dps:F1}\n";
+                }
+                testOutput += "✓ 战士属性计算成功\n";
+            }
+
+            // 测试3：计算法师属性
+            testOutput += "\n[测试3] 计算法师属性 (Level 1-10)...\n";
+            if (configs.TryGetValue("mage", out var mageConfig))
+            {
+                for (int level = 1; level <= 10; level++)
+                {
+                    var attrs = AttributeCalculator.Calculate(level, mageConfig);
+                    var dps = AttributeCalculator.CalculateTotalDPS(attrs);
+                    
+                    testOutput += $"Lv{level}: 法强={attrs.MainStatTotal}, 耐力={attrs.StaminaTotal}, " +
+                                 $"伤害={attrs.DamagePerAttack}, HP={attrs.MaxHp}, " +
+                                 $"暴击={attrs.CritChancePercent:P1}, DPS={dps:F1}\n";
+                }
+                testOutput += "✓ 法师属性计算成功\n";
+            }
+
+            // 测试4：计算游侠属性
+            testOutput += "\n[测试4] 计算游侠属性 (Level 1-10)...\n";
+            if (configs.TryGetValue("ranger", out var rangerConfig))
+            {
+                for (int level = 1; level <= 10; level++)
+                {
+                    var attrs = AttributeCalculator.Calculate(level, rangerConfig);
+                    var dps = AttributeCalculator.CalculateTotalDPS(attrs);
+                    
+                    testOutput += $"Lv{level}: 敏捷={attrs.MainStatTotal}, 耐力={attrs.StaminaTotal}, " +
+                                 $"伤害={attrs.DamagePerAttack}, HP={attrs.MaxHp}, " +
+                                 $"暴击={attrs.CritChancePercent:P1}, 急速={attrs.HastePercent:P1}, " +
+                                 $"DPS={dps:F1}\n";
+                }
+                testOutput += "✓ 游侠属性计算成功\n";
+            }
+
+            // 测试5：性能测试
+            testOutput += "\n[测试5] 性能测试...\n";
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            for (int i = 0; i < 100; i++)
+            {
+                AttributeCalculator.Calculate(50, warriorConfig);
+            }
+            sw.Stop();
+            testOutput += $"✓ 100次计算耗时: {sw.ElapsedMilliseconds}ms (平均 {sw.ElapsedMilliseconds / 100.0:F2}ms)\n";
+
+            if (sw.ElapsedMilliseconds < 100)
+            {
+                testOutput += "✓ 性能满足要求 (<100ms)\n";
+            }
+            else
+            {
+                testOutput += "✗ 性能警告: 超过100ms\n";
+            }
+
+            // 测试6：上限测试
+            testOutput += "\n[测试6] 测试属性上限...\n";
+            var highLevelAttrs = AttributeCalculator.Calculate(600, rangerConfig); // 高等级测试上限
+            testOutput += $"Level 600游侠: 暴击={highLevelAttrs.CritChancePercent:P1} (上限60%), 急速={highLevelAttrs.HastePercent:P1} (上限40%)\n";
+            
+            if (highLevelAttrs.CritChancePercent <= 0.6 && highLevelAttrs.HastePercent <= 0.4)
+            {
+                testOutput += "✓ 上限约束正常工作\n";
+            }
+            else
+            {
+                testOutput += "✗ 上限约束失败！\n";
+            }
+
+            testOutput += "\n" + "=".PadLeft(80, '=') + "\n";
+            testOutput += "✓ 所有测试完成！\n";
+            testOutput += "=".PadLeft(80, '=') + "\n";
+        }
+        catch (Exception ex)
+        {
+            testOutput += $"\n✗ 测试失败: {ex.Message}\n";
+            testOutput += $"堆栈: {ex.StackTrace}\n";
+        }
+
+        StateHasChanged();
+    }
+}

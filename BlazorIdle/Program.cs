@@ -49,4 +49,7 @@ builder.Services.AddScoped<IGameConfigService, GameConfigService>();
 // 职业属性配置服务
 builder.Services.AddScoped<IProfessionAttributeService, ProfessionAttributeService>();
 
+// 角色属性计算服务
+builder.Services.AddScoped<ICharacterAttributeService, CharacterAttributeService>();
+
 await builder.Build().RunAsync();
