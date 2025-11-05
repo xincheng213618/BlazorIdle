@@ -1,4 +1,5 @@
 using BlazorIdle.Shared.Models;
+using BlazorIdle.Configuration;
 using System.Net.Http.Json;
 
 namespace BlazorIdle.Services
@@ -17,14 +18,17 @@ namespace BlazorIdle.Services
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<ProfessionAttributeService> _logger;
+        private readonly ApiConfiguration _apiConfig;
         private Dictionary<string, ProfessionAttributeConfig>? _cachedConfigs;
 
         public ProfessionAttributeService(
             HttpClient httpClient,
-            ILogger<ProfessionAttributeService> logger)
+            ILogger<ProfessionAttributeService> logger,
+            ApiConfiguration apiConfig)
         {
             _httpClient = httpClient;
             _logger = logger;
+            _apiConfig = apiConfig;
         }
 
         /// <summary>
@@ -64,7 +68,10 @@ namespace BlazorIdle.Services
             {
                 _logger.LogInformation("Loading profession attribute configs from server");
                 
-                var response = await _httpClient.GetAsync("/api/game-config/profession-attributes");
+                var url = $"{_apiConfig.GameConfigApiUrl}/profession-attributes";
+                _logger.LogDebug("Fetching profession attributes from {Url}", url);
+                
+                var response = await _httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
                 
                 var configs = await response.Content.ReadFromJsonAsync<Dictionary<string, ProfessionAttributeConfig>>();
