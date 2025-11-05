@@ -52,4 +52,7 @@ builder.Services.AddScoped<IProfessionAttributeService, ProfessionAttributeServi
 // 角色属性计算服务
 builder.Services.AddScoped<ICharacterAttributeService, CharacterAttributeService>();
 
+// Task 3.4: 战斗属性同步服务
+builder.Services.AddScoped<IBattleAttributeSyncService, BattleAttributeSyncService>();
+
 await builder.Build().RunAsync();

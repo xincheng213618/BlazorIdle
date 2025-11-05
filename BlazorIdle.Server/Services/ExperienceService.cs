@@ -1,4 +1,5 @@
 using BlazorIdle.Shared.Models;
+using BlazorIdle.Shared.Events;
 
 namespace BlazorIdle.Server.Services
 {
@@ -8,6 +9,12 @@ namespace BlazorIdle.Server.Services
     /// </summary>
     public interface IExperienceService
     {
+        /// <summary>
+        /// 职业升级事件 - Task 3.2
+        /// Profession level-up event
+        /// </summary>
+        event EventHandler<ProfessionLevelUpEventArgs>? ProfessionLeveledUp;
+
         /// <summary>
         /// 计算实际获得的经验值（应用增益系数）
         /// Calculate actual experience gained (apply multiplier)
@@ -21,10 +28,11 @@ namespace BlazorIdle.Server.Services
         /// 为职业增加经验并处理升级
         /// Add experience to profession and handle level-up
         /// </summary>
+        /// <param name="character">角色数据（用于事件）</param>
         /// <param name="progress">职业进度数据</param>
         /// <param name="experience">要增加的经验值</param>
         /// <returns>是否发生了升级</returns>
-        bool AddExperience(ProfessionProgress progress, long experience);
+        bool AddExperience(CharacterData character, ProfessionProgress progress, long experience);
 
         /// <summary>
         /// 处理单次升级
@@ -38,6 +46,12 @@ namespace BlazorIdle.Server.Services
     {
         private readonly IGameConfigProvider _gameConfig;
         private readonly ILogger<ExperienceService> _logger;
+
+        /// <summary>
+        /// Task 3.2: 职业升级事件
+        /// Profession level-up event
+        /// </summary>
+        public event EventHandler<ProfessionLevelUpEventArgs>? ProfessionLeveledUp;
 
         public ExperienceService(IGameConfigProvider gameConfig, ILogger<ExperienceService> logger)
         {
@@ -57,12 +71,13 @@ namespace BlazorIdle.Server.Services
             return (long)Math.Max(0, actualExp);
         }
 
-        public bool AddExperience(ProfessionProgress progress, long experience)
+        public bool AddExperience(CharacterData character, ProfessionProgress progress, long experience)
         {
             if (experience <= 0) return false;
 
             progress.Experience += experience;
             bool leveledUp = false;
+            int oldLevel = progress.Level;
 
             // 检查是否可以升级（可能连续升级多次）
             // Check if can level up (may level up multiple times)
@@ -70,6 +85,23 @@ namespace BlazorIdle.Server.Services
             {
                 ProcessLevelUp(progress);
                 leveledUp = true;
+            }
+
+            // Task 3.2: 如果发生了升级，触发事件
+            // If leveled up, trigger event
+            if (leveledUp)
+            {
+                ProfessionLeveledUp?.Invoke(this, new ProfessionLevelUpEventArgs
+                {
+                    Character = character,
+                    ProfessionId = progress.ProfessionId,
+                    OldLevel = oldLevel,
+                    NewLevel = progress.Level
+                });
+
+                _logger.LogInformation(
+                    "Character {CharacterId} profession {ProfessionId} leveled up from {OldLevel} to {NewLevel}",
+                    character.Id, progress.ProfessionId, oldLevel, progress.Level);
             }
 
             return leveledUp;
