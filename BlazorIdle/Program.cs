@@ -46,4 +46,7 @@ builder.Services.AddScoped<IHeartbeatService, HeartbeatService>();
 // 游戏配置服务
 builder.Services.AddScoped<IGameConfigService, GameConfigService>();
 
+// 职业属性配置服务
+builder.Services.AddScoped<IProfessionAttributeService, ProfessionAttributeService>();
+
 await builder.Build().RunAsync();
