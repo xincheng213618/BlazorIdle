@@ -6,17 +6,53 @@ window.blazorIdle = window.blazorIdle || {};
 (function() {
     let dotNetHelper = null;
     let isRegistered = false;
+    let saveInProgress = false;
+
+    // Synchronous save function that uses sendBeacon for reliability
+    function triggerSave() {
+        if (!dotNetHelper || saveInProgress) {
+            return;
+        }
+        
+        saveInProgress = true;
+        console.log('Triggering save before page unload');
+        
+        try {
+            // Invoke the .NET method - don't await, just fire and forget
+            // The browser will keep the page alive briefly for sendBeacon/fetch with keepalive
+            dotNetHelper.invokeMethodAsync('OnBeforeUnload')
+                .then(() => {
+                    console.log('Save triggered successfully');
+                    saveInProgress = false;
+                })
+                .catch(error => {
+                    console.error('Error triggering save:', error);
+                    saveInProgress = false;
+                });
+        } catch (error) {
+            console.error('Error invoking save method:', error);
+            saveInProgress = false;
+        }
+    }
 
     // Handler function for beforeunload event
-    async function handleBeforeUnload(event) {
-        if (dotNetHelper) {
-            try {
-                // Call the .NET method to save character
-                await dotNetHelper.invokeMethodAsync('OnBeforeUnload');
-                console.log('Character save initiated before unload');
-            } catch (error) {
-                console.error('Error saving character before unload:', error);
-            }
+    function handleBeforeUnload(event) {
+        console.log('beforeunload event fired');
+        triggerSave();
+        // Don't prevent default or show dialog
+    }
+    
+    // Handler for pagehide event (more reliable for mobile/modern browsers)
+    function handlePageHide(event) {
+        console.log('pagehide event fired');
+        triggerSave();
+    }
+    
+    // Handler for visibilitychange event
+    function handleVisibilityChange() {
+        if (document.visibilityState === 'hidden') {
+            console.log('visibilitychange to hidden - page may be closing');
+            triggerSave();
         }
     }
 
@@ -28,18 +64,25 @@ window.blazorIdle = window.blazorIdle || {};
         }
 
         dotNetHelper = dotNetRef;
+        
+        // Register multiple events for better compatibility
         window.addEventListener('beforeunload', handleBeforeUnload);
+        window.addEventListener('pagehide', handlePageHide);
+        window.addEventListener('visibilitychange', handleVisibilityChange);
+        
         isRegistered = true;
-        console.log('BeforeUnload handler registered');
+        console.log('Page unload handlers registered (beforeunload, pagehide, visibilitychange)');
     };
 
     // Unregister beforeunload event
     window.blazorIdle.unregisterBeforeUnload = function() {
         if (dotNetHelper) {
             window.removeEventListener('beforeunload', handleBeforeUnload);
+            window.removeEventListener('pagehide', handlePageHide);
+            window.removeEventListener('visibilitychange', handleVisibilityChange);
             dotNetHelper = null;
             isRegistered = false;
-            console.log('BeforeUnload handler unregistered');
+            console.log('Page unload handlers unregistered');
         }
     };
 })();

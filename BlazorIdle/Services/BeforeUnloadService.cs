@@ -64,23 +64,32 @@ namespace BlazorIdle.Services
         {
             try
             {
-                _logger.LogInformation("BeforeUnload triggered - attempting to save character");
+                _logger.LogWarning("=== BeforeUnload triggered - attempting to save character ===");
+                Console.WriteLine("=== BeforeUnload triggered - attempting to save character ===");
 
                 // 使用HeartbeatService立即保存当前跟踪的角色数据
                 // Use HeartbeatService to immediately save currently tracked character data
                 if (_heartbeatService.IsRunning)
                 {
+                    _logger.LogWarning("HeartbeatService is running, triggering save");
+                    Console.WriteLine("HeartbeatService is running, triggering save");
+                    
                     await _heartbeatService.SaveNowAsync();
-                    _logger.LogInformation("Triggered immediate save via HeartbeatService before unload");
+                    
+                    _logger.LogWarning("=== Save completed via HeartbeatService ===");
+                    Console.WriteLine("=== Save completed via HeartbeatService ===");
                 }
                 else
                 {
-                    _logger.LogDebug("HeartbeatService not running, skipping save on unload");
+                    _logger.LogWarning("HeartbeatService NOT running - cannot save!");
+                    Console.WriteLine("HeartbeatService NOT running - cannot save!");
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error saving character before unload");
+                Console.WriteLine($"Error in OnBeforeUnload: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
             }
         }
 
