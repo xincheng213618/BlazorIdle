@@ -5,6 +5,8 @@
 @inject IGameConfigService GameConfig
 @inject ICharacterAttributeService AttributeService
 @inject IProfessionAttributeService ProfessionService
+@inject ICharacterService CharacterService
+@implements IDisposable
 
 <div class="character-detail-card">
     <div class="cd-header">
@@ -236,6 +238,9 @@
         nonCombatProfessions = GameConfig.Professions
             .Where(p => p.Type == ProfessionType.NonCombat)
             .ToList();
+        
+        // Subscribe to character change events for real-time updates
+        CharacterService.SelectedCharacterChanged += OnCharacterChanged;
     }
 
     protected override async Task OnParametersSetAsync()
@@ -338,6 +343,21 @@
     private int GetCritRating()
     {
         return calculatedAttrs?.CritRating ?? 0;
+    }
+
+    // Event handler for character changes (e.g., from level-ups during combat)
+    private async void OnCharacterChanged(CharacterData? newCharacter)
+    {
+        character = newCharacter;
+        await RefreshAttributesAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // IDisposable implementation
+    public void Dispose()
+    {
+        // Unsubscribe from events to prevent memory leaks
+        CharacterService.SelectedCharacterChanged -= OnCharacterChanged;
     }
 }
 
