@@ -14,11 +14,35 @@ namespace BlazorIdle.Shared.Game
         /// <param name="config">职业属性配置</param>
         /// <param name="equipBonuses">装备提供的额外属性（预留，MVP可传null）</param>
         /// <returns>计算后的属性结果</returns>
+        /// <exception cref="ArgumentOutOfRangeException">当level小于最小等级时抛出</exception>
+        /// <exception cref="ArgumentNullException">当config为null时抛出</exception>
         public static CalculatedAttributes Calculate(
             int level, 
             ProfessionAttributeConfig config, 
             EquipmentBonuses? equipBonuses = null)
         {
+            // 输入验证
+            if (level < AttributeLimits.MIN_LEVEL)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(level), 
+                    level, 
+                    $"Level must be at least {AttributeLimits.MIN_LEVEL}");
+            }
+
+            if (level > AttributeLimits.MAX_REASONABLE_LEVEL)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(level), 
+                    level, 
+                    $"Level exceeds reasonable maximum of {AttributeLimits.MAX_REASONABLE_LEVEL}");
+            }
+
+            if (config == null)
+            {
+                throw new ArgumentNullException(nameof(config), "Profession config cannot be null");
+            }
+
             equipBonuses ??= new EquipmentBonuses();
 
             // 步骤1：计算各基础属性总值
@@ -85,15 +109,10 @@ namespace BlazorIdle.Shared.Game
         /// </summary>
         private static double CalculateAttributeValue(int level, AttributeGrowthConfig growthConfig, double equipBonus)
         {
-            if (level < 1)
-            {
-                throw new ArgumentException("Level must be at least 1", nameof(level));
-            }
-
             // 公式：Attribute = base + perLevel × (level - 1) + equipBonus
             var value = growthConfig.Base + growthConfig.PerLevel * (level - 1) + equipBonus;
             
-            return Math.Max(0, value); // 确保非负
+            return Math.Max(AttributeLimits.MIN_STAT_VALUE, value); // 确保非负
         }
 
         /// <summary>
@@ -104,7 +123,7 @@ namespace BlazorIdle.Shared.Game
             // 公式：Damage = baseDamage + mainStat × perMainCoeff
             var damage = baseDamage + mainStat * perMainCoeff;
             
-            return Math.Max(1, (int)Math.Round(damage)); // 至少为1
+            return Math.Max(AttributeLimits.MIN_DAMAGE, (int)Math.Round(damage));
         }
 
         /// <summary>
@@ -115,7 +134,7 @@ namespace BlazorIdle.Shared.Game
             // 公式：HP = baseHp + stamina × perStaminaCoeff
             var hp = baseHp + stamina * perStaminaCoeff;
             
-            return Math.Max(1, (int)Math.Round(hp)); // 至少为1
+            return Math.Max(AttributeLimits.MIN_HP, (int)Math.Round(hp));
         }
 
         /// <summary>

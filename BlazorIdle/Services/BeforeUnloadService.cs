@@ -11,17 +11,20 @@ namespace BlazorIdle.Services
         private readonly IJSRuntime _jsRuntime;
         private readonly ILogger<BeforeUnloadService> _logger;
         private readonly ICharacterService _characterService;
+        private readonly IHeartbeatService _heartbeatService;
         private DotNetObjectReference<BeforeUnloadService>? _objRef;
         private bool _isInitialized = false;
 
         public BeforeUnloadService(
             IJSRuntime jsRuntime,
             ILogger<BeforeUnloadService> logger,
-            ICharacterService characterService)
+            ICharacterService characterService,
+            IHeartbeatService heartbeatService)
         {
             _jsRuntime = jsRuntime;
             _logger = logger;
             _characterService = characterService;
+            _heartbeatService = heartbeatService;
         }
 
         /// <summary>
@@ -61,33 +64,32 @@ namespace BlazorIdle.Services
         {
             try
             {
-                _logger.LogInformation("BeforeUnload triggered - attempting to save character");
+                _logger.LogWarning("=== BeforeUnload triggered - attempting to save character ===");
+                Console.WriteLine("=== BeforeUnload triggered - attempting to save character ===");
 
-                // 获取当前选中的角色
-                var character = await _characterService.GetSelectedCharacterAsync();
-                
-                if (character != null)
+                // 使用HeartbeatService立即保存当前跟踪的角色数据
+                // Use HeartbeatService to immediately save currently tracked character data
+                if (_heartbeatService.IsRunning)
                 {
-                    // 尝试立即保存
-                    var saved = await _characterService.SaveImmediatelyAsync(character, "页面关闭保存");
+                    _logger.LogWarning("HeartbeatService is running, triggering save");
+                    Console.WriteLine("HeartbeatService is running, triggering save");
                     
-                    if (saved)
-                    {
-                        _logger.LogInformation("Successfully saved character {CharacterId} before unload", character.Id);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Failed to save character {CharacterId} before unload", character.Id);
-                    }
+                    await _heartbeatService.SaveNowAsync();
+                    
+                    _logger.LogWarning("=== Save completed via HeartbeatService ===");
+                    Console.WriteLine("=== Save completed via HeartbeatService ===");
                 }
                 else
                 {
-                    _logger.LogDebug("No character selected, skipping save on unload");
+                    _logger.LogWarning("HeartbeatService NOT running - cannot save!");
+                    Console.WriteLine("HeartbeatService NOT running - cannot save!");
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error saving character before unload");
+                Console.WriteLine($"Error in OnBeforeUnload: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
             }
         }
 

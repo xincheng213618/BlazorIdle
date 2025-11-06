@@ -1,4 +1,7 @@
 ﻿@inherits LayoutComponentBase
+@inject BlazorIdle.Services.BeforeUnloadService BeforeUnloadService
+@implements IAsyncDisposable
+
 <div class="page">
     <div class="sidebar">
         <NavMenu />
@@ -13,3 +16,22 @@
         </article>
     </main>
 </div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // 初始化BeforeUnload服务，监听页面关闭事件
+            // Initialize BeforeUnload service to listen for page close events
+            await BeforeUnloadService.InitializeAsync();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // 清理BeforeUnload服务
+        // Cleanup BeforeUnload service
+        await BeforeUnloadService.DisposeAsync();
+    }
+}
