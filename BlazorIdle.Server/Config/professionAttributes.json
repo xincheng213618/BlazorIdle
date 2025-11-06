@@ -23,7 +23,7 @@
     "baseline": {
       "baseDamage": 12,
       "baseSpecialDamage": 8,
-      "baseAPS": 1.1,
+      "baseAPS": 0.4,
       "baseHp": 100,
       "baseSpecialIntervalSec": 6.0,
       "variance": 0.05,
@@ -64,7 +64,7 @@
     "baseline": {
       "baseDamage": 9,
       "baseSpecialDamage": 14,
-      "baseAPS": 1.0,
+      "baseAPS": 0.3,
       "baseHp": 80,
       "baseSpecialIntervalSec": 5.0,
       "variance": 0.05,
@@ -105,7 +105,7 @@
     "baseline": {
       "baseDamage": 10,
       "baseSpecialDamage": 10,
-      "baseAPS": 1.2,
+      "baseAPS": 0.5,
       "baseHp": 90,
       "baseSpecialIntervalSec": 4.5,
       "variance": 0.05,
