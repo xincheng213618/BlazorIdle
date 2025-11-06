@@ -30,6 +30,9 @@
                 <div class="greet small text-muted text-end">
                     你好，@((ctx.User.Identity?.Name) ?? "用户")
                 </div>
+
+                <SaveButton SelectedCharacter="selectedCharacter" />
+
                 <button class="btn btn-sm btn-outline-danger userbar-logout d-inline-flex align-items-center justify-content-center"
                         @onclick="Logout">
                     <span>退出</span>
