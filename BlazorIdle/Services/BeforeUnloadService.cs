@@ -11,17 +11,20 @@ namespace BlazorIdle.Services
         private readonly IJSRuntime _jsRuntime;
         private readonly ILogger<BeforeUnloadService> _logger;
         private readonly ICharacterService _characterService;
+        private readonly IHeartbeatService _heartbeatService;
         private DotNetObjectReference<BeforeUnloadService>? _objRef;
         private bool _isInitialized = false;
 
         public BeforeUnloadService(
             IJSRuntime jsRuntime,
             ILogger<BeforeUnloadService> logger,
-            ICharacterService characterService)
+            ICharacterService characterService,
+            IHeartbeatService heartbeatService)
         {
             _jsRuntime = jsRuntime;
             _logger = logger;
             _characterService = characterService;
+            _heartbeatService = heartbeatService;
         }
 
         /// <summary>
@@ -63,26 +66,16 @@ namespace BlazorIdle.Services
             {
                 _logger.LogInformation("BeforeUnload triggered - attempting to save character");
 
-                // 获取当前选中的角色
-                var character = await _characterService.GetSelectedCharacterAsync();
-                
-                if (character != null)
+                // 使用HeartbeatService立即保存当前跟踪的角色数据
+                // Use HeartbeatService to immediately save currently tracked character data
+                if (_heartbeatService.IsRunning)
                 {
-                    // 尝试立即保存
-                    var saved = await _characterService.SaveImmediatelyAsync(character, "页面关闭保存");
-                    
-                    if (saved)
-                    {
-                        _logger.LogInformation("Successfully saved character {CharacterId} before unload", character.Id);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Failed to save character {CharacterId} before unload", character.Id);
-                    }
+                    await _heartbeatService.SaveNowAsync();
+                    _logger.LogInformation("Triggered immediate save via HeartbeatService before unload");
                 }
                 else
                 {
-                    _logger.LogDebug("No character selected, skipping save on unload");
+                    _logger.LogDebug("HeartbeatService not running, skipping save on unload");
                 }
             }
             catch (Exception ex)
