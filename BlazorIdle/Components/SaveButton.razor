@@ -1,6 +1,7 @@
 @using BlazorIdle.Services
 @using BlazorIdle.Shared.Models
 @inject ICharacterService CharacterService
+@inject IHeartbeatService HeartbeatService
 @inject ILogger<SaveButton> Logger
 
 <div class="save-button-container">
@@ -68,6 +69,16 @@
             return;
         }
 
+        // 检查HeartbeatService是否正在运行
+        // Check if HeartbeatService is running
+        if (!HeartbeatService.IsRunning)
+        {
+            Logger.LogWarning("HeartbeatService is not running, cannot perform manual save");
+            lastSaveSuccess = false;
+            StateHasChanged();
+            return;
+        }
+
         StartCooldown(); // 点击即进入10秒冷却（UI层面限制）
 
         try
@@ -78,9 +89,13 @@
 
             Logger.LogInformation("Manual save initiated for character {CharacterId}", SelectedCharacter.Id);
 
-            var success = await CharacterService.SaveImmediatelyAsync(SelectedCharacter, "手动保存");
-
-            lastSaveSuccess = success;
+            // 使用HeartbeatService保存，确保保存的是最新的角色数据
+            // Use HeartbeatService to save, ensuring latest character data is saved
+            await HeartbeatService.SaveNowAsync();
+            
+            // HeartbeatService.SaveNowAsync() 不返回结果，假设成功
+            // HeartbeatService.SaveNowAsync() doesn't return result, assume success
+            lastSaveSuccess = true;
             lastSaveTime = DateTime.Now;
 
             // 3秒后清除“已保存/失败”提示

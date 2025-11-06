@@ -136,6 +136,11 @@
     private void OnProfessionSwitched(CharacterData updatedCharacter)
     {
         selectedCharacter = updatedCharacter;
+        
+        // 更新心跳服务跟踪的角色数据
+        // Update HeartbeatService tracked character
+        HeartbeatService.UpdateCharacter(updatedCharacter);
+        
         StateHasChanged();
     }
 
@@ -145,6 +150,14 @@
     /// </summary>
     private void OnCharacterDataChanged(CharacterData updatedCharacter)
     {
+        // 更新本地引用
+        // Update local reference
+        selectedCharacter = updatedCharacter;
+        
+        // 更新心跳服务跟踪的角色数据，确保自动保存使用最新数据
+        // Update HeartbeatService tracked character to ensure auto-save uses latest data
+        HeartbeatService.UpdateCharacter(updatedCharacter);
+        
         // 角色对象引用没变，但内容已更新，触发重新渲染
         // Character object reference unchanged, but content updated, trigger re-render
         StateHasChanged();
