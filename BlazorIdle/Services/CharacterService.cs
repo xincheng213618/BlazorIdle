@@ -22,6 +22,13 @@ namespace BlazorIdle.Services
         Task<CharacterResponse?> UpdateCharacterAsync(string characterId, CharacterData character);
         Task<CharacterResponse?> SwitchProfessionAsync(string characterId, string professionId);
 
+        // Task 3.5: 强制重算和批量重算
+        Task ForceRecalculateAttributesAsync(CharacterData character, bool saveImmediately = false);
+        Task RecalculateAllCharactersAsync(List<CharacterData> characters);
+
+        // Task 4.2: 立即保存
+        Task<bool> SaveImmediatelyAsync(CharacterData character, string reason);
+
         // 新增：选中角色变更事件
         event Action<CharacterData?>? SelectedCharacterChanged;
     }
@@ -459,6 +466,47 @@ namespace BlazorIdle.Services
             }
 
             _logger.LogInformation("Completed recalculation for all characters");
+        }
+
+        /// <summary>
+        /// Task 4.2: 立即保存角色数据到服务器（用于关键操作后）
+        /// Immediately save character data to server (for critical operations)
+        /// </summary>
+        /// <param name="character">要保存的角色</param>
+        /// <param name="reason">保存原因（用于日志）</param>
+        /// <returns>是否保存成功</returns>
+        public async Task<bool> SaveImmediatelyAsync(CharacterData character, string reason)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "Immediate save triggered for character {CharacterId}, reason: {Reason}",
+                    character.Id, reason);
+
+                var result = await UpdateCharacterAsync(character.Id, character);
+
+                if (result != null && result.Success)
+                {
+                    _logger.LogInformation(
+                        "Successfully saved character {CharacterId}",
+                        character.Id);
+                    return true;
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Failed to save character {CharacterId}: {Message}",
+                        character.Id, result?.Message ?? "Unknown error");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Error during immediate save for character {CharacterId}",
+                    character.Id);
+                return false;
+            }
         }
     }
 }

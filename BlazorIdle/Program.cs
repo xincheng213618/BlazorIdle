@@ -55,4 +55,7 @@ builder.Services.AddScoped<ICharacterAttributeService, CharacterAttributeService
 // Task 3.4: 战斗属性同步服务
 builder.Services.AddScoped<IBattleAttributeSyncService, BattleAttributeSyncService>();
 
+// Task 4.5: 页面关闭前保存服务
+builder.Services.AddScoped<BeforeUnloadService>();
+
 await builder.Build().RunAsync();
