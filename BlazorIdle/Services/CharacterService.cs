@@ -22,6 +22,13 @@ namespace BlazorIdle.Services
         Task<CharacterResponse?> UpdateCharacterAsync(string characterId, CharacterData character);
         Task<CharacterResponse?> SwitchProfessionAsync(string characterId, string professionId);
 
+        // Task 3.5: 强制重算和批量重算
+        Task ForceRecalculateAttributesAsync(CharacterData character, bool saveImmediately = false);
+        Task RecalculateAllCharactersAsync(List<CharacterData> characters);
+
+        // Task 4.2: 立即保存
+        Task<bool> SaveImmediatelyAsync(CharacterData character, string reason);
+
         // 新增：选中角色变更事件
         event Action<CharacterData?>? SelectedCharacterChanged;
     }
@@ -34,6 +41,8 @@ namespace BlazorIdle.Services
         private readonly IAuthService _authService;
         private readonly Blazored.LocalStorage.ILocalStorageService _localStorage;
         private readonly ApiConfiguration _apiConfig;
+        private readonly ICharacterAttributeService _attributeService;
+        private readonly ILogger<CharacterService> _logger;
         private CharacterListResponse? _cachedCharacters;
 
         // 事件实现
@@ -43,12 +52,16 @@ namespace BlazorIdle.Services
             HttpClient httpClient, 
             IAuthService authService,
             Blazored.LocalStorage.ILocalStorageService localStorage,
-            ApiConfiguration apiConfig)
+            ApiConfiguration apiConfig,
+            ICharacterAttributeService attributeService,
+            ILogger<CharacterService> logger)
         {
             _httpClient = httpClient;
             _authService = authService;
             _localStorage = localStorage;
             _apiConfig = apiConfig;
+            _attributeService = attributeService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -95,11 +108,21 @@ namespace BlazorIdle.Services
             {
                 await ConfigureAuthHeaderAsync();
                 var response = await _httpClient.GetFromJsonAsync<CharacterResponse>($"{_apiConfig.CharacterApiUrl}/{id}");
+                
+                if (response?.Character != null)
+                {
+                    // Task 3.1: 加载角色后立即计算属性
+                    // Calculate attributes immediately after loading character
+                    await _attributeService.RecalculateAndApplyAsync(response.Character);
+                    _logger.LogInformation("Loaded and calculated attributes for character {CharacterId}", id);
+                }
+                
                 return response?.Character;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error fetching character {id}: {ex.Message}");
+                _logger.LogError(ex, "Error fetching character {CharacterId}", id);
                 return null;
             }
         }
@@ -126,6 +149,19 @@ namespace BlazorIdle.Services
                 {
                     var result = await response.Content.ReadFromJsonAsync<CharacterResponse>();
                     _cachedCharacters = null; // 清除缓存
+                    
+                    if (result?.Character != null)
+                    {
+                        // Task 3.1: 创建角色后初始化属性
+                        // Initialize attributes after creating character
+                        await _attributeService.RecalculateAndApplyAsync(result.Character);
+                        _logger.LogInformation("Created and initialized attributes for character {CharacterId}", result.Character.Id);
+                        
+                        // 保存初始化后的属性
+                        // Save initialized attributes
+                        await UpdateCharacterAsync(result.Character.Id, result.Character);
+                    }
+                    
                     return result;
                 }
                 else
@@ -141,6 +177,7 @@ namespace BlazorIdle.Services
             catch (Exception ex)
             {
                 Console.WriteLine($"Error creating character: {ex.Message}");
+                _logger.LogError(ex, "Error creating character");
                 return new CharacterResponse
                 {
                     Success = false,
@@ -347,6 +384,17 @@ namespace BlazorIdle.Services
                     _cachedCharacters = null;
                     if (result?.Character != null)
                     {
+                        // Task 3.3: 切换职业后重新计算属性
+                        // Recalculate attributes after profession switch
+                        await _attributeService.RecalculateAndApplyAsync(result.Character);
+                        _logger.LogInformation(
+                            "Switched profession to {ProfessionId} and recalculated attributes for character {CharacterId}",
+                            professionId, characterId);
+                        
+                        // 立即保存更新后的属性
+                        // Immediately save updated attributes
+                        await UpdateCharacterAsync(characterId, result.Character);
+                        
                         SelectedCharacterChanged?.Invoke(result.Character);
                     }
                     
@@ -356,6 +404,7 @@ namespace BlazorIdle.Services
                 {
                     var errorResult = await response.Content.ReadFromJsonAsync<CharacterResponse>();
                     Console.WriteLine($"Error switching profession: {errorResult?.Message ?? "Unknown error"}");
+                    _logger.LogError("Error switching profession: {Message}", errorResult?.Message ?? "Unknown error");
                     return errorResult ?? new CharacterResponse
                     {
                         Success = false,
@@ -366,11 +415,97 @@ namespace BlazorIdle.Services
             catch (Exception ex)
             {
                 Console.WriteLine($"Error switching profession for character {characterId}: {ex.Message}");
+                _logger.LogError(ex, "Error switching profession for character {CharacterId}", characterId);
                 return new CharacterResponse
                 {
                     Success = false,
                     Message = $"切换职业失败: {ex.Message}"
                 };
+            }
+        }
+
+        /// <summary>
+        /// Task 3.5: 强制重新计算并应用角色属性
+        /// Force recalculate and apply character attributes
+        /// </summary>
+        /// <param name="character">要重算的角色</param>
+        /// <param name="saveImmediately">是否立即保存到服务器</param>
+        public async Task ForceRecalculateAttributesAsync(CharacterData character, bool saveImmediately = false)
+        {
+            try
+            {
+                _logger.LogInformation("Force recalculating attributes for character {CharacterId}", character.Id);
+
+                // 重新计算属性
+                await _attributeService.RecalculateAndApplyAsync(character);
+
+                // 如果需要立即保存
+                if (saveImmediately)
+                {
+                    await UpdateCharacterAsync(character.Id, character);
+                    _logger.LogInformation("Saved recalculated attributes for character {CharacterId}", character.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error force recalculating attributes for character {CharacterId}", character.Id);
+            }
+        }
+
+        /// <summary>
+        /// Task 3.5: 批量重算所有角色的属性（用于配置更新后）
+        /// Batch recalculate attributes for all characters (used after config update)
+        /// </summary>
+        public async Task RecalculateAllCharactersAsync(List<CharacterData> characters)
+        {
+            _logger.LogInformation("Recalculating attributes for {Count} characters", characters.Count);
+
+            foreach (var character in characters)
+            {
+                await ForceRecalculateAttributesAsync(character, saveImmediately: false);
+            }
+
+            _logger.LogInformation("Completed recalculation for all characters");
+        }
+
+        /// <summary>
+        /// Task 4.2: 立即保存角色数据到服务器（用于关键操作后）
+        /// Immediately save character data to server (for critical operations)
+        /// </summary>
+        /// <param name="character">要保存的角色</param>
+        /// <param name="reason">保存原因（用于日志）</param>
+        /// <returns>是否保存成功</returns>
+        public async Task<bool> SaveImmediatelyAsync(CharacterData character, string reason)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "Immediate save triggered for character {CharacterId}, reason: {Reason}",
+                    character.Id, reason);
+
+                var result = await UpdateCharacterAsync(character.Id, character);
+
+                if (result != null && result.Success)
+                {
+                    _logger.LogInformation(
+                        "Successfully saved character {CharacterId}",
+                        character.Id);
+                    return true;
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Failed to save character {CharacterId}: {Message}",
+                        character.Id, result?.Message ?? "Unknown error");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Error during immediate save for character {CharacterId}",
+                    character.Id);
+                return false;
             }
         }
     }

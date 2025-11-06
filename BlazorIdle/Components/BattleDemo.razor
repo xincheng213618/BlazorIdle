@@ -2,10 +2,13 @@
 @using BlazorIdle.Game.Config
 @using BlazorIdle.Components
 @using BlazorIdle.Shared.Models
+@using BlazorIdle.Services
 @implements IDisposable
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject IGameConfigService GameConfig
+@inject ICharacterAttributeService AttributeService
+@inject ILogger<BattleDemo> Logger
 
 <div class="battle-card">
     @if (SelectedCharacter == null)

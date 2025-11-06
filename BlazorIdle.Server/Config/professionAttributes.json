@@ -1,0 +1,125 @@
+{
+  "warrior": {
+    "id": "warrior",
+    "name": "战士",
+    "description": "高生命、稳定输出",
+    "displayMainStat": "力量",
+    "mainStat": {
+      "base": 10,
+      "perLevel": 5
+    },
+    "stamina": {
+      "base": 15,
+      "perLevel": 3
+    },
+    "haste": {
+      "base": 0,
+      "perLevel": 0
+    },
+    "crit": {
+      "base": 50,
+      "perLevel": 5
+    },
+    "baseline": {
+      "baseDamage": 12,
+      "baseSpecialDamage": 8,
+      "baseAPS": 0.4,
+      "baseHp": 100,
+      "baseSpecialIntervalSec": 6.0,
+      "variance": 0.05,
+      "reviveSec": 5.0,
+      "critMultiplier": 2.0
+    },
+    "weights": {
+      "damagePerAttackPerMain": 1.2,
+      "specialDamagePerMain": 0.6,
+      "maxHpPerStamina": 10,
+      "hasteRatingToPercent": 32.79,
+      "critRatingToPercent": 45.91,
+      "critCap": 0.6,
+      "hasteCap": 0.4
+    }
+  },
+  "mage": {
+    "id": "mage",
+    "name": "法师",
+    "description": "高爆发、低生命",
+    "displayMainStat": "法强",
+    "mainStat": {
+      "base": 12,
+      "perLevel": 4
+    },
+    "stamina": {
+      "base": 10,
+      "perLevel": 2
+    },
+    "haste": {
+      "base": 0,
+      "perLevel": 0
+    },
+    "crit": {
+      "base": 80,
+      "perLevel": 8
+    },
+    "baseline": {
+      "baseDamage": 9,
+      "baseSpecialDamage": 14,
+      "baseAPS": 0.3,
+      "baseHp": 80,
+      "baseSpecialIntervalSec": 5.0,
+      "variance": 0.05,
+      "reviveSec": 5.0,
+      "critMultiplier": 2.0
+    },
+    "weights": {
+      "damagePerAttackPerMain": 0.6,
+      "specialDamagePerMain": 1.3,
+      "maxHpPerStamina": 10,
+      "hasteRatingToPercent": 32.79,
+      "critRatingToPercent": 45.91,
+      "critCap": 0.6,
+      "hasteCap": 0.4
+    }
+  },
+  "ranger": {
+    "id": "ranger",
+    "name": "游侠",
+    "description": "高急速、较高暴击",
+    "displayMainStat": "敏捷",
+    "mainStat": {
+      "base": 11,
+      "perLevel": 4
+    },
+    "stamina": {
+      "base": 12,
+      "perLevel": 2.5
+    },
+    "haste": {
+      "base": 200,
+      "perLevel": 15
+    },
+    "crit": {
+      "base": 100,
+      "perLevel": 10
+    },
+    "baseline": {
+      "baseDamage": 10,
+      "baseSpecialDamage": 10,
+      "baseAPS": 0.5,
+      "baseHp": 90,
+      "baseSpecialIntervalSec": 4.5,
+      "variance": 0.05,
+      "reviveSec": 5.0,
+      "critMultiplier": 2.0
+    },
+    "weights": {
+      "damagePerAttackPerMain": 0.9,
+      "specialDamagePerMain": 0.7,
+      "maxHpPerStamina": 10,
+      "hasteRatingToPercent": 32.79,
+      "critRatingToPercent": 45.91,
+      "critCap": 0.6,
+      "hasteCap": 0.4
+    }
+  }
+}

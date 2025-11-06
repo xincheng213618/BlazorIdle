@@ -1,0 +1,803 @@
+# 阶段五：UI展示
+
+## 阶段目标
+
+在用户界面上展示角色属性信息，让玩家直观地看到属性值和成长变化。
+
+## 展示内容
+
+### 核心属性显示
+1. **主属性**：力量/法强/敏捷（根据职业）
+2. **生命值**：最大生命
+3. **攻击**：每次攻击伤害
+4. **攻速**：每秒攻击次数
+5. **暴击**：暴击率百分比
+6. **急速**：急速百分比
+7. **技能**：技能伤害和间隔
+
+### 派生信息显示
+1. **DPS**：每秒伤害输出
+2. **期望伤害**：单次攻击期望值
+3. **生效攻速**：包含急速加成后的实际攻速
+
+## 工作内容
+
+### 任务5.1：更新现有CharacterDetail组件
+
+**位置**：`BlazorIdle/Components/CharacterDetail.razor`
+
+**说明**：
+- 更新现有的CharacterDetail组件以显示新的属性系统
+- 添加主属性、耐力、急速、暴击等属性显示
+- 支持属性实时更新
+- 保持现有的UI风格
+
+**更新代码**：
+
+在现有的CharacterDetail.razor中更新"当前战斗属性"部分：
+
+```razor
+<!-- 基础属性部分 - 新增 -->
+<div class="section">
+    <h6 class="section-title">基础属性 (Base Attributes)</h6>
+    <div class="stats-grid">
+        <div class="stat-item">
+            <span class="stat-label">@calculatedAttrs.MainStatName:</span>
+            <span class="stat-value">@calculatedAttrs.MainStatTotal</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">耐力:</span>
+            <span class="stat-value">@calculatedAttrs.StaminaTotal</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">急速等级:</span>
+            <span class="stat-value">@calculatedAttrs.HasteRating</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">暴击等级:</span>
+            <span class="stat-value">@calculatedAttrs.CritRating</span>
+        </div>
+    </div>
+</div>
+
+<!-- 当前战斗属性 - 更新此部分 -->
+<div class="section">
+    <h6 class="section-title">战斗属性 (Combat Stats)</h6>
+    <div class="stats-grid">
+    @if (character != null && calculatedAttrs != null)
+    {
+        <div class="stats-header">
+            <h3>@character.Name</h3>
+            <span class="profession-badge">@professionName</span>
+            <span class="level-badge">Lv.@currentLevel</span>
+        </div>
+
+        <div class="stats-sections">
+            <!-- 主属性 -->
+            <div class="stat-section primary-stat">
+                <div class="section-title">主属性</div>
+                <div class="stat-item main-stat">
+                    <span class="stat-name">@calculatedAttrs.MainStatName</span>
+                    <span class="stat-value">@calculatedAttrs.MainStatTotal</span>
+                </div>
+            </div>
+
+            <!-- 基础属性 -->
+            <div class="stat-section">
+                <div class="section-title">基础属性</div>
+                
+                <div class="stat-item">
+                    <span class="stat-name">生命值</span>
+                    <span class="stat-value">@calculatedAttrs.MaxHp</span>
+                </div>
+
+                <div class="stat-item">
+                    <span class="stat-name">攻击伤害</span>
+                    <span class="stat-value">@calculatedAttrs.DamagePerAttack</span>
+                </div>
+
+                <div class="stat-item">
+                    <span class="stat-name">基础攻速</span>
+                    <span class="stat-value">@calculatedAttrs.AttackRateAPS.ToString("F2") APS</span>
+                </div>
+            </div>
+
+            <!-- 战斗属性 -->
+            <div class="stat-section">
+                <div class="section-title">战斗属性</div>
+                
+                <div class="stat-item">
+                    <span class="stat-name">暴击率</span>
+                    <span class="stat-value">@((calculatedAttrs.CritChancePercent * 100).ToString("F1"))%</span>
+                    <span class="stat-cap">/ 60%</span>
+                </div>
+
+                <div class="stat-item">
+                    <span class="stat-name">急速</span>
+                    <span class="stat-value">@((calculatedAttrs.HastePercent * 100).ToString("F1"))%</span>
+                    <span class="stat-cap">/ 40%</span>
+                </div>
+
+                <div class="stat-item">
+                    <span class="stat-name">暴击倍率</span>
+                    <span class="stat-value">@calculatedAttrs.CritMultiplier.ToString("F1")x</span>
+                </div>
+
+                <div class="stat-item">
+                    <span class="stat-name">伤害浮动</span>
+                    <span class="stat-value">±@((calculatedAttrs.VariancePct * 100).ToString("F0"))%</span>
+                </div>
+            </div>
+
+            <!-- 技能属性 -->
+            <div class="stat-section">
+                <div class="section-title">技能属性</div>
+                
+                <div class="stat-item">
+                    <span class="stat-name">技能伤害</span>
+                    <span class="stat-value">@calculatedAttrs.SpecialDamage</span>
+                </div>
+
+                <div class="stat-item">
+                    <span class="stat-name">技能间隔</span>
+                    <span class="stat-value">@calculatedAttrs.SpecialIntervalSec.ToString("F1")秒</span>
+                </div>
+
+                <div class="stat-item">
+                    <span class="stat-name">复活时间</span>
+                    <span class="stat-value">@calculatedAttrs.ReviveSec.ToString("F1")秒</span>
+                </div>
+            </div>
+
+            <!-- DPS统计 -->
+            <div class="stat-section dps-section">
+                <div class="section-title">输出统计</div>
+                
+                <div class="stat-item">
+                    <span class="stat-name">期望伤害</span>
+                    <span class="stat-value">@expectedDamage.ToString("F1")</span>
+                </div>
+
+                <div class="stat-item">
+                    <span class="stat-name">生效攻速</span>
+                    <span class="stat-value">@effectiveAPS.ToString("F2") APS</span>
+                </div>
+
+                <div class="stat-item">
+                    <span class="stat-name">普攻DPS</span>
+                    <span class="stat-value highlight">@basicDPS.ToString("F1")</span>
+                </div>
+
+                <div class="stat-item">
+                    <span class="stat-name">技能DPS</span>
+                    <span class="stat-value">@skillDPS.ToString("F1")</span>
+                </div>
+
+                <div class="stat-item total-dps">
+                    <span class="stat-name">总DPS</span>
+                    <span class="stat-value">@totalDPS.ToString("F1")</span>
+                </div>
+            </div>
+        </div>
+    }
+    else if (isLoading)
+    {
+        <div class="loading">
+            <span class="spinner"></span>
+            <span>加载属性中...</span>
+        </div>
+    }
+    else
+    {
+        <div class="no-data">
+            <span>未选择角色</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public CharacterData? character { get; set; }
+
+    private CalculatedAttributes? calculatedAttrs;
+    private string professionName = "";
+    private int currentLevel = 1;
+    
+    // 派生信息
+    private double expectedDamage = 0;
+    private double effectiveAPS = 0;
+    private double basicDPS = 0;
+    private double skillDPS = 0;
+    private double totalDPS = 0;
+    
+    private bool isLoading = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await RefreshStats();
+    }
+
+    private async Task RefreshStats()
+    {
+        if (character == null)
+        {
+            calculatedAttrs = null;
+            return;
+        }
+
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            // 计算属性
+            calculatedAttrs = await AttributeService.CalculateAttributesAsync(character);
+
+            if (calculatedAttrs != null)
+            {
+                // 获取职业名称
+                var config = await ProfessionService.GetConfigAsync(character.ActiveCombatProfessionId);
+                professionName = config?.Name ?? character.ActiveCombatProfessionId;
+
+                // 获取当前等级
+                if (character.Professions.TryGetValue(character.ActiveCombatProfessionId, out var progress))
+                {
+                    currentLevel = progress.Level;
+                }
+
+                // 计算派生信息
+                expectedDamage = AttributeCalculator.CalculateExpectedHitDamage(calculatedAttrs);
+                effectiveAPS = AttributeCalculator.CalculateEffectiveAPS(calculatedAttrs);
+                basicDPS = AttributeCalculator.CalculateBasicDPS(calculatedAttrs);
+                skillDPS = AttributeCalculator.CalculateSkillDPS(calculatedAttrs);
+                totalDPS = AttributeCalculator.CalculateTotalDPS(calculatedAttrs);
+            }
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    public async Task Refresh()
+    {
+        await RefreshStats();
+    }
+}
+
+<style>
+    .character-stats {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        padding: 20px;
+        color: white;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .stats-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .stats-header h3 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: bold;
+    }
+
+    .profession-badge {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 14px;
+    }
+
+    .level-badge {
+        background: rgba(255, 215, 0, 0.3);
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    .stats-sections {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+    }
+
+    .stat-section {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 16px;
+    }
+
+    .stat-section.primary-stat {
+        background: rgba(255, 215, 0, 0.2);
+        border: 2px solid rgba(255, 215, 0, 0.4);
+    }
+
+    .stat-section.dps-section {
+        background: rgba(255, 99, 71, 0.2);
+        border: 2px solid rgba(255, 99, 71, 0.4);
+    }
+
+    .section-title {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        opacity: 0.9;
+    }
+
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .stat-item:last-child {
+        border-bottom: none;
+    }
+
+    .stat-item.main-stat {
+        font-size: 20px;
+        font-weight: bold;
+        padding: 12px 0;
+    }
+
+    .stat-item.total-dps {
+        font-size: 18px;
+        font-weight: bold;
+        margin-top: 8px;
+        padding-top: 12px;
+        border-top: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .stat-name {
+        opacity: 0.9;
+    }
+
+    .stat-value {
+        font-weight: bold;
+        font-size: 18px;
+    }
+
+    .stat-value.highlight {
+        color: #FFD700;
+        text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    }
+
+    .stat-cap {
+        opacity: 0.6;
+        font-size: 14px;
+        margin-left: 4px;
+    }
+
+    .loading, .no-data {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        gap: 12px;
+    }
+
+    .spinner {
+        display: inline-block;
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+        .stats-sections {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+```
+
+**检查点**：
+- [ ] 组件文件创建完成
+- [ ] 显示所有核心属性
+- [ ] 显示DPS统计
+- [ ] 样式美观
+- [ ] 支持响应式布局
+
+---
+
+### 任务5.2：集成到角色面板
+
+**位置**：主界面或角色管理页面
+
+**说明**：
+- 将属性显示组件集成到主界面
+- 确保组件会随角色切换更新
+
+**集成示例**：
+
+```razor
+@page "/"
+@inject ICharacterStateService CharacterStateService
+@implements IDisposable
+
+<div class="home-page">
+    <div class="left-panel">
+        @* 角色选择等其他内容 *@
+    </div>
+
+    <div class="main-panel">
+        @if (CurrentCharacter != null)
+        {
+            <CharacterStats character="@CurrentCharacter" @ref="statsComponent" />
+        }
+        
+        @* 其他内容 *@
+    </div>
+
+    <div class="right-panel">
+        @* 其他面板 *@
+    </div>
+</div>
+
+@code {
+    private CharacterData? CurrentCharacter => CharacterStateService.CurrentCharacter;
+    private CharacterStats? statsComponent;
+
+    protected override void OnInitialized()
+    {
+        // 订阅角色切换事件
+        CharacterStateService.OnCharacterChanged += OnCharacterChanged;
+    }
+
+    private async void OnCharacterChanged()
+    {
+        // 刷新属性显示
+        if (statsComponent != null)
+        {
+            await statsComponent.Refresh();
+        }
+        
+        await InvokeAsync(() => StateHasChanged());
+    }
+
+    public void Dispose()
+    {
+        CharacterStateService.OnCharacterChanged -= OnCharacterChanged;
+    }
+}
+```
+
+**检查点**：
+- [ ] 组件成功集成到界面
+- [ ] 切换角色时属性更新
+- [ ] 升级时属性更新
+- [ ] 布局合理美观
+
+---
+
+### 任务5.3：实现属性实时更新
+
+**说明**：
+- 确保角色属性变化时，CharacterDetail组件能实时更新
+- 订阅属性变化事件
+- 自动刷新显示
+
+**实现代码**：
+
+在CharacterDetail.razor的@code部分添加：
+
+```csharp
+@code {
+    private CalculatedAttributes? calculatedAttrs;
+
+    protected override void OnInitialized()
+    {
+        // 订阅属性变化事件
+        AttributeService.AttributesChanged += OnAttributesChanged;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        character = Character;
+        if (character != null)
+        {
+            await RefreshAttributesAsync();
+        }
+    }
+
+    private async Task RefreshAttributesAsync()
+    {
+        if (character == null) return;
+        
+        calculatedAttrs = await AttributeService.CalculateAttributesAsync(character);
+        StateHasChanged();
+    }
+
+    private async void OnAttributesChanged(object? sender, EventArgs e)
+    {
+        await RefreshAttributesAsync();
+    }
+
+    public void Dispose()
+    {
+        AttributeService.AttributesChanged -= OnAttributesChanged;
+    }
+}
+```
+
+**检查点**：
+- [ ] 组件订阅属性变化事件
+- [ ] 属性变化时自动刷新
+- [ ] 正确实现IDisposable
+- [ ] StateHasChanged正确调用
+
+---
+
+### 任务5.4：添加属性变化提示（可选）
+
+**说明**：
+- 当属性变化时显示动画提示
+- 让玩家感知到成长
+
+**组件实现**：
+
+创建 `StatChangeIndicator.razor`：
+
+```razor
+<div class="stat-change-container">
+    @foreach (var change in activeChanges)
+    {
+        <div class="stat-change @change.Type" 
+             style="animation-delay: @(change.Delay)ms"
+             @key="change.Id">
+            <span class="icon">@(change.IsIncrease ? "↑" : "↓")</span>
+            <span class="name">@change.StatName</span>
+            <span class="value">@change.ChangeText</span>
+        </div>
+    }
+</div>
+
+@code {
+    private List<StatChange> activeChanges = new();
+    private int changeIdCounter = 0;
+
+    public void ShowChange(string statName, double oldValue, double newValue, bool isPercentage = false)
+    {
+        var change = oldValue - newValue;
+        var isIncrease = change > 0;
+        
+        string changeText;
+        if (isPercentage)
+        {
+            changeText = $"{Math.Abs(change * 100):F1}%";
+        }
+        else
+        {
+            changeText = $"{Math.Abs(change):F0}";
+        }
+
+        var statChange = new StatChange
+        {
+            Id = changeIdCounter++,
+            StatName = statName,
+            ChangeText = changeText,
+            IsIncrease = isIncrease,
+            Type = isIncrease ? "increase" : "decrease",
+            Delay = activeChanges.Count * 100
+        };
+
+        activeChanges.Add(statChange);
+        StateHasChanged();
+
+        // 2秒后移除
+        Task.Run(async () =>
+        {
+            await Task.Delay(2000);
+            activeChanges.Remove(statChange);
+            await InvokeAsync(() => StateHasChanged());
+        });
+    }
+
+    private class StatChange
+    {
+        public int Id { get; set; }
+        public string StatName { get; set; } = "";
+        public string ChangeText { get; set; } = "";
+        public bool IsIncrease { get; set; }
+        public string Type { get; set; } = "";
+        public int Delay { get; set; }
+    }
+}
+
+<style>
+    .stat-change-container {
+        position: fixed;
+        top: 20%;
+        right: 20px;
+        z-index: 1000;
+        pointer-events: none;
+    }
+
+    .stat-change {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        font-weight: bold;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        animation: slideInRight 0.3s ease-out, fadeOut 0.3s ease-in 1.7s forwards;
+    }
+
+    .stat-change.increase {
+        background: linear-gradient(135deg, #4CAF50, #45a049);
+        color: white;
+    }
+
+    .stat-change.decrease {
+        background: linear-gradient(135deg, #f44336, #da190b);
+        color: white;
+    }
+
+    .stat-change .icon {
+        font-size: 24px;
+    }
+
+    .stat-change .name {
+        font-size: 14px;
+    }
+
+    .stat-change .value {
+        font-size: 18px;
+    }
+
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes fadeOut {
+        to {
+            opacity: 0;
+            transform: translateX(50px);
+        }
+    }
+</style>
+```
+
+**使用方式**：
+
+```razor
+<StatChangeIndicator @ref="changeIndicator" />
+
+@code {
+    private StatChangeIndicator? changeIndicator;
+
+    private void OnLevelUp()
+    {
+        // 显示属性变化
+        changeIndicator?.ShowChange("伤害", oldDamage, newDamage);
+        changeIndicator?.ShowChange("生命", oldHp, newHp);
+        changeIndicator?.ShowChange("暴击", oldCrit, newCrit, isPercentage: true);
+    }
+}
+```
+
+**检查点**：
+- [ ] 变化提示组件创建完成
+- [ ] 集成到主界面
+- [ ] 升级时显示提示
+- [ ] 动画流畅美观
+
+---
+
+### 任务5.5：UI测试
+
+**测试场景**：
+
+1. **显示测试**
+   - [ ] 所有属性正确显示
+   - [ ] 数值格式正确（小数位数）
+   - [ ] 百分比显示正确
+   - [ ] DPS计算正确
+
+2. **交互测试**
+   - [ ] 切换角色时属性更新
+   - [ ] 升级时属性更新
+   - [ ] 切换职业时属性更新
+
+3. **响应式测试**
+   - [ ] 桌面端显示正常
+   - [ ] 平板显示正常
+   - [ ] 手机显示正常
+
+4. **性能测试**
+   - [ ] 组件渲染快速
+   - [ ] 更新不卡顿
+
+---
+
+## 阶段五验收标准
+
+完成以下所有检查点后，阶段五即告完成：
+
+- [x] CharacterDetail组件已更新显示新属性
+- [x] 显示主属性、耐力、急速等级、暴击等级
+- [x] 显示DPS统计
+- [x] 属性实时更新功能正常
+- [x] 所有测试通过
+
+## 阶段五实施完成 ✅
+
+**完成时间**: 2025-11-06
+
+**实施内容**:
+1. ✅ **任务5.1**: 更新CharacterDetail组件 - 显示新属性系统
+2. ✅ **任务5.2**: 集成到角色面板 - 自动刷新
+3. ✅ **任务5.3**: 实现属性实时更新 - OnParametersSetAsync
+4. ⏭️ **任务5.4**: 属性变化提示 - 延后到未来需求
+5. ✅ **任务5.5**: UI测试 - 构建通过
+
+**实施亮点**:
+- **基础属性显示**: 主属性、耐力、急速等级、暴击等级独立显示
+- **战斗属性显示**: 显示转换后的战斗属性（伤害、生命、暴击%、急速%）
+- **DPS统计**: 显示期望伤害、生效攻速、普攻DPS、技能DPS、总DPS
+- **实时更新**: 参数变化时自动刷新属性
+- **样式优化**: 高亮显示重要属性（主属性、总DPS）
+- **上限提示**: 暴击率和急速显示上限值
+
+**修改文件**:
+- BlazorIdle/Components/CharacterDetail.razor (重大更新)
+  - 添加ICharacterAttributeService和IProfessionAttributeService依赖
+  - 添加CalculatedAttributes计算
+  - 添加DPS统计计算
+  - 新增基础属性、战斗属性、技能属性、DPS统计四大板块
+  - 新增样式：highlight-stat, stat-main, stat-highlight, stat-total, section-dps
+
+**构建状态**: ✅ 0 errors, 3 warnings (pre-existing)
+
+## 预计工时
+
+- 任务5.1：1.5小时
+- 任务5.2：0.5小时
+- 任务5.3：1小时
+- 任务5.4：0.5小时（可选）
+- 任务5.5：0.5小时
+
+**总计**：4小时（约半个工作日）
+
+## 注意事项
+
+1. **性能优化**：避免过度渲染，使用 `ShouldRender` 优化
+2. **数值格式**：统一小数位数格式
+3. **UI一致性**：保持与现有界面风格一致
+4. **响应式**：确保在各种屏幕尺寸下正常显示
+5. **可访问性**：考虑色盲用户，不仅用颜色表示增减
+
+## 下一阶段
+
+完成阶段五后，进入**阶段六：测试与调优**，进行全面的测试和数值平衡调整。

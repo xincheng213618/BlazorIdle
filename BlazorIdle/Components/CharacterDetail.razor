@@ -1,7 +1,12 @@
 @using BlazorIdle.Shared.Models
+@using BlazorIdle.Shared.Game
 @using BlazorIdle.Game.Config
 @using BlazorIdle.Services
 @inject IGameConfigService GameConfig
+@inject ICharacterAttributeService AttributeService
+@inject IProfessionAttributeService ProfessionService
+@inject ICharacterService CharacterService
+@implements IDisposable
 
 <div class="character-detail-card">
     <div class="cd-header">
@@ -16,51 +21,120 @@
         {
             <div class="text-muted">请先选择一个角色...</div>
         }
-        else if (!configReady)
+        else if (isLoading)
         {
             <div class="text-muted">加载配置中...</div>
         }
+        else if (calculatedAttrs == null)
+        {
+            <div class="text-muted">无法计算属性...</div>
+        }
         else
         {
-            <!-- 当前激活职业的战斗属性 -->
+            <!-- 基础属性部分 -->
             <div class="section">
-                <h6 class="section-title">当前战斗属性 (Combat Stats)</h6>
+                <h6 class="section-title">基础属性 (Base Attributes)</h6>
+                <div class="stats-grid">
+                    <div class="stat-item highlight-stat">
+                        <span class="stat-label">@GetMainStatName():</span>
+                        <span class="stat-value stat-main">@GetMainStatTotal()</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">耐力:</span>
+                        <span class="stat-value">@GetStaminaTotal()</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">急速等级:</span>
+                        <span class="stat-value">@GetHasteRating()</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">暴击等级:</span>
+                        <span class="stat-value">@GetCritRating()</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 战斗属性 -->
+            <div class="section">
+                <h6 class="section-title">战斗属性 (Combat Stats)</h6>
                 <div class="stats-grid">
                     <div class="stat-item">
                         <span class="stat-label">职业:</span>
-                        <span class="stat-value">@GetProfessionName(character.ActiveCombatProfessionId) ⭐</span>
+                        <span class="stat-value">@professionName ⭐ Lv.@currentLevel</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">最大生命值:</span>
                         <span class="stat-value">@character.MaxHp</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">攻击速率:</span>
-                        <span class="stat-value">@character.AttackRateAPS 次/秒</span>
-                    </div>
-                    <div class="stat-item">
                         <span class="stat-label">攻击伤害:</span>
                         <span class="stat-value">@character.DamagePerAttack</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">急速:</span>
-                        <span class="stat-value">@character.HastePercent%</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">特殊技能间隔:</span>
-                        <span class="stat-value">@character.SpecialIntervalSec 秒</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">特殊技能伤害:</span>
-                        <span class="stat-value">@character.SpecialDamage</span>
+                        <span class="stat-label">基础攻速:</span>
+                        <span class="stat-value">@character.AttackRateAPS.ToString("F2") 次/秒</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">暴击率:</span>
-                        <span class="stat-value">@character.CritChancePercent%</span>
+                        <span class="stat-value">@character.CritChancePercent.ToString("F1")% <span class="stat-cap">/ 60%</span></span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">急速:</span>
+                        <span class="stat-value">@character.HastePercent.ToString("F1")% <span class="stat-cap">/ 40%</span></span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">暴击倍率:</span>
-                        <span class="stat-value">@character.CritMultiplier x</span>
+                        <span class="stat-value">@character.CritMultiplier.ToString("F1")x</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">伤害浮动:</span>
+                        <span class="stat-value">±@((character.VariancePct * 100).ToString("F0"))%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 技能属性 -->
+            <div class="section">
+                <h6 class="section-title">技能属性 (Skill Stats)</h6>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">技能伤害:</span>
+                        <span class="stat-value">@character.SpecialDamage</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">技能间隔:</span>
+                        <span class="stat-value">@character.SpecialIntervalSec.ToString("F1") 秒</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">复活时间:</span>
+                        <span class="stat-value">@character.ReviveSec.ToString("F1") 秒</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DPS统计 -->
+            <div class="section section-dps">
+                <h6 class="section-title">输出统计 (DPS Stats)</h6>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">期望伤害:</span>
+                        <span class="stat-value">@expectedDamage.ToString("F1")</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">生效攻速:</span>
+                        <span class="stat-value">@effectiveAPS.ToString("F2") APS</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">普攻DPS:</span>
+                        <span class="stat-value stat-highlight">@basicDPS.ToString("F1")</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">技能DPS:</span>
+                        <span class="stat-value">@skillDPS.ToString("F1")</span>
+                    </div>
+                    <div class="stat-item highlight-stat">
+                        <span class="stat-label">总DPS:</span>
+                        <span class="stat-value stat-total">@totalDPS.ToString("F1")</span>
                     </div>
                 </div>
             </div>
@@ -141,7 +215,19 @@
     private CharacterData? character;
     private List<ProfessionDef> combatProfessions = new();
     private List<ProfessionDef> nonCombatProfessions = new();
-    private bool configReady = false;
+    private bool isLoading = false;
+    
+    // 计算属性
+    private CalculatedAttributes? calculatedAttrs;
+    private string professionName = "";
+    private int currentLevel = 1;
+    
+    // DPS统计
+    private double expectedDamage = 0;
+    private double effectiveAPS = 0;
+    private double basicDPS = 0;
+    private double skillDPS = 0;
+    private double totalDPS = 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -152,12 +238,69 @@
         nonCombatProfessions = GameConfig.Professions
             .Where(p => p.Type == ProfessionType.NonCombat)
             .ToList();
-        configReady = true;
+        
+        // Subscribe to character change events for real-time updates
+        CharacterService.SelectedCharacterChanged += OnCharacterChanged;
     }
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         character = Character;
+        await RefreshAttributesAsync();
+    }
+
+    private async Task RefreshAttributesAsync()
+    {
+        if (character == null)
+        {
+            calculatedAttrs = null;
+            return;
+        }
+
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            // 计算属性
+            calculatedAttrs = await AttributeService.CalculateAttributesAsync(character);
+
+            if (calculatedAttrs != null)
+            {
+                // 获取职业名称
+                var config = await ProfessionService.GetConfigAsync(character.ActiveCombatProfessionId);
+                professionName = config?.Name ?? GetProfessionName(character.ActiveCombatProfessionId);
+
+                // 获取当前等级
+                if (character.Professions.TryGetValue(character.ActiveCombatProfessionId, out var progress))
+                {
+                    currentLevel = progress.Level;
+                }
+
+                // 计算DPS统计
+                expectedDamage = AttributeCalculator.CalculateExpectedHitDamage(calculatedAttrs);
+                effectiveAPS = AttributeCalculator.CalculateEffectiveAPS(calculatedAttrs);
+                basicDPS = AttributeCalculator.CalculateBasicDPS(calculatedAttrs);
+                skillDPS = AttributeCalculator.CalculateSkillDPS(calculatedAttrs);
+                totalDPS = AttributeCalculator.CalculateTotalDPS(calculatedAttrs);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't crash the component
+            System.Diagnostics.Debug.WriteLine($"Error calculating attributes: {ex.Message}");
+            calculatedAttrs = null;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    public async Task RefreshAsync()
+    {
+        await RefreshAttributesAsync();
     }
 
     private double GetExpPercentage(ProfessionProgress progress)
@@ -171,6 +314,50 @@
         var prof = combatProfessions.FirstOrDefault(p => p.Id == profId) 
                    ?? nonCombatProfessions.FirstOrDefault(p => p.Id == profId);
         return prof?.Name ?? profId;
+    }
+
+    // Attribute display helpers
+    private string GetMainStatName()
+    {
+        if (calculatedAttrs == null) return "主属性";
+        return !string.IsNullOrEmpty(calculatedAttrs.MainStatName) 
+            ? calculatedAttrs.MainStatName 
+            : "主属性";
+    }
+
+    private int GetMainStatTotal()
+    {
+        return calculatedAttrs?.MainStatTotal ?? 0;
+    }
+
+    private int GetStaminaTotal()
+    {
+        return calculatedAttrs?.StaminaTotal ?? 0;
+    }
+
+    private int GetHasteRating()
+    {
+        return calculatedAttrs?.HasteRating ?? 0;
+    }
+
+    private int GetCritRating()
+    {
+        return calculatedAttrs?.CritRating ?? 0;
+    }
+
+    // Event handler for character changes (e.g., from level-ups during combat)
+    private async void OnCharacterChanged(CharacterData? newCharacter)
+    {
+        character = newCharacter;
+        await RefreshAttributesAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // IDisposable implementation
+    public void Dispose()
+    {
+        // Unsubscribe from events to prevent memory leaks
+        CharacterService.SelectedCharacterChanged -= OnCharacterChanged;
     }
 }
 
@@ -271,5 +458,44 @@
 
     .prof-note {
         margin-top: 6px;
+    }
+
+    /* New attribute system styles */
+    .highlight-stat {
+        background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
+        border-left: 3px solid #FFD700;
+    }
+
+    .stat-main {
+        color: #FFD700;
+        font-size: 1.1rem;
+        font-weight: 700;
+    }
+
+    .stat-highlight {
+        color: #FF6347;
+        font-weight: 700;
+    }
+
+    .stat-total {
+        color: #FF4500;
+        font-size: 1.2rem;
+        font-weight: 800;
+    }
+
+    .stat-cap {
+        color: #999;
+        font-size: 0.85rem;
+        margin-left: 4px;
+    }
+
+    .section-dps {
+        background: rgba(255, 99, 71, 0.05);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 99, 71, 0.2);
+    }
+
+    .section-dps .section-title {
+        color: #FF6347;
     }
 </style>

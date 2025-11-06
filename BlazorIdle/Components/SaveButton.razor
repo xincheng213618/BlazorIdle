@@ -1,0 +1,280 @@
+@using BlazorIdle.Services
+@using BlazorIdle.Shared.Models
+@inject ICharacterService CharacterService
+@inject ILogger<SaveButton> Logger
+
+<div class="save-button-container">
+    <button class="btn-save @(isSaving ? "saving" : "") @(GetStatusClass())"
+            style="--cd:@($"{cooldownProgress * 100:F0}%")"
+            @onclick="OnSaveClicked"
+            disabled="@(isSaving || SelectedCharacter == null || isCooldown)">
+
+        <span class="cooldown-fill" aria-hidden="true"></span>
+
+        @if (isSaving)
+        {
+            <span class="spinner" aria-hidden="true"></span>
+            <span class="content-text">保存中</span>
+        }
+        else if (lastSaveSuccess.HasValue)
+        {
+            <span class="content-text">@((lastSaveSuccess!.Value ? "已保存" : "失败"))</span>
+        }
+        else
+        {
+            <span class="label-stack">
+                @if (lastSaveTime.HasValue)
+                {
+                    <span class="label-lastsave">上次 @lastSaveTime.Value.ToString("HH:mm:ss")</span>
+                    <span class="label-save">保存</span>
+                }
+                else
+                {
+                    <span class="label-save only">保存</span>
+                }
+            </span>
+        }
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public CharacterData? SelectedCharacter { get; set; }
+
+    private bool isSaving = false;
+    private bool? lastSaveSuccess = null;
+    private DateTime? lastSaveTime = null;
+
+    // 连按限制（10秒冷却）
+    private const int CooldownSeconds = 10;
+    private bool isCooldown = false;
+    private DateTime? cooldownUntil;
+    private double cooldownProgress = 0d; // 0~1
+    private System.Threading.Timer? cooldownTimer;
+
+    private System.Threading.Timer? clearStatusTimer;
+
+    private async Task OnSaveClicked()
+    {
+        if (SelectedCharacter == null)
+        {
+            Logger.LogWarning("No character selected for manual save");
+            return;
+        }
+
+        if (isSaving || isCooldown)
+        {
+            Logger.LogDebug("Save in progress or cooling down, ignoring click");
+            return;
+        }
+
+        StartCooldown(); // 点击即进入10秒冷却（UI层面限制）
+
+        try
+        {
+            isSaving = true;
+            lastSaveSuccess = null;
+            StateHasChanged();
+
+            Logger.LogInformation("Manual save initiated for character {CharacterId}", SelectedCharacter.Id);
+
+            var success = await CharacterService.SaveImmediatelyAsync(SelectedCharacter, "手动保存");
+
+            lastSaveSuccess = success;
+            lastSaveTime = DateTime.Now;
+
+            // 3秒后清除“已保存/失败”提示
+            clearStatusTimer?.Dispose();
+            clearStatusTimer = new System.Threading.Timer(_ =>
+            {
+                lastSaveSuccess = null;
+                InvokeAsync(StateHasChanged);
+            }, null, TimeSpan.FromSeconds(3), Timeout.InfiniteTimeSpan);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during manual save");
+            lastSaveSuccess = false;
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void StartCooldown()
+    {
+        isCooldown = true;
+        var start = DateTime.UtcNow;
+        cooldownUntil = start.AddSeconds(CooldownSeconds);
+        cooldownProgress = 0;
+
+        cooldownTimer?.Dispose();
+        cooldownTimer = new System.Threading.Timer(_ =>
+        {
+            var now = DateTime.UtcNow;
+            var totalMs = (cooldownUntil!.Value - start).TotalMilliseconds;
+            var elapsedMs = (now - start).TotalMilliseconds;
+            var p = Math.Clamp(elapsedMs / totalMs, 0d, 1d);
+            cooldownProgress = p;
+
+            if (p >= 1d)
+            {
+                isCooldown = false;
+                cooldownProgress = 0d;
+                cooldownTimer?.Dispose();
+                cooldownTimer = null;
+            }
+
+            InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(100));
+    }
+
+    private string GetStatusClass()
+    {
+        if (lastSaveSuccess.HasValue)
+        {
+            return lastSaveSuccess.Value ? "success" : "error";
+        }
+        return "";
+    }
+
+    public void Dispose()
+    {
+        clearStatusTimer?.Dispose();
+        cooldownTimer?.Dispose();
+    }
+}
+
+<style>
+    /* 容器紧凑化并与邻居按钮同一水平线 */
+    .save-button-container {
+        display: inline-flex;
+        align-items: center;
+        margin: 0;
+    }
+
+    /* 紧凑按钮 */
+    .btn-save {
+        position: relative;
+        overflow: hidden; /* 裁剪冷却填充层 */
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        height: 32px; /* 如需更大可设为 34px 或 36px */
+        padding: 0 12px;
+        border: 1px solid #4CAF50;
+        background: #4CAF50;
+        color: #fff;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px; /* 如需更小可设为 12px */
+        line-height: 1;
+        transition: background .2s, border-color .2s, transform .1s, box-shadow .2s, opacity .2s;
+        min-width: auto;
+        vertical-align: middle;
+    }
+
+        .btn-save:hover:not(:disabled) {
+            background: #45a049;
+            border-color: #45a049;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
+        }
+
+        .btn-save:disabled {
+            opacity: 0.85;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-save.saving {
+            border-color: #2196F3;
+            background: #2196F3;
+        }
+
+        .btn-save.success {
+            border-color: #4CAF50;
+            background: #4CAF50;
+        }
+
+        .btn-save.error {
+            border-color: #f44336;
+            background: #f44336;
+        }
+
+        /* 冷却进度填充：随着10秒进度从左到右填充背景 */
+        .btn-save .cooldown-fill {
+            content: "";
+            position: absolute;
+            inset: 0;
+            width: var(--cd, 0%);
+            background: linear-gradient(90deg, rgba(255,255,255,0.22), rgba(255,255,255,0.18));
+            z-index: 0;
+            pointer-events: none;
+            transition: width .1s linear;
+        }
+
+        /* 内容文本置于冷却层之上 */
+        .btn-save > * {
+            position: relative;
+            z-index: 1;
+        }
+
+    .spinner {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @@keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* 居中堆叠的标签：使用 grid 叠放，宽度按较宽文本自适应，避免“上次 时间”被裁剪 */
+    .label-stack {
+        display: inline-grid;
+        place-items: center;
+        padding: 0 2px; /* 轻微留白，避免贴边 */
+    }
+
+        .label-stack .label-lastsave,
+        .label-stack .label-save {
+            grid-area: 1 / 1;
+            white-space: nowrap;
+            transition: opacity .15s ease-in-out;
+        }
+
+        /* 有上次时间：默认显示时间，悬停显示“保存” */
+        .label-stack .label-save {
+            opacity: 0;
+        }
+
+    .btn-save:hover:not(:disabled) .label-stack .label-save {
+        opacity: 1;
+    }
+
+    .btn-save:hover:not(:disabled) .label-stack .label-lastsave {
+        opacity: 0;
+    }
+
+    /* 没有上次时间：只显示保存 */
+    .label-stack .label-save.only {
+        opacity: 1;
+        display: inline-block;
+    }
+
+    /* 常规状态文本 */
+    .content-text {
+        white-space: nowrap;
+    }
+</style>

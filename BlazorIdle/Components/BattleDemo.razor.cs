@@ -723,7 +723,7 @@ namespace BlazorIdle.Components
         /// 处理经验获得事件 - 将经验添加到对应职业并记录日志
         /// Handle experience gain event - adds experience to profession and logs it
         /// </summary>
-        private void OnExperienceGained(ExperienceGainEvent expEvent)
+        private async void OnExperienceGained(ExperienceGainEvent expEvent)
         {
             if (SelectedCharacter == null) return;
 
@@ -743,6 +743,7 @@ namespace BlazorIdle.Components
 
             // 检查升级
             bool leveledUp = false;
+            int oldLevel = progress.Level;
             int maxLevel = GameConfig.MaxProfessionLevel;
             while (progress.Experience >= progress.ExperienceToNext && progress.Level < maxLevel)
             {
@@ -757,6 +758,49 @@ namespace BlazorIdle.Components
                 leveledUp = true;
             }
 
+            // 如果升级且是激活职业，触发属性重算并更新战斗实例
+            // If leveled up and is active profession, recalculate attributes and update battle instance
+            if (leveledUp && expEvent.ProfessionId == SelectedCharacter.ActiveCombatProfessionId)
+            {
+                try
+                {
+                    // 重新计算并应用属性
+                    // Recalculate and apply attributes
+                    await AttributeService.RecalculateAndApplyAsync(SelectedCharacter);
+                    Logger.LogInformation(
+                        "Recalculated attributes for character {CharacterId} after level-up from {OldLevel} to {NewLevel}",
+                        SelectedCharacter.Id, oldLevel, progress.Level);
+
+                    // 更新战斗角色实例的属性
+                    // Update battle character instance attributes
+                    if (playerTeam != null && playerTeam.Members.Count > 0)
+                    {
+                        var battleMember = playerTeam.Members[0];
+                        var battleChar = battleMember.Entity;
+                        
+                        // Update member's max HP (also scales current HP proportionally)
+                        battleMember.UpdateMaxHp(SelectedCharacter.MaxHp);
+                        
+                        // Update character entity stats
+                        battleChar.MaxHp = SelectedCharacter.MaxHp;
+                        battleChar.Hp = Math.Min(battleChar.Hp, battleChar.MaxHp);
+                        battleChar.DamagePerAttack = SelectedCharacter.DamagePerAttack;
+                        battleChar.HastePercent = SelectedCharacter.HastePercent;
+                        battleChar.CritChancePercent = SelectedCharacter.CritChancePercent;
+                        battleChar.CritMultiplier = SelectedCharacter.CritMultiplier;
+                        
+                        Logger.LogInformation(
+                            "Updated combat character instance: HP={HP}/{MaxHP}, Damage={Damage}, Haste={Haste}%, Crit={Crit}%",
+                            battleMember.CurrentHp, battleMember.MaxHp, battleChar.DamagePerAttack, 
+                            battleChar.HastePercent, battleChar.CritChancePercent);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error recalculating attributes during combat level-up");
+                }
+            }
+
             // 记录日志
             var sec = expEvent.TimeMs / 1000.0;
             var charName = string.IsNullOrWhiteSpace(SelectedCharacter?.Name) ? "未知角色" : SelectedCharacter!.Name;
@@ -767,6 +811,10 @@ namespace BlazorIdle.Components
             if (leveledUp)
             {
                 logLine += $" - 🎉 升级到 Lv.{progress.Level}！";
+                if (expEvent.ProfessionId == SelectedCharacter.ActiveCombatProfessionId)
+                {
+                    logLine += $" (属性已实时更新)";
+                }
             }
 
             logs.Add(logLine);
@@ -776,10 +824,10 @@ namespace BlazorIdle.Components
             // Notify parent component that character data has changed
             if (OnCharacterDataChanged.HasDelegate && SelectedCharacter != null)
             {
-                _ = OnCharacterDataChanged.InvokeAsync(SelectedCharacter);
+                await OnCharacterDataChanged.InvokeAsync(SelectedCharacter);
             }
 
-            _ = InvokeAsync(StateHasChanged);
+            await InvokeAsync(StateHasChanged);
         }
 
         /// <summary>
