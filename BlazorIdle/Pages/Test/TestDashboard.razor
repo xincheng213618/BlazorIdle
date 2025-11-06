@@ -110,6 +110,68 @@
             }
         </div>
 
+        <!-- 阶段六测试：边界条件 -->
+        <div class="test-section">
+            <div class="section-header" @onclick="() => ToggleSection(4)">
+                <h4>
+                    <span class="toggle-icon">@(expandedSections.Contains(4) ? "▼" : "▶")</span>
+                    阶段六：边界条件测试
+                </h4>
+                <span class="status-badge @(phase6BoundaryStatus)">@phase6BoundaryStatus</span>
+            </div>
+            
+            @if (expandedSections.Contains(4))
+            {
+                <div class="section-content">
+                    <div class="button-group">
+                        <button class="btn btn-warning" @onclick="RunPhase6BoundaryTests" disabled="@isRunningPhase6Boundary">
+                            @if (isRunningPhase6Boundary)
+                            {
+                                <span class="spinner-small"></span>
+                                <span>测试中...</span>
+                            }
+                            else
+                            {
+                                <span>运行边界条件测试</span>
+                            }
+                        </button>
+                    </div>
+                    <pre class="test-output">@phase6BoundaryOutput</pre>
+                </div>
+            }
+        </div>
+
+        <!-- 阶段六测试：性能测试 -->
+        <div class="test-section">
+            <div class="section-header" @onclick="() => ToggleSection(5)">
+                <h4>
+                    <span class="toggle-icon">@(expandedSections.Contains(5) ? "▼" : "▶")</span>
+                    阶段六：性能测试
+                </h4>
+                <span class="status-badge @(phase6PerformanceStatus)">@phase6PerformanceStatus</span>
+            </div>
+            
+            @if (expandedSections.Contains(5))
+            {
+                <div class="section-content">
+                    <div class="button-group">
+                        <button class="btn btn-danger" @onclick="RunPhase6PerformanceTests" disabled="@isRunningPhase6Performance">
+                            @if (isRunningPhase6Performance)
+                            {
+                                <span class="spinner-small"></span>
+                                <span>测试中...</span>
+                            }
+                            else
+                            {
+                                <span>运行性能测试</span>
+                            }
+                        </button>
+                    </div>
+                    <pre class="test-output">@phase6PerformanceOutput</pre>
+                </div>
+            }
+        </div>
+
         <!-- 一键运行所有测试 -->
         <div class="test-section all-tests">
             <div class="section-content">
@@ -136,15 +198,21 @@
     private bool isRunningPhase2 = false;
     private bool isRunningPhase3 = false;
     private bool isRunningPhase4 = false;
+    private bool isRunningPhase6Boundary = false;
+    private bool isRunningPhase6Performance = false;
     private bool isRunningAll = false;
     
     private string phase2Output = "点击按钮开始测试...";
     private string phase3Output = "点击按钮开始测试...";
     private string phase4Output = "点击按钮开始测试...";
+    private string phase6BoundaryOutput = "点击按钮开始测试...";
+    private string phase6PerformanceOutput = "点击按钮开始测试...";
     
     private string phase2Status = "pending";
     private string phase3Status = "pending";
     private string phase4Status = "pending";
+    private string phase6BoundaryStatus = "pending";
+    private string phase6PerformanceStatus = "pending";
 
     private void ToggleSection(int sectionId)
     {
@@ -166,7 +234,7 @@
         try
         {
             // 展开所有区域
-            expandedSections = new HashSet<int> { 1, 2, 3 };
+            expandedSections = new HashSet<int> { 1, 2, 3, 4, 5 };
             
             await RunPhase2Tests();
             await Task.Delay(500);
@@ -175,6 +243,12 @@
             await Task.Delay(500);
             
             await RunPhase4Tests();
+            await Task.Delay(500);
+            
+            await RunPhase6BoundaryTests();
+            await Task.Delay(500);
+            
+            await RunPhase6PerformanceTests();
         }
         finally
         {
@@ -729,6 +803,350 @@
         catch (Exception ex)
         {
             phase4Output += $"  ✗ 属性保存恢复测试失败: {ex.Message}\n\n";
+        }
+    }
+
+    // ==================== 阶段六：边界条件测试 ====================
+    private async Task RunPhase6BoundaryTests()
+    {
+        isRunningPhase6Boundary = true;
+        phase6BoundaryStatus = "running";
+        phase6BoundaryOutput = "开始阶段六测试（边界条件）...\n\n";
+        StateHasChanged();
+        await Task.Delay(100);
+
+        try
+        {
+            phase6BoundaryOutput += "=".PadLeft(80, '=') + "\n";
+            phase6BoundaryOutput += "阶段六 - 边界条件测试\n";
+            phase6BoundaryOutput += "=".PadLeft(80, '=') + "\n\n";
+
+            // 测试1：极端等级测试
+            phase6BoundaryOutput += "[测试6.2.1] 极端等级测试...\n";
+            
+            var warriorConfig = await ProfessionAttributeService.GetConfigAsync("warrior");
+            if (warriorConfig == null)
+            {
+                phase6BoundaryOutput += "✗ 无法加载战士配置\n";
+                phase6BoundaryStatus = "failed";
+                return;
+            }
+
+            // Level 1 测试
+            phase6BoundaryOutput += "\n=== Level 1 测试（最小值） ===\n";
+            var attrs1 = AttributeCalculator.Calculate(1, warriorConfig);
+            phase6BoundaryOutput += ValidateBoundaryAttributes(attrs1, "Level 1");
+
+            // Level 100 测试
+            phase6BoundaryOutput += "\n=== Level 100 测试（高等级） ===\n";
+            var attrs100 = AttributeCalculator.Calculate(100, warriorConfig);
+            phase6BoundaryOutput += ValidateBoundaryAttributes(attrs100, "Level 100");
+
+            // Level 1000 测试
+            phase6BoundaryOutput += "\n=== Level 1000 测试（极高等级） ===\n";
+            var attrs1000 = AttributeCalculator.Calculate(1000, warriorConfig);
+            phase6BoundaryOutput += ValidateBoundaryAttributes(attrs1000, "Level 1000");
+
+            // 验证上限
+            if (attrs1000.CritChancePercent <= 0.6)
+            {
+                phase6BoundaryOutput += "✓ 暴击率上限正常 (≤60%)\n";
+            }
+            else
+            {
+                phase6BoundaryOutput += $"✗ 暴击率超过上限: {attrs1000.CritChancePercent:P2}\n";
+            }
+
+            if (attrs1000.HastePercent <= 0.4)
+            {
+                phase6BoundaryOutput += "✓ 急速上限正常 (≤40%)\n";
+            }
+            else
+            {
+                phase6BoundaryOutput += $"✗ 急速超过上限: {attrs1000.HastePercent:P2}\n";
+            }
+
+            // 测试2：配置异常测试
+            phase6BoundaryOutput += "\n\n[测试6.2.2] 配置异常测试...\n";
+            var nonExistentConfig = await ProfessionAttributeService.GetConfigAsync("nonexistent");
+            if (nonExistentConfig == null)
+            {
+                phase6BoundaryOutput += "✓ 不存在的职业配置正确返回null\n";
+            }
+            else
+            {
+                phase6BoundaryOutput += "✗ 不存在的职业配置应返回null\n";
+            }
+
+            // 测试3：并发测试
+            phase6BoundaryOutput += "\n[测试6.2.3] 并发测试...\n";
+            
+            var testCharacter = new CharacterData
+            {
+                Id = "boundary-test",
+                UserId = 1,
+                Name = "边界测试角色",
+                ProfessionId = "warrior",
+                ActiveCombatProfessionId = "warrior",
+                Professions = new Dictionary<string, ProfessionProgress>
+                {
+                    ["warrior"] = new ProfessionProgress { ProfessionId = "warrior", Level = 10, Experience = 0 },
+                    ["mage"] = new ProfessionProgress { ProfessionId = "mage", Level = 5, Experience = 0 },
+                    ["ranger"] = new ProfessionProgress { ProfessionId = "ranger", Level = 3, Experience = 0 }
+                }
+            };
+
+            // 快速连续计算
+            phase6BoundaryOutput += "  测试快速连续计算（模拟快速升级）...\n";
+            for (int i = 10; i <= 15; i++)
+            {
+                testCharacter.Professions["warrior"].Level = i;
+                await CharacterAttributeService.RecalculateAndApplyAsync(testCharacter);
+            }
+            phase6BoundaryOutput += "  ✓ 快速连续计算5次完成，未出错\n";
+
+            // 快速切换职业
+            phase6BoundaryOutput += "  测试快速切换职业（3次）...\n";
+            string[] professions = { "warrior", "mage", "ranger" };
+            foreach (var prof in professions)
+            {
+                testCharacter.ActiveCombatProfessionId = prof;
+                testCharacter.ProfessionId = prof;
+                await CharacterAttributeService.RecalculateAndApplyAsync(testCharacter);
+            }
+            phase6BoundaryOutput += "  ✓ 快速切换职业3次完成，未出错\n";
+
+            phase6BoundaryOutput += "\n" + "=".PadLeft(80, '=') + "\n";
+            phase6BoundaryOutput += "✓ 边界条件测试全部完成！\n";
+            phase6BoundaryOutput += "=".PadLeft(80, '=') + "\n";
+
+            phase6BoundaryStatus = "success";
+        }
+        catch (Exception ex)
+        {
+            phase6BoundaryOutput += $"\n✗ 边界条件测试失败: {ex.Message}\n";
+            phase6BoundaryOutput += $"堆栈: {ex.StackTrace}\n";
+            phase6BoundaryStatus = "failed";
+        }
+        finally
+        {
+            isRunningPhase6Boundary = false;
+            StateHasChanged();
+        }
+    }
+
+    private string ValidateBoundaryAttributes(CalculatedAttributes attrs, string label)
+    {
+        var output = "";
+        var hasError = false;
+
+        if (attrs.MainStatTotal < 0)
+        {
+            output += $"✗ {label}: 主属性为负数 {attrs.MainStatTotal}\n";
+            hasError = true;
+        }
+
+        if (attrs.DamagePerAttack < 1)
+        {
+            output += $"✗ {label}: 伤害过低 {attrs.DamagePerAttack}\n";
+            hasError = true;
+        }
+
+        if (attrs.MaxHp < 1)
+        {
+            output += $"✗ {label}: 生命值过低 {attrs.MaxHp}\n";
+            hasError = true;
+        }
+
+        if (attrs.CritChancePercent < 0 || attrs.CritChancePercent > 1)
+        {
+            output += $"✗ {label}: 暴击率异常 {attrs.CritChancePercent:P2}\n";
+            hasError = true;
+        }
+
+        if (attrs.HastePercent < 0 || attrs.HastePercent > 1)
+        {
+            output += $"✗ {label}: 急速异常 {attrs.HastePercent:P2}\n";
+            hasError = true;
+        }
+
+        if (!hasError)
+        {
+            output += $"✓ {label}: 所有属性正常\n";
+            output += $"  主属性={attrs.MainStatTotal}, 伤害={attrs.DamagePerAttack}, " +
+                     $"HP={attrs.MaxHp}, 暴击={attrs.CritChancePercent:P1}, 急速={attrs.HastePercent:P1}\n";
+        }
+
+        return output;
+    }
+
+    // ==================== 阶段六：性能测试 ====================
+    private async Task RunPhase6PerformanceTests()
+    {
+        isRunningPhase6Performance = true;
+        phase6PerformanceStatus = "running";
+        phase6PerformanceOutput = "开始阶段六测试（性能）...\n\n";
+        StateHasChanged();
+        await Task.Delay(100);
+
+        try
+        {
+            phase6PerformanceOutput += "=".PadLeft(80, '=') + "\n";
+            phase6PerformanceOutput += "阶段六 - 性能测试\n";
+            phase6PerformanceOutput += "=".PadLeft(80, '=') + "\n\n";
+
+            var warriorConfig = await ProfessionAttributeService.GetConfigAsync("warrior");
+            if (warriorConfig == null)
+            {
+                phase6PerformanceOutput += "✗ 无法加载战士配置\n";
+                phase6PerformanceStatus = "failed";
+                return;
+            }
+
+            // 测试1：单次计算耗时
+            phase6PerformanceOutput += "[测试6.4.1] 单次计算性能...\n";
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var attrs = AttributeCalculator.Calculate(50, warriorConfig);
+            sw.Stop();
+            phase6PerformanceOutput += $"单次计算耗时: {sw.Elapsed.TotalMilliseconds:F3}ms\n";
+            
+            if (sw.Elapsed.TotalMilliseconds < 1)
+            {
+                phase6PerformanceOutput += "✓ 性能优秀 (<1ms)\n";
+            }
+            else if (sw.Elapsed.TotalMilliseconds < 5)
+            {
+                phase6PerformanceOutput += "⚠ 性能一般 (1-5ms)\n";
+            }
+            else
+            {
+                phase6PerformanceOutput += "✗ 性能较差 (≥5ms)\n";
+            }
+
+            // 测试2：批量计算耗时
+            phase6PerformanceOutput += "\n[测试6.4.2] 批量计算性能（1000次）...\n";
+            sw.Restart();
+            for (int i = 0; i < 1000; i++)
+            {
+                AttributeCalculator.Calculate(i % 100 + 1, warriorConfig);
+            }
+            sw.Stop();
+            phase6PerformanceOutput += $"1000次计算总耗时: {sw.Elapsed.TotalMilliseconds:F1}ms\n";
+            phase6PerformanceOutput += $"平均耗时: {sw.Elapsed.TotalMilliseconds / 1000:F3}ms\n";
+            
+            if (sw.Elapsed.TotalMilliseconds < 100)
+            {
+                phase6PerformanceOutput += "✓ 批量性能优秀 (<100ms)\n";
+            }
+            else if (sw.Elapsed.TotalMilliseconds < 500)
+            {
+                phase6PerformanceOutput += "⚠ 批量性能一般 (100-500ms)\n";
+            }
+            else
+            {
+                phase6PerformanceOutput += "✗ 批量性能较差 (≥500ms)\n";
+            }
+
+            // 测试3：DPS计算耗时
+            phase6PerformanceOutput += "\n[测试6.4.3] DPS计算性能（1000次）...\n";
+            sw.Restart();
+            for (int i = 0; i < 1000; i++)
+            {
+                AttributeCalculator.CalculateTotalDPS(attrs);
+            }
+            sw.Stop();
+            phase6PerformanceOutput += $"1000次DPS计算总耗时: {sw.Elapsed.TotalMilliseconds:F1}ms\n";
+            phase6PerformanceOutput += $"平均耗时: {sw.Elapsed.TotalMilliseconds / 1000:F3}ms\n";
+            
+            if (sw.Elapsed.TotalMilliseconds < 50)
+            {
+                phase6PerformanceOutput += "✓ DPS计算性能优秀 (<50ms)\n";
+            }
+            else
+            {
+                phase6PerformanceOutput += "⚠ DPS计算性能可优化 (≥50ms)\n";
+            }
+
+            // 测试4：内存占用
+            phase6PerformanceOutput += "\n[测试6.4.4] 内存占用测试...\n";
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            var memoryBefore = GC.GetTotalMemory(false);
+            
+            var attrsList = new List<CalculatedAttributes>();
+            for (int i = 0; i < 1000; i++)
+            {
+                attrsList.Add(AttributeCalculator.Calculate(i % 100 + 1, warriorConfig));
+            }
+            
+            var memoryAfter = GC.GetTotalMemory(false);
+            var memoryUsed = (memoryAfter - memoryBefore) / 1024.0;
+            phase6PerformanceOutput += $"1000个属性对象内存占用: {memoryUsed:F1} KB\n";
+            
+            if (memoryUsed < 200)
+            {
+                phase6PerformanceOutput += "✓ 内存占用良好 (<200KB)\n";
+            }
+            else if (memoryUsed < 500)
+            {
+                phase6PerformanceOutput += "⚠ 内存占用一般 (200-500KB)\n";
+            }
+            else
+            {
+                phase6PerformanceOutput += "✗ 内存占用较高 (≥500KB)\n";
+            }
+
+            // 测试5：完整计算流程性能
+            phase6PerformanceOutput += "\n[测试6.4.5] 完整计算流程性能（100次）...\n";
+            var testCharacter = new CharacterData
+            {
+                Id = "perf-test",
+                UserId = 1,
+                Name = "性能测试",
+                ProfessionId = "warrior",
+                ActiveCombatProfessionId = "warrior",
+                Professions = new Dictionary<string, ProfessionProgress>
+                {
+                    ["warrior"] = new ProfessionProgress { ProfessionId = "warrior", Level = 50, Experience = 0 }
+                }
+            };
+
+            sw.Restart();
+            for (int i = 0; i < 100; i++)
+            {
+                await CharacterAttributeService.RecalculateAndApplyAsync(testCharacter);
+            }
+            sw.Stop();
+            
+            phase6PerformanceOutput += $"100次完整计算耗时: {sw.Elapsed.TotalMilliseconds:F1}ms\n";
+            phase6PerformanceOutput += $"平均耗时: {sw.Elapsed.TotalMilliseconds / 100:F2}ms\n";
+            
+            if (sw.Elapsed.TotalMilliseconds < 1000)
+            {
+                phase6PerformanceOutput += "✓ 完整流程性能优秀 (<1000ms)\n";
+            }
+            else
+            {
+                phase6PerformanceOutput += "⚠ 完整流程性能可优化 (≥1000ms)\n";
+            }
+
+            phase6PerformanceOutput += "\n" + "=".PadLeft(80, '=') + "\n";
+            phase6PerformanceOutput += "✓ 性能测试全部完成！\n";
+            phase6PerformanceOutput += "=".PadLeft(80, '=') + "\n";
+
+            phase6PerformanceStatus = "success";
+        }
+        catch (Exception ex)
+        {
+            phase6PerformanceOutput += $"\n✗ 性能测试失败: {ex.Message}\n";
+            phase6PerformanceOutput += $"堆栈: {ex.StackTrace}\n";
+            phase6PerformanceStatus = "failed";
+        }
+        finally
+        {
+            isRunningPhase6Performance = false;
+            StateHasChanged();
         }
     }
 }
