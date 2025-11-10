@@ -13,6 +13,10 @@ namespace BlazorIdle.Game.Skills
         private int _currentTickCasts = 0;
         private int _lastTickTime = 0;
         private const int MaxCastsPerTick = 20;
+        
+        // Counter reset threshold to prevent overflow (reset after ~1 million casts)
+        // 计数器重置阈值，防止溢出（约 100 万次施放后重置）
+        private const int CounterResetThreshold = 1_000_000;
 
         /// <summary>
         /// 施放单个技能
@@ -55,7 +59,8 @@ namespace BlazorIdle.Game.Skills
             return new SkillCastResult
             {
                 DamageDealt = (int)dmg,
-                IsCrit = isCrit
+                IsCrit = isCrit,
+                BundleId = opts.BundleId
             };
         }
 
@@ -79,6 +84,13 @@ namespace BlazorIdle.Game.Skills
             // 生成唯一的 bundleId
             // Generate unique bundleId
             string bundleId = $"bundle_{nowMs}_{_castCounter++}";
+            
+            // Reset counter if it exceeds threshold to prevent overflow
+            // 如果计数器超过阈值则重置，防止溢出
+            if (_castCounter >= CounterResetThreshold)
+            {
+                _castCounter = 0;
+            }
 
             // 顺序施放技能列表
             // Cast skills in sequence

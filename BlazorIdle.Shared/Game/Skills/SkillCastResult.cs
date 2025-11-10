@@ -21,6 +21,12 @@ namespace BlazorIdle.Game.Skills
         public bool IsCrit { get; set; }
 
         /// <summary>
+        /// Bundle ID：记录本次技能施放所属的 bundle
+        /// Bundle ID: records which bundle this skill cast belongs to
+        /// </summary>
+        public string? BundleId { get; set; }
+
+        /// <summary>
         /// 资源变化（预留）
         /// Resource changes (reserved)
         /// Key: 资源类型（如 "rage", "mana"）
