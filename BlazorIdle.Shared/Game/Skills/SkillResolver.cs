@@ -1,0 +1,113 @@
+using System;
+using System.Collections.Generic;
+
+namespace BlazorIdle.Game.Skills
+{
+    /// <summary>
+    /// 技能解析器基础实现 - 统一处理技能效果
+    /// Basic skill resolver implementation - unified skill effect processing
+    /// </summary>
+    public sealed class SkillResolver : ISkillResolver
+    {
+        private int _castCounter = 0;
+        private int _currentTickCasts = 0;
+        private int _lastTickTime = 0;
+        private const int MaxCastsPerTick = 20;
+
+        /// <summary>
+        /// 施放单个技能
+        /// Cast a single skill
+        /// </summary>
+        public SkillCastResult Cast(string skillId, BattleContext ctx, SkillCastOptions? opts = null)
+        {
+            opts ??= new SkillCastOptions();
+
+            // 根据技能类型确定基础伤害
+            // Determine base damage based on skill type
+            int baseDamage = skillId switch
+            {
+                "attack_basic" => ctx.Player?.DamagePerAttack ?? 0,
+                "special_pulse" => ctx.Player?.SpecialDamage ?? 0,
+                "enemy_attack_basic" => ctx.Enemy?.DamagePerHit ?? 0,
+                _ => 0
+            };
+
+            // 应用浮动
+            // Apply variance
+            double variancePct = skillId.StartsWith("enemy_")
+                ? ctx.Enemy?.VariancePct ?? 0.0
+                : ctx.Player?.VariancePct ?? 0.0;
+            double dmg = Math.Floor(ctx.Rng.Jitter(baseDamage, variancePct));
+            if (dmg < 1) dmg = 1;
+
+            // 检查暴击（仅玩家攻击有暴击）
+            // Check for critical hit (only player attacks can crit)
+            bool isCrit = false;
+            if (!skillId.StartsWith("enemy_") && ctx.Player != null)
+            {
+                isCrit = opts.ForceCrit || ctx.Rng.NextDouble() < (ctx.Player.CritChancePercent / 100.0);
+                if (isCrit)
+                {
+                    dmg = Math.Floor(dmg * Math.Max(1.0, ctx.Player.CritMultiplier));
+                }
+            }
+
+            return new SkillCastResult
+            {
+                DamageDealt = (int)dmg,
+                IsCrit = isCrit
+            };
+        }
+
+        /// <summary>
+        /// 成组施放多个技能
+        /// Cast multiple skills as a bundle
+        /// </summary>
+        public IReadOnlyList<SkillCastResult> CastBundle(IReadOnlyList<string> skillIds, BattleContext ctx, SkillCastOptions opts)
+        {
+            // 防超限：重置计数器如果进入新的 tick
+            // Prevent overflow: reset counter if entering new tick
+            int nowMs = ctx.Clock.NowMs;
+            if (nowMs != _lastTickTime)
+            {
+                _lastTickTime = nowMs;
+                _currentTickCasts = 0;
+            }
+
+            var results = new List<SkillCastResult>();
+
+            // 生成唯一的 bundleId
+            // Generate unique bundleId
+            string bundleId = $"bundle_{nowMs}_{_castCounter++}";
+
+            // 顺序施放技能列表
+            // Cast skills in sequence
+            foreach (var skillId in skillIds)
+            {
+                // 上限控制：每 tick 最多施放 MaxCastsPerTick 次
+                // Limit control: max MaxCastsPerTick casts per tick
+                if (_currentTickCasts >= MaxCastsPerTick)
+                {
+                    break;
+                }
+
+                // 创建带 bundleId 的选项
+                // Create options with bundleId
+                var optsWithBundle = new SkillCastOptions
+                {
+                    ForceCrit = opts.ForceCrit,
+                    SourceTrack = opts.SourceTrack,
+                    BundleId = bundleId
+                };
+
+                // 施放技能
+                // Cast skill
+                var result = Cast(skillId, ctx, optsWithBundle);
+                results.Add(result);
+                _currentTickCasts++;
+            }
+
+            return results;
+        }
+    }
+}

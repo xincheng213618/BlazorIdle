@@ -140,13 +140,13 @@
 
 ### 阶段 3：实现 Legacy Track 适配器
 
-**状态：** ⬜ 未开始
+**状态：** ✅ 已完成
 
 **目标：** 封装现有触发逻辑，保持行为不变
 
 **任务清单：**
 
-- [ ] 3.1 创建 `AttackTrackLegacy.cs`（玩家攻击）
+- [x] 3.1 创建 `AttackTrackLegacy.cs`（玩家攻击）
   - 实现 `ITrack` 接口
   - 内部持有 `TrackState` 实例（来自 `CharacterTracks.AttackTrack`）
   - 在 `Tick()` 中调用 `_trackState.CollectTriggers()`
@@ -166,7 +166,7 @@
       // 实现其他成员...
   }
   ```
-- [ ] 3.2 创建 `SpecialTrackLegacy.cs`（玩家特殊技能）
+- [x] 3.2 创建 `SpecialTrackLegacy.cs`（玩家特殊技能）
   - 实现 `ITrack` 接口
   - 内部持有 `TrackState` 实例（来自 `CharacterTracks.SpecialTrack`）
   - 实现 `ShouldAdvance()` 双模式门控函数
@@ -197,7 +197,7 @@
       // 实现其他成员...
   }
   ```
-- [ ] 3.3 创建 `EnemyAttackTrackLegacy.cs`（怪物攻击）
+- [x] 3.3 创建 `EnemyAttackTrackLegacy.cs`（怪物攻击）
   - 实现 `ITrack` 接口
   - 内部持有 `TrackState` 实例（来自 `EnemyTrack.AttackTrack`）
   - 在 `Tick()` 中调用 `_trackState.CollectTriggers()`
@@ -225,22 +225,22 @@
 - ✅ SpecialTrackLegacy 的门控函数正确实现
 - ✅ EnemyAttackTrackLegacy 能正确处理怪物攻击
 
-**完成时间：** _待填写_
+**完成时间：** 2025-11-10
 
-**提交哈希：** _待填写_
+**提交哈希：** _本次提交_
 
 ---
 
 ### 阶段 4：实现 SkillResolver 基础版
 
-**状态：** ⬜ 未开始
+**状态：** ✅ 已完成
 
 **目标：** 实现统一的技能效果处理器
 
 **任务清单：**
 
-- [ ] 4.1 创建 `SkillResolver.cs` 实现 `ISkillResolver`
-- [ ] 4.2 实现 `Cast()` 方法
+- [x] 4.1 创建 `SkillResolver.cs` 实现 `ISkillResolver`
+- [x] 4.2 实现 `Cast()` 方法
   - 处理 "attack_basic" 技能（玩家普攻）
   - 处理 "special_pulse" 技能（玩家特殊技能，可能是 AOE）
   - 处理 "enemy_attack_basic" 技能（怪物攻击）
@@ -287,7 +287,7 @@
       };
   }
   ```
-- [ ] 4.3 实现 `CastBundle()` 方法
+- [x] 4.3 实现 `CastBundle()` 方法
   - 顺序施放技能列表
   - 主技能（索引0）必施放
   - 跟随技能独立检查（暂时跳过，因为 Step 0 没有随技能）
@@ -338,9 +338,9 @@
 - ✅ CastBundle 防递归和上限控制生效
 - ✅ bundleId 唯一且正确关联
 
-**完成时间：** _待填写_
+**完成时间：** 2025-11-10
 
-**提交哈希：** _待填写_
+**提交哈希：** _本次提交_
 
 ---
 
@@ -1051,10 +1051,10 @@ Phase 7 将直接实现新架构，无需实现 `ProcessCharacterActionsLegacy` 
 
 | 阶段 | 状态 | 完成时间 | 提交哈希 |
 |------|------|----------|----------|
-| 阶段 1 - 核心接口 | ✅ 已完成 | 2025-11-10 | _本次提交_ |
-| 阶段 2 - Track 抽象 | ✅ 已完成 | 2025-11-10 | _本次提交_ |
-| 阶段 3 - Legacy 适配器 | ⬜ 未开始 | - | - |
-| 阶段 4 - SkillResolver | ⬜ 未开始 | - | - |
+| 阶段 1 - 核心接口 | ✅ 已完成 | 2025-11-10 | 43af07a |
+| 阶段 2 - Track 抽象 | ✅ 已完成 | 2025-11-10 | 43af07a |
+| 阶段 3 - Legacy 适配器 | ✅ 已完成 | 2025-11-10 | _本次提交_ |
+| 阶段 4 - SkillResolver | ✅ 已完成 | 2025-11-10 | _本次提交_ |
 | 阶段 5 - CastingController | ⬜ 未开始 | - | - |
 | 阶段 6 - 配置系统 | ⬜ 未开始 | - | - |
 | 阶段 7 - MultiBattleInstance 集成 | ⬜ 未开始 | - | - |
@@ -1063,7 +1063,7 @@ Phase 7 将直接实现新架构，无需实现 `ProcessCharacterActionsLegacy` 
 | 阶段 10 - 验收测试 | ⬜ 未开始 | - | - |
 | 最终清理 | ⬜ 未开始 | - | - |
 
-**总体进度：** 2/10 (20%)（注：阶段 9 已简化取消）
+**总体进度：** 4/10 (40%)（注：阶段 9 已简化取消）
 
 ---
 
