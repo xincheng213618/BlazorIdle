@@ -417,6 +417,7 @@
       public bool UseChargeTracks { get; set; } = false;      // 后续切换充能条
       public bool EmitCastEvents { get; set; } = true;        // 便于调试
       public int MaxTriggersPerTick { get; set; } = 20;       // 防极端情况
+      // 注：不再需要 UseLegacyPath 开关，直接实现新架构，有问题可使用 git revert
   }
   ```
 - [ ] 6.2 创建 `TrackConfigCollection.cs`
@@ -755,200 +756,28 @@
 
 ---
 
-### 阶段 9：添加回滚开关
+### ~~阶段 9：添加回滚开关~~（已简化）
 
-**状态：** ⬜ 未开始
+**状态：** ⬜ 已取消
 
-**目标：** 确保可以快速回退到旧代码
+**说明：** 
 
-**任务清单：**
+根据实际需求分析，决定不实现回滚开关功能。理由如下：
 
-- [ ] 9.1 在 `CombatConfig` 中添加回滚开关
-  ```csharp
-  public sealed class CombatConfig
-  {
-      public bool UseLegacyPath { get; set; } = false;  // true = 使用旧代码
-      public bool UseChargeTracks { get; set; } = false;
-      public bool EmitCastEvents { get; set; } = true;
-      public int MaxTriggersPerTick { get; set; } = 20;
-  }
-  ```
-- [ ] 9.2 在 `MultiBattleInstance.AdvanceTick()` 中添加分支
-  ```csharp
-  public void AdvanceTick(int tickMs)
-  {
-      if (!_running) return;
-      
-      _clock.AdvanceBy(tickMs);
-      int now = _clock.NowMs;
-      
-      // 冷却逻辑...
-      
-      if (_state == MultiBattleState.Fighting)
-      {
-          if (_combatConfig.UseLegacyPath)
-          {
-              // 旧路径：直接使用 TrackState
-              ProcessCharacterActionsLegacy(now);
-              ProcessEnemyActionsLegacy(now);
-          }
-          else
-          {
-              // 新路径：使用 Track + SkillResolver
-              ProcessCharacterActionsNew(now);
-              ProcessEnemyActionsNew(now);
-          }
-      }
-      
-      // 检查战斗状态
-      CheckBattleState(now);
-      
-      // 处理段落聚合
-      var seg = _aggregator.Tick(now, _rng.Index);
-      if (seg != null) _segments.Add(seg);
-  }
-  
-  private void ProcessCharacterActionsLegacy(int now)
-  {
-      // 复制原有的触发逻辑
-      var aliveCharIds = _playerTeam.GetAliveMemberIds();
-      
-      foreach (var charId in aliveCharIds)
-      {
-          if (!_characterTracks.TryGetValue(charId, out var tracks))
-              continue;
-          
-          if (!tracks.IsEnabled)
-              continue;
-          
-          var character = tracks.Character;
-          
-          // 处理普通攻击
-          var atkCount = tracks.AttackTrack.CollectTriggers(now);
-          for (int i = 0; i < atkCount; i++)
-          {
-              ProcessCharacterAttack(charId, character);
-          }
-          
-          // 处理特殊技能
-          var spCount = tracks.SpecialTrack.CollectTriggers(now);
-          for (int i = 0; i < spCount; i++)
-          {
-              ProcessCharacterSpecial(charId, character);
-          }
-      }
-  }
-  
-  private void ProcessEnemyActionsLegacy(int now)
-  {
-      // 复制原有的敌人攻击逻辑
-      var aliveEnemyIds = _enemyTeam.GetAliveMemberIds();
-      
-      foreach (var enemyId in aliveEnemyIds)
-      {
-          if (!_enemyTracks.TryGetValue(enemyId, out var track))
-              continue;
-          
-          if (!track.IsEnabled)
-              continue;
-          
-          var enemy = track.Enemy;
-          
-          var count = track.AttackTrack.CollectTriggers(now);
-          for (int i = 0; i < count; i++)
-          {
-              ProcessEnemyAttack(enemyId, enemy);
-          }
-      }
-  }
-  
-  private void ProcessCharacterActionsNew(int now)
-  {
-      // 新架构逻辑：使用 Legacy Track + SkillResolver
-      var aliveCharIds = _playerTeam.GetAliveMemberIds();
-      double dt = (now - _lastTickTime) / 1000.0;
-      
-      foreach (var charId in aliveCharIds)
-      {
-          if (!_characterTracks.TryGetValue(charId, out var tracks))
-              continue;
-          
-          if (!tracks.IsEnabled)
-              continue;
-          
-          _castingController.Tick(dt);
-          
-          if (_attackTracksLegacy.TryGetValue(charId, out var attackTrack))
-          {
-              var battleContext = CreateBattleContext(tracks.Character);
-              attackTrack.Tick(dt, battleContext);
-          }
-          
-          if (_specialTracksLegacy.TryGetValue(charId, out var specialTrack))
-          {
-              var battleContext = CreateBattleContext(tracks.Character);
-              specialTrack.Tick(dt, battleContext);
-          }
-      }
-  }
-  
-  private void ProcessEnemyActionsNew(int now)
-  {
-      // 新架构逻辑：使用 EnemyAttackTrackLegacy + SkillResolver
-      var aliveEnemyIds = _enemyTeam.GetAliveMemberIds();
-      double dt = (now - _lastTickTime) / 1000.0;
-      
-      foreach (var enemyId in aliveEnemyIds)
-      {
-          if (!_enemyTracks.TryGetValue(enemyId, out var track))
-              continue;
-          
-          if (!track.IsEnabled)
-              continue;
-          
-          if (_enemyAttackTracksLegacy.TryGetValue(enemyId, out var enemyAttackTrack))
-          {
-              var battleContext = CreateBattleContext(track.Enemy);
-              enemyAttackTrack.Tick(dt, battleContext);
-          }
-      }
-  }
-  
-  // 辅助方法：创建战斗上下文
-  private BattleContext CreateBattleContext(Character character)
-  {
-      return new BattleContext
-      {
-          Player = character,
-          PlayerTeam = _playerTeam,
-          EnemyTeam = _enemyTeam,
-          Rng = _rng,
-          Clock = _clock
-      };
-  }
-  
-  private BattleContext CreateBattleContext(Enemy enemy)
-  {
-      return new BattleContext
-      {
-          Enemy = enemy,
-          PlayerTeam = _playerTeam,
-          EnemyTeam = _enemyTeam,
-          Rng = _rng,
-          Clock = _clock
-      };
-  }
-  ```
-- [ ] 9.3 添加单元测试验证两条路径结果一致
+- **Git 版本控制已足够**：如果新实现有问题，可直接使用 `git revert` 或 `git reset` 回退
+- **简化实现流程**：避免维护两套代码路径，减少代码复杂度
+- **降低维护成本**：无需维护 `UseLegacyPath` 开关及其相关的分支逻辑
+- **更清晰的代码**：直接实现新架构，代码更易理解和维护
 
-**验收标准：**
-- ✅ 切换开关后，战斗数值完全不变
-- ✅ 两条路径的测试结果一致
-- ✅ 回滚路径与原始代码完全相同
+**替代方案：**
 
-**完成时间：** _待填写_
+1. 在 Phase 7 实施前，创建一个明确的 git tag（如 `before-skill-resolver-integration`）
+2. 如需回退，使用 `git revert <commit-range>` 或 `git reset --hard <tag>`
+3. 使用功能分支开发，确保 main 分支稳定性
 
-**提交哈希：** _待填写_
+**集成方法调整：**
+
+Phase 7 将直接实现新架构，无需实现 `ProcessCharacterActionsLegacy` 和 `ProcessCharacterActionsNew` 双路径。直接修改现有的 `ProcessCharacterActions` 和 `ProcessEnemyActions` 方法即可。
 
 ---
 
@@ -958,7 +787,24 @@
 
 **目标：** 确保改造后与改造前完全等价
 
+**前置条件：** 在 Phase 7 实施前，必须先创建基线数据用于对比测试
+
 **任务清单：**
+
+- [ ] 10.0 创建基线数据（在 Phase 7 实施前完成）
+  - 运行现有战斗系统，记录关键场景的战斗数据
+  - 保存为 JSON 文件供后续测试使用
+  - 建议场景：标准战斗、多角色协同、AOE 技能、不同目标策略
+  ```csharp
+  // 示例：生成基线数据
+  var battle = CreateMultiBattle();
+  for (int i = 0; i < 1000; i++)
+  {
+      battle.AdvanceTick(100);
+  }
+  var baseline = battle.BuildDigest();
+  SaveBaseline("standard_battle_1000ticks", baseline);
+  ```
 
 - [ ] 10.1 创建 `SkillResolverTests.cs`
   ```csharp
@@ -1008,79 +854,75 @@
   ```
 - [ ] 10.3 创建 `MultiBattleInstanceIntegrationTests.cs`
   ```csharp
+  // 说明：由于不再维护 Legacy 路径，这些测试应该对比实施前的基线快照
+  // 建议在 Phase 7 实施前，先运行现有战斗系统创建基线数据用于对比
+  
   [Fact]
-  public void MultiBattle_LegacyVsNew_ProducesSameResults()
+  public void MultiBattle_MatchesBaselinePerformance()
   {
-      // A/B 对比测试
-      // 运行 1000 tick，对比两条路径
-      var legacyBattle = CreateMultiBattle(useLegacy: true);
-      var newBattle = CreateMultiBattle(useLegacy: false);
+      // 对比新实现与基线数据
+      // 基线数据应在实施前通过运行现有系统获取并保存
+      var battle = CreateMultiBattle();
       
       for (int i = 0; i < 1000; i++)
       {
-          legacyBattle.AdvanceTick(100);
-          newBattle.AdvanceTick(100);
+          battle.AdvanceTick(100);
       }
       
-      var legacyDigest = legacyBattle.BuildDigest();
-      var newDigest = newBattle.BuildDigest();
+      var digest = battle.BuildDigest();
+      var baseline = LoadBaselineData("standard_battle_1000ticks");
       
-      // 验证总伤害
-      Assert.InRange(newDigest.TotalDamage, 
-                     legacyDigest.TotalDamage * 0.99, 
-                     legacyDigest.TotalDamage * 1.01);
+      // 验证总伤害与基线一致（允许 1% 误差）
+      Assert.InRange(digest.TotalDamage, 
+                     baseline.TotalDamage * 0.99, 
+                     baseline.TotalDamage * 1.01);
       
       // 验证 DPS
-      double legacyDps = legacyDigest.TotalDamage / (legacyDigest.DurationMs / 1000.0);
-      double newDps = newDigest.TotalDamage / (newDigest.DurationMs / 1000.0);
-      Assert.InRange(newDps, legacyDps * 0.99, legacyDps * 1.01);
+      double actualDps = digest.TotalDamage / (digest.DurationMs / 1000.0);
+      double baselineDps = baseline.TotalDamage / (baseline.DurationMs / 1000.0);
+      Assert.InRange(actualDps, baselineDps * 0.99, baselineDps * 1.01);
   }
   
   [Fact]
-  public void EnemyAttack_LegacyVsNew_ProducesSameResults()
+  public void EnemyAttack_MatchesBaselineBehavior()
   {
-      // 专门测试怪物攻击逻辑是否一致
-      var legacyBattle = CreateMultiBattle(useLegacy: true);
-      var newBattle = CreateMultiBattle(useLegacy: false);
+      // 测试怪物攻击逻辑与基线一致
+      var battle = CreateMultiBattle();
       
       for (int i = 0; i < 500; i++)
       {
-          legacyBattle.AdvanceTick(100);
-          newBattle.AdvanceTick(100);
+          battle.AdvanceTick(100);
       }
       
-      var legacySnapshot = legacyBattle.GetSnapshot();
-      var newSnapshot = newBattle.GetSnapshot();
+      var snapshot = battle.GetSnapshot();
+      var baseline = LoadBaselineData("enemy_attack_500ticks");
       
-      // 验证玩家受到的总伤害一致
-      Assert.InRange(newSnapshot.TotalEnemyDamage,
-                     legacySnapshot.TotalEnemyDamage * 0.99,
-                     legacySnapshot.TotalEnemyDamage * 1.01);
+      // 验证玩家受到的总伤害与基线一致
+      Assert.InRange(snapshot.TotalEnemyDamage,
+                     baseline.TotalEnemyDamage * 0.99,
+                     baseline.TotalEnemyDamage * 1.01);
   }
   
   [Fact]
-  public void MultiCharacter_CoordinatedAttacks_ProduceSameResults()
+  public void MultiCharacter_CoordinatedAttacks_MatchesBaseline()
   {
       // 测试多角色协同攻击
       var playerTeam = CreatePlayerTeam(characterCount: 3);
       var enemyTeam = CreateEnemyTeam(enemyCount: 2);
-      
-      var legacyBattle = CreateMultiBattle(playerTeam, enemyTeam, useLegacy: true);
-      var newBattle = CreateMultiBattle(playerTeam, enemyTeam, useLegacy: false);
+      var battle = CreateMultiBattle(playerTeam, enemyTeam);
       
       for (int i = 0; i < 1000; i++)
       {
-          legacyBattle.AdvanceTick(100);
-          newBattle.AdvanceTick(100);
+          battle.AdvanceTick(100);
       }
       
-      var legacySnapshot = legacyBattle.GetSnapshot();
-      var newSnapshot = newBattle.GetSnapshot();
+      var snapshot = battle.GetSnapshot();
+      var baseline = LoadBaselineData("multi_character_3v2_1000ticks");
       
-      // 验证多角色总输出一致
-      Assert.InRange(newSnapshot.TotalPlayerDamage,
-                     legacySnapshot.TotalPlayerDamage * 0.99,
-                     legacySnapshot.TotalPlayerDamage * 1.01);
+      // 验证多角色总输出与基线一致
+      Assert.InRange(snapshot.TotalPlayerDamage,
+                     baseline.TotalPlayerDamage * 0.99,
+                     baseline.TotalPlayerDamage * 1.01);
   }
   
   [Fact]
@@ -1089,30 +931,26 @@
       // 测试 AOE 技能对多个敌人的伤害一致性
       var playerTeam = CreatePlayerTeam(characterCount: 1);
       var enemyTeam = CreateEnemyTeam(enemyCount: 5);
+      var battle = CreateMultiBattle(playerTeam, enemyTeam);
       
-      var legacyBattle = CreateMultiBattle(playerTeam, enemyTeam, useLegacy: true);
-      var newBattle = CreateMultiBattle(playerTeam, enemyTeam, useLegacy: false);
-      
-      // 触发特殊技能
       for (int i = 0; i < 500; i++)
       {
-          legacyBattle.AdvanceTick(100);
-          newBattle.AdvanceTick(100);
+          battle.AdvanceTick(100);
       }
       
-      var legacySnapshot = legacyBattle.GetSnapshot();
-      var newSnapshot = newBattle.GetSnapshot();
+      var snapshot = battle.GetSnapshot();
+      var baseline = LoadBaselineData("aoe_special_1v5_500ticks");
       
-      // 验证 AOE 伤害分配一致
-      Assert.InRange(newSnapshot.TotalPlayerDamage,
-                     legacySnapshot.TotalPlayerDamage * 0.99,
-                     legacySnapshot.TotalPlayerDamage * 1.01);
+      // 验证 AOE 伤害分配与基线一致
+      Assert.InRange(snapshot.TotalPlayerDamage,
+                     baseline.TotalPlayerDamage * 0.99,
+                     baseline.TotalPlayerDamage * 1.01);
   }
   
   [Fact]
   public void TargetSelection_DifferentStrategies_ConsistentBehavior()
   {
-      // 测试不同目标选择策略的一致性
+      // 测试不同目标选择策略的行为正确性
       var strategies = new[] 
       { 
           TargetStrategy.Random,
@@ -1124,21 +962,22 @@
       foreach (var strategy in strategies)
       {
           var config = new MultiBattleConfig { PlayerTargetStrategy = strategy };
-          var legacyBattle = CreateMultiBattle(config, useLegacy: true);
-          var newBattle = CreateMultiBattle(config, useLegacy: false);
+          var battle = CreateMultiBattle(config);
+          var baseline = LoadBaselineData($"target_strategy_{strategy}_300ticks");
           
-          // 设置相同的随机种子确保可比性
+          // 使用与基线相同的随机种子
           for (int i = 0; i < 300; i++)
           {
-              legacyBattle.AdvanceTick(100);
-              newBattle.AdvanceTick(100);
+              battle.AdvanceTick(100);
           }
           
-          var legacySnapshot = legacyBattle.GetSnapshot();
-          var newSnapshot = newBattle.GetSnapshot();
+          var snapshot = battle.GetSnapshot();
           
-          // 验证目标选择行为一致
-          Assert.Equal(legacySnapshot.State, newSnapshot.State);
+          // 验证目标选择行为与基线一致
+          Assert.Equal(baseline.State, snapshot.State);
+          Assert.InRange(snapshot.TotalPlayerDamage,
+                        baseline.TotalPlayerDamage * 0.95,
+                        baseline.TotalPlayerDamage * 1.05);
       }
   }
   ```
@@ -1164,11 +1003,12 @@
 
 **验收标准：**
 - ✅ 所有单元测试通过
-- ✅ A/B 对比测试：总伤害误差 < 1%
-- ✅ DPS 误差 < 1%
-- ✅ 触发次数一致
+- ✅ 与基线对比测试：总伤害误差 < 1%
+- ✅ DPS 与基线误差 < 1%
+- ✅ 触发次数与基线一致
 - ✅ 性能测试：1000 tick < 50ms
 - ✅ 暴击分布统计学等价
+- ✅ 多单位战斗场景正确性验证
 
 **完成时间：** _待填写_
 
@@ -1184,25 +1024,22 @@
 
 **任务清单：**
 
-- [ ] 11.1 移除回滚开关（`UseLegacyPath`）
-- [ ] 11.2 删除 `AdvanceTickLegacy()` 方法
-- [ ] 11.3 删除旧的直接触发逻辑代码
-- [ ] 11.4 清理注释掉的旧代码
-- [ ] 11.5 更新相关文档
+- [ ] 11.1 清理调试代码和临时注释
+- [ ] 11.2 更新相关文档
   - [ ] 更新 `docs/buff与技能设计/docs_step0_第0步-设计方案.md`，标记为"已完成"
   - [ ] 在文档中添加"实施总结"部分
-- [ ] 11.6 最终代码审查
+- [ ] 11.3 最终代码审查
   - [ ] 确保没有死代码
   - [ ] 确保命名一致
   - [ ] 确保注释准确
-- [ ] 11.7 运行完整测试套件
-- [ ] 11.8 提交最终版本
+- [ ] 11.4 运行完整测试套件
+- [ ] 11.5 提交最终版本并创建 release tag
 
 **验收标准：**
-- ✅ 代码库中无旧逻辑残留
-- ✅ 所有测试通过
 - ✅ 代码整洁可读
+- ✅ 所有测试通过
 - ✅ 文档已更新
+- ✅ 无调试代码残留
 
 **完成时间：** _待填写_
 
@@ -1222,21 +1059,22 @@
 | 阶段 6 - 配置系统 | ⬜ 未开始 | - | - |
 | 阶段 7 - MultiBattleInstance 集成 | ⬜ 未开始 | - | - |
 | 阶段 8 - 事件系统 | ⬜ 未开始 | - | - |
-| 阶段 9 - 回滚开关 | ⬜ 未开始 | - | - |
+| ~~阶段 9 - 回滚开关~~ | ⬜ 已取消 | - | - |
 | 阶段 10 - 验收测试 | ⬜ 未开始 | - | - |
 | 最终清理 | ⬜ 未开始 | - | - |
 
-**总体进度：** 0/11 (0%)
+**总体进度：** 0/10 (0%)（注：阶段 9 已简化取消）
 
 ---
 
 ## 🎯 验收指标汇总
 
 ### 功能验收
-- [ ] 普攻频率：与改造前误差 < 0.1%
-- [ ] Special触发：与改造前误差 < 0.1%
+- [ ] 普攻频率：与基线误差 < 0.1%
+- [ ] Special触发：与基线误差 < 0.1%
 - [ ] 暴击分布：统计学等价
 - [ ] DPS计算：理论值与实测值匹配
+- [ ] 怪物攻击：与基线行为一致
 
 ### 可观测性验收
 - [ ] Segment 包含 SkillCastEvent
