@@ -42,7 +42,7 @@
   public sealed class SkillCastOptions
   {
       public bool ForceCrit { get; set; } = false;
-      public string SourceTrack { get; set; } = "";  // "attack" | "special" | "manual"
+      public string SourceTrack { get; set; } = "";  // "attack" | "special" | "enemy_attack" | "manual"
       public string? BundleId { get; set; }
   }
   ```
@@ -913,6 +913,31 @@
           }
       }
   }
+  
+  // 辅助方法：创建战斗上下文
+  private BattleContext CreateBattleContext(Character character)
+  {
+      return new BattleContext
+      {
+          Player = character,
+          PlayerTeam = _playerTeam,
+          EnemyTeam = _enemyTeam,
+          Rng = _rng,
+          Clock = _clock
+      };
+  }
+  
+  private BattleContext CreateBattleContext(Enemy enemy)
+  {
+      return new BattleContext
+      {
+          Enemy = enemy,
+          PlayerTeam = _playerTeam,
+          EnemyTeam = _enemyTeam,
+          Rng = _rng,
+          Clock = _clock
+      };
+  }
   ```
 - [ ] 9.3 添加单元测试验证两条路径结果一致
 
@@ -1032,6 +1057,90 @@
                      legacySnapshot.TotalEnemyDamage * 0.99,
                      legacySnapshot.TotalEnemyDamage * 1.01);
   }
+  
+  [Fact]
+  public void MultiCharacter_CoordinatedAttacks_ProduceSameResults()
+  {
+      // 测试多角色协同攻击
+      var playerTeam = CreatePlayerTeam(characterCount: 3);
+      var enemyTeam = CreateEnemyTeam(enemyCount: 2);
+      
+      var legacyBattle = CreateMultiBattle(playerTeam, enemyTeam, useLegacy: true);
+      var newBattle = CreateMultiBattle(playerTeam, enemyTeam, useLegacy: false);
+      
+      for (int i = 0; i < 1000; i++)
+      {
+          legacyBattle.AdvanceTick(100);
+          newBattle.AdvanceTick(100);
+      }
+      
+      var legacySnapshot = legacyBattle.GetSnapshot();
+      var newSnapshot = newBattle.GetSnapshot();
+      
+      // 验证多角色总输出一致
+      Assert.InRange(newSnapshot.TotalPlayerDamage,
+                     legacySnapshot.TotalPlayerDamage * 0.99,
+                     legacySnapshot.TotalPlayerDamage * 1.01);
+  }
+  
+  [Fact]
+  public void AoeSpecial_MultipleEnemies_DamageConsistency()
+  {
+      // 测试 AOE 技能对多个敌人的伤害一致性
+      var playerTeam = CreatePlayerTeam(characterCount: 1);
+      var enemyTeam = CreateEnemyTeam(enemyCount: 5);
+      
+      var legacyBattle = CreateMultiBattle(playerTeam, enemyTeam, useLegacy: true);
+      var newBattle = CreateMultiBattle(playerTeam, enemyTeam, useLegacy: false);
+      
+      // 触发特殊技能
+      for (int i = 0; i < 500; i++)
+      {
+          legacyBattle.AdvanceTick(100);
+          newBattle.AdvanceTick(100);
+      }
+      
+      var legacySnapshot = legacyBattle.GetSnapshot();
+      var newSnapshot = newBattle.GetSnapshot();
+      
+      // 验证 AOE 伤害分配一致
+      Assert.InRange(newSnapshot.TotalPlayerDamage,
+                     legacySnapshot.TotalPlayerDamage * 0.99,
+                     legacySnapshot.TotalPlayerDamage * 1.01);
+  }
+  
+  [Fact]
+  public void TargetSelection_DifferentStrategies_ConsistentBehavior()
+  {
+      // 测试不同目标选择策略的一致性
+      var strategies = new[] 
+      { 
+          TargetStrategy.Random,
+          TargetStrategy.LowestHp,
+          TargetStrategy.LowestHpPercent,
+          TargetStrategy.HighestHp
+      };
+      
+      foreach (var strategy in strategies)
+      {
+          var config = new MultiBattleConfig { PlayerTargetStrategy = strategy };
+          var legacyBattle = CreateMultiBattle(config, useLegacy: true);
+          var newBattle = CreateMultiBattle(config, useLegacy: false);
+          
+          // 设置相同的随机种子确保可比性
+          for (int i = 0; i < 300; i++)
+          {
+              legacyBattle.AdvanceTick(100);
+              newBattle.AdvanceTick(100);
+          }
+          
+          var legacySnapshot = legacyBattle.GetSnapshot();
+          var newSnapshot = newBattle.GetSnapshot();
+          
+          // 验证目标选择行为一致
+          Assert.Equal(legacySnapshot.State, newSnapshot.State);
+      }
+  }
   ```
 - [ ] 10.4 创建性能测试
   ```csharp
@@ -1111,7 +1220,7 @@
 | 阶段 4 - SkillResolver | ⬜ 未开始 | - | - |
 | 阶段 5 - CastingController | ⬜ 未开始 | - | - |
 | 阶段 6 - 配置系统 | ⬜ 未开始 | - | - |
-| 阶段 7 - BattleInstance 集成 | ⬜ 未开始 | - | - |
+| 阶段 7 - MultiBattleInstance 集成 | ⬜ 未开始 | - | - |
 | 阶段 8 - 事件系统 | ⬜ 未开始 | - | - |
 | 阶段 9 - 回滚开关 | ⬜ 未开始 | - | - |
 | 阶段 10 - 验收测试 | ⬜ 未开始 | - | - |
@@ -1189,6 +1298,15 @@
 - [角色属性设计](../角色属性设计/)
 
 ## 📌 实际实现说明
+
+### 与设计文档的关系
+
+**重要说明：**
+- 本实施进度追踪文档基于 [Step 0 设计方案](./docs_step0_第0步-设计方案.md) 编写
+- 设计方案中的示例基于**单体战斗场景**（`BattleInstance`），主要用于说明核心设计思路
+- 实际实现已扩展为**多单位战斗场景**（`MultiBattleInstance` + `DungeonManager`）
+- **核心设计思路保持不变**：统一 SkillCast 管道、Track 抽象、Legacy 适配器等
+- **实施差异**：需要为每个角色和敌人创建独立的 Track 实例，而非单个全局 Track
 
 ### 战斗系统架构
 
