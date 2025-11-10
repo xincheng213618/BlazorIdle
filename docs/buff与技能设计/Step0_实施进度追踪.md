@@ -6,9 +6,21 @@
 
 **目标：** 在不改变现有玩法与数值表现的前提下，为后续 Buff/技能系统预留最小抽象与接口。
 
+**当前战斗系统架构：**
+- 使用 `MultiBattleInstance` 处理多角色对多怪物的战斗
+- 使用 `DungeonManager` 管理副本进度和波次切换
+- 使用 `CharacterTracks` 管理每个角色的攻击和特殊技能轨道
+- 使用 `EnemyTrack` 管理每个敌人的攻击轨道（**怪物攻击已使用 Track 系统**）
+- 前端通过 `BattleDemo.razor` 组件与战斗系统交互
+- `BattleInstance`（单体战斗）已被 `MultiBattleInstance`（多单位战斗）替代
+
+**重要变更：**
+- ⚠️ **怪物攻击逻辑已更新**：怪物攻击现在通过 `EnemyTrack.AttackTrack` 管理，使用与玩家类似的 Track 系统
+- ⚠️ **不再使用 BattleInstance**：文档中涉及 `BattleInstance` 的部分需要更新为 `MultiBattleInstance`
+
 **原则：**
 - ✅ 保持当前 Attack 频率、Special 触发节奏与数值不变
-- ✅ 所有触发统一走 SkillCast 管道
+- ✅ 所有触发统一走 SkillCast 管道（包括玩家和怪物攻击）
 - ✅ 引入 Track 抽象（Legacy 适配器）
 - ✅ 预留但不启用：施法、Buff、资源等功能
 
@@ -56,8 +68,10 @@
   ```csharp
   public sealed class BattleContext
   {
-      public Character Player { get; init; }
-      public Enemy Enemy { get; init; }
+      public Character? Player { get; init; }  // 可选，用于玩家技能
+      public Enemy? Enemy { get; init; }       // 可选，用于敌人技能
+      public BattleTeam<Character>? PlayerTeam { get; init; }  // 多单位战斗的玩家队伍
+      public BattleTeam<Enemy>? EnemyTeam { get; init; }       // 多单位战斗的敌人队伍
       public RngContext Rng { get; init; }
       public IGameClock Clock { get; init; }
       // 预留其他上下文字段
@@ -132,9 +146,9 @@
 
 **任务清单：**
 
-- [ ] 3.1 创建 `AttackTrackLegacy.cs`
+- [ ] 3.1 创建 `AttackTrackLegacy.cs`（玩家攻击）
   - 实现 `ITrack` 接口
-  - 内部持有 `TrackState` 实例
+  - 内部持有 `TrackState` 实例（来自 `CharacterTracks.AttackTrack`）
   - 在 `Tick()` 中调用 `_trackState.CollectTriggers()`
   - 触发时调用 `skillResolver.CastBundle(["attack_basic"])`
   - 保持 APS 和 Haste 计算逻辑
@@ -152,9 +166,9 @@
       // 实现其他成员...
   }
   ```
-- [ ] 3.2 创建 `SpecialTrackLegacy.cs`
+- [ ] 3.2 创建 `SpecialTrackLegacy.cs`（玩家特殊技能）
   - 实现 `ITrack` 接口
-  - 内部持有 `TrackState` 实例
+  - 内部持有 `TrackState` 实例（来自 `CharacterTracks.SpecialTrack`）
   - 实现 `ShouldAdvance()` 双模式门控函数
   - 默认使用 `ProgressPolicy.Presence`
   - 触发时调用 `skillResolver.CastBundle(["special_pulse"])`
@@ -172,7 +186,7 @@
       private bool ShouldAdvance(BattleContext ctx)
       {
           bool encounterActive = /* 根据上下文判断 */;
-          bool enemiesAlive = ctx.Enemy.Hp > 0;
+          bool enemiesAlive = ctx.EnemyTeam.AliveCount > 0;  // 多单位战斗
           
           if (_config.ProgressPolicy == ProgressPolicy.Presence)
               return encounterActive && enemiesAlive && !_isSuspended;
@@ -183,12 +197,33 @@
       // 实现其他成员...
   }
   ```
+- [ ] 3.3 创建 `EnemyAttackTrackLegacy.cs`（怪物攻击）
+  - 实现 `ITrack` 接口
+  - 内部持有 `TrackState` 实例（来自 `EnemyTrack.AttackTrack`）
+  - 在 `Tick()` 中调用 `_trackState.CollectTriggers()`
+  - 触发时调用 `skillResolver.CastBundle(["enemy_attack_basic"])`
+  - 保持现有的怪物攻击间隔计算逻辑
+  ```csharp
+  public sealed class EnemyAttackTrackLegacy : ITrack
+  {
+      private readonly TrackState _trackState;
+      private readonly ISkillResolver _skillResolver;
+      private readonly TrackConfig _config;
+      private bool _isSuspended = false;
+      
+      public string Id => "enemy_attack";
+      public bool IsSuspended => _isSuspended;
+      
+      // 实现其他成员...
+  }
+  ```
 
 **验收标准：**
-- ✅ Legacy Track 能够驱动技能触发
+- ✅ Legacy Track 能够驱动技能触发（玩家和怪物）
 - ✅ 数值与原逻辑完全一致
 - ✅ Suspend/Resume 接口存在但暂不影响逻辑
 - ✅ SpecialTrackLegacy 的门控函数正确实现
+- ✅ EnemyAttackTrackLegacy 能正确处理怪物攻击
 
 **完成时间：** _待填写_
 
@@ -206,32 +241,43 @@
 
 - [ ] 4.1 创建 `SkillResolver.cs` 实现 `ISkillResolver`
 - [ ] 4.2 实现 `Cast()` 方法
-  - 处理 "attack_basic" 技能
-  - 处理 "special_pulse" 技能
-  - 使用现有的伤害计算逻辑（DamagePerAttack, SpecialDamage）
+  - 处理 "attack_basic" 技能（玩家普攻）
+  - 处理 "special_pulse" 技能（玩家特殊技能，可能是 AOE）
+  - 处理 "enemy_attack_basic" 技能（怪物攻击）
+  - 使用现有的伤害计算逻辑（DamagePerAttack, SpecialDamage, Enemy.DamagePerHit）
   - 保持暴击和浮动计算不变
+  - 支持 AOE 技能（特殊技能可能打击所有敌人）
   - 返回 `SkillCastResult`
   ```csharp
   public SkillCastResult Cast(string skillId, BattleContext ctx, SkillCastOptions? opts = null)
   {
       opts ??= new SkillCastOptions();
       
+      // 根据技能类型确定基础伤害
       int baseDamage = skillId switch
       {
-          "attack_basic" => ctx.Player.DamagePerAttack,
-          "special_pulse" => ctx.Player.SpecialDamage,
+          "attack_basic" => ctx.Player?.DamagePerAttack ?? 0,
+          "special_pulse" => ctx.Player?.SpecialDamage ?? 0,
+          "enemy_attack_basic" => ctx.Enemy?.DamagePerHit ?? 0,
           _ => 0
       };
       
       // 应用浮动
-      double dmg = Math.Floor(ctx.Rng.Jitter(baseDamage, ctx.Player.VariancePct));
+      double variancePct = skillId.StartsWith("enemy_") 
+          ? ctx.Enemy?.VariancePct ?? 0.0
+          : ctx.Player?.VariancePct ?? 0.0;
+      double dmg = Math.Floor(ctx.Rng.Jitter(baseDamage, variancePct));
       if (dmg < 1) dmg = 1;
       
-      // 检查暴击
-      bool isCrit = opts.ForceCrit || ctx.Rng.NextDouble() < (ctx.Player.CritChancePercent / 100.0);
-      if (isCrit)
+      // 检查暴击（仅玩家攻击有暴击）
+      bool isCrit = false;
+      if (!skillId.StartsWith("enemy_") && ctx.Player != null)
       {
-          dmg = Math.Floor(dmg * Math.Max(1.0, ctx.Player.CritMultiplier));
+          isCrit = opts.ForceCrit || ctx.Rng.NextDouble() < (ctx.Player.CritChancePercent / 100.0);
+          if (isCrit)
+          {
+              dmg = Math.Floor(dmg * Math.Max(1.0, ctx.Player.CritMultiplier));
+          }
       }
       
       return new SkillCastResult
@@ -390,6 +436,12 @@
               BoundSkills = new List<string> { "special_pulse" },
               OnFireTriggers = new List<string>(),
               ProgressPolicy = ProgressPolicy.Presence
+          },
+          ["enemy_attack"] = new TrackConfig
+          {
+              BoundSkills = new List<string> { "enemy_attack_basic" },
+              OnFireTriggers = new List<string>(),
+              ProgressPolicy = ProgressPolicy.Presence
           }
       };
   }
@@ -408,6 +460,12 @@
           ["special_pulse"] = new SkillDef
           {
               Id = "special_pulse",
+              CastTimeSec = 0,
+              IsAoe = true  // 特殊技能可能是 AOE
+          },
+          ["enemy_attack_basic"] = new SkillDef
+          {
+              Id = "enemy_attack_basic",
               CastTimeSec = 0
           }
       };
@@ -426,117 +484,183 @@
 
 ---
 
-### 阶段 7：重构 BattleInstance 集成
+### 阶段 7：重构 MultiBattleInstance 集成
 
 **状态：** ⬜ 未开始
 
-**目标：** 将 BattleInstance 改为使用新架构
+**目标：** 将 MultiBattleInstance 和 DungeonManager 改为使用新架构
+
+**背景说明：**
+- 当前实际使用的是 `MultiBattleInstance` （多单位战斗）和 `DungeonManager` （副本管理器），已不再使用单体 `BattleInstance`
+- 前端通过 `BattleDemo.razor` 组件与战斗系统交互
+- `MultiBattleInstance` 支持多角色对多怪物的战斗，使用 `CharacterTracks` 和 `EnemyTrack` 管理各单位的战斗轨道
+- 怪物攻击也已经使用了 Track 系统（`EnemyTrack` 包含 `AttackTrack`），通过 `ProcessEnemyActions()` 方法处理
 
 **任务清单：**
 
-- [ ] 7.1 在 `BattleInstance` 构造函数中创建新组件
+- [ ] 7.1 在 `MultiBattleInstance` 中集成新组件
   ```csharp
   private readonly BattleContext _battleContext;
   private readonly ISkillResolver _skillResolver;
-  private readonly AttackTrackLegacy _attackTrackLegacy;
-  private readonly SpecialTrackLegacy _specialTrackLegacy;
+  private readonly Dictionary<string, AttackTrackLegacy> _attackTracksLegacy = new();
+  private readonly Dictionary<string, SpecialTrackLegacy> _specialTracksLegacy = new();
+  private readonly Dictionary<string, EnemyAttackTrackLegacy> _enemyAttackTracksLegacy = new();
   private readonly CastingController _castingController;
   private readonly CombatConfig _combatConfig;
   
-  // 在构造函数中初始化
-  public BattleInstance(IGameClock clock, RngContext rng, Character player, Enemy enemy)
+  // 在构造函数中初始化，为每个角色和敌人创建 Legacy Track
+  public MultiBattleInstance(...)
   {
       // 原有初始化...
-      
-      _battleContext = new BattleContext
-      {
-          Player = player,
-          Enemy = enemy,
-          Rng = rng,
-          Clock = clock
-      };
       
       _combatConfig = new CombatConfig();
       _skillResolver = new SkillResolver();
       _castingController = new CastingController();
       
-      var attackConfig = new TrackConfig
+      // 为每个角色创建 Legacy Track
+      foreach (var member in _playerTeam.Members)
       {
-          BoundSkills = new List<string> { "attack_basic" },
-          ProgressPolicy = ProgressPolicy.Presence
-      };
-      _attackTrackLegacy = new AttackTrackLegacy(_attackTrack, _skillResolver, attackConfig);
+          var battleContext = new BattleContext
+          {
+              Player = member.Entity,
+              Rng = _rng,
+              Clock = _clock
+          };
+          
+          var attackConfig = new TrackConfig
+          {
+              BoundSkills = new List<string> { "attack_basic" },
+              ProgressPolicy = ProgressPolicy.Presence
+          };
+          _attackTracksLegacy[member.Id] = new AttackTrackLegacy(
+              _characterTracks[member.Id].AttackTrack, 
+              _skillResolver, 
+              attackConfig
+          );
+          
+          var specialConfig = new TrackConfig
+          {
+              BoundSkills = new List<string> { "special_pulse" },
+              ProgressPolicy = ProgressPolicy.Presence
+          };
+          _specialTracksLegacy[member.Id] = new SpecialTrackLegacy(
+              _characterTracks[member.Id].SpecialTrack,
+              _skillResolver,
+              specialConfig
+          );
+      }
       
-      var specialConfig = new TrackConfig
+      // 为每个敌人创建 Legacy Track
+      foreach (var member in _enemyTeam.Members)
       {
-          BoundSkills = new List<string> { "special_pulse" },
-          ProgressPolicy = ProgressPolicy.Presence
-      };
-      _specialTrackLegacy = new SpecialTrackLegacy(_specialTrack, _skillResolver, specialConfig);
+          var enemyBattleContext = new BattleContext
+          {
+              Enemy = member.Entity,
+              Rng = _rng,
+              Clock = _clock
+          };
+          
+          var enemyAttackConfig = new TrackConfig
+          {
+              BoundSkills = new List<string> { "enemy_attack_basic" },
+              ProgressPolicy = ProgressPolicy.Presence
+          };
+          _enemyAttackTracksLegacy[member.Id] = new EnemyAttackTrackLegacy(
+              _enemyTracks[member.Id].AttackTrack,
+              _skillResolver,
+              enemyAttackConfig
+          );
+      }
   }
   ```
-- [ ] 7.2 修改 `AdvanceTick()` 方法
+- [ ] 7.2 修改 `ProcessCharacterActions()` 方法使用新架构
   ```csharp
-  public void AdvanceTick(int tickMs)
+  private void ProcessCharacterActions(int now)
   {
-      if (!_running) return;
+      var aliveCharIds = _playerTeam.GetAliveMemberIds();
       
-      _clock.AdvanceBy(tickMs);
-      _tickCount++;
-      int now = _clock.NowMs;
-      
-      // 冷却逻辑保持不变...
-      if (_loopState == LoopState.PlayerDeadCooldown || _loopState == LoopState.EnemyDeadCooldown)
+      foreach (var charId in aliveCharIds)
       {
-          // 原有冷却逻辑
-          return;
-      }
-      
-      // 新架构：先调用 CastingController（占位，无操作）
-      double dt = tickMs / 1000.0;
-      _castingController.Tick(dt);
-      
-      // 使用新 Track 触发攻击
-      _attackTrackLegacy.Tick(dt, _battleContext);
-      
-      // 处理 AttackTrackLegacy 产生的伤害结果
-      // （需要修改 SkillResolver 使其能通知 BattleInstance 应用伤害）
-      
-      if (_loopState == LoopState.Fighting)
-      {
-          _specialTrackLegacy.Tick(dt, _battleContext);
-          // 处理 SpecialTrackLegacy 产生的伤害结果
-      }
-      
-      // 敌人攻击轨道保持不变（暂不重构）
-      if (_loopState == LoopState.Fighting)
-      {
-          var enemyCount = _enemyAttackTrack.CollectTriggers(now);
-          for (int i = 0; i < enemyCount; i++)
+          if (!_characterTracks.TryGetValue(charId, out var tracks))
+              continue;
+          
+          if (!tracks.IsEnabled)
+              continue;
+          
+          var character = tracks.Character;
+          
+          // 新架构：先调用 CastingController（占位，无操作）
+          double dt = (now - _lastTickTime) / 1000.0;
+          _castingController.Tick(dt);
+          
+          // 使用新 Track 触发攻击
+          if (_attackTracksLegacy.TryGetValue(charId, out var attackTrack))
           {
-              int dmg = EnemyRollDamage(_enemy.DamagePerHit);
-              ApplyDamageToPlayer(dmg, EventSource.EnemyAttack);
-              if (_playerHp <= 0)
+              var battleContext = new BattleContext
               {
-                  EnterPlayerCooldown(now);
-                  break;
-              }
+                  Player = character,
+                  Rng = _rng,
+                  Clock = _clock
+              };
+              attackTrack.Tick(dt, battleContext);
+          }
+          
+          // 使用新 Track 触发特殊技能
+          if (_specialTracksLegacy.TryGetValue(charId, out var specialTrack))
+          {
+              var battleContext = new BattleContext
+              {
+                  Player = character,
+                  Rng = _rng,
+                  Clock = _clock
+              };
+              specialTrack.Tick(dt, battleContext);
           }
       }
-      
-      var segByTime = _aggregator.Tick(now, _rng.Index);
-      if (segByTime != null) _segments.Add(segByTime);
   }
   ```
-- [ ] 7.3 修改 SkillResolver 以回调 BattleInstance
-  - 添加伤害应用回调机制
-  - 或者让 SkillResolver 返回结果，由 Track 调用 BattleInstance 的伤害应用方法
+- [ ] 7.3 修改 `ProcessEnemyActions()` 方法使用新架构
+  ```csharp
+  private void ProcessEnemyActions(int now)
+  {
+      var aliveEnemyIds = _enemyTeam.GetAliveMemberIds();
+      
+      foreach (var enemyId in aliveEnemyIds)
+      {
+          if (!_enemyTracks.TryGetValue(enemyId, out var track))
+              continue;
+          
+          if (!track.IsEnabled)
+              continue;
+          
+          var enemy = track.Enemy;
+          
+          // 使用新 Track 触发敌人攻击
+          if (_enemyAttackTracksLegacy.TryGetValue(enemyId, out var enemyAttackTrack))
+          {
+              double dt = (now - _lastTickTime) / 1000.0;
+              var battleContext = new BattleContext
+              {
+                  Enemy = enemy,
+                  Rng = _rng,
+                  Clock = _clock
+              };
+              enemyAttackTrack.Tick(dt, battleContext);
+          }
+      }
+  }
+  ```
+- [ ] 7.4 修改 SkillResolver 以支持多单位战斗
+  - 添加目标选择机制（使用现有的 `SelectEnemyTarget` 和 `SelectPlayerTarget`）
+  - 支持 AOE 技能（特殊技能可能是 AOE）
+  - 添加伤害应用回调机制，或让 SkillResolver 返回结果由 Track 调用战斗实例的伤害应用方法
 
 **验收标准：**
-- ✅ BattleInstance 编译通过
+- ✅ MultiBattleInstance 编译通过
 - ✅ 运行时逻辑与改造前完全一致
 - ✅ 所有现有测试通过
 - ✅ 战斗数值无变化
+- ✅ 怪物攻击使用新的战斗逻辑（通过 EnemyAttackTrackLegacy）
 
 **完成时间：** _待填写_
 
@@ -546,6 +670,8 @@
 - 这个阶段最复杂，需要仔细验证
 - 建议先在测试环境验证正确性
 - 保留旧代码注释以便对比
+- 注意 `DungeonManager` 通过 `MultiBattleInstance` 进行战斗管理，需要确保兼容性
+- 前端 `BattleDemo.razor` 组件依赖这些改动，需要验证 UI 交互正常
 
 ---
 
@@ -647,55 +773,145 @@
       public int MaxTriggersPerTick { get; set; } = 20;
   }
   ```
-- [ ] 9.2 在 `BattleInstance.AdvanceTick()` 中添加分支
+- [ ] 9.2 在 `MultiBattleInstance.AdvanceTick()` 中添加分支
   ```csharp
   public void AdvanceTick(int tickMs)
   {
       if (!_running) return;
       
       _clock.AdvanceBy(tickMs);
-      _tickCount++;
       int now = _clock.NowMs;
       
       // 冷却逻辑...
       
-      if (_combatConfig.UseLegacyPath)
+      if (_state == MultiBattleState.Fighting)
       {
-          // 旧路径：直接使用 TrackState
-          AdvanceTickLegacy(now);
-      }
-      else
-      {
-          // 新路径：使用 Track + SkillResolver
-          AdvanceTickNew(tickMs, now);
-      }
-  }
-  
-  private void AdvanceTickLegacy(int now)
-  {
-      // 复制原有的触发逻辑
-      var atkCount = _attackTrack.CollectTriggers(now);
-      for (int i = 0; i < atkCount; i++)
-      {
-          int dmg = PlayerRollDamage(_player.DamagePerAttack, allowCrit: true);
-          ApplyDamageToEnemy(dmg, EventSource.Attack, null, null);
-          if (_enemy.Hp <= 0)
+          if (_combatConfig.UseLegacyPath)
           {
-              EnterEnemyCooldown(now);
-              break;
+              // 旧路径：直接使用 TrackState
+              ProcessCharacterActionsLegacy(now);
+              ProcessEnemyActionsLegacy(now);
+          }
+          else
+          {
+              // 新路径：使用 Track + SkillResolver
+              ProcessCharacterActionsNew(now);
+              ProcessEnemyActionsNew(now);
           }
       }
       
-      // Special 和 Enemy 逻辑...
+      // 检查战斗状态
+      CheckBattleState(now);
+      
+      // 处理段落聚合
+      var seg = _aggregator.Tick(now, _rng.Index);
+      if (seg != null) _segments.Add(seg);
   }
   
-  private void AdvanceTickNew(int tickMs, int now)
+  private void ProcessCharacterActionsLegacy(int now)
   {
-      // 新架构逻辑
-      double dt = tickMs / 1000.0;
-      _castingController.Tick(dt);
-      _attackTrackLegacy.Tick(dt, _battleContext);
-      // ...
+      // 复制原有的触发逻辑
+      var aliveCharIds = _playerTeam.GetAliveMemberIds();
+      
+      foreach (var charId in aliveCharIds)
+      {
+          if (!_characterTracks.TryGetValue(charId, out var tracks))
+              continue;
+          
+          if (!tracks.IsEnabled)
+              continue;
+          
+          var character = tracks.Character;
+          
+          // 处理普通攻击
+          var atkCount = tracks.AttackTrack.CollectTriggers(now);
+          for (int i = 0; i < atkCount; i++)
+          {
+              ProcessCharacterAttack(charId, character);
+          }
+          
+          // 处理特殊技能
+          var spCount = tracks.SpecialTrack.CollectTriggers(now);
+          for (int i = 0; i < spCount; i++)
+          {
+              ProcessCharacterSpecial(charId, character);
+          }
+      }
+  }
+  
+  private void ProcessEnemyActionsLegacy(int now)
+  {
+      // 复制原有的敌人攻击逻辑
+      var aliveEnemyIds = _enemyTeam.GetAliveMemberIds();
+      
+      foreach (var enemyId in aliveEnemyIds)
+      {
+          if (!_enemyTracks.TryGetValue(enemyId, out var track))
+              continue;
+          
+          if (!track.IsEnabled)
+              continue;
+          
+          var enemy = track.Enemy;
+          
+          var count = track.AttackTrack.CollectTriggers(now);
+          for (int i = 0; i < count; i++)
+          {
+              ProcessEnemyAttack(enemyId, enemy);
+          }
+      }
+  }
+  
+  private void ProcessCharacterActionsNew(int now)
+  {
+      // 新架构逻辑：使用 Legacy Track + SkillResolver
+      var aliveCharIds = _playerTeam.GetAliveMemberIds();
+      double dt = (now - _lastTickTime) / 1000.0;
+      
+      foreach (var charId in aliveCharIds)
+      {
+          if (!_characterTracks.TryGetValue(charId, out var tracks))
+              continue;
+          
+          if (!tracks.IsEnabled)
+              continue;
+          
+          _castingController.Tick(dt);
+          
+          if (_attackTracksLegacy.TryGetValue(charId, out var attackTrack))
+          {
+              var battleContext = CreateBattleContext(tracks.Character);
+              attackTrack.Tick(dt, battleContext);
+          }
+          
+          if (_specialTracksLegacy.TryGetValue(charId, out var specialTrack))
+          {
+              var battleContext = CreateBattleContext(tracks.Character);
+              specialTrack.Tick(dt, battleContext);
+          }
+      }
+  }
+  
+  private void ProcessEnemyActionsNew(int now)
+  {
+      // 新架构逻辑：使用 EnemyAttackTrackLegacy + SkillResolver
+      var aliveEnemyIds = _enemyTeam.GetAliveMemberIds();
+      double dt = (now - _lastTickTime) / 1000.0;
+      
+      foreach (var enemyId in aliveEnemyIds)
+      {
+          if (!_enemyTracks.TryGetValue(enemyId, out var track))
+              continue;
+          
+          if (!track.IsEnabled)
+              continue;
+          
+          if (_enemyAttackTracksLegacy.TryGetValue(enemyId, out var enemyAttackTrack))
+          {
+              var battleContext = CreateBattleContext(track.Enemy);
+              enemyAttackTrack.Tick(dt, battleContext);
+          }
+      }
   }
   ```
 - [ ] 9.3 添加单元测试验证两条路径结果一致
@@ -765,15 +981,15 @@
       // 测试 presence 模式
   }
   ```
-- [ ] 10.3 创建 `BattleInstanceIntegrationTests.cs`
+- [ ] 10.3 创建 `MultiBattleInstanceIntegrationTests.cs`
   ```csharp
   [Fact]
-  public void Battle_LegacyVsNew_ProducesSameResults()
+  public void MultiBattle_LegacyVsNew_ProducesSameResults()
   {
       // A/B 对比测试
       // 运行 1000 tick，对比两条路径
-      var legacyBattle = CreateBattle(useLegacy: true);
-      var newBattle = CreateBattle(useLegacy: false);
+      var legacyBattle = CreateMultiBattle(useLegacy: true);
+      var newBattle = CreateMultiBattle(useLegacy: false);
       
       for (int i = 0; i < 1000; i++)
       {
@@ -793,6 +1009,28 @@
       double legacyDps = legacyDigest.TotalDamage / (legacyDigest.DurationMs / 1000.0);
       double newDps = newDigest.TotalDamage / (newDigest.DurationMs / 1000.0);
       Assert.InRange(newDps, legacyDps * 0.99, legacyDps * 1.01);
+  }
+  
+  [Fact]
+  public void EnemyAttack_LegacyVsNew_ProducesSameResults()
+  {
+      // 专门测试怪物攻击逻辑是否一致
+      var legacyBattle = CreateMultiBattle(useLegacy: true);
+      var newBattle = CreateMultiBattle(useLegacy: false);
+      
+      for (int i = 0; i < 500; i++)
+      {
+          legacyBattle.AdvanceTick(100);
+          newBattle.AdvanceTick(100);
+      }
+      
+      var legacySnapshot = legacyBattle.GetSnapshot();
+      var newSnapshot = newBattle.GetSnapshot();
+      
+      // 验证玩家受到的总伤害一致
+      Assert.InRange(newSnapshot.TotalEnemyDamage,
+                     legacySnapshot.TotalEnemyDamage * 0.99,
+                     legacySnapshot.TotalEnemyDamage * 1.01);
   }
   ```
 - [ ] 10.4 创建性能测试
@@ -949,6 +1187,87 @@
 - [Step 0 设计方案](./docs_step0_第0步-设计方案.md)
 - [战斗系统重构设计](../战斗系统重构设计/)
 - [角色属性设计](../角色属性设计/)
+
+## 📌 实际实现说明
+
+### 战斗系统架构
+
+**当前使用的组件：**
+
+1. **MultiBattleInstance** (`BlazorIdle.Shared/Game/MultiBattleInstance.cs`)
+   - 负责多角色对多怪物的战斗逻辑
+   - 管理角色和敌人的战斗轨道（CharacterTracks 和 EnemyTrack）
+   - 处理攻击、特殊技能、目标选择、伤害计算等
+   - 支持 AOE 技能（特殊技能可以打击所有存活敌人）
+
+2. **DungeonManager** (`BlazorIdle.Shared/Game/DungeonManager.cs`)
+   - 管理副本的进度、波次切换和战斗循环
+   - 创建并管理 MultiBattleInstance 实例
+   - 处理副本奖励、经验获得和掉落物
+
+3. **CharacterTracks** (`BlazorIdle.Shared/Game/CharacterTracks.cs`)
+   - 管理单个角色的攻击轨道（AttackTrack）和特殊技能轨道（SpecialTrack）
+   - 使用 TrackState 跟踪触发时机
+
+4. **EnemyTrack** (`BlazorIdle.Shared/Game/CharacterTracks.cs`)
+   - 管理单个敌人的攻击轨道（AttackTrack）
+   - 使用 TrackState 跟踪触发时机
+   - **怪物攻击已经使用 Track 系统**，通过 `ProcessEnemyActions()` 方法处理
+
+5. **BattleDemo.razor** (`BlazorIdle/Components/BattleDemo.razor`)
+   - 前端战斗演示组件
+   - 支持普通战斗和副本战斗两种模式
+   - 通过 DungeonManager 和 MultiBattleInstance 进行战斗
+
+**已废弃的组件：**
+- **BattleInstance** - 单体战斗实例，已被 MultiBattleInstance 替代
+
+### 怪物攻击逻辑
+
+怪物攻击已经使用了新的战斗逻辑：
+
+```csharp
+// MultiBattleInstance.cs - ProcessEnemyActions()
+private void ProcessEnemyActions(int now)
+{
+    var aliveEnemyIds = _enemyTeam.GetAliveMemberIds();
+    
+    foreach (var enemyId in aliveEnemyIds)
+    {
+        if (!_enemyTracks.TryGetValue(enemyId, out var track))
+            continue;
+        
+        if (!track.IsEnabled)
+            continue;
+        
+        var enemy = track.Enemy;
+        
+        // 使用 TrackState 收集触发次数
+        var count = track.AttackTrack.CollectTriggers(now);
+        for (int i = 0; i < count; i++)
+        {
+            ProcessEnemyAttack(enemyId, enemy);
+        }
+    }
+}
+```
+
+怪物的攻击间隔通过 `EnemyTrack` 管理：
+
+```csharp
+// CharacterTracks.cs - EnemyTrack 构造函数
+public EnemyTrack(string enemyId, Enemy enemy)
+{
+    EnemyId = enemyId;
+    Enemy = enemy;
+    
+    // 根据怪物的 AttackIntervalSec 创建攻击轨道
+    var attackIntervalMs = Math.Max(100.0, enemy.AttackIntervalSec * 1000.0);
+    AttackTrack = new TrackState(TrackType.EnemyAttack, attackIntervalMs);
+    
+    IsEnabled = true;
+}
+```
 
 ---
 
