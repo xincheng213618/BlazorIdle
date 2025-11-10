@@ -346,13 +346,13 @@
 
 ### 阶段 5：创建 CastingController 占位
 
-**状态：** ⬜ 未开始
+**状态：** ✅ 已完成
 
 **目标：** 预留施法系统接口，不启用
 
 **任务清单：**
 
-- [ ] 5.1 创建 `CastingController.cs`
+- [x] 5.1 创建 `CastingController.cs`
   ```csharp
   public sealed class ActiveCast
   {
@@ -381,7 +381,7 @@
       }
   }
   ```
-- [ ] 5.2 创建 `SkillDef.cs`
+- [x] 5.2 创建 `SkillDef.cs`
   ```csharp
   public sealed class SkillDef
   {
@@ -396,21 +396,21 @@
 - ✅ Tick() 调用不产生副作用
 - ✅ SkillDef 包含预留字段
 
-**完成时间：** _待填写_
+**完成时间：** 2025-11-10
 
-**提交哈希：** _待填写_
+**提交哈希：** _本次提交_
 
 ---
 
 ### 阶段 6：创建配置系统
 
-**状态：** ⬜ 未开始
+**状态：** ✅ 已完成
 
 **目标：** 添加开关和配置项
 
 **任务清单：**
 
-- [ ] 6.1 创建 `CombatConfig.cs`
+- [x] 6.1 创建 `CombatConfig.cs`
   ```csharp
   public sealed class CombatConfig
   {
@@ -420,7 +420,7 @@
       // 注：不再需要 UseLegacyPath 开关，直接实现新架构，有问题可使用 git revert
   }
   ```
-- [ ] 6.2 创建 `TrackConfigCollection.cs`
+- [x] 6.2 创建 `TrackConfigCollection.cs`
   ```csharp
   public sealed class TrackConfigCollection
   {
@@ -447,7 +447,7 @@
       };
   }
   ```
-- [ ] 6.3 创建 `SkillDefCollection.cs`
+- [x] 6.3 创建 `SkillDefCollection.cs`
   ```csharp
   public sealed class SkillDefCollection
   {
@@ -472,16 +472,16 @@
       };
   }
   ```
-- [ ] 6.4 添加 JSON 序列化支持（可选）
+- [x] 6.4 添加 JSON 序列化支持（可选）
 
 **验收标准：**
 - ✅ 配置类可序列化为 JSON
 - ✅ 配置符合设计文档示例
 - ✅ 所有开关默认值正确
 
-**完成时间：** _待填写_
+**完成时间：** 2025-11-10
 
-**提交哈希：** _待填写_
+**提交哈希：** _本次提交_
 
 ---
 
@@ -1053,17 +1053,17 @@ Phase 7 将直接实现新架构，无需实现 `ProcessCharacterActionsLegacy` 
 |------|------|----------|----------|
 | 阶段 1 - 核心接口 | ✅ 已完成 | 2025-11-10 | 43af07a |
 | 阶段 2 - Track 抽象 | ✅ 已完成 | 2025-11-10 | 43af07a |
-| 阶段 3 - Legacy 适配器 | ✅ 已完成 | 2025-11-10 | _本次提交_ |
-| 阶段 4 - SkillResolver | ✅ 已完成 | 2025-11-10 | _本次提交_ |
-| 阶段 5 - CastingController | ⬜ 未开始 | - | - |
-| 阶段 6 - 配置系统 | ⬜ 未开始 | - | - |
+| 阶段 3 - Legacy 适配器 | ✅ 已完成 | 2025-11-10 | c0d2702 |
+| 阶段 4 - SkillResolver | ✅ 已完成 | 2025-11-10 | c0d2702 |
+| 阶段 5 - CastingController | ✅ 已完成 | 2025-11-10 | _本次提交_ |
+| 阶段 6 - 配置系统 | ✅ 已完成 | 2025-11-10 | _本次提交_ |
 | 阶段 7 - MultiBattleInstance 集成 | ⬜ 未开始 | - | - |
 | 阶段 8 - 事件系统 | ⬜ 未开始 | - | - |
 | ~~阶段 9 - 回滚开关~~ | ⬜ 已取消 | - | - |
 | 阶段 10 - 验收测试 | ⬜ 未开始 | - | - |
 | 最终清理 | ⬜ 未开始 | - | - |
 
-**总体进度：** 4/10 (40%)（注：阶段 9 已简化取消）
+**总体进度：** 6/10 (60%)（注：阶段 9 已简化取消）
 
 ---
 
