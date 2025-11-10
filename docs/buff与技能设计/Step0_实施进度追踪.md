@@ -30,14 +30,14 @@
 
 ### 阶段 1：创建核心接口与数据结构
 
-**状态：** ⬜ 未开始
+**状态：** ✅ 已完成
 
 **目标：** 建立 SkillCast 统一入口的基础接口
 
 **任务清单：**
 
-- [ ] 1.1 创建目录 `BlazorIdle.Shared/Game/Skills/`
-- [ ] 1.2 创建 `SkillCastOptions.cs`
+- [x] 1.1 创建目录 `BlazorIdle.Shared/Game/Skills/`
+- [x] 1.2 创建 `SkillCastOptions.cs`
   ```csharp
   public sealed class SkillCastOptions
   {
@@ -46,7 +46,7 @@
       public string? BundleId { get; set; }
   }
   ```
-- [ ] 1.3 创建 `SkillCastResult.cs`
+- [x] 1.3 创建 `SkillCastResult.cs`
   ```csharp
   public sealed class SkillCastResult
   {
@@ -56,7 +56,7 @@
       public List<string> BuffChanges { get; set; } = new();  // 预留
   }
   ```
-- [ ] 1.4 创建 `ISkillResolver.cs`
+- [x] 1.4 创建 `ISkillResolver.cs`
   ```csharp
   public interface ISkillResolver
   {
@@ -64,7 +64,7 @@
       IReadOnlyList<SkillCastResult> CastBundle(IReadOnlyList<string> skillIds, BattleContext ctx, SkillCastOptions opts);
   }
   ```
-- [ ] 1.5 创建 `BattleContext.cs`
+- [x] 1.5 创建 `BattleContext.cs`
   ```csharp
   public sealed class BattleContext
   {
@@ -83,22 +83,22 @@
 - ✅ 接口符合设计文档规范
 - ✅ 命名空间为 `BlazorIdle.Game.Skills`
 
-**完成时间：** _待填写_
+**完成时间：** 2025-11-10
 
-**提交哈希：** _待填写_
+**提交哈希：** _本次提交_
 
 ---
 
 ### 阶段 2：创建 Track 抽象接口
 
-**状态：** ⬜ 未开始
+**状态：** ✅ 已完成
 
 **目标：** 将"触发时机"与"效果处理"解耦
 
 **任务清单：**
 
-- [ ] 2.1 创建目录 `BlazorIdle.Shared/Game/Tracks/`（如果不存在）
-- [ ] 2.2 创建 `ITrack.cs`
+- [x] 2.1 创建目录 `BlazorIdle.Shared/Game/Tracks/`（如果不存在）
+- [x] 2.2 创建 `ITrack.cs`
   ```csharp
   public interface ITrack
   {
@@ -109,7 +109,7 @@
       void Tick(double dt, BattleContext ctx);
   }
   ```
-- [ ] 2.3 创建 `ProgressPolicy.cs`
+- [x] 2.3 创建 `ProgressPolicy.cs`
   ```csharp
   public enum ProgressPolicy
   {
@@ -117,7 +117,7 @@
       Encounter   // 遭遇期间持续增长（预留）
   }
   ```
-- [ ] 2.4 创建 `TrackConfig.cs`
+- [x] 2.4 创建 `TrackConfig.cs`
   ```csharp
   public sealed class TrackConfig
   {
@@ -132,9 +132,9 @@
 - ✅ ProgressPolicy 支持两种模式
 - ✅ 编译通过
 
-**完成时间：** _待填写_
+**完成时间：** 2025-11-10
 
-**提交哈希：** _待填写_
+**提交哈希：** _本次提交_
 
 ---
 
@@ -1051,8 +1051,8 @@ Phase 7 将直接实现新架构，无需实现 `ProcessCharacterActionsLegacy` 
 
 | 阶段 | 状态 | 完成时间 | 提交哈希 |
 |------|------|----------|----------|
-| 阶段 1 - 核心接口 | ⬜ 未开始 | - | - |
-| 阶段 2 - Track 抽象 | ⬜ 未开始 | - | - |
+| 阶段 1 - 核心接口 | ✅ 已完成 | 2025-11-10 | _本次提交_ |
+| 阶段 2 - Track 抽象 | ✅ 已完成 | 2025-11-10 | _本次提交_ |
 | 阶段 3 - Legacy 适配器 | ⬜ 未开始 | - | - |
 | 阶段 4 - SkillResolver | ⬜ 未开始 | - | - |
 | 阶段 5 - CastingController | ⬜ 未开始 | - | - |
@@ -1063,7 +1063,7 @@ Phase 7 将直接实现新架构，无需实现 `ProcessCharacterActionsLegacy` 
 | 阶段 10 - 验收测试 | ⬜ 未开始 | - | - |
 | 最终清理 | ⬜ 未开始 | - | - |
 
-**总体进度：** 0/10 (0%)（注：阶段 9 已简化取消）
+**总体进度：** 2/10 (20%)（注：阶段 9 已简化取消）
 
 ---
 
