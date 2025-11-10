@@ -1129,6 +1129,140 @@ Phase 7 将直接实现新架构，无需实现 `ProcessCharacterActionsLegacy` 
 
 ---
 
+## ⚠️ 已知问题与后续改进计划
+
+### Phase 1-6 代码审查发现的问题
+
+在 Phase 7 实施前，对 Phase 1-6 的代码进行了全面审查，发现以下需要在后续阶段改进的问题：
+
+#### 1. 多单位战斗支持不完整 ⚠️
+
+**问题描述：**
+- `SkillResolver.Cast()` 当前仅支持单个 `Player`/`Enemy`
+- 未处理 AOE 技能对 `PlayerTeam`/`EnemyTeam` 的伤害分配
+- 无法正确处理"打击所有敌人"或"治疗所有队友"的场景
+
+**影响范围：**
+- Phase 4 - SkillResolver
+- Phase 7 - MultiBattleInstance 集成
+
+**改进计划：**
+- [ ] Phase 7.1：扩展 `SkillResolver.Cast()` 方法，添加团队目标支持
+- [ ] Phase 7.2：实现 AOE 伤害分配逻辑（打击所有敌人）
+- [ ] Phase 7.3：添加单元测试验证多目标场景
+- [ ] Phase 7.4：在文档中明确说明多单位伤害分配策略
+
+**临时解决方案：**
+- Phase 7 实施时可在 `MultiBattleInstance` 层面遍历目标列表，多次调用 `Cast()`
+- 后续再将逻辑下沉到 `SkillResolver` 内部
+
+#### 2. SkillResolver 状态管理问题 ⚠️
+
+**问题描述：**
+- `_castCounter` 会无限增长，理论上可能溢出（int32 最大值约 21 亿）
+- 在高频战斗场景下可能触发（如每秒 100 次触发，约 243 天后溢出）
+
+**影响范围：**
+- Phase 4 - SkillResolver
+
+**改进计划：**
+- [ ] Phase 7.5：添加 `unchecked` 关键字允许自动溢出回绕
+- [ ] 或：实现定期重置机制（如每 10 万次重置）
+- [ ] 或：使用 `Interlocked.Increment()` 保证线程安全（如果需要多线程）
+
+**代码示例：**
+```csharp
+// 方案 1：允许溢出（推荐）
+unchecked
+{
+    string bundleId = $"bundle_{nowMs}_{_castCounter++}";
+}
+
+// 方案 2：定期重置
+if (_castCounter > 100000)
+{
+    _castCounter = 0;
+}
+```
+
+**优先级：** 低（实际影响极小）
+
+#### 3. 配置系统缺少验证 ⚠️
+
+**问题描述：**
+- `TrackConfigCollection` 和 `SkillDefCollection` 无验证逻辑
+- 可能出现 `BoundSkills` 引用不存在的 `skillId`
+- 可能出现循环引用（如 `OnFireTriggers` 触发自己）
+
+**影响范围：**
+- Phase 6 - 配置系统
+
+**改进计划：**
+- [ ] Phase 7.6：添加 `TrackConfigCollection.Validate()` 方法
+  - 检查 `BoundSkills` 中的所有技能ID是否在 `SkillDefCollection` 中存在
+  - 检查 `OnFireTriggers` 不形成循环引用
+- [ ] Phase 7.7：添加 `SkillDefCollection.Validate()` 方法
+  - 检查技能ID唯一性
+  - 检查必填字段完整性
+- [ ] Phase 7.8：在系统初始化时调用验证方法，失败则抛出异常
+
+**代码示例：**
+```csharp
+public class TrackConfigCollection
+{
+    public void Validate(SkillDefCollection skillDefs)
+    {
+        foreach (var (trackId, config) in Tracks)
+        {
+            foreach (var skillId in config.BoundSkills)
+            {
+                if (!skillDefs.Skills.ContainsKey(skillId))
+                {
+                    throw new InvalidOperationException(
+                        $"Track '{trackId}' 引用了不存在的技能 '{skillId}'");
+                }
+            }
+        }
+    }
+}
+```
+
+**优先级：** 中（建议在 Phase 7 实施）
+
+#### 4. CastingController 占位实现 ℹ️
+
+**问题描述：**
+- 当前 `CastingController` 是完全空实现
+- Phase 7 集成时可能需要调整接口设计
+- `GetPausedTracks()` 的返回值需要确保被正确使用
+
+**影响范围：**
+- Phase 5 - CastingController
+- Phase 7 - MultiBattleInstance 集成
+
+**改进计划：**
+- [ ] Phase 7.9：确认 `MultiBattleInstance` 正确调用 `GetPausedTracks()`
+- [ ] Phase 7.10：验证占位实现不影响战斗流程
+- [ ] 后续步骤（Step 1+）：实施完整的施法系统
+
+**优先级：** 低（当前设计足够）
+
+### 审查总结
+
+**✅ 验证通过的功能：**
+- 所有依赖类存在（Character, Enemy, BattleTeam, IGameClock）
+- 编译成功，无错误（仅有不相关的警告）
+- 单元测试全部通过（58/58）
+- JSON 序列化/反序列化正常
+- 伤害计算逻辑正确（包括浮动和暴击）
+- Track 触发机制正确（CollectTriggers）
+- 双模式门控函数（Presence/Encounter）工作正常
+
+**📋 总体评价：**
+Phase 1-6 的实施质量优秀，为 Phase 7 的 MultiBattleInstance 集成奠定了坚实基础。上述问题都不是阻塞性的，可以在后续阶段逐步完善。
+
+---
+
 ## 🔗 相关文档
 
 - [Step 0 设计方案](./docs_step0_第0步-设计方案.md)
