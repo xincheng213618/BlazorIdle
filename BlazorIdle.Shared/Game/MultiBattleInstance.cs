@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using BlazorIdle.Game.Skills;
+using BlazorIdle.Game.Tracks;
+using BlazorIdle.Game.Config;
 
 namespace BlazorIdle.Game
 {
@@ -19,6 +22,14 @@ namespace BlazorIdle.Game
         private readonly Dictionary<string, CharacterTracks> _characterTracks = new();
         // 每个怪物的攻击轨道
         private readonly Dictionary<string, EnemyTrack> _enemyTracks = new();
+        
+        // Phase 7: 新技能系统组件 / New skill system components
+        private readonly ISkillResolver _skillResolver;
+        private readonly CastingController _castingController;
+        private readonly CombatConfig _combatConfig;
+        private readonly Dictionary<string, AttackTrackLegacy> _attackTracksLegacy = new();
+        private readonly Dictionary<string, SpecialTrackLegacy> _specialTracksLegacy = new();
+        private readonly Dictionary<string, EnemyAttackTrackLegacy> _enemyAttackTracksLegacy = new();
         /// <summary>
         /// 获取玩家队伍引用（只读）
         /// Get player team reference (read-only)
@@ -86,7 +97,13 @@ namespace BlazorIdle.Game
                 MaxDurationMs = 3000
             });
 
+            // Phase 7: 初始化新技能系统组件 / Initialize new skill system components
+            _combatConfig = new CombatConfig();
+            _skillResolver = new SkillResolver();
+            _castingController = new CastingController();
+
             InitializeTracks();
+            InitializeLegacyTracks();
         }
 
         /// <summary>
@@ -116,6 +133,48 @@ namespace BlazorIdle.Game
 
                 // 初始化统计
                 _damageDealtByEnemy[member.Id] = 0;
+            }
+        }
+
+        /// <summary>
+        /// 初始化 Legacy Track 适配器（Phase 7）
+        /// Initialize Legacy Track adapters (Phase 7)
+        /// </summary>
+        private void InitializeLegacyTracks()
+        {
+            var trackConfigCollection = new TrackConfigCollection();
+            
+            // 为每个角色创建 Legacy Track
+            foreach (var member in _playerTeam.Members)
+            {
+                var character = member.Entity;
+                
+                // 创建攻击 Track
+                var attackConfig = trackConfigCollection.Tracks["attack"];
+                _attackTracksLegacy[member.Id] = new AttackTrackLegacy(
+                    _characterTracks[member.Id].AttackTrack,
+                    _skillResolver,
+                    attackConfig
+                );
+                
+                // 创建特殊技能 Track
+                var specialConfig = trackConfigCollection.Tracks["special"];
+                _specialTracksLegacy[member.Id] = new SpecialTrackLegacy(
+                    _characterTracks[member.Id].SpecialTrack,
+                    _skillResolver,
+                    specialConfig
+                );
+            }
+            
+            // 为每个敌人创建 Legacy Track
+            foreach (var member in _enemyTeam.Members)
+            {
+                var enemyAttackConfig = trackConfigCollection.Tracks["enemy_attack"];
+                _enemyAttackTracksLegacy[member.Id] = new EnemyAttackTrackLegacy(
+                    _enemyTracks[member.Id].AttackTrack,
+                    _skillResolver,
+                    enemyAttackConfig
+                );
             }
         }
 
