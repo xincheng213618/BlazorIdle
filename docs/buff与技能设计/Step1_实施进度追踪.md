@@ -265,9 +265,109 @@ Total tests: 131
   - `BlazorIdle/Components/BattleDemo.razor` - 传递资源参数
   - `BlazorIdle/Components/BattleDemo.razor.cs` - 添加 playerResources 属性
 
-**提交哈希：** 待提交
+**提交哈希：** 5c30e27
 
 **预计工作量：** 0.5-1 小时 → **实际：** ~0.5 小时
+
+---
+
+### 阶段 2.6：资源在副本波次间持久化（P0.5 - 修复）
+
+**状态：** ✅ 已完成
+
+**完成时间：** 2025-11-11
+
+**目标：** 修复副本波次刷新时资源被重置的问题，使资源在同一轮副本的波次之间保持，但在重启副本时重置。
+
+**问题描述：**
+- 用户反馈：普通战斗中怪物刷新时怒气可以继承，但地下城的怪物波次刷新时怒气会重置
+- 预期行为：资源应该像血量一样，在波次之间保持，在重启副本时重置
+
+**任务清单：**
+
+- [x] 2.6.1 修改 MultiBattleInstance 构造函数
+  - 添加 `preservedResources` 可选参数
+  - 传递保留的资源集合到 `InitializeTracks()`
+
+- [x] 2.6.2 修改 InitializeTracks 方法
+  - 接受 `preservedResources` 参数
+  - 如果存在保留的资源，使用它们而不是创建新的
+  - 否则创建新的资源集合（默认行为）
+
+- [x] 2.6.3 修改 DungeonManager
+  - 添加 `_preservedPlayerResources` 字段保存资源
+  - 在 `StartCurrentWave()` 中保存上一波的资源快照
+  - 创建新战斗实例时传入保留的资源
+  - 在 `StartDungeon()` 和 `RestartDungeon()` 中清除保留资源
+
+- [x] 2.6.4 单元测试
+  - 创建 `ResourcePersistenceTests.cs`（3个测试）
+  - 测试副本波次间资源持久化
+  - 测试 MultiBattleInstance 使用保留资源
+  - 测试不传入保留资源时从0开始
+
+**实施细节：**
+
+1. **MultiBattleInstance 构造函数扩展**
+   - 新增可选参数 `Dictionary<string, ResourceBucketCollection>? preservedResources`
+   - 向下兼容：现有调用不需要修改
+
+2. **InitializeTracks 逻辑**
+   ```csharp
+   if (preservedResources != null && preservedResources.TryGetValue(member.Id, out var existingResources))
+   {
+       // 使用保留的资源集合
+       _playerResources[member.Id] = existingResources;
+   }
+   else
+   {
+       // 创建新的资源集合
+       _playerResources[member.Id] = new ResourceBucketCollection();
+   }
+   ```
+
+3. **DungeonManager 资源管理**
+   - **波次切换时**：保存当前战斗的资源快照，传递给新战斗
+   - **重启副本时**：清除 `_preservedPlayerResources = null`
+   - **新开始时**：清除 `_preservedPlayerResources = null`
+
+4. **资源持久化策略**
+   - ✅ 同一轮副本的波次之间：保持资源
+   - ✅ 重启副本（RestartDungeon）：重置资源
+   - ✅ 新开始副本（StartDungeon）：重置资源
+   - ✅ 普通战斗：不受影响（不使用 preservedResources）
+
+**验收标准：**
+- ✅ 副本波次切换时资源不重置
+- ✅ 重启副本时资源重置为0
+- ✅ 新开始副本时资源重置为0
+- ✅ 普通战斗不受影响
+- ✅ 3 个单元测试全部通过
+- ✅ 所有 134 个测试通过（131 原有 + 3 新增）
+- ✅ 向下兼容，不破坏现有功能
+
+**测试结果：**
+```
+Total tests: 134
+- Original tests: 131 (all passing)
+- New tests (Phase 2.6): 3 (all passing)
+  - DungeonWaves_ResourcesPersistBetweenWaves
+  - MultiBattle_WithPreservedResources_RestoresCorrectly
+  - MultiBattle_WithoutPreservedResources_StartsAtZero
+- Failed: 0
+- Skipped: 0
+- Duration: ~1s
+```
+
+**代码改动：**
+- 修改文件：
+  - `BlazorIdle.Shared/Game/MultiBattleInstance.cs` - 添加 preservedResources 参数
+  - `BlazorIdle.Shared/Game/DungeonManager.cs` - 保存和传递资源
+  - `BlazorIdle.Tests/ResourcePersistenceTests.cs` - 新增测试文件
+
+**提交哈希：** 待提交
+
+**预计工作量：** 1-1.5 小时 → **实际：** ~1 小时
 
 ---
 
@@ -357,7 +457,8 @@ Total tests: 131
 |------|------|----------|----------|---------|
 | 阶段 1 - 资源系统基础 | ✅ 已完成 | 2025-11-11 | 4368a2f | +31 (125 total) |
 | 阶段 2 - 资源集成战斗 | ✅ 已完成 | 2025-11-11 | a6311ae | +7 (131 total) |
-| 阶段 2.5 - UI 资源显示 | ✅ 已完成 | 2025-11-11 | 待提交 | 0 (131 total) |
+| 阶段 2.5 - UI 资源显示 | ✅ 已完成 | 2025-11-11 | 5c30e27 | 0 (131 total) |
+| 阶段 2.6 - 资源波次持久化 | ✅ 已完成 | 2025-11-11 | 待提交 | +3 (134 total) |
 | 阶段 3 - Buff 系统核心 | ⬜ 未开始 | - | - | - |
 | 阶段 4 - IBuffOwner 接口 | ⬜ 未开始 | - | - | - |
 | 阶段 5 - SkillResolver 扩展 | ⬜ 未开始 | - | - | - |
@@ -367,7 +468,7 @@ Total tests: 131
 | 阶段 9 - UI 展示 | ⬜ 未开始 | - | - | - |
 | 阶段 10 - 验收测试 | ⬜ 未开始 | - | - | - |
 
-**总体进度：** 2.5/10 (25%) ✅
+**总体进度：** 2.6/10 (26%) ✅
 
 ---
 
@@ -377,9 +478,10 @@ Total tests: 131
 - ✅ 阶段 1：资源系统基础实现（ResourceBucket, ResourceBucketCollection, ResourceConfig）
 - ✅ 阶段 2：资源系统集成到战斗流程（攻击产生 rage，暴击额外 rage，资源快照）
 - ✅ 阶段 2.5：UI 实时显示资源信息（CharacterPanel 显示 rage 进度条）
-- ✅ 38 个测试全部通过（31 单元测试 + 7 集成测试）
+- ✅ 阶段 2.6：资源在副本波次间持久化（波次间保持，重启时重置）
+- ✅ 41 个测试全部通过（31 单元 + 7 集成 + 3 持久化）
 - ✅ 保持 94 个原有测试通过，无回归
-- ✅ 资源系统完全可用且可视化：玩家攻击自动产生 rage，UI 实时显示
+- ✅ 资源系统完整实现：创建、战斗集成、UI显示、波次持久化
 
 **下一步：**
 - 📍 阶段 3：Buff 系统核心实现
@@ -388,7 +490,7 @@ Total tests: 131
   - 实现 IBuffOwner 接口
   - 编写单元测试
 
-**预计剩余工作量：** 33.5-41.5 小时（已完成 5.5-7.5 小时）
+**预计剩余工作量：** 32.5-40.5 小时（已完成 6.5-8.5 小时）
 
 ---
 

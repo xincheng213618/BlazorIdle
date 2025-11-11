@@ -90,7 +90,8 @@ namespace BlazorIdle.Game
             RngContext rng,
             BattleTeam<Character> playerTeam,
             BattleTeam<Enemy> enemyTeam,
-            MultiBattleConfig? config = null)
+            MultiBattleConfig? config = null,
+            Dictionary<string, Resources.ResourceBucketCollection>? preservedResources = null)
         {
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _rng = rng ?? throw new ArgumentNullException(nameof(rng));
@@ -110,14 +111,14 @@ namespace BlazorIdle.Game
             _skillResolver = new SkillResolver(_combatConfig);
             _castingController = new CastingController();
 
-            InitializeTracks();
+            InitializeTracks(preservedResources);
         }
 
         /// <summary>
         /// 初始化所有战斗轨道
         /// Initialize all battle tracks
         /// </summary>
-        private void InitializeTracks()
+        private void InitializeTracks(Dictionary<string, Resources.ResourceBucketCollection>? preservedResources = null)
         {
             // 为每个角色初始化战斗轨道
             foreach (var member in _playerTeam.Members)
@@ -126,8 +127,20 @@ namespace BlazorIdle.Game
                 var tracks = new CharacterTracks(member.Id, character);
                 _characterTracks[member.Id] = tracks;
 
-                // Phase 2: 为每个玩家创建资源集合 / Create resource collection for each player
-                _playerResources[member.Id] = new Resources.ResourceBucketCollection();
+                // Phase 2 & 2.6: 为每个玩家创建或恢复资源集合
+                // Create or restore resource collection for each player
+                if (preservedResources != null && preservedResources.TryGetValue(member.Id, out var existingResources))
+                {
+                    // 使用保留的资源集合（用于副本波次之间保持资源）
+                    // Use preserved resource collection (for maintaining resources between dungeon waves)
+                    _playerResources[member.Id] = existingResources;
+                }
+                else
+                {
+                    // 创建新的资源集合
+                    // Create new resource collection
+                    _playerResources[member.Id] = new Resources.ResourceBucketCollection();
+                }
 
                 // 初始化统计
                 _damageDealtByCharacter[member.Id] = 0;

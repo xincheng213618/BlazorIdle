@@ -25,6 +25,10 @@ namespace BlazorIdle.Game
         private MultiBattleInstance? _currentBattle;
         private BattleTeam<Enemy>? _currentEnemyTeam;  // 当前敌人队伍引用
 
+        // Phase 2.6: 保留玩家资源（用于波次之间保持资源）
+        // Phase 2.6: Preserve player resources (for maintaining resources between waves)
+        private Dictionary<string, Resources.ResourceBucketCollection>? _preservedPlayerResources;
+
         // 波次计时器
         private int _nextActionAtMs = 0;
 
@@ -115,6 +119,10 @@ namespace BlazorIdle.Game
             _totalKills = 0;
             _totalDeaths = 0;
             _totalLoot.Clear();
+
+            // Phase 2.6: 清除保留的资源，新开始的副本从头开始
+            // Phase 2.6: Clear preserved resources, fresh dungeon start
+            _preservedPlayerResources = null;
 
             // 恢复玩家队伍
             _playerTeam.ReviveAll(true);
@@ -313,17 +321,43 @@ namespace BlazorIdle.Game
             battleConfig.AllowPlayerRevive = _dungeonDef.AllowRevive;
             battleConfig.AllowEnemyRespawn = false; // 副本中敌人总是不复活 / Enemies never respawn in dungeons
 
-            // 清理旧战斗
+            // Phase 2.6: 保存当前战斗的资源状态（如果存在）
+            // Phase 2.6: Save current battle's resource state (if exists)
             if (_currentBattle != null)
             {
+                // 获取资源快照并保存为字典引用
+                // Get resource snapshot and save as dictionary reference
+                var resourceSnapshot = _currentBattle.GetResourceSnapshot();
+                _preservedPlayerResources = new Dictionary<string, Resources.ResourceBucketCollection>();
+                
+                // 将快照中的资源值恢复到实际的资源集合对象
+                // Note: We need to preserve the actual ResourceBucketCollection objects, not just the snapshot
+                // The GetResourceSnapshot returns current values, but we need the collection objects themselves
+                foreach (var member in _playerTeam.Members)
+                {
+                    if (resourceSnapshot.TryGetValue(member.Id, out var resources))
+                    {
+                        // 创建新的资源集合并恢复值
+                        // Create new resource collection and restore values
+                        var newCollection = new Resources.ResourceBucketCollection();
+                        foreach (var (bucketId, value) in resources)
+                        {
+                            var bucket = newCollection.GetBucket(bucketId);
+                            bucket.Reset(value); // 将资源值恢复到快照值
+                        }
+                        _preservedPlayerResources[member.Id] = newCollection;
+                    }
+                }
+                
                 UnsubscribeBattleEvents();
             }
 
-            // 创建新战斗
-            _currentBattle = new MultiBattleInstance(_clock, _rng, _playerTeam, _currentEnemyTeam, battleConfig);
+            // 创建新战斗，传入保留的资源
+            // Create new battle, passing preserved resources
+            _currentBattle = new MultiBattleInstance(_clock, _rng, _playerTeam, _currentEnemyTeam, battleConfig, _preservedPlayerResources);
             SubscribeBattleEvents();
-            // 不重置玩家队伍状态，保持波次之间的血量
-            // Don't reset player team state, preserve HP between waves
+            // 不重置玩家队伍状态，保持波次之间的血量和资源
+            // Don't reset player team state, preserve HP and resources between waves
             _currentBattle.Start(resetPlayerTeam: false);
 
             // 触发事件
@@ -502,6 +536,10 @@ namespace BlazorIdle.Game
 
             // 恢复玩家队伍
             _playerTeam.ReviveAll(true);
+
+            // Phase 2.6: 清除保留的资源，新一轮副本从头开始
+            // Phase 2.6: Clear preserved resources, new dungeon run starts fresh
+            _preservedPlayerResources = null;
 
             FireProgressEvent();
             PrepareNextWave();
