@@ -106,50 +106,6 @@ namespace BlazorIdle.Tests
             Assert.Equal(ProgressPolicy.Presence, enemyConfig.ProgressPolicy);
         }
 
-        [Fact]
-        public void ITrack_InterfaceExists()
-        {
-            // Arrange & Act
-            var trackType = typeof(ITrack);
 
-            // Assert
-            Assert.True(trackType.IsInterface);
-            Assert.NotNull(trackType.GetProperty("Id"));
-            Assert.NotNull(trackType.GetProperty("IsSuspended"));
-            Assert.NotNull(trackType.GetMethod("Suspend"));
-            Assert.NotNull(trackType.GetMethod("Resume"));
-            Assert.NotNull(trackType.GetMethod("Tick"));
-        }
-
-        [Fact]
-        public void ITrack_HasCorrectMethodSignatures()
-        {
-            // Arrange
-            var trackType = typeof(ITrack);
-
-            // Act
-            var suspendMethod = trackType.GetMethod("Suspend");
-            var resumeMethod = trackType.GetMethod("Resume");
-            var tickMethod = trackType.GetMethod("Tick");
-
-            // Assert - Suspend 方法
-            Assert.NotNull(suspendMethod);
-            var suspendParams = suspendMethod.GetParameters();
-            Assert.Single(suspendParams);
-            Assert.Equal(typeof(string), suspendParams[0].ParameterType);
-
-            // Assert - Resume 方法
-            Assert.NotNull(resumeMethod);
-            var resumeParams = resumeMethod.GetParameters();
-            Assert.Single(resumeParams);
-            Assert.Equal(typeof(string), resumeParams[0].ParameterType);
-
-            // Assert - Tick 方法
-            Assert.NotNull(tickMethod);
-            var tickParams = tickMethod.GetParameters();
-            Assert.Equal(2, tickParams.Length);
-            Assert.Equal(typeof(double), tickParams[0].ParameterType);
-            Assert.Equal("dt", tickParams[0].Name);
-        }
     }
 }

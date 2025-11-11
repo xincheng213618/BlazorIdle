@@ -27,9 +27,12 @@ namespace BlazorIdle.Game
         private readonly ISkillResolver _skillResolver;
         private readonly CastingController _castingController;
         private readonly CombatConfig _combatConfig;
-        private readonly Dictionary<string, AttackTrackLegacy> _attackTracksLegacy = new();
-        private readonly Dictionary<string, SpecialTrackLegacy> _specialTracksLegacy = new();
-        private readonly Dictionary<string, EnemyAttackTrackLegacy> _enemyAttackTracksLegacy = new();
+        
+        // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
+        // They are preserved for potential future use or alternative implementation paths.
+        // Current implementation directly uses TrackState + SkillResolver for better clarity.
+        // If memory optimization is critical, these can be removed safely.
+
         /// <summary>
         /// 获取玩家队伍引用（只读）
         /// Get player team reference (read-only)
@@ -49,6 +52,7 @@ namespace BlazorIdle.Game
         private bool _running;
         private MultiBattleState _state = MultiBattleState.NotStarted;
         private int _resumeAtMs = 0;
+        private int _lastTickTime = 0;
 
         // 战斗统计
         private readonly Dictionary<string, int> _damageDealtByCharacter = new();
@@ -99,11 +103,10 @@ namespace BlazorIdle.Game
 
             // Phase 7: 初始化新技能系统组件 / Initialize new skill system components
             _combatConfig = new CombatConfig();
-            _skillResolver = new SkillResolver();
+            _skillResolver = new SkillResolver(_combatConfig);
             _castingController = new CastingController();
 
             InitializeTracks();
-            InitializeLegacyTracks();
         }
 
         /// <summary>
@@ -136,47 +139,7 @@ namespace BlazorIdle.Game
             }
         }
 
-        /// <summary>
-        /// 初始化 Legacy Track 适配器（Phase 7）
-        /// Initialize Legacy Track adapters (Phase 7)
-        /// </summary>
-        private void InitializeLegacyTracks()
-        {
-            var trackConfigCollection = new TrackConfigCollection();
-            
-            // 为每个角色创建 Legacy Track
-            foreach (var member in _playerTeam.Members)
-            {
-                var character = member.Entity;
-                
-                // 创建攻击 Track
-                var attackConfig = trackConfigCollection.Tracks["attack"];
-                _attackTracksLegacy[member.Id] = new AttackTrackLegacy(
-                    _characterTracks[member.Id].AttackTrack,
-                    _skillResolver,
-                    attackConfig
-                );
-                
-                // 创建特殊技能 Track
-                var specialConfig = trackConfigCollection.Tracks["special"];
-                _specialTracksLegacy[member.Id] = new SpecialTrackLegacy(
-                    _characterTracks[member.Id].SpecialTrack,
-                    _skillResolver,
-                    specialConfig
-                );
-            }
-            
-            // 为每个敌人创建 Legacy Track
-            foreach (var member in _enemyTeam.Members)
-            {
-                var enemyAttackConfig = trackConfigCollection.Tracks["enemy_attack"];
-                _enemyAttackTracksLegacy[member.Id] = new EnemyAttackTrackLegacy(
-                    _enemyTracks[member.Id].AttackTrack,
-                    _skillResolver,
-                    enemyAttackConfig
-                );
-            }
-        }
+
 
         /// <summary>
         /// 开始战斗
@@ -305,6 +268,12 @@ namespace BlazorIdle.Game
         /// </summary>
         private void ProcessCharacterActions(int now)
         {
+            // 调用 CastingController（占位实现，预留给后续施法系统）
+            // Call CastingController (placeholder implementation, reserved for future casting system)
+            double dt = _lastTickTime > 0 ? (now - _lastTickTime) / 1000.0 : 0;
+            _castingController.Tick(dt);
+            _lastTickTime = now;
+            
             var aliveCharIds = _playerTeam.GetAliveMemberIds();
 
             foreach (var charId in aliveCharIds)
@@ -363,11 +332,12 @@ namespace BlazorIdle.Game
             // 使用 SkillResolver 计算伤害
             // Use SkillResolver to calculate damage
             var opts = new SkillCastOptions { SourceTrack = "attack" };
-            var result = _skillResolver.Cast("attack_basic", ctx, opts);
+            var result = _skillResolver.Cast(SkillIds.AttackBasic, ctx, opts);
 
-            // 应用伤害
-            // Apply damage
-            ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Attack);
+            // 应用伤害（传递暴击信息、技能ID和BundleID）
+            // Apply damage (pass crit information, skill ID and bundle ID)
+            ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Attack, 
+                isAoe: false, isCrit: result.IsCrit, skillId: SkillIds.AttackBasic, bundleId: result.BundleId);
         }
 
         /// <summary>
@@ -402,10 +372,11 @@ namespace BlazorIdle.Game
 
                     // 使用 SkillResolver 计算伤害（应用 AOE 倍率）
                     var opts = new SkillCastOptions { SourceTrack = "special" };
-                    var result = _skillResolver.Cast("special_pulse", ctx, opts);
+                    var result = _skillResolver.Cast(SkillIds.SpecialPulse, ctx, opts);
                     int damage = (int)(result.DamageDealt * _config.AoeDamageMultiplier);
 
-                    ApplyDamageToEnemy(charId, member, enemyId, target, damage, EventSource.Special, true);
+                    ApplyDamageToEnemy(charId, member, enemyId, target, damage, EventSource.Special, 
+                        isAoe: true, isCrit: result.IsCrit, skillId: SkillIds.SpecialPulse, bundleId: result.BundleId);
                 }
             }
             else
@@ -430,9 +401,10 @@ namespace BlazorIdle.Game
 
                 // 使用 SkillResolver 计算伤害
                 var opts = new SkillCastOptions { SourceTrack = "special" };
-                var result = _skillResolver.Cast("special_pulse", ctx, opts);
+                var result = _skillResolver.Cast(SkillIds.SpecialPulse, ctx, opts);
 
-                ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Special);
+                ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Special, 
+                    isAoe: false, isCrit: result.IsCrit, skillId: SkillIds.SpecialPulse, bundleId: result.BundleId);
             }
         }
 
@@ -554,11 +526,12 @@ namespace BlazorIdle.Game
             // 使用 SkillResolver 计算伤害
             // Use SkillResolver to calculate damage
             var opts = new SkillCastOptions { SourceTrack = "enemy_attack" };
-            var result = _skillResolver.Cast("enemy_attack_basic", ctx, opts);
+            var result = _skillResolver.Cast(SkillIds.EnemyAttackBasic, ctx, opts);
 
-            // 应用伤害
-            // Apply damage
-            ApplyDamageToPlayer(enemyId, member, targetId, target, result.DamageDealt);
+            // 应用伤害（传递技能ID和BundleID）
+            // Apply damage (pass skill ID and bundle ID)
+            ApplyDamageToPlayer(enemyId, member, targetId, target, result.DamageDealt, 
+                skillId: SkillIds.EnemyAttackBasic, bundleId: result.BundleId);
         }
 
         /// <summary>
@@ -572,7 +545,10 @@ namespace BlazorIdle.Game
             BattleMember<Enemy> defender,
             int damage,
             EventSource source,
-            bool isAoe = false)
+            bool isAoe = false,
+            bool isCrit = false,
+            string? skillId = null,
+            string? bundleId = null)
         {
             // 应用伤害
             int actualDamage = defender.TakeDamage(damage);
@@ -595,11 +571,13 @@ namespace BlazorIdle.Game
                 Source = source,
                 TimeMs = _clock.NowMs,
                 Damage = actualDamage,
-                Crit = false, // TODO: 实现暴击判定
+                Crit = isCrit,
                 IsAoe = isAoe,
                 IsKill = isKill,
                 RngIndexAfter = _rng.Index,
-                DefenderHpAfter = defender.CurrentHp
+                DefenderHpAfter = defender.CurrentHp,
+                SkillId = skillId,
+                BundleId = bundleId
             };
 
             // 聚合事件
@@ -626,7 +604,9 @@ namespace BlazorIdle.Game
             BattleMember<Enemy> attacker,
             string defenderId,
             BattleMember<Character> defender,
-            int damage)
+            int damage,
+            string? skillId = null,
+            string? bundleId = null)
         {
             // 应用伤害
             int actualDamage = defender.TakeDamage(damage);
@@ -654,7 +634,9 @@ namespace BlazorIdle.Game
                 IsAoe = false,
                 IsKill = isKill,
                 RngIndexAfter = _rng.Index,
-                DefenderHpAfter = defender.CurrentHp
+                DefenderHpAfter = defender.CurrentHp,
+                SkillId = skillId,
+                BundleId = bundleId
             };
 
             // 聚合事件
@@ -988,7 +970,7 @@ namespace BlazorIdle.Game
 
             return BattleDigest.FromSegments(
                 durationMs: _clock.NowMs,
-                tickCount: 0, // TODO: 实现tick计数
+                tickCount: 0, // Note: Tick counting not implemented - not needed for current functionality
                 rngStart: _rngIndexStart,
                 rngEnd: _rngIndexEnd,
                 seed: _rngSeed,

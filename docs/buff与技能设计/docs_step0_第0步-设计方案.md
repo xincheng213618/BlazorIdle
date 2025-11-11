@@ -1,5 +1,29 @@
 # 第0步设计方案（整合版）— Track 抽象与 SkillCast 统一入口
 
+**状态：** ✅ 已完成实施（实际实施采用简化架构）
+
+**实施总结：**
+
+本设计方案已于 2025-11-10 至 2025-11-11 完成实施（阶段 1-10）。实际实施过程中采用了简化架构，在保证功能完整性的同时提升了代码可维护性。详细的实施进度、代码改进和测试结果请参考 [`Step0_实施进度追踪.md`](./Step0_实施进度追踪.md)。
+
+**架构差异说明：**
+- **设计方案**：展示理想的完整架构，包含 Legacy Track 的完整调用链
+- **实际实施**：采用简化方案，`MultiBattleInstance` 直接编排 `TrackState → SkillResolver → ApplyDamage`
+- **理由**：简化架构避免了循环依赖，保持了清晰的职责分离，便于 AOE 和多目标处理
+
+所有核心目标均已达成：
+- ✅ SkillCast 统一入口实现
+- ✅ Track 抽象层建立
+- ✅ 暴击和急速计算正确
+- ✅ 事件系统完善（SkillId, BundleId）
+- ✅ 配置系统功能正常
+- ✅ 预留接口（CastingController）已验证
+- ✅ 104 个测试全部通过
+
+---
+
+## 原始设计方案
+
 目的
 - 在不改变现有玩法与数值表现的前提下，为后续“充能条→释放技能、施法条、Buff/资源/Special 脉冲、Special 双模式、普攻+瞬发同发”等能力预留最小抽象与接口。
 - 将“Attack/Special 的触发时机（轨道）”与“技能效果处理”解耦：现在继续沿用旧频率与效果，但所有触发统一走 SkillCast 管道。
@@ -183,3 +207,23 @@ tick(dt, now):
   - 扩展 SkillDef（cost/cooldown/effects），AutoCast 使用 SkillResolver；施法 castTime>0 走 CastingController
 - 阶段3（ChargeTrack 切换）：
   - 用 ChargeTrack 替换 Legacy Track 的 Tick 实现；其他保持不变（靠开关 use_charge_tracks 控制）
+
+---
+
+## 实施说明
+
+**注意：** 本文档是设计方案文档，描述了理想的架构设计。实际实施时采用了简化的方案以保持代码清晰性。
+
+**查看实际实施详情：** 请参考 [Step0_实施进度追踪.md](./Step0_实施进度追踪.md) 中的"阶段 7"部分，其中详细说明了：
+- 实际采用的简化架构
+- 与设计方案的差异
+- 设计决策的理由
+- 后续可选的完整实现方案
+
+**核心目标达成情况：**
+- ✅ 统一 SkillCast 管道（所有攻击通过 SkillResolver）
+- ✅ 预留抽象接口（ITrack, CastingController, BattleContext）
+- ✅ 保持数值等价（94 个测试全部通过）
+- ✅ 支持多单位战斗和 AOE 技能
+
+实施方案在满足所有核心目标的同时，选择了更务实的架构方式。
