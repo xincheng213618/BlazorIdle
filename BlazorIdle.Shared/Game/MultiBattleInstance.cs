@@ -32,13 +32,7 @@ namespace BlazorIdle.Game
         // They are preserved for potential future use or alternative implementation paths.
         // Current implementation directly uses TrackState + SkillResolver for better clarity.
         // If memory optimization is critical, these can be removed safely.
-        // 注意：Legacy Track 被创建但未在当前简化实现中主动使用。
-        // 保留它们是为了潜在的未来使用或替代实现路径。
-        // 当前实现直接使用 TrackState + SkillResolver 以获得更好的清晰度。
-        // 如果内存优化至关重要，可以安全地移除这些。
-        private readonly Dictionary<string, AttackTrackLegacy> _attackTracksLegacy = new();
-        private readonly Dictionary<string, SpecialTrackLegacy> _specialTracksLegacy = new();
-        private readonly Dictionary<string, EnemyAttackTrackLegacy> _enemyAttackTracksLegacy = new();
+
         /// <summary>
         /// 获取玩家队伍引用（只读）
         /// Get player team reference (read-only)
@@ -113,7 +107,6 @@ namespace BlazorIdle.Game
             _castingController = new CastingController();
 
             InitializeTracks();
-            InitializeLegacyTracks();
         }
 
         /// <summary>
@@ -146,47 +139,7 @@ namespace BlazorIdle.Game
             }
         }
 
-        /// <summary>
-        /// 初始化 Legacy Track 适配器（Phase 7）
-        /// Initialize Legacy Track adapters (Phase 7)
-        /// </summary>
-        private void InitializeLegacyTracks()
-        {
-            var trackConfigCollection = new TrackConfigCollection();
-            
-            // 为每个角色创建 Legacy Track
-            foreach (var member in _playerTeam.Members)
-            {
-                var character = member.Entity;
-                
-                // 创建攻击 Track
-                var attackConfig = trackConfigCollection.Tracks["attack"];
-                _attackTracksLegacy[member.Id] = new AttackTrackLegacy(
-                    _characterTracks[member.Id].AttackTrack,
-                    _skillResolver,
-                    attackConfig
-                );
-                
-                // 创建特殊技能 Track
-                var specialConfig = trackConfigCollection.Tracks["special"];
-                _specialTracksLegacy[member.Id] = new SpecialTrackLegacy(
-                    _characterTracks[member.Id].SpecialTrack,
-                    _skillResolver,
-                    specialConfig
-                );
-            }
-            
-            // 为每个敌人创建 Legacy Track
-            foreach (var member in _enemyTeam.Members)
-            {
-                var enemyAttackConfig = trackConfigCollection.Tracks["enemy_attack"];
-                _enemyAttackTracksLegacy[member.Id] = new EnemyAttackTrackLegacy(
-                    _enemyTracks[member.Id].AttackTrack,
-                    _skillResolver,
-                    enemyAttackConfig
-                );
-            }
-        }
+
 
         /// <summary>
         /// 开始战斗
