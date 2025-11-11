@@ -1017,7 +1017,7 @@ namespace BlazorIdle.Game
 
             return BattleDigest.FromSegments(
                 durationMs: _clock.NowMs,
-                tickCount: 0, // TODO: 实现tick计数
+                tickCount: 0, // Note: Tick counting not implemented - not needed for current functionality
                 rngStart: _rngIndexStart,
                 rngEnd: _rngIndexEnd,
                 seed: _rngSeed,
