@@ -183,3 +183,23 @@ tick(dt, now):
   - 扩展 SkillDef（cost/cooldown/effects），AutoCast 使用 SkillResolver；施法 castTime>0 走 CastingController
 - 阶段3（ChargeTrack 切换）：
   - 用 ChargeTrack 替换 Legacy Track 的 Tick 实现；其他保持不变（靠开关 use_charge_tracks 控制）
+
+---
+
+## 实施说明
+
+**注意：** 本文档是设计方案文档，描述了理想的架构设计。实际实施时采用了简化的方案以保持代码清晰性。
+
+**查看实际实施详情：** 请参考 [Step0_实施进度追踪.md](./Step0_实施进度追踪.md) 中的"阶段 7"部分，其中详细说明了：
+- 实际采用的简化架构
+- 与设计方案的差异
+- 设计决策的理由
+- 后续可选的完整实现方案
+
+**核心目标达成情况：**
+- ✅ 统一 SkillCast 管道（所有攻击通过 SkillResolver）
+- ✅ 预留抽象接口（ITrack, CastingController, BattleContext）
+- ✅ 保持数值等价（94 个测试全部通过）
+- ✅ 支持多单位战斗和 AOE 技能
+
+实施方案在满足所有核心目标的同时，选择了更务实的架构方式。
