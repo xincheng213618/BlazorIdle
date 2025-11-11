@@ -9,14 +9,24 @@ namespace BlazorIdle.Game.Skills
     /// </summary>
     public sealed class SkillResolver : ISkillResolver
     {
+        private readonly Config.CombatConfig? _config;
         private int _castCounter = 0;
         private int _currentTickCasts = 0;
         private int _lastTickTime = 0;
-        private const int MaxCastsPerTick = 20;
         
         // Counter reset threshold to prevent overflow (reset after ~1 million casts)
         // 计数器重置阈值，防止溢出（约 100 万次施放后重置）
         private const int CounterResetThreshold = 1_000_000;
+
+        /// <summary>
+        /// 构造函数
+        /// Constructor
+        /// </summary>
+        /// <param name="config">战斗配置（可选）/ Combat configuration (optional)</param>
+        public SkillResolver(Config.CombatConfig? config = null)
+        {
+            _config = config;
+        }
 
         /// <summary>
         /// 施放单个技能
@@ -96,9 +106,10 @@ namespace BlazorIdle.Game.Skills
             // Cast skills in sequence
             foreach (var skillId in skillIds)
             {
-                // 上限控制：每 tick 最多施放 MaxCastsPerTick 次
-                // Limit control: max MaxCastsPerTick casts per tick
-                if (_currentTickCasts >= MaxCastsPerTick)
+                // 上限控制：每 tick 最多施放配置中的次数
+                // Limit control: max casts per tick from config
+                int maxCastsPerTick = _config?.MaxTriggersPerTick ?? 20;
+                if (_currentTickCasts >= maxCastsPerTick)
                 {
                     break;
                 }

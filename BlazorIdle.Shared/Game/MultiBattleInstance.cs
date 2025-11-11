@@ -49,6 +49,7 @@ namespace BlazorIdle.Game
         private bool _running;
         private MultiBattleState _state = MultiBattleState.NotStarted;
         private int _resumeAtMs = 0;
+        private int _lastTickTime = 0;
 
         // 战斗统计
         private readonly Dictionary<string, int> _damageDealtByCharacter = new();
@@ -99,7 +100,7 @@ namespace BlazorIdle.Game
 
             // Phase 7: 初始化新技能系统组件 / Initialize new skill system components
             _combatConfig = new CombatConfig();
-            _skillResolver = new SkillResolver();
+            _skillResolver = new SkillResolver(_combatConfig);
             _castingController = new CastingController();
 
             InitializeTracks();
@@ -305,6 +306,12 @@ namespace BlazorIdle.Game
         /// </summary>
         private void ProcessCharacterActions(int now)
         {
+            // 调用 CastingController（占位实现，预留给后续施法系统）
+            // Call CastingController (placeholder implementation, reserved for future casting system)
+            double dt = _lastTickTime > 0 ? (now - _lastTickTime) / 1000.0 : 0;
+            _castingController.Tick(dt);
+            _lastTickTime = now;
+            
             var aliveCharIds = _playerTeam.GetAliveMemberIds();
 
             foreach (var charId in aliveCharIds)
@@ -365,9 +372,9 @@ namespace BlazorIdle.Game
             var opts = new SkillCastOptions { SourceTrack = "attack" };
             var result = _skillResolver.Cast("attack_basic", ctx, opts);
 
-            // 应用伤害
-            // Apply damage
-            ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Attack);
+            // 应用伤害（传递暴击信息）
+            // Apply damage (pass crit information)
+            ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Attack, isAoe: false, isCrit: result.IsCrit);
         }
 
         /// <summary>
@@ -405,7 +412,7 @@ namespace BlazorIdle.Game
                     var result = _skillResolver.Cast("special_pulse", ctx, opts);
                     int damage = (int)(result.DamageDealt * _config.AoeDamageMultiplier);
 
-                    ApplyDamageToEnemy(charId, member, enemyId, target, damage, EventSource.Special, true);
+                    ApplyDamageToEnemy(charId, member, enemyId, target, damage, EventSource.Special, isAoe: true, isCrit: result.IsCrit);
                 }
             }
             else
@@ -432,7 +439,7 @@ namespace BlazorIdle.Game
                 var opts = new SkillCastOptions { SourceTrack = "special" };
                 var result = _skillResolver.Cast("special_pulse", ctx, opts);
 
-                ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Special);
+                ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Special, isAoe: false, isCrit: result.IsCrit);
             }
         }
 
@@ -572,7 +579,8 @@ namespace BlazorIdle.Game
             BattleMember<Enemy> defender,
             int damage,
             EventSource source,
-            bool isAoe = false)
+            bool isAoe = false,
+            bool isCrit = false)
         {
             // 应用伤害
             int actualDamage = defender.TakeDamage(damage);
@@ -595,7 +603,7 @@ namespace BlazorIdle.Game
                 Source = source,
                 TimeMs = _clock.NowMs,
                 Damage = actualDamage,
-                Crit = false, // TODO: 实现暴击判定
+                Crit = isCrit,
                 IsAoe = isAoe,
                 IsKill = isKill,
                 RngIndexAfter = _rng.Index,
