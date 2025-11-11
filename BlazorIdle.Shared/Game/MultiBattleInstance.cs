@@ -372,9 +372,10 @@ namespace BlazorIdle.Game
             var opts = new SkillCastOptions { SourceTrack = "attack" };
             var result = _skillResolver.Cast("attack_basic", ctx, opts);
 
-            // 应用伤害（传递暴击信息）
-            // Apply damage (pass crit information)
-            ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Attack, isAoe: false, isCrit: result.IsCrit);
+            // 应用伤害（传递暴击信息、技能ID和BundleID）
+            // Apply damage (pass crit information, skill ID and bundle ID)
+            ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Attack, 
+                isAoe: false, isCrit: result.IsCrit, skillId: "attack_basic", bundleId: result.BundleId);
         }
 
         /// <summary>
@@ -412,7 +413,8 @@ namespace BlazorIdle.Game
                     var result = _skillResolver.Cast("special_pulse", ctx, opts);
                     int damage = (int)(result.DamageDealt * _config.AoeDamageMultiplier);
 
-                    ApplyDamageToEnemy(charId, member, enemyId, target, damage, EventSource.Special, isAoe: true, isCrit: result.IsCrit);
+                    ApplyDamageToEnemy(charId, member, enemyId, target, damage, EventSource.Special, 
+                        isAoe: true, isCrit: result.IsCrit, skillId: "special_pulse", bundleId: result.BundleId);
                 }
             }
             else
@@ -439,7 +441,8 @@ namespace BlazorIdle.Game
                 var opts = new SkillCastOptions { SourceTrack = "special" };
                 var result = _skillResolver.Cast("special_pulse", ctx, opts);
 
-                ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Special, isAoe: false, isCrit: result.IsCrit);
+                ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Special, 
+                    isAoe: false, isCrit: result.IsCrit, skillId: "special_pulse", bundleId: result.BundleId);
             }
         }
 
@@ -563,9 +566,10 @@ namespace BlazorIdle.Game
             var opts = new SkillCastOptions { SourceTrack = "enemy_attack" };
             var result = _skillResolver.Cast("enemy_attack_basic", ctx, opts);
 
-            // 应用伤害
-            // Apply damage
-            ApplyDamageToPlayer(enemyId, member, targetId, target, result.DamageDealt);
+            // 应用伤害（传递技能ID和BundleID）
+            // Apply damage (pass skill ID and bundle ID)
+            ApplyDamageToPlayer(enemyId, member, targetId, target, result.DamageDealt, 
+                skillId: "enemy_attack_basic", bundleId: result.BundleId);
         }
 
         /// <summary>
@@ -580,7 +584,9 @@ namespace BlazorIdle.Game
             int damage,
             EventSource source,
             bool isAoe = false,
-            bool isCrit = false)
+            bool isCrit = false,
+            string? skillId = null,
+            string? bundleId = null)
         {
             // 应用伤害
             int actualDamage = defender.TakeDamage(damage);
@@ -607,7 +613,9 @@ namespace BlazorIdle.Game
                 IsAoe = isAoe,
                 IsKill = isKill,
                 RngIndexAfter = _rng.Index,
-                DefenderHpAfter = defender.CurrentHp
+                DefenderHpAfter = defender.CurrentHp,
+                SkillId = skillId,
+                BundleId = bundleId
             };
 
             // 聚合事件
@@ -634,7 +642,9 @@ namespace BlazorIdle.Game
             BattleMember<Enemy> attacker,
             string defenderId,
             BattleMember<Character> defender,
-            int damage)
+            int damage,
+            string? skillId = null,
+            string? bundleId = null)
         {
             // 应用伤害
             int actualDamage = defender.TakeDamage(damage);
@@ -662,7 +672,9 @@ namespace BlazorIdle.Game
                 IsAoe = false,
                 IsKill = isKill,
                 RngIndexAfter = _rng.Index,
-                DefenderHpAfter = defender.CurrentHp
+                DefenderHpAfter = defender.CurrentHp,
+                SkillId = skillId,
+                BundleId = bundleId
             };
 
             // 聚合事件

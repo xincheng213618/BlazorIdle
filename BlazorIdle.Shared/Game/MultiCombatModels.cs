@@ -44,6 +44,18 @@ namespace BlazorIdle.Game
         /// Whether the target was killed
         /// </summary>
         public bool IsKill { get; set; }
+
+        /// <summary>
+        /// 技能ID（用于追踪具体技能）
+        /// Skill ID (for tracking specific skill)
+        /// </summary>
+        public string? SkillId { get; set; }
+
+        /// <summary>
+        /// Bundle ID（用于关联同一 bundle 的多次施放）
+        /// Bundle ID (for correlating multiple casts in the same bundle)
+        /// </summary>
+        public string? BundleId { get; set; }
     }
 
     /// <summary>
