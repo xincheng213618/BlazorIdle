@@ -28,6 +28,10 @@ namespace BlazorIdle.Game
         private readonly CastingController _castingController;
         private readonly CombatConfig _combatConfig;
         
+        // Phase 2: 资源系统 / Resource system
+        private readonly Dictionary<string, Resources.ResourceBucketCollection> _playerResources = new();
+        private readonly Resources.ResourceConfig _resourceConfig = new();
+        
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
         // Current implementation directly uses TrackState + SkillResolver for better clarity.
@@ -121,6 +125,9 @@ namespace BlazorIdle.Game
                 var character = member.Entity;
                 var tracks = new CharacterTracks(member.Id, character);
                 _characterTracks[member.Id] = tracks;
+
+                // Phase 2: 为每个玩家创建资源集合 / Create resource collection for each player
+                _playerResources[member.Id] = new Resources.ResourceBucketCollection();
 
                 // 初始化统计
                 _damageDealtByCharacter[member.Id] = 0;
@@ -317,8 +324,8 @@ namespace BlazorIdle.Game
             var target = _enemyTeam.GetMember(targetId);
             if (member == null || target == null) return;
 
-            // 创建战斗上下文
-            // Create battle context
+            // 创建战斗上下文（Phase 2: 添加资源引用）
+            // Create battle context (Phase 2: Add resource reference)
             var ctx = new BattleContext
             {
                 Player = character,
@@ -326,7 +333,8 @@ namespace BlazorIdle.Game
                 PlayerTeam = _playerTeam,
                 EnemyTeam = _enemyTeam,
                 Rng = _rng,
-                Clock = _clock
+                Clock = _clock,
+                PlayerResources = _playerResources.GetValueOrDefault(charId)
             };
 
             // 使用 SkillResolver 计算伤害
@@ -338,6 +346,31 @@ namespace BlazorIdle.Game
             // Apply damage (pass crit information, skill ID and bundle ID)
             ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Attack, 
                 isAoe: false, isCrit: result.IsCrit, skillId: SkillIds.AttackBasic, bundleId: result.BundleId);
+
+            // Phase 2: 产生 rage 资源 / Generate rage resource
+            if (_playerResources.TryGetValue(charId, out var resources))
+            {
+                var rageBucket = resources.GetBucket("rage");
+                
+                // 命中 +1 rage / Attack hit +1 rage
+                int gained = rageBucket.Gain(_resourceConfig.GainPerAttack, "attack_hit");
+                if (gained > 0)
+                {
+                    RecordResourceGain(charId, "rage", gained, rageBucket.Current, "attack_hit", 
+                        skillId: SkillIds.AttackBasic, bundleId: result.BundleId);
+                }
+                
+                // 暴击额外 +1 rage / Crit extra +1 rage
+                if (result.IsCrit)
+                {
+                    int critGain = rageBucket.Gain(_resourceConfig.GainPerCritExtra, "crit_bonus");
+                    if (critGain > 0)
+                    {
+                        RecordResourceGain(charId, "rage", critGain, rageBucket.Current, "crit_bonus",
+                            skillId: SkillIds.AttackBasic, bundleId: result.BundleId);
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -645,6 +678,45 @@ namespace BlazorIdle.Game
 
             // 触发事件
             CombatEventFired?.Invoke(ev);
+        }
+
+        /// <summary>
+        /// Phase 2: 记录资源获得事件
+        /// Phase 2: Record resource gain event
+        /// </summary>
+        private void RecordResourceGain(
+            string actorId, 
+            string bucketId, 
+            int delta, 
+            int newValue, 
+            string reason,
+            string? skillId = null,
+            string? bundleId = null)
+        {
+            if (_combatConfig.EmitCastEvents)
+            {
+                var evt = new Resources.ResourceGainEvent
+                {
+                    TimeMs = _clock.NowMs,
+                    ActorId = actorId,
+                    BucketId = bucketId,
+                    Delta = delta,
+                    NewValue = newValue,
+                    Reason = reason,
+                    SkillId = skillId,
+                    BundleId = bundleId,
+                    Attacker = ActorType.Player,
+                    Defender = ActorType.Player,
+                    Source = EventSource.Attack,
+                    Damage = 0,
+                    Crit = false,
+                    RngIndexAfter = _rng.Index,
+                    DefenderHpAfter = 0
+                };
+                
+                var flushed = _aggregator.AddEvent(evt);
+                if (flushed != null) _segments.Add(flushed);
+            }
         }
 
         /// <summary>
@@ -958,6 +1030,26 @@ namespace BlazorIdle.Game
                     : 0,
                 RngIndex = _rng.Index
             };
+        }
+
+        /// <summary>
+        /// Phase 2: 获取玩家资源快照（用于 UI 显示）
+        /// Phase 2: Get player resource snapshot (for UI display)
+        /// </summary>
+        public Dictionary<string, Dictionary<string, int>> GetResourceSnapshot()
+        {
+            var snapshot = new Dictionary<string, Dictionary<string, int>>();
+            
+            foreach (var (playerId, resources) in _playerResources)
+            {
+                snapshot[playerId] = new Dictionary<string, int>();
+                foreach (var (bucketId, bucket) in resources.GetAll())
+                {
+                    snapshot[playerId][bucketId] = bucket.Current;
+                }
+            }
+            
+            return snapshot;
         }
 
         /// <summary>

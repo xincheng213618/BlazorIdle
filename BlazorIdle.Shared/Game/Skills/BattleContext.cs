@@ -42,6 +42,18 @@ namespace BlazorIdle.Game.Skills
         /// </summary>
         public IGameClock Clock { get; init; } = null!;
 
+        /// <summary>
+        /// 玩家资源集合（Phase 2）
+        /// Player resource collection (Phase 2)
+        /// </summary>
+        public Resources.ResourceBucketCollection? PlayerResources { get; init; }
+
+        /// <summary>
+        /// 敌人资源集合（预留，怪物暂不使用）
+        /// Enemy resource collection (reserved, not used for enemies yet)
+        /// </summary>
+        public Resources.ResourceBucketCollection? EnemyResources { get; init; }
+
         // 预留其他上下文字段
         // Reserved for other context fields
     }
