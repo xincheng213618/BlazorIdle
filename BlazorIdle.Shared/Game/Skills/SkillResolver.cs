@@ -40,9 +40,9 @@ namespace BlazorIdle.Game.Skills
             // Determine base damage based on skill type
             int baseDamage = skillId switch
             {
-                "attack_basic" => ctx.Player?.DamagePerAttack ?? 0,
-                "special_pulse" => ctx.Player?.SpecialDamage ?? 0,
-                "enemy_attack_basic" => ctx.Enemy?.DamagePerHit ?? 0,
+                SkillIds.AttackBasic => ctx.Player?.DamagePerAttack ?? 0,
+                SkillIds.SpecialPulse => ctx.Player?.SpecialDamage ?? 0,
+                SkillIds.EnemyAttackBasic => ctx.Enemy?.DamagePerHit ?? 0,
                 _ => 0
             };
 

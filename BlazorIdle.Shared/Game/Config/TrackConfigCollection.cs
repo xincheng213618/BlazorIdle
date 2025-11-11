@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BlazorIdle.Game.Tracks;
+using BlazorIdle.Game.Skills;
 
 namespace BlazorIdle.Game.Config
 {
@@ -21,19 +22,19 @@ namespace BlazorIdle.Game.Config
         {
             ["attack"] = new TrackConfig
             {
-                BoundSkills = new List<string> { "attack_basic" },
+                BoundSkills = new List<string> { SkillIds.AttackBasic },
                 OnFireTriggers = new List<string>(),
                 ProgressPolicy = ProgressPolicy.Presence
             },
             ["special"] = new TrackConfig
             {
-                BoundSkills = new List<string> { "special_pulse" },
+                BoundSkills = new List<string> { SkillIds.SpecialPulse },
                 OnFireTriggers = new List<string>(),
                 ProgressPolicy = ProgressPolicy.Presence
             },
             ["enemy_attack"] = new TrackConfig
             {
-                BoundSkills = new List<string> { "enemy_attack_basic" },
+                BoundSkills = new List<string> { SkillIds.EnemyAttackBasic },
                 OnFireTriggers = new List<string>(),
                 ProgressPolicy = ProgressPolicy.Presence
             }

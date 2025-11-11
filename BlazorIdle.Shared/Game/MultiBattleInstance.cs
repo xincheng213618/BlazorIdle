@@ -27,6 +27,15 @@ namespace BlazorIdle.Game
         private readonly ISkillResolver _skillResolver;
         private readonly CastingController _castingController;
         private readonly CombatConfig _combatConfig;
+        
+        // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
+        // They are preserved for potential future use or alternative implementation paths.
+        // Current implementation directly uses TrackState + SkillResolver for better clarity.
+        // If memory optimization is critical, these can be removed safely.
+        // 注意：Legacy Track 被创建但未在当前简化实现中主动使用。
+        // 保留它们是为了潜在的未来使用或替代实现路径。
+        // 当前实现直接使用 TrackState + SkillResolver 以获得更好的清晰度。
+        // 如果内存优化至关重要，可以安全地移除这些。
         private readonly Dictionary<string, AttackTrackLegacy> _attackTracksLegacy = new();
         private readonly Dictionary<string, SpecialTrackLegacy> _specialTracksLegacy = new();
         private readonly Dictionary<string, EnemyAttackTrackLegacy> _enemyAttackTracksLegacy = new();
@@ -370,12 +379,12 @@ namespace BlazorIdle.Game
             // 使用 SkillResolver 计算伤害
             // Use SkillResolver to calculate damage
             var opts = new SkillCastOptions { SourceTrack = "attack" };
-            var result = _skillResolver.Cast("attack_basic", ctx, opts);
+            var result = _skillResolver.Cast(SkillIds.AttackBasic, ctx, opts);
 
             // 应用伤害（传递暴击信息、技能ID和BundleID）
             // Apply damage (pass crit information, skill ID and bundle ID)
             ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Attack, 
-                isAoe: false, isCrit: result.IsCrit, skillId: "attack_basic", bundleId: result.BundleId);
+                isAoe: false, isCrit: result.IsCrit, skillId: SkillIds.AttackBasic, bundleId: result.BundleId);
         }
 
         /// <summary>
@@ -410,11 +419,11 @@ namespace BlazorIdle.Game
 
                     // 使用 SkillResolver 计算伤害（应用 AOE 倍率）
                     var opts = new SkillCastOptions { SourceTrack = "special" };
-                    var result = _skillResolver.Cast("special_pulse", ctx, opts);
+                    var result = _skillResolver.Cast(SkillIds.SpecialPulse, ctx, opts);
                     int damage = (int)(result.DamageDealt * _config.AoeDamageMultiplier);
 
                     ApplyDamageToEnemy(charId, member, enemyId, target, damage, EventSource.Special, 
-                        isAoe: true, isCrit: result.IsCrit, skillId: "special_pulse", bundleId: result.BundleId);
+                        isAoe: true, isCrit: result.IsCrit, skillId: SkillIds.SpecialPulse, bundleId: result.BundleId);
                 }
             }
             else
@@ -439,10 +448,10 @@ namespace BlazorIdle.Game
 
                 // 使用 SkillResolver 计算伤害
                 var opts = new SkillCastOptions { SourceTrack = "special" };
-                var result = _skillResolver.Cast("special_pulse", ctx, opts);
+                var result = _skillResolver.Cast(SkillIds.SpecialPulse, ctx, opts);
 
                 ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Special, 
-                    isAoe: false, isCrit: result.IsCrit, skillId: "special_pulse", bundleId: result.BundleId);
+                    isAoe: false, isCrit: result.IsCrit, skillId: SkillIds.SpecialPulse, bundleId: result.BundleId);
             }
         }
 
@@ -564,12 +573,12 @@ namespace BlazorIdle.Game
             // 使用 SkillResolver 计算伤害
             // Use SkillResolver to calculate damage
             var opts = new SkillCastOptions { SourceTrack = "enemy_attack" };
-            var result = _skillResolver.Cast("enemy_attack_basic", ctx, opts);
+            var result = _skillResolver.Cast(SkillIds.EnemyAttackBasic, ctx, opts);
 
             // 应用伤害（传递技能ID和BundleID）
             // Apply damage (pass skill ID and bundle ID)
             ApplyDamageToPlayer(enemyId, member, targetId, target, result.DamageDealt, 
-                skillId: "enemy_attack_basic", bundleId: result.BundleId);
+                skillId: SkillIds.EnemyAttackBasic, bundleId: result.BundleId);
         }
 
         /// <summary>

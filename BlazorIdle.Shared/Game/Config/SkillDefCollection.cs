@@ -19,22 +19,22 @@ namespace BlazorIdle.Game.Config
         /// </summary>
         public Dictionary<string, SkillDef> Skills { get; set; } = new()
         {
-            ["attack_basic"] = new SkillDef
+            [SkillIds.AttackBasic] = new SkillDef
             {
-                Id = "attack_basic",
+                Id = SkillIds.AttackBasic,
                 CastTimeSec = 0,
                 IsAoe = false
             },
-            ["special_pulse"] = new SkillDef
+            [SkillIds.SpecialPulse] = new SkillDef
             {
-                Id = "special_pulse",
+                Id = SkillIds.SpecialPulse,
                 CastTimeSec = 0,
                 IsAoe = true  // 特殊技能可能是 AOE，可以打击所有敌人
                               // Special skill may be AOE, can hit all enemies
             },
-            ["enemy_attack_basic"] = new SkillDef
+            [SkillIds.EnemyAttackBasic] = new SkillDef
             {
-                Id = "enemy_attack_basic",
+                Id = SkillIds.EnemyAttackBasic,
                 CastTimeSec = 0,
                 IsAoe = false
             }
