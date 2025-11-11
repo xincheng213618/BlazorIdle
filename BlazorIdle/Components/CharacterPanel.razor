@@ -29,6 +29,22 @@
         </div>
     </div>
 
+    <!-- Phase 2.5: 资源条 (Rage) -->
+    @if (Resources != null && Resources.ContainsKey("rage"))
+    {
+        var rage = Resources["rage"];
+        var rageMax = 10; // Default max from ResourceBucket
+        var ragePercent = (int)Math.Round(100.0 * rage / Math.Max(1, rageMax));
+        <div class="mb-2">
+            <div class="d-flex justify-content-between">
+                <small class="text-muted">Rage: @rage / @rageMax</small>
+            </div>
+            <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@ragePercent">
+                <div class="progress-bar bg-danger" style="width:@($"{ragePercent}%")"></div>
+            </div>
+        </div>
+    }
+
     <!-- Attack 进度 -->
     <div class="mb-2">
         <div class="d-flex justify-content-between small text-muted">
@@ -66,6 +82,10 @@
     [Parameter] public int MaxHp { get; set; }
 
     private int HpPercent => MaxHp <= 0 ? 0 : (int)Math.Round(100.0 * Hp / Math.Max(1, MaxHp));
+
+    // Phase 2.5: 资源信息（可选）
+    // Phase 2.5: Resource information (optional)
+    [Parameter] public Dictionary<string, int>? Resources { get; set; }
 
     // 进度（0..1）与剩余毫秒
     [Parameter] public double AttackProgress01 { get; set; }

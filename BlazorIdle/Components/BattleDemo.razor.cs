@@ -174,6 +174,18 @@ namespace BlazorIdle.Components
         // Get enemy attack time remaining - not displayed for now (in multi-enemy scenario)
         private double enemyRemainMs => 0.0;
 
+        // Phase 2.5: 获取玩家资源信息
+        // Phase 2.5: Get player resource information
+        private Dictionary<string, int>? playerResources
+        {
+            get
+            {
+                if (battle == null || SelectedCharacter == null) return null;
+                var resourceSnapshot = battle.GetResourceSnapshot();
+                return resourceSnapshot.GetValueOrDefault(SelectedCharacter.Id);
+            }
+        }
+
         // 日志列表 - 存储战斗日志
         // Log list - stores battle logs
         private readonly List<string> logs = new();

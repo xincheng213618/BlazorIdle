@@ -197,9 +197,77 @@ Total tests: 131
 - Duration: ~1s
 ```
 
-**提交哈希：** 待提交
+**提交哈希：** a6311ae
 
 **预计工作量：** 3-4 小时 → **实际：** ~3 小时
+
+---
+
+### 阶段 2.5：UI 展示资源信息（P0.5 - 增强）
+
+**状态：** ✅ 已完成
+
+**完成时间：** 2025-11-11
+
+**目标：** 在 CharacterPanel 组件中实时显示玩家的资源信息（rage）。
+
+**任务清单：**
+
+- [x] 2.5.1 扩展 CharacterPanel 组件
+  - 添加 `Resources` 参数（Dictionary<string, int>?）
+  - 在 HP 条下方添加 Rage 资源条显示
+  - 使用红色进度条展示 rage（区别于绿色 HP）
+  - 显示当前值 / 最大值（如 "Rage: 5 / 10"）
+
+- [x] 2.5.2 在 BattleDemo 中集成资源显示
+  - 添加 `playerResources` 属性获取玩家资源快照
+  - 将资源数据传递给 CharacterPanel 组件
+  - 资源数据在战斗过程中实时更新
+
+**实施细节：**
+
+1. **CharacterPanel.razor 扩展**
+   - 添加可选的 `Resources` 参数
+   - 条件渲染：仅当 Resources 不为 null 且包含 "rage" 键时显示
+   - Rage 条使用 `bg-danger` 样式（红色），区别于 HP 的绿色
+   - 显示格式：`Rage: {current} / {max}`
+
+2. **BattleDemo.razor.cs 集成**
+   - 新增 `playerResources` 计算属性
+   - 调用 `battle.GetResourceSnapshot()` 获取所有玩家资源
+   - 通过 `SelectedCharacter.Id` 获取当前角色的资源
+   - 资源数据在每次组件刷新时自动更新
+
+3. **UI 设计考虑**
+   - 资源条紧跟在 HP 条下方，保持布局一致
+   - 进度条高度与其他进度条一致（10px）
+   - 颜色选择：红色代表 rage（愤怒）资源
+   - 向下兼容：Resources 参数为可选，现有代码不受影响
+
+**验收标准：**
+- ✅ CharacterPanel 新增 Resources 参数
+- ✅ Rage 资源条正确显示在 HP 条下方
+- ✅ 资源数据实时更新（每次战斗 tick）
+- ✅ 显示格式清晰（当前值 / 最大值）
+- ✅ 编译通过，所有 131 个测试继续通过
+- ✅ 向下兼容，不影响其他使用 CharacterPanel 的地方
+
+**UI 效果：**
+- 在战斗界面的角色面板中，HP 条下方增加了 Rage 资源条
+- 攻击命中时，rage +1，进度条增长
+- 暴击时，rage 额外 +1（总共 +2）
+- 达到上限 10 后，进度条填满，不再增长
+- 红色进度条视觉上与绿色 HP 条形成区分
+
+**代码改动：**
+- 修改文件：
+  - `BlazorIdle/Components/CharacterPanel.razor` - 添加资源显示
+  - `BlazorIdle/Components/BattleDemo.razor` - 传递资源参数
+  - `BlazorIdle/Components/BattleDemo.razor.cs` - 添加 playerResources 属性
+
+**提交哈希：** 待提交
+
+**预计工作量：** 0.5-1 小时 → **实际：** ~0.5 小时
 
 ---
 
@@ -288,7 +356,8 @@ Total tests: 131
 | 阶段 | 状态 | 完成时间 | 提交哈希 | 测试数量 |
 |------|------|----------|----------|---------|
 | 阶段 1 - 资源系统基础 | ✅ 已完成 | 2025-11-11 | 4368a2f | +31 (125 total) |
-| 阶段 2 - 资源集成战斗 | ✅ 已完成 | 2025-11-11 | 待提交 | +7 (131 total) |
+| 阶段 2 - 资源集成战斗 | ✅ 已完成 | 2025-11-11 | a6311ae | +7 (131 total) |
+| 阶段 2.5 - UI 资源显示 | ✅ 已完成 | 2025-11-11 | 待提交 | 0 (131 total) |
 | 阶段 3 - Buff 系统核心 | ⬜ 未开始 | - | - | - |
 | 阶段 4 - IBuffOwner 接口 | ⬜ 未开始 | - | - | - |
 | 阶段 5 - SkillResolver 扩展 | ⬜ 未开始 | - | - | - |
@@ -298,7 +367,7 @@ Total tests: 131
 | 阶段 9 - UI 展示 | ⬜ 未开始 | - | - | - |
 | 阶段 10 - 验收测试 | ⬜ 未开始 | - | - | - |
 
-**总体进度：** 2/10 (20%) ✅
+**总体进度：** 2.5/10 (25%) ✅
 
 ---
 
@@ -307,9 +376,10 @@ Total tests: 131
 **已完成：**
 - ✅ 阶段 1：资源系统基础实现（ResourceBucket, ResourceBucketCollection, ResourceConfig）
 - ✅ 阶段 2：资源系统集成到战斗流程（攻击产生 rage，暴击额外 rage，资源快照）
+- ✅ 阶段 2.5：UI 实时显示资源信息（CharacterPanel 显示 rage 进度条）
 - ✅ 38 个测试全部通过（31 单元测试 + 7 集成测试）
 - ✅ 保持 94 个原有测试通过，无回归
-- ✅ 资源系统完全可用：玩家攻击自动产生和管理 rage 资源
+- ✅ 资源系统完全可用且可视化：玩家攻击自动产生 rage，UI 实时显示
 
 **下一步：**
 - 📍 阶段 3：Buff 系统核心实现
@@ -318,7 +388,7 @@ Total tests: 131
   - 实现 IBuffOwner 接口
   - 编写单元测试
 
-**预计剩余工作量：** 34-42 小时（已完成 5-7 小时）
+**预计剩余工作量：** 33.5-41.5 小时（已完成 5.5-7.5 小时）
 
 ---
 
