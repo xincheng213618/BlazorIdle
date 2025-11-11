@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using BlazorIdle.Game.Skills;
+using BlazorIdle.Game.Tracks;
+using BlazorIdle.Game.Config;
 
 namespace BlazorIdle.Game
 {
@@ -19,6 +22,14 @@ namespace BlazorIdle.Game
         private readonly Dictionary<string, CharacterTracks> _characterTracks = new();
         // 每个怪物的攻击轨道
         private readonly Dictionary<string, EnemyTrack> _enemyTracks = new();
+        
+        // Phase 7: 新技能系统组件 / New skill system components
+        private readonly ISkillResolver _skillResolver;
+        private readonly CastingController _castingController;
+        private readonly CombatConfig _combatConfig;
+        private readonly Dictionary<string, AttackTrackLegacy> _attackTracksLegacy = new();
+        private readonly Dictionary<string, SpecialTrackLegacy> _specialTracksLegacy = new();
+        private readonly Dictionary<string, EnemyAttackTrackLegacy> _enemyAttackTracksLegacy = new();
         /// <summary>
         /// 获取玩家队伍引用（只读）
         /// Get player team reference (read-only)
@@ -86,7 +97,13 @@ namespace BlazorIdle.Game
                 MaxDurationMs = 3000
             });
 
+            // Phase 7: 初始化新技能系统组件 / Initialize new skill system components
+            _combatConfig = new CombatConfig();
+            _skillResolver = new SkillResolver();
+            _castingController = new CastingController();
+
             InitializeTracks();
+            InitializeLegacyTracks();
         }
 
         /// <summary>
@@ -116,6 +133,48 @@ namespace BlazorIdle.Game
 
                 // 初始化统计
                 _damageDealtByEnemy[member.Id] = 0;
+            }
+        }
+
+        /// <summary>
+        /// 初始化 Legacy Track 适配器（Phase 7）
+        /// Initialize Legacy Track adapters (Phase 7)
+        /// </summary>
+        private void InitializeLegacyTracks()
+        {
+            var trackConfigCollection = new TrackConfigCollection();
+            
+            // 为每个角色创建 Legacy Track
+            foreach (var member in _playerTeam.Members)
+            {
+                var character = member.Entity;
+                
+                // 创建攻击 Track
+                var attackConfig = trackConfigCollection.Tracks["attack"];
+                _attackTracksLegacy[member.Id] = new AttackTrackLegacy(
+                    _characterTracks[member.Id].AttackTrack,
+                    _skillResolver,
+                    attackConfig
+                );
+                
+                // 创建特殊技能 Track
+                var specialConfig = trackConfigCollection.Tracks["special"];
+                _specialTracksLegacy[member.Id] = new SpecialTrackLegacy(
+                    _characterTracks[member.Id].SpecialTrack,
+                    _skillResolver,
+                    specialConfig
+                );
+            }
+            
+            // 为每个敌人创建 Legacy Track
+            foreach (var member in _enemyTeam.Members)
+            {
+                var enemyAttackConfig = trackConfigCollection.Tracks["enemy_attack"];
+                _enemyAttackTracksLegacy[member.Id] = new EnemyAttackTrackLegacy(
+                    _enemyTracks[member.Id].AttackTrack,
+                    _skillResolver,
+                    enemyAttackConfig
+                );
             }
         }
 
@@ -241,8 +300,8 @@ namespace BlazorIdle.Game
         }
 
         /// <summary>
-        /// 处理角色行动
-        /// Process character actions
+        /// 处理角色行动（Phase 7.2：使用 SkillResolver）
+        /// Process character actions (Phase 7.2: Using SkillResolver)
         /// </summary>
         private void ProcessCharacterActions(int now)
         {
@@ -258,19 +317,122 @@ namespace BlazorIdle.Game
 
                 var character = tracks.Character;
 
-                // 处理普通攻击
+                // 处理普通攻击 - Phase 7.2: 使用 SkillResolver
+                // Process normal attacks - Phase 7.2: Using SkillResolver
                 var atkCount = tracks.AttackTrack.CollectTriggers(now);
                 for (int i = 0; i < atkCount; i++)
                 {
-                    ProcessCharacterAttack(charId, character);
+                    ProcessCharacterAttackViaSkillResolver(charId, character);
                 }
 
-                // 处理特殊技能
+                // 处理特殊技能 - Phase 7.2: 使用 SkillResolver
+                // Process special skills - Phase 7.2: Using SkillResolver
                 var spCount = tracks.SpecialTrack.CollectTriggers(now);
                 for (int i = 0; i < spCount; i++)
                 {
-                    ProcessCharacterSpecial(charId, character);
+                    ProcessCharacterSpecialViaSkillResolver(charId, character);
                 }
+            }
+        }
+
+        /// <summary>
+        /// 通过 SkillResolver 处理角色普通攻击（Phase 7.2）
+        /// Process character normal attack via SkillResolver (Phase 7.2)
+        /// </summary>
+        private void ProcessCharacterAttackViaSkillResolver(string charId, Character character)
+        {
+            var targetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
+            if (targetId == null) return;
+
+            var member = _playerTeam.GetMember(charId);
+            var target = _enemyTeam.GetMember(targetId);
+            if (member == null || target == null) return;
+
+            // 创建战斗上下文
+            // Create battle context
+            var ctx = new BattleContext
+            {
+                Player = character,
+                Enemy = target.Entity,
+                PlayerTeam = _playerTeam,
+                EnemyTeam = _enemyTeam,
+                Rng = _rng,
+                Clock = _clock
+            };
+
+            // 使用 SkillResolver 计算伤害
+            // Use SkillResolver to calculate damage
+            var opts = new SkillCastOptions { SourceTrack = "attack" };
+            var result = _skillResolver.Cast("attack_basic", ctx, opts);
+
+            // 应用伤害
+            // Apply damage
+            ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Attack);
+        }
+
+        /// <summary>
+        /// 通过 SkillResolver 处理角色特殊技能（Phase 7.2）
+        /// Process character special skill via SkillResolver (Phase 7.2)
+        /// </summary>
+        private void ProcessCharacterSpecialViaSkillResolver(string charId, Character character)
+        {
+            var member = _playerTeam.GetMember(charId);
+            if (member == null) return;
+
+            if (_config.SpecialIsAoe)
+            {
+                // AOE技能 - 打击所有存活敌人
+                var aliveEnemies = _enemyTeam.GetAliveMemberIds();
+
+                foreach (var enemyId in aliveEnemies)
+                {
+                    var target = _enemyTeam.GetMember(enemyId);
+                    if (target == null) continue;
+
+                    // 创建战斗上下文
+                    var ctx = new BattleContext
+                    {
+                        Player = character,
+                        Enemy = target.Entity,
+                        PlayerTeam = _playerTeam,
+                        EnemyTeam = _enemyTeam,
+                        Rng = _rng,
+                        Clock = _clock
+                    };
+
+                    // 使用 SkillResolver 计算伤害（应用 AOE 倍率）
+                    var opts = new SkillCastOptions { SourceTrack = "special" };
+                    var result = _skillResolver.Cast("special_pulse", ctx, opts);
+                    int damage = (int)(result.DamageDealt * _config.AoeDamageMultiplier);
+
+                    ApplyDamageToEnemy(charId, member, enemyId, target, damage, EventSource.Special, true);
+                }
+            }
+            else
+            {
+                // 单体技能
+                var targetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
+                if (targetId == null) return;
+
+                var target = _enemyTeam.GetMember(targetId);
+                if (target == null) return;
+
+                // 创建战斗上下文
+                var ctx = new BattleContext
+                {
+                    Player = character,
+                    Enemy = target.Entity,
+                    PlayerTeam = _playerTeam,
+                    EnemyTeam = _enemyTeam,
+                    Rng = _rng,
+                    Clock = _clock
+                };
+
+                // 使用 SkillResolver 计算伤害
+                var opts = new SkillCastOptions { SourceTrack = "special" };
+                var result = _skillResolver.Cast("special_pulse", ctx, opts);
+
+                ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Special);
             }
         }
 
@@ -339,8 +501,8 @@ namespace BlazorIdle.Game
         }
 
         /// <summary>
-        /// 处理怪物行动
-        /// Process enemy actions
+        /// 处理怪物行动（Phase 7.3：使用 SkillResolver）
+        /// Process enemy actions (Phase 7.3: Using SkillResolver)
         /// </summary>
         private void ProcessEnemyActions(int now)
         {
@@ -359,16 +521,16 @@ namespace BlazorIdle.Game
                 var count = track.AttackTrack.CollectTriggers(now);
                 for (int i = 0; i < count; i++)
                 {
-                    ProcessEnemyAttack(enemyId, enemy);
+                    ProcessEnemyAttackViaSkillResolver(enemyId, enemy);
                 }
             }
         }
 
         /// <summary>
-        /// 处理怪物攻击
-        /// Process enemy attack
+        /// 通过 SkillResolver 处理怪物攻击（Phase 7.3）
+        /// Process enemy attack via SkillResolver (Phase 7.3)
         /// </summary>
-        private void ProcessEnemyAttack(string enemyId, Enemy enemy)
+        private void ProcessEnemyAttackViaSkillResolver(string enemyId, Enemy enemy)
         {
             var targetId = SelectPlayerTarget(_config.EnemyTargetStrategy);
             if (targetId == null) return;
@@ -377,8 +539,26 @@ namespace BlazorIdle.Game
             var target = _playerTeam.GetMember(targetId);
             if (member == null || target == null) return;
 
-            int damage = EnemyRollDamage(enemy.DamagePerHit, enemy);
-            ApplyDamageToPlayer(enemyId, member, targetId, target, damage);
+            // 创建战斗上下文
+            // Create battle context
+            var ctx = new BattleContext
+            {
+                Enemy = enemy,
+                Player = target.Entity,
+                PlayerTeam = _playerTeam,
+                EnemyTeam = _enemyTeam,
+                Rng = _rng,
+                Clock = _clock
+            };
+
+            // 使用 SkillResolver 计算伤害
+            // Use SkillResolver to calculate damage
+            var opts = new SkillCastOptions { SourceTrack = "enemy_attack" };
+            var result = _skillResolver.Cast("enemy_attack_basic", ctx, opts);
+
+            // 应用伤害
+            // Apply damage
+            ApplyDamageToPlayer(enemyId, member, targetId, target, result.DamageDealt);
         }
 
         /// <summary>
