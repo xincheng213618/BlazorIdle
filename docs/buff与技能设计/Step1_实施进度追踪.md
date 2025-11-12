@@ -1030,11 +1030,108 @@ Total tests: 207
 
 ### 阶段 5：扩展 SkillResolver 支持 Buff 操作（P0 - 必须）
 
-**状态：** ⬜ 未开始
+**状态：** ✅ 已完成
+
+**完成时间：** 2025-11-12
 
 **目标：** SkillResolver 返回 Buff 操作指令。
 
-**预计工作量：** 3-4 小时
+**任务清单：**
+
+- [x] 5.1 创建 Buff 操作类型
+  - BuffOperation 类
+  - BuffOperationType 枚举（Apply/Remove）
+  - BuffTarget 枚举（6种目标类型）
+
+- [x] 5.2 扩展 SkillCastResult
+  - BuffOperations 列表
+  - InstantHeal 字段
+
+- [x] 5.3 扩展 SkillDef
+  - OnCastBuffs, OnHitBuffs, OnCritBuffs
+  - ResourceCosts, ResourceGains
+  - DamageMultiplier, InstantHeal
+  - AlwaysHits, CanCrit 标志
+
+- [x] 5.4 创建 SkillRepository
+  - 集中管理技能配置
+  - 初始化默认技能
+  - 支持自定义技能注册
+
+- [x] 5.5 更新 SkillResolver
+  - 使用 SkillRepository
+  - 返回 buff 操作指令
+  - 应用 DamageMultiplier
+  - 返回 InstantHeal
+
+- [x] 5.6 单元测试（17个）
+  - BuffOperation 测试（3个）
+  - SkillCastResult 测试（3个）
+  - SkillDef 测试（5个）
+  - SkillRepository 测试（2个）
+  - SkillResolver 集成测试（4个）
+
+**实施细节：**
+
+1. **BuffOperation 设计**
+   - Apply/Remove 操作类型
+   - 6种目标类型：Self, Target, AllEnemies, AllAllies, RandomEnemy, LowestHpAlly
+   - BuffTemplate 用于 Apply 操作
+   - BuffIdToRemove 用于 Remove 操作
+
+2. **SkillDef 配置**
+   - OnCastBuffs: 施法时执行（无论是否命中）
+   - OnHitBuffs: 命中时执行
+   - OnCritBuffs: 暴击时执行
+   - 支持多个 buff 操作
+
+3. **SkillResolver 集成**
+   - 可选的 SkillRepository 参数
+   - 向后兼容（没有 SkillDef 时使用默认行为）
+   - 自动根据 SkillDef 返回 buff 操作
+
+**验收标准：**
+- ✅ BuffOperation 类型定义完整
+- ✅ SkillCastResult 包含 buff 操作
+- ✅ SkillDef 支持配置 buff 操作
+- ✅ SkillRepository 管理技能配置
+- ✅ SkillResolver 返回 buff 操作
+- ✅ 17 个单元测试全部通过
+- ✅ 所有 229 个测试通过
+
+**测试结果：**
+```
+Total tests: 229
+- Original tests: 212 (all passing)
+- Phase 5 tests: 17 (all passing)
+  - BuffOperation: 3
+  - SkillCastResult: 3
+  - SkillDef: 5
+  - SkillRepository: 2
+  - SkillResolver Integration: 4
+- Failed: 0
+- Skipped: 0
+- Duration: ~872ms
+```
+
+**代码改动：**
+- 新增文件：
+  - `BlazorIdle.Shared/Game/Skills/BuffOperation.cs`
+  - `BlazorIdle.Shared/Game/Skills/SkillRepository.cs`
+  - `BlazorIdle.Tests/Phase5BuffOperationTests.cs`
+- 修改文件：
+  - `BlazorIdle.Shared/Game/Skills/SkillCastResult.cs`
+  - `BlazorIdle.Shared/Game/Skills/SkillDef.cs`
+  - `BlazorIdle.Shared/Game/Skills/SkillResolver.cs`
+
+**提交哈希：** 142933d (Part 1), ad98165 (Part 2)
+
+**预计工作量：** 3-4 小时 → **实际：** ~3 小时
+
+**下一步（Phase 6）：**
+- MultiBattleInstance 处理 buff 操作
+- 应用 buff 到目标实体
+- Special 脉冲施加测试 Buff
 
 ---
 
@@ -1102,14 +1199,14 @@ Total tests: 207
 | 阶段 2.7.3 - 副本重启修复 | ✅ 已完成 | 2025-11-12 | 6bfbe6c | +1 (145 total) |
 | 阶段 3 - Buff 系统核心 | ✅ 已完成 | 2025-11-12 | 321b932 | +39 (184 total) |
 | 阶段 4 - IBuffOwner 接口 | ✅ 已完成 | 2025-11-12 | f48bbbc | +23 (207 total) |
-| 阶段 5 - SkillResolver 扩展 | ⬜ 未开始 | - | - | - |
+| 阶段 5 - SkillResolver 扩展 | ✅ 已完成 | 2025-11-12 | ad98165 | +17 (229 total) |
 | 阶段 6 - Special 脉冲 Buff | ⬜ 未开始 | - | - | - |
 | 阶段 7 - Buff 效果应用 | ⬜ 未开始 | - | - | - |
 | 阶段 8 - 事件系统扩展 | ⬜ 未开始 | - | - | - |
 | 阶段 9 - UI 展示 | ⬜ 未开始 | - | - | - |
 | 阶段 10 - 验收测试 | ⬜ 未开始 | - | - | - |
 
-**总体进度：** 4/10 (40%) ✅
+**总体进度：** 5/10 (50%) ✅
 
 ---
 
