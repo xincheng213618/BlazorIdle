@@ -59,14 +59,14 @@ namespace BlazorIdle.Game.Buffs
         /// Applies damage to this entity.
         /// </summary>
         /// <param name="amount">Amount of damage.</param>
-        /// <param name="source">Source of damage (for tracking/events).</param>
-        void ReceiveDamage(int amount, string source);
+        /// <param name="meta">Metadata about the damage source.</param>
+        void ReceiveDamage(int amount, DamageMeta meta);
 
         /// <summary>
         /// Applies healing to this entity.
         /// </summary>
         /// <param name="amount">Amount of healing.</param>
-        /// <param name="source">Source of healing (for tracking/events).</param>
-        void ReceiveHeal(int amount, string source);
+        /// <param name="meta">Metadata about the healing source.</param>
+        void ReceiveHeal(int amount, HealMeta meta);
     }
 }

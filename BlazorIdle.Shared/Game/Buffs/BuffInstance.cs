@@ -86,6 +86,18 @@ namespace BlazorIdle.Game.Buffs
             int maxStacks = 0,
             string? sourceSkillId = null)
         {
+            // Validation
+            if (string.IsNullOrEmpty(id))
+                throw new ArgumentException("Buff ID cannot be null or empty", nameof(id));
+            if (string.IsNullOrEmpty(ownerId))
+                throw new ArgumentException("Owner ID cannot be null or empty", nameof(ownerId));
+            if (durationSec.HasValue && durationSec.Value < 0)
+                throw new ArgumentException("Duration cannot be negative", nameof(durationSec));
+            if (tickIntervalSec.HasValue && tickIntervalSec.Value <= 0)
+                throw new ArgumentException("Tick interval must be positive", nameof(tickIntervalSec));
+            if (maxStacks < 0)
+                throw new ArgumentException("Max stacks cannot be negative", nameof(maxStacks));
+
             Id = id;
             OwnerId = ownerId;
             Kind = kind;
@@ -102,11 +114,11 @@ namespace BlazorIdle.Game.Buffs
         /// <summary>
         /// Updates the buff state over time.
         /// Handles duration decay and tick accumulation for DoT/HoT effects.
-        /// Returns true if a tick occurred.
+        /// Returns the number of ticks that occurred.
         /// </summary>
-        public bool Tick(double deltaTimeSec)
+        public int Tick(double deltaTimeSec)
         {
-            bool tickOccurred = false;
+            int ticksOccurred = 0;
 
             // Decrement duration
             if (RemainingDurationSec.HasValue)
@@ -119,14 +131,15 @@ namespace BlazorIdle.Game.Buffs
             {
                 TickAccumulator += deltaTimeSec;
 
-                if (TickAccumulator >= TickIntervalSec.Value)
+                // Handle multiple ticks if deltaTime is large
+                while (TickAccumulator >= TickIntervalSec.Value)
                 {
                     TickAccumulator -= TickIntervalSec.Value;
-                    tickOccurred = true;
+                    ticksOccurred++;
                 }
             }
 
-            return tickOccurred;
+            return ticksOccurred;
         }
 
         /// <summary>

@@ -127,6 +127,64 @@ namespace BlazorIdle.Tests
             Assert.Equal(0, buff.MaxStacks);
         }
 
+        [Fact]
+        public void BuffInstance_Constructor_ThrowsOnEmptyId()
+        {
+            Assert.Throws<ArgumentException>(() => new BuffInstance(
+                "",
+                "player1",
+                BuffKind.Buff,
+                new List<BuffEffect>()
+            ));
+        }
+
+        [Fact]
+        public void BuffInstance_Constructor_ThrowsOnEmptyOwnerId()
+        {
+            Assert.Throws<ArgumentException>(() => new BuffInstance(
+                "buff1",
+                "",
+                BuffKind.Buff,
+                new List<BuffEffect>()
+            ));
+        }
+
+        [Fact]
+        public void BuffInstance_Constructor_ThrowsOnNegativeDuration()
+        {
+            Assert.Throws<ArgumentException>(() => new BuffInstance(
+                "buff1",
+                "player1",
+                BuffKind.Buff,
+                new List<BuffEffect>(),
+                durationSec: -1.0
+            ));
+        }
+
+        [Fact]
+        public void BuffInstance_Constructor_ThrowsOnNegativeTickInterval()
+        {
+            Assert.Throws<ArgumentException>(() => new BuffInstance(
+                "buff1",
+                "player1",
+                BuffKind.Buff,
+                new List<BuffEffect>(),
+                tickIntervalSec: -0.5
+            ));
+        }
+
+        [Fact]
+        public void BuffInstance_Constructor_ThrowsOnNegativeMaxStacks()
+        {
+            Assert.Throws<ArgumentException>(() => new BuffInstance(
+                "buff1",
+                "player1",
+                BuffKind.Buff,
+                new List<BuffEffect>(),
+                maxStacks: -1
+            ));
+        }
+
         #endregion
 
         #region BuffInstance Duration Tests
@@ -259,11 +317,11 @@ namespace BlazorIdle.Tests
                 tickIntervalSec: 1.0
             );
 
-            bool tickOccurred = buff.Tick(0.5);
-            Assert.False(tickOccurred);
+            int tickCount = buff.Tick(0.5);
+            Assert.Equal(0, tickCount);
 
-            tickOccurred = buff.Tick(0.6);
-            Assert.True(tickOccurred);
+            tickCount = buff.Tick(0.6);
+            Assert.Equal(1, tickCount);
             Assert.Equal(0.1, buff.TickAccumulator, 2); // 0.5 + 0.6 - 1.0 = 0.1
         }
 
@@ -279,12 +337,32 @@ namespace BlazorIdle.Tests
                 tickIntervalSec: 1.5
             );
 
-            buff.Tick(1.0);
+            int tickCount = buff.Tick(1.0);
+            Assert.Equal(0, tickCount);
             Assert.Equal(1.0, buff.TickAccumulator);
 
-            buff.Tick(0.7);
+            tickCount = buff.Tick(0.7);
+            Assert.Equal(1, tickCount);
             Assert.True(buff.TickAccumulator > 0); // Should have rolled over but preserve remainder
             Assert.Equal(0.2, buff.TickAccumulator, 2); // 1.0 + 0.7 - 1.5 = 0.2
+        }
+
+        [Fact]
+        public void BuffInstance_Tick_HandlesMultipleTicks()
+        {
+            var buff = new BuffInstance(
+                "test_dot",
+                "enemy1",
+                BuffKind.Debuff,
+                new List<BuffEffect> { BuffEffect.DamageOverTime(10) },
+                durationSec: 10.0,
+                tickIntervalSec: 1.0
+            );
+
+            // Large delta time should trigger multiple ticks
+            int tickCount = buff.Tick(3.5);
+            Assert.Equal(3, tickCount); // 3 complete ticks
+            Assert.Equal(0.5, buff.TickAccumulator, 2); // 0.5 seconds remaining
         }
 
         #endregion
@@ -565,12 +643,12 @@ namespace BlazorIdle.Tests
 
             while (totalTime < 6.0 && !buff.IsExpired())
             {
-                bool ticked = buff.Tick(0.5);
+                int ticks = buff.Tick(0.5);
                 totalTime += 0.5;
 
-                if (ticked)
+                if (ticks > 0)
                 {
-                    tickCount++;
+                    tickCount += ticks;
                     Assert.Equal(6, buff.GetDamagePerTick());
                 }
             }
