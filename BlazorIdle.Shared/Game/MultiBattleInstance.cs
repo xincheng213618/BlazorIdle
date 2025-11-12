@@ -28,6 +28,13 @@ namespace BlazorIdle.Game
         private readonly CastingController _castingController;
         private readonly CombatConfig _combatConfig;
         
+        // Phase 2: 资源系统 / Resource system
+        private readonly Dictionary<string, Resources.ResourceBucketCollection> _playerResources = new();
+        private readonly Resources.ResourceConfig _resourceConfig = new();
+        
+        // Phase 2.7: 职业资源配置映射 / Profession resource configuration map
+        private readonly Dictionary<string, Shared.Models.ProfessionResourceConfig>? _professionResourceConfigs;
+        
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
         // Current implementation directly uses TrackState + SkillResolver for better clarity.
@@ -86,13 +93,16 @@ namespace BlazorIdle.Game
             RngContext rng,
             BattleTeam<Character> playerTeam,
             BattleTeam<Enemy> enemyTeam,
-            MultiBattleConfig? config = null)
+            MultiBattleConfig? config = null,
+            Dictionary<string, Resources.ResourceBucketCollection>? preservedResources = null,
+            Dictionary<string, Shared.Models.ProfessionResourceConfig>? professionResourceConfigs = null)
         {
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _rng = rng ?? throw new ArgumentNullException(nameof(rng));
             _playerTeam = playerTeam ?? throw new ArgumentNullException(nameof(playerTeam));
             _enemyTeam = enemyTeam ?? throw new ArgumentNullException(nameof(enemyTeam));
             _config = config ?? new MultiBattleConfig();
+            _professionResourceConfigs = professionResourceConfigs;
 
             _rngSeed = rng.Seed;
             _aggregator = new SegmentAggregator(new SegmentAggregatorOptions
@@ -106,14 +116,14 @@ namespace BlazorIdle.Game
             _skillResolver = new SkillResolver(_combatConfig);
             _castingController = new CastingController();
 
-            InitializeTracks();
+            InitializeTracks(preservedResources);
         }
 
         /// <summary>
         /// 初始化所有战斗轨道
         /// Initialize all battle tracks
         /// </summary>
-        private void InitializeTracks()
+        private void InitializeTracks(Dictionary<string, Resources.ResourceBucketCollection>? preservedResources = null)
         {
             // 为每个角色初始化战斗轨道
             foreach (var member in _playerTeam.Members)
@@ -121,6 +131,36 @@ namespace BlazorIdle.Game
                 var character = member.Entity;
                 var tracks = new CharacterTracks(member.Id, character);
                 _characterTracks[member.Id] = tracks;
+
+                // Phase 2 & 2.6 & 2.7: 为每个玩家创建或恢复资源集合
+                // Create or restore resource collection for each player
+                if (preservedResources != null && preservedResources.TryGetValue(member.Id, out var existingResources))
+                {
+                    // 使用保留的资源集合（用于副本波次之间保持资源）
+                    // Use preserved resource collection (for maintaining resources between dungeon waves)
+                    _playerResources[member.Id] = existingResources;
+                }
+                else
+                {
+                    // Phase 2.7: 根据职业配置创建资源集合
+                    // Phase 2.7: Create resource collection based on profession configuration
+                    if (_professionResourceConfigs != null && 
+                        _professionResourceConfigs.TryGetValue(character.ActiveCombatProfessionId, out var professionResourceConfig))
+                    {
+                        // 使用职业特定的资源配置
+                        // Use profession-specific resource configuration
+                        _playerResources[member.Id] = new Resources.ResourceBucketCollection(
+                            professionResourceConfig.Id, 
+                            professionResourceConfig.Max, 
+                            professionResourceConfig.Initial);
+                    }
+                    else
+                    {
+                        // 后备：创建默认的资源集合（rage, max=10, initial=0）
+                        // Fallback: Create default resource collection (rage, max=10, initial=0)
+                        _playerResources[member.Id] = new Resources.ResourceBucketCollection();
+                    }
+                }
 
                 // 初始化统计
                 _damageDealtByCharacter[member.Id] = 0;
@@ -317,8 +357,8 @@ namespace BlazorIdle.Game
             var target = _enemyTeam.GetMember(targetId);
             if (member == null || target == null) return;
 
-            // 创建战斗上下文
-            // Create battle context
+            // 创建战斗上下文（Phase 2: 添加资源引用）
+            // Create battle context (Phase 2: Add resource reference)
             var ctx = new BattleContext
             {
                 Player = character,
@@ -326,7 +366,8 @@ namespace BlazorIdle.Game
                 PlayerTeam = _playerTeam,
                 EnemyTeam = _enemyTeam,
                 Rng = _rng,
-                Clock = _clock
+                Clock = _clock,
+                PlayerResources = _playerResources.GetValueOrDefault(charId)
             };
 
             // 使用 SkillResolver 计算伤害
@@ -338,6 +379,48 @@ namespace BlazorIdle.Game
             // Apply damage (pass crit information, skill ID and bundle ID)
             ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Attack, 
                 isAoe: false, isCrit: result.IsCrit, skillId: SkillIds.AttackBasic, bundleId: result.BundleId);
+
+            // Phase 2 & 2.7: 产生资源 / Generate resource
+            if (_playerResources.TryGetValue(charId, out var resources))
+            {
+                // Phase 2.7: 获取职业资源配置，决定资源ID和增益量
+                // Phase 2.7: Get profession resource config to determine resource ID and gain amounts
+                string resourceId = "rage"; // 默认
+                int gainPerAttack = _resourceConfig.GainPerAttack; // 默认 1
+                int gainPerCritExtra = _resourceConfig.GainPerCritExtra; // 默认 1
+                
+                if (_professionResourceConfigs != null &&
+                    _professionResourceConfigs.TryGetValue(member.Entity.ActiveCombatProfessionId, out var profConfig))
+                {
+                    resourceId = profConfig.Id;
+                    gainPerAttack = profConfig.GainPerAttack;
+                    gainPerCritExtra = profConfig.GainPerCritExtra;
+                }
+                
+                if (resources.HasBucket(resourceId))
+                {
+                    var bucket = resources.GetBucket(resourceId);
+                    
+                    // 命中产生资源 / Attack hit generates resource
+                    int gained = bucket.Gain(gainPerAttack, "attack_hit");
+                    if (gained > 0)
+                    {
+                        RecordResourceGain(charId, resourceId, gained, bucket.Current, "attack_hit", 
+                            skillId: SkillIds.AttackBasic, bundleId: result.BundleId);
+                    }
+                    
+                    // 暴击额外产生资源 / Crit generates extra resource
+                    if (result.IsCrit)
+                    {
+                        int critGain = bucket.Gain(gainPerCritExtra, "crit_bonus");
+                        if (critGain > 0)
+                        {
+                            RecordResourceGain(charId, resourceId, critGain, bucket.Current, "crit_bonus",
+                                skillId: SkillIds.AttackBasic, bundleId: result.BundleId);
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -645,6 +728,45 @@ namespace BlazorIdle.Game
 
             // 触发事件
             CombatEventFired?.Invoke(ev);
+        }
+
+        /// <summary>
+        /// Phase 2: 记录资源获得事件
+        /// Phase 2: Record resource gain event
+        /// </summary>
+        private void RecordResourceGain(
+            string actorId, 
+            string bucketId, 
+            int delta, 
+            int newValue, 
+            string reason,
+            string? skillId = null,
+            string? bundleId = null)
+        {
+            if (_combatConfig.EmitCastEvents)
+            {
+                var evt = new Resources.ResourceGainEvent
+                {
+                    TimeMs = _clock.NowMs,
+                    ActorId = actorId,
+                    BucketId = bucketId,
+                    Delta = delta,
+                    NewValue = newValue,
+                    Reason = reason,
+                    SkillId = skillId,
+                    BundleId = bundleId,
+                    Attacker = ActorType.Player,
+                    Defender = ActorType.Player,
+                    Source = EventSource.Attack,
+                    Damage = 0,
+                    Crit = false,
+                    RngIndexAfter = _rng.Index,
+                    DefenderHpAfter = 0
+                };
+                
+                var flushed = _aggregator.AddEvent(evt);
+                if (flushed != null) _segments.Add(flushed);
+            }
         }
 
         /// <summary>
@@ -958,6 +1080,26 @@ namespace BlazorIdle.Game
                     : 0,
                 RngIndex = _rng.Index
             };
+        }
+
+        /// <summary>
+        /// Phase 2: 获取玩家资源快照（用于 UI 显示）
+        /// Phase 2: Get player resource snapshot (for UI display)
+        /// </summary>
+        public Dictionary<string, Dictionary<string, int>> GetResourceSnapshot()
+        {
+            var snapshot = new Dictionary<string, Dictionary<string, int>>();
+            
+            foreach (var (playerId, resources) in _playerResources)
+            {
+                snapshot[playerId] = new Dictionary<string, int>();
+                foreach (var (bucketId, bucket) in resources.GetAll())
+                {
+                    snapshot[playerId][bucketId] = bucket.Current;
+                }
+            }
+            
+            return snapshot;
         }
 
         /// <summary>

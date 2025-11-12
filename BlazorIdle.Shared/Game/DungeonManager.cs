@@ -25,6 +25,14 @@ namespace BlazorIdle.Game
         private MultiBattleInstance? _currentBattle;
         private BattleTeam<Enemy>? _currentEnemyTeam;  // 当前敌人队伍引用
 
+        // Phase 2.6: 保留玩家资源（用于波次之间保持资源）
+        // Phase 2.6: Preserve player resources (for maintaining resources between waves)
+        private Dictionary<string, Resources.ResourceBucketCollection>? _preservedPlayerResources;
+
+        // Phase 2.7: 职业资源配置
+        // Phase 2.7: Profession resource configurations
+        private readonly Dictionary<string, Shared.Models.ProfessionResourceConfig>? _professionResourceConfigs;
+
         // 波次计时器
         private int _nextActionAtMs = 0;
 
@@ -57,13 +65,15 @@ namespace BlazorIdle.Game
             IGameClock clock,
             RngContext rng,
             BattleTeam<Character> playerTeam,
-            IGameConfigService gameConfig)
+            IGameConfigService gameConfig,
+            Dictionary<string, Shared.Models.ProfessionResourceConfig>? professionResourceConfigs = null)
         {
             _dungeonDef = dungeonDef ?? throw new ArgumentNullException(nameof(dungeonDef));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _rng = rng ?? throw new ArgumentNullException(nameof(rng));
             _playerTeam = playerTeam ?? throw new ArgumentNullException(nameof(playerTeam));
             _gameConfig = gameConfig ?? throw new ArgumentNullException(nameof(gameConfig));
+            _professionResourceConfigs = professionResourceConfigs;
         }
 
         /// <summary>
@@ -115,6 +125,22 @@ namespace BlazorIdle.Game
             _totalKills = 0;
             _totalDeaths = 0;
             _totalLoot.Clear();
+
+            // Phase 2.6: 清除保留的资源，新开始的副本从头开始
+            // Phase 2.6: Clear preserved resources, fresh dungeon start
+            _preservedPlayerResources = null;
+            
+            // Phase 2.7.2: 清除当前战斗实例，确保完全重新开始
+            // Phase 2.7.2: Clear current battle instance to ensure complete restart
+            if (_currentBattle != null)
+            {
+                if (_currentBattle.IsRunning)
+                {
+                    _currentBattle.Stop();
+                }
+                UnsubscribeBattleEvents();
+                _currentBattle = null;
+            }
 
             // 恢复玩家队伍
             _playerTeam.ReviveAll(true);
@@ -313,17 +339,65 @@ namespace BlazorIdle.Game
             battleConfig.AllowPlayerRevive = _dungeonDef.AllowRevive;
             battleConfig.AllowEnemyRespawn = false; // 副本中敌人总是不复活 / Enemies never respawn in dungeons
 
-            // 清理旧战斗
+            // Phase 2.6: 保存当前战斗的资源状态（如果存在）
+            // Phase 2.6: Save current battle's resource state (if exists)
             if (_currentBattle != null)
             {
+                // 获取资源快照并保存为字典引用
+                // Get resource snapshot and save as dictionary reference
+                var resourceSnapshot = _currentBattle.GetResourceSnapshot();
+                _preservedPlayerResources = new Dictionary<string, Resources.ResourceBucketCollection>();
+                
+                // 将快照中的资源值恢复到实际的资源集合对象
+                // Note: We need to preserve the actual ResourceBucketCollection objects, not just the snapshot
+                // The GetResourceSnapshot returns current values, but we need the collection objects themselves
+                foreach (var member in _playerTeam.Members)
+                {
+                    if (resourceSnapshot.TryGetValue(member.Id, out var resources))
+                    {
+                        // Phase 2.7.2: 使用职业配置创建资源集合，以保持正确的上限
+                        // Phase 2.7.2: Create resource collection using profession config to maintain correct max
+                        Resources.ResourceBucketCollection newCollection;
+                        
+                        // 尝试从 Character 获取 ActiveCombatProfessionId
+                        // Try to get ActiveCombatProfessionId from Character
+                        var character = member.Entity as Character;
+                        if (_professionResourceConfigs != null && 
+                            character != null &&
+                            _professionResourceConfigs.TryGetValue(character.ActiveCombatProfessionId, out var profConfig))
+                        {
+                            // 使用职业特定的配置创建资源集合
+                            // Create resource collection with profession-specific configuration
+                            newCollection = new Resources.ResourceBucketCollection(
+                                profConfig.Id, 
+                                profConfig.Max, 
+                                0); // initial = 0，因为我们会通过 Reset 恢复实际值
+                        }
+                        else
+                        {
+                            // 回退到默认配置
+                            // Fallback to default configuration
+                            newCollection = new Resources.ResourceBucketCollection();
+                        }
+                        
+                        foreach (var (bucketId, value) in resources)
+                        {
+                            var bucket = newCollection.GetBucket(bucketId);
+                            bucket.Reset(value); // 将资源值恢复到快照值
+                        }
+                        _preservedPlayerResources[member.Id] = newCollection;
+                    }
+                }
+                
                 UnsubscribeBattleEvents();
             }
 
-            // 创建新战斗
-            _currentBattle = new MultiBattleInstance(_clock, _rng, _playerTeam, _currentEnemyTeam, battleConfig);
+            // 创建新战斗，传入保留的资源和职业资源配置
+            // Create new battle, passing preserved resources and profession resource configurations
+            _currentBattle = new MultiBattleInstance(_clock, _rng, _playerTeam, _currentEnemyTeam, battleConfig, _preservedPlayerResources, _professionResourceConfigs);
             SubscribeBattleEvents();
-            // 不重置玩家队伍状态，保持波次之间的血量
-            // Don't reset player team state, preserve HP between waves
+            // 不重置玩家队伍状态，保持波次之间的血量和资源
+            // Don't reset player team state, preserve HP and resources between waves
             _currentBattle.Start(resetPlayerTeam: false);
 
             // 触发事件
@@ -502,6 +576,22 @@ namespace BlazorIdle.Game
 
             // 恢复玩家队伍
             _playerTeam.ReviveAll(true);
+
+            // Phase 2.6: 清除保留的资源，新一轮副本从头开始
+            // Phase 2.6: Clear preserved resources, new dungeon run starts fresh
+            _preservedPlayerResources = null;
+            
+            // Phase 2.7.2: 清除当前战斗实例，防止资源被意外保留
+            // Phase 2.7.2: Clear current battle instance to prevent resource preservation
+            if (_currentBattle != null)
+            {
+                if (_currentBattle.IsRunning)
+                {
+                    _currentBattle.Stop();
+                }
+                UnsubscribeBattleEvents();
+                _currentBattle = null;
+            }
 
             FireProgressEvent();
             PrepareNextWave();

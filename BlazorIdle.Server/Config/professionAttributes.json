@@ -38,6 +38,14 @@
       "critRatingToPercent": 45.91,
       "critCap": 0.6,
       "hasteCap": 0.4
+    },
+    "resource": {
+      "id": "rage",
+      "name": "怒气",
+      "max": 5,
+      "initial": 0,
+      "gainPerAttack": 1,
+      "gainPerCritExtra": 1
     }
   },
   "mage": {
@@ -79,6 +87,14 @@
       "critRatingToPercent": 45.91,
       "critCap": 0.6,
       "hasteCap": 0.4
+    },
+    "resource": {
+      "id": "mana",
+      "name": "法力",
+      "max": 10,
+      "initial": 5,
+      "gainPerAttack": 1,
+      "gainPerCritExtra": 1
     }
   },
   "ranger": {
@@ -120,6 +136,63 @@
       "critRatingToPercent": 45.91,
       "critCap": 0.6,
       "hasteCap": 0.4
+    },
+    "resource": {
+      "id": "energy",
+      "name": "能量",
+      "max": 3,
+      "initial": 3,
+      "gainPerAttack": 1,
+      "gainPerCritExtra": 1
+    }
+  },
+  "rogue": {
+    "id": "rogue",
+    "name": "盗贼",
+    "description": "高急速、高暴击",
+    "displayMainStat": "敏捷",
+    "mainStat": {
+      "base": 11,
+      "perLevel": 4
+    },
+    "stamina": {
+      "base": 11,
+      "perLevel": 2.5
+    },
+    "haste": {
+      "base": 250,
+      "perLevel": 18
+    },
+    "crit": {
+      "base": 120,
+      "perLevel": 12
+    },
+    "baseline": {
+      "baseDamage": 11,
+      "baseSpecialDamage": 9,
+      "baseAPS": 0.5,
+      "baseHp": 85,
+      "baseSpecialIntervalSec": 5.0,
+      "variance": 0.05,
+      "reviveSec": 4.0,
+      "critMultiplier": 1.6
+    },
+    "weights": {
+      "damagePerAttackPerMain": 0.9,
+      "specialDamagePerMain": 0.6,
+      "maxHpPerStamina": 10,
+      "hasteRatingToPercent": 32.79,
+      "critRatingToPercent": 45.91,
+      "critCap": 0.6,
+      "hasteCap": 0.4
+    },
+    "resource": {
+      "id": "energy",
+      "name": "能量",
+      "max": 4,
+      "initial": 4,
+      "gainPerAttack": 1,
+      "gainPerCritExtra": 1
     }
   }
 }

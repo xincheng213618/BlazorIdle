@@ -15,6 +15,7 @@ namespace BlazorIdle.Game.Config
         private readonly List<DungeonDef> _dungeons = new();
         private readonly List<BattleScenarioDef> _battleScenarios = new();
         private readonly List<BattleConfigDef> _battleConfigs = new();
+        private readonly Dictionary<string, ProfessionAttributeConfig> _professionAttributes = new();
         private int _maxProfessionLevel = 100;
 
         public GameConfigService(HttpClient http, ApiConfiguration apiConfig)
@@ -29,6 +30,7 @@ namespace BlazorIdle.Game.Config
         public IReadOnlyList<DungeonDef> Dungeons => _dungeons;
         public IReadOnlyList<BattleScenarioDef> BattleScenarios => _battleScenarios;
         public IReadOnlyList<BattleConfigDef> BattleConfigs => _battleConfigs;
+        public IReadOnlyDictionary<string, ProfessionAttributeConfig> ProfessionAttributes => _professionAttributes;
         public int MaxProfessionLevel => _maxProfessionLevel;
 
         public string Version { get; private set; } = "unloaded";
@@ -73,9 +75,18 @@ namespace BlazorIdle.Game.Config
             _battleConfigs.Clear();
             _battleConfigs.AddRange(battleConfigs.Where(b => !string.IsNullOrWhiteSpace(b.Id)));
 
+            _professionAttributes.Clear();
+            if (response?.ProfessionAttributes != null)
+            {
+                foreach (var kvp in response.ProfessionAttributes)
+                {
+                    _professionAttributes[kvp.Key] = kvp.Value;
+                }
+            }
+
             _maxProfessionLevel = response?.MaxProfessionLevel ?? 100;
 
-            Version = response?.Version ?? $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}";
+            Version = response?.Version ?? $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-profAttrs:{_professionAttributes.Count}";
             _loaded = true;
         }
 

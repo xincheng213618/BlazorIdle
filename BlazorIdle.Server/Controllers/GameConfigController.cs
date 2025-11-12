@@ -41,6 +41,7 @@ namespace BlazorIdle.Server.Controllers
                 Dungeons = _provider.Dungeons.ToList(),
                 BattleScenarios = _provider.BattleScenarios.ToList(),
                 BattleConfigs = _provider.BattleConfigs.ToList(), // 添加战斗配置到响应（内部配置）
+                ProfessionAttributes = new Dictionary<string, ProfessionAttributeConfig>(_provider.ProfessionAttributes), // Phase 2.7: 添加职业属性配置
                 MaxProfessionLevel = _provider.MaxProfessionLevel
             };
             return Ok(dto);
@@ -52,36 +53,10 @@ namespace BlazorIdle.Server.Controllers
         /// </summary>
         [HttpGet("profession-attributes")]
         [AllowAnonymous]
-        public async Task<ActionResult<Dictionary<string, ProfessionAttributeConfig>>> GetProfessionAttributes()
+        public async Task<ActionResult<Dictionary<string, ProfessionAttributeConfig>>> GetProfessionAttributes(CancellationToken ct)
         {
-            try
-            {
-                var configPath = Path.Combine(_env.ContentRootPath, "Config", "professionAttributes.json");
-                
-                if (!System.IO.File.Exists(configPath))
-                {
-                    _logger.LogWarning("Profession attributes config not found at {Path}, returning empty dictionary", configPath);
-                    return Ok(new Dictionary<string, ProfessionAttributeConfig>());
-                }
-
-                await using var stream = System.IO.File.OpenRead(configPath);
-                var config = await JsonSerializer.DeserializeAsync<Dictionary<string, ProfessionAttributeConfig>>(stream);
-                
-                if (config == null || config.Count == 0)
-                {
-                    _logger.LogWarning("Profession attributes config is empty");
-                    return Ok(new Dictionary<string, ProfessionAttributeConfig>());
-                }
-                
-                _logger.LogInformation("Successfully loaded profession attributes config with {Count} professions", config.Count);
-                
-                return Ok(config);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error loading profession attributes config");
-                return StatusCode(500, "Internal server error while loading profession attributes");
-            }
+            await _provider.EnsureLoadedAsync(ct);
+            return Ok(new Dictionary<string, ProfessionAttributeConfig>(_provider.ProfessionAttributes));
         }
     }
 }
