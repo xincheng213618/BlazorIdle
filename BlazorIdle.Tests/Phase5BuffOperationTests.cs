@@ -1,4 +1,5 @@
 using Xunit;
+using BlazorIdle.Game;
 using BlazorIdle.Game.Skills;
 using BlazorIdle.Game.Buffs;
 using System.Collections.Generic;
@@ -196,6 +197,161 @@ namespace BlazorIdle.Tests
             Assert.Single(skillDef.OnCastBuffs);
             Assert.Single(skillDef.OnHitBuffs);
             Assert.Single(skillDef.OnCritBuffs);
+        }
+
+        #endregion
+        #region SkillRepository Tests
+
+        [Fact]
+        public void SkillRepository_InitializesWithDefaultSkills()
+        {
+            var repo = new SkillRepository();
+
+            var attackBasic = repo.GetSkill(SkillIds.AttackBasic);
+            var specialPulse = repo.GetSkill(SkillIds.SpecialPulse);
+            var enemyAttack = repo.GetSkill(SkillIds.EnemyAttackBasic);
+
+            Assert.NotNull(attackBasic);
+            Assert.NotNull(specialPulse);
+            Assert.NotNull(enemyAttack);
+        }
+
+        [Fact]
+        public void SkillRepository_CanRegisterCustomSkill()
+        {
+            var repo = new SkillRepository();
+            var customSkill = new SkillDef
+            {
+                Id = "custom_skill",
+                DamageMultiplier = 2.0
+            };
+
+            repo.RegisterSkill(customSkill);
+
+            var retrieved = repo.GetSkill("custom_skill");
+            Assert.NotNull(retrieved);
+            Assert.Equal(2.0, retrieved.DamageMultiplier);
+        }
+
+        #endregion
+
+        #region SkillResolver Integration Tests
+
+        [Fact]
+        public void SkillResolver_ReturnsBuffOperationsFromSkillDef()
+        {
+            var repo = new SkillRepository();
+            var testSkill = new SkillDef
+            {
+                Id = "test_skill"
+            };
+            testSkill.OnCastBuffs.Add(new BuffOperation
+            {
+                Type = BuffOperationType.Apply,
+                Target = BuffTarget.Self
+            });
+            repo.RegisterSkill(testSkill);
+
+            var resolver = new SkillResolver(null, repo);
+            var ctx = CreateTestContext();
+            var result = resolver.Cast("test_skill", ctx);
+
+            Assert.Single(result.BuffOperations);
+            Assert.Equal(BuffOperationType.Apply, result.BuffOperations[0].Type);
+        }
+
+        [Fact]
+        public void SkillResolver_AppliesDamageMultiplier()
+        {
+            var repo = new SkillRepository();
+            var testSkill = new SkillDef
+            {
+                Id = SkillIds.AttackBasic,
+                DamageMultiplier = 2.0
+            };
+            repo.RegisterSkill(testSkill);
+
+            var resolver = new SkillResolver(null, repo);
+            var ctx = CreateTestContext();
+            var result = resolver.Cast(SkillIds.AttackBasic, ctx);
+
+            // Base damage is 10, multiplied by 2.0
+            Assert.True(result.DamageDealt >= 18); // Allowing for variance
+        }
+
+        [Fact]
+        public void SkillResolver_ReturnsInstantHeal()
+        {
+            var repo = new SkillRepository();
+            var healSkill = new SkillDef
+            {
+                Id = "heal_spell",
+                InstantHeal = 50,
+                DamageMultiplier = 0
+            };
+            repo.RegisterSkill(healSkill);
+
+            var resolver = new SkillResolver(null, repo);
+            var ctx = CreateTestContext();
+            var result = resolver.Cast("heal_spell", ctx);
+
+            Assert.Equal(50, result.InstantHeal);
+        }
+
+        [Fact]
+        public void SkillResolver_OnCritBuffsAppliedOnlyOnCrit()
+        {
+            var repo = new SkillRepository();
+            var critSkill = new SkillDef
+            {
+                Id = "crit_skill"
+            };
+            critSkill.OnCritBuffs.Add(new BuffOperation
+            {
+                Type = BuffOperationType.Apply,
+                Target = BuffTarget.Target
+            });
+            repo.RegisterSkill(critSkill);
+
+            var resolver = new SkillResolver(null, repo);
+            var ctx = CreateTestContext();
+            
+            // Force crit
+            var opts = new SkillCastOptions { ForceCrit = true };
+            var resultCrit = resolver.Cast("crit_skill", ctx, opts);
+            Assert.Single(resultCrit.BuffOperations);
+
+            // No crit
+            ctx.Player.CritChancePercent = 0; // Ensure no crit
+            var resultNoCrit = resolver.Cast("crit_skill", ctx);
+            Assert.Empty(resultNoCrit.BuffOperations);
+        }
+
+        private BattleContext CreateTestContext()
+        {
+            return new BattleContext
+            {
+                Player = new Character 
+                { 
+                    DamagePerAttack = 10,
+                    CritChancePercent = 0,
+                    CritMultiplier = 2.0,
+                    VariancePct = 0
+                },
+                Enemy = new Enemy
+                {
+                    DamagePerHit = 5
+                },
+                Rng = new RngContext(12345),
+                Clock = new TestGameClock()
+            };
+        }
+
+        private class TestGameClock : IGameClock
+        {
+            public int NowMs => 0;
+            public void Reset() { }
+            public void AdvanceBy(int ms) { }
         }
 
         #endregion
