@@ -347,6 +347,86 @@ namespace BlazorIdle.Tests
             };
         }
 
+        [Fact]
+        public void SkillResolver_ReturnsResourceCosts()
+        {
+            var repo = new SkillRepository();
+            var skillWithCost = new SkillDef
+            {
+                Id = "execute",
+                DamageMultiplier = 2.0,
+                ResourceCosts = new Dictionary<string, int> { { "rage", 3 } }
+            };
+            repo.RegisterSkill(skillWithCost);
+
+            var resolver = new SkillResolver(null, repo);
+            var ctx = CreateTestContext();
+            var result = resolver.Cast("execute", ctx);
+
+            Assert.True(result.ResourceChanges.ContainsKey("rage"));
+            Assert.Equal(-3, result.ResourceChanges["rage"]); // Negative means cost
+        }
+
+        [Fact]
+        public void SkillResolver_ReturnsResourceGains()
+        {
+            var repo = new SkillRepository();
+            var skillWithGain = new SkillDef
+            {
+                Id = "charge",
+                ResourceGains = new Dictionary<string, int> { { "rage", 5 } }
+            };
+            repo.RegisterSkill(skillWithGain);
+
+            var resolver = new SkillResolver(null, repo);
+            var ctx = CreateTestContext();
+            var result = resolver.Cast("charge", ctx);
+
+            Assert.True(result.ResourceChanges.ContainsKey("rage"));
+            Assert.Equal(5, result.ResourceChanges["rage"]);
+        }
+
+        [Fact]
+        public void SkillResolver_CombinesResourceCostsAndGains()
+        {
+            var repo = new SkillRepository();
+            var skill = new SkillDef
+            {
+                Id = "rampage",
+                ResourceCosts = new Dictionary<string, int> { { "rage", 10 } },
+                ResourceGains = new Dictionary<string, int> { { "rage", 3 } } // Refunds some
+            };
+            repo.RegisterSkill(skill);
+
+            var resolver = new SkillResolver(null, repo);
+            var ctx = CreateTestContext();
+            var result = resolver.Cast("rampage", ctx);
+
+            Assert.True(result.ResourceChanges.ContainsKey("rage"));
+            Assert.Equal(-7, result.ResourceChanges["rage"]); // Net cost: -10 + 3 = -7
+        }
+
+        [Fact]
+        public void SkillResolver_MultipleBuffOperations()
+        {
+            var repo = new SkillRepository();
+            var complexSkill = new SkillDef
+            {
+                Id = "complex_skill"
+            };
+            complexSkill.OnCastBuffs.Add(new BuffOperation { Type = BuffOperationType.Apply, Target = BuffTarget.Self });
+            complexSkill.OnHitBuffs.Add(new BuffOperation { Type = BuffOperationType.Apply, Target = BuffTarget.Target });
+            complexSkill.OnHitBuffs.Add(new BuffOperation { Type = BuffOperationType.Remove, Target = BuffTarget.Target, BuffIdToRemove = "old_buff" });
+            repo.RegisterSkill(complexSkill);
+
+            var resolver = new SkillResolver(null, repo);
+            var ctx = CreateTestContext();
+            var result = resolver.Cast("complex_skill", ctx);
+
+            // OnCast: 1, OnHit: 2 = 3 total
+            Assert.Equal(3, result.BuffOperations.Count);
+        }
+
         private class TestGameClock : IGameClock
         {
             public int NowMs => 0;

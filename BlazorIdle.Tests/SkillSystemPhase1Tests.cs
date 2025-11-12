@@ -51,20 +51,21 @@ namespace BlazorIdle.Tests
             Assert.False(result.IsCrit);
             Assert.NotNull(result.ResourceChanges);
             Assert.Empty(result.ResourceChanges);
-            Assert.NotNull(result.BuffChanges);
-            Assert.Empty(result.BuffChanges);
+            Assert.NotNull(result.BuffOperations);
+            Assert.Empty(result.BuffOperations);
         }
 
         [Fact]
         public void SkillCastResult_CanSetProperties()
         {
             // Arrange & Act
+            var buffOp = new BuffOperation { Type = BuffOperationType.Apply, Target = BuffTarget.Self };
             var result = new SkillCastResult
             {
                 DamageDealt = 100,
                 IsCrit = true,
                 ResourceChanges = new Dictionary<string, int> { ["rage"] = 10 },
-                BuffChanges = new List<string> { "buff_1" }
+                BuffOperations = new List<BuffOperation> { buffOp }
             };
 
             // Assert
@@ -72,8 +73,8 @@ namespace BlazorIdle.Tests
             Assert.True(result.IsCrit);
             Assert.Single(result.ResourceChanges);
             Assert.Equal(10, result.ResourceChanges["rage"]);
-            Assert.Single(result.BuffChanges);
-            Assert.Equal("buff_1", result.BuffChanges[0]);
+            Assert.Single(result.BuffOperations);
+            Assert.Same(buffOp, result.BuffOperations[0]);
         }
 
         [Fact]

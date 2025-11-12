@@ -1101,17 +1101,19 @@ Total tests: 207
 
 **测试结果：**
 ```
-Total tests: 229
+Total tests: 233
 - Original tests: 212 (all passing)
-- Phase 5 tests: 17 (all passing)
+- Phase 5 tests: 21 (all passing)
   - BuffOperation: 3
   - SkillCastResult: 3
   - SkillDef: 5
   - SkillRepository: 2
   - SkillResolver Integration: 4
+  - Resource costs/gains: 3
+  - Multi-buff operations: 1
 - Failed: 0
 - Skipped: 0
-- Duration: ~872ms
+- Duration: ~1s
 ```
 
 **代码改动：**
@@ -1120,28 +1122,136 @@ Total tests: 229
   - `BlazorIdle.Shared/Game/Skills/SkillRepository.cs`
   - `BlazorIdle.Tests/Phase5BuffOperationTests.cs`
 - 修改文件：
-  - `BlazorIdle.Shared/Game/Skills/SkillCastResult.cs`
+  - `BlazorIdle.Shared/Game/Skills/SkillCastResult.cs`（移除 BuffChanges 冗余字段）
   - `BlazorIdle.Shared/Game/Skills/SkillDef.cs`
-  - `BlazorIdle.Shared/Game/Skills/SkillResolver.cs`
+  - `BlazorIdle.Shared/Game/Skills/SkillResolver.cs`（实现 ResourceCosts/ResourceGains）
+  - `BlazorIdle.Tests/SkillSystemPhase1Tests.cs`（更新使用 BuffOperations）
 
-**提交哈希：** 142933d (Part 1), ad98165 (Part 2)
+**提交哈希：** 142933d (Part 1), ad98165 (Part 2), [待提交] (Phase 5 修复)
 
-**预计工作量：** 3-4 小时 → **实际：** ~3 小时
+**预计工作量：** 3-4 小时 → **实际：** ~3.5 小时
 
-**下一步（Phase 6）：**
-- MultiBattleInstance 处理 buff 操作
-- 应用 buff 到目标实体
-- Special 脉冲施加测试 Buff
+**Phase 5 审查与修复（2025-11-12）：**
+
+*问题发现：*
+1. ❌ ResourceCosts/ResourceGains 未实现 → ✅ 已修复：SkillResolver 现在返回资源变化
+2. ❌ BuffChanges 字段冗余 → ✅ 已修复：移除 BuffChanges，统一使用 BuffOperations
+3. ❌ AlwaysHits 逻辑注释 → ✅ 已添加 TODO：Phase 6 实现命中率检查
+4. ✅ 新增 4 个测试覆盖修复内容
+
+*修复提交：* [待提交]
+
+**下一步（Phase 6 - 待处理问题）：**
+
+**P0 - 必须在 Phase 6 实现：**
+1. **BuffOperation.BuffTemplate OwnerId 设置** - MultiBattleInstance 应用 buff 时需要设置正确的 OwnerId
+2. **BuffTarget 映射到实体** - 实现 Self/Target/AllEnemies/AllAllies/RandomEnemy/LowestHpAlly 的实体查找逻辑
+3. **InstantHeal 应用** - MultiBattleInstance 处理 SkillCastResult.InstantHeal
+4. **命中率检查** - 当 AlwaysHits=false 时，实现命中判定逻辑
+
+**P1 - 后续优化（Phase 7+）：**
+5. **SkillDef.Id 与 skillId 一致性验证** - 防止配置错误
+6. **IBuffOwner.Buffs 保护** - 考虑返回只读视图
+7. **Buff 事件记录** - 将 BuffApplyEvent/BuffRemoveEvent/BuffTickEvent 记录到 combat segment
 
 ---
 
-### 阶段 6：实现 Special 脉冲与 Buff 施加（P0 - 必须）
+### 阶段 6：MultiBattleInstance Buff 操作处理（P0 - 必须）
 
 **状态：** ⬜ 未开始
 
-**目标：** Special 脉冲可以施加测试 Buff。
+**目标：** MultiBattleInstance 处理 SkillCastResult 中的 buff 操作指令，将 buff 应用到实体。
+
+**任务清单：**
+
+- [ ] 6.1 实现 BuffTarget 到实体的映射
+  - 创建 ResolveBuffTarget() 方法
+  - 支持 Self（施法者）
+  - 支持 Target（单一目标）
+  - 支持 AllEnemies（所有敌人）
+  - 支持 AllAllies（所有友方单位）
+  - 支持 RandomEnemy（随机一个敌人）
+  - 支持 LowestHpAlly（血量最低的友方单位）
+
+- [ ] 6.2 实现 ProcessBuffOperations() 方法
+  - 遍历 SkillCastResult.BuffOperations
+  - 解析目标实体
+  - 设置 BuffTemplate.OwnerId
+  - 调用 IBuffOwner.ApplyBuff() 或 RemoveBuff()
+
+- [ ] 6.3 实现 ProcessInstantHeal() 方法
+  - 检查 SkillCastResult.InstantHeal > 0
+  - 应用治疗到目标实体
+  - 记录 HealEvent
+
+- [ ] 6.4 集成到技能施放流程
+  - ProcessPlayerAction: 处理玩家技能的 buff 操作
+  - ProcessEnemyAction: 处理敌人技能的 buff 操作
+  - 在伤害应用后处理 buff 操作
+
+- [ ] 6.5 实现命中率检查（AlwaysHits=false）
+  - 添加命中率计算逻辑
+  - 仅在命中时应用 OnHitBuffs
+  - 记录未命中事件
+
+- [ ] 6.6 配置 Special 脉冲施加测试 Buff
+  - 在 SkillRepository 中为 SpecialPulse 添加 OnHitBuffs
+  - 创建测试 buff（如：攻击力+20%，持续 10 秒）
+  - 验证 buff 正确应用
+
+- [ ] 6.7 单元测试（预计 15+ 个）
+  - BuffTarget 映射测试（6个）
+  - BuffOperation 处理测试（3个）
+  - InstantHeal 应用测试（2个）
+  - 命中率检查测试（2个）
+  - Special 脉冲集成测试（2个）
+
+**实施细节：**
+
+1. **BuffTarget 映射逻辑**
+   ```csharp
+   private List<IBuffOwner> ResolveBuffTarget(
+       BuffTarget target, 
+       IBuffOwner caster, 
+       IBuffOwner? singleTarget)
+   {
+       return target switch
+       {
+           BuffTarget.Self => new List<IBuffOwner> { caster },
+           BuffTarget.Target => singleTarget != null 
+               ? new List<IBuffOwner> { singleTarget } 
+               : new List<IBuffOwner>(),
+           BuffTarget.AllEnemies => GetAllEnemies(caster),
+           // ... 其他目标类型
+       };
+   }
+   ```
+
+2. **Buff 应用流程**
+   - SkillResolver.Cast() 返回 BuffOperations
+   - MultiBattleInstance 遍历 BuffOperations
+   - 设置 OwnerId（复制 BuffTemplate 并设置正确的 OwnerId）
+   - 调用 IBuffOwner.ApplyBuff()
+
+3. **命中率检查**
+   - 当 AlwaysHits=false 时，滚动命中判定
+   - 命中公式：`rng.NextDouble() < hitChance`
+   - 仅在命中时应用 OnHitBuffs 和造成伤害
+
+**验收标准：**
+- ✅ BuffTarget 所有类型正确映射到实体
+- ✅ BuffOperation 正确应用到目标
+- ✅ InstantHeal 正确应用
+- ✅ Special 脉冲可以施加 buff
+- ✅ 所有测试通过
 
 **预计工作量：** 5-6 小时
+
+**Phase 5 遗留问题（需在此阶段解决）：**
+1. BuffTemplate.OwnerId 设置（在应用时设置）
+2. BuffTarget 实体映射
+3. InstantHeal 应用
+4. AlwaysHits=false 命中率检查
 
 ---
 

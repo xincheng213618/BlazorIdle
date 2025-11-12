@@ -27,19 +27,12 @@ namespace BlazorIdle.Game.Skills
         public string? BundleId { get; set; }
 
         /// <summary>
-        /// 资源变化（预留）
-        /// Resource changes (reserved)
+        /// 资源变化（Phase 5：现已实现）
+        /// Resource changes (Phase 5: now implemented)
         /// Key: 资源类型（如 "rage", "mana"）
         /// Value: 变化量（正数为增加，负数为消耗）
         /// </summary>
         public Dictionary<string, int> ResourceChanges { get; set; } = new();
-
-        /// <summary>
-        /// Buff 变化（预留）
-        /// Buff changes (reserved)
-        /// 记录施放技能后添加或移除的 Buff ID
-        /// </summary>
-        public List<string> BuffChanges { get; set; } = new();
 
         /// <summary>
         /// Buff 操作列表（Phase 5）

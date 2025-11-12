@@ -97,9 +97,14 @@ namespace BlazorIdle.Game.Skills
             {
                 result.BuffOperations.AddRange(skillDef.OnCastBuffs);
 
-                // 添加 OnHit buff 操作（技能总是命中，除非技能定义另有说明）
-                // Add OnHit buff operations (skills always hit unless skillDef says otherwise)
-                if (skillDef.AlwaysHits)
+                // 添加 OnHit buff 操作
+                // Add OnHit buff operations
+                // 注意：当前 Step 0 设计中技能总是命中，AlwaysHits=true 表示必定命中
+                // Note: In current Step 0 design, skills always hit, AlwaysHits=true means guaranteed hit
+                // TODO Phase 6: 实现命中率检查，当 AlwaysHits=false 时需要滚动命中判定
+                // TODO Phase 6: Implement hit chance check when AlwaysHits=false
+                bool skillHits = skillDef.AlwaysHits || true; // Currently always hits in Step 0
+                if (skillHits)
                 {
                     result.BuffOperations.AddRange(skillDef.OnHitBuffs);
                 }
@@ -109,6 +114,26 @@ namespace BlazorIdle.Game.Skills
                 if (isCrit)
                 {
                     result.BuffOperations.AddRange(skillDef.OnCritBuffs);
+                }
+
+                // Phase 5: 添加资源消耗和获得到结果中
+                // Phase 5: Add resource costs and gains to result
+                foreach (var (resId, cost) in skillDef.ResourceCosts)
+                {
+                    result.ResourceChanges[resId] = -cost; // 负数表示消耗 / negative means cost
+                }
+                foreach (var (resId, gain) in skillDef.ResourceGains)
+                {
+                    // 如果已经有消耗，则累加；否则直接设置
+                    // If already has cost, accumulate; otherwise set directly
+                    if (result.ResourceChanges.ContainsKey(resId))
+                    {
+                        result.ResourceChanges[resId] += gain;
+                    }
+                    else
+                    {
+                        result.ResourceChanges[resId] = gain;
+                    }
                 }
             }
 
