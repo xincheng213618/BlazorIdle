@@ -40,13 +40,20 @@ namespace BlazorIdle.Game.Buffs
         {
             if (buff == null) throw new ArgumentNullException(nameof(buff));
             
+            // Validate OwnerId matches
+            if (buff.OwnerId != Id)
+            {
+                throw new ArgumentException($"Buff OwnerId '{buff.OwnerId}' does not match BuffOwner Id '{Id}'", nameof(buff));
+            }
+            
             if (_buffs.TryGetValue(buff.Id, out var existing))
             {
                 // Handle stacking policy
-                switch (buff.StackingPolicy)
+                switch (existing.StackingPolicy)
                 {
                     case BuffStackingPolicy.Refresh:
-                        if (buff.RemainingDurationSec.HasValue)
+                        // Refresh duration using the existing buff's initial duration
+                        if (existing.RemainingDurationSec.HasValue && buff.RemainingDurationSec.HasValue)
                         {
                             existing.RefreshDuration(buff.RemainingDurationSec.Value);
                         }
@@ -54,14 +61,15 @@ namespace BlazorIdle.Game.Buffs
                     
                     case BuffStackingPolicy.Stack:
                         existing.AddStack();
-                        if (buff.RemainingDurationSec.HasValue)
+                        // Also refresh duration when stacking
+                        if (existing.RemainingDurationSec.HasValue && buff.RemainingDurationSec.HasValue)
                         {
                             existing.RefreshDuration(buff.RemainingDurationSec.Value);
                         }
                         break;
                     
                     case BuffStackingPolicy.Ignore:
-                        // Do nothing
+                        // Do nothing - ignore new application
                         break;
                 }
             }
@@ -88,9 +96,17 @@ namespace BlazorIdle.Game.Buffs
         {
             if (amount < 0) throw new ArgumentException("Heal amount cannot be negative", nameof(amount));
             
-            int healedAmount = Math.Min(amount, _enemy.MaxHp - _enemy.Hp);
-            _enemy.Hp = Math.Min(_enemy.MaxHp, _enemy.Hp + amount);
-            _onHealReceived?.Invoke(healedAmount, meta);
+            int actualHealAmount = Math.Min(amount, _enemy.MaxHp - _enemy.Hp);
+            _enemy.Hp = Math.Min(_enemy.MaxHp, _enemy.Hp + actualHealAmount);
+            _onHealReceived?.Invoke(actualHealAmount, meta);
+        }
+
+        /// <summary>
+        /// Clears all buffs on this entity (e.g., on death).
+        /// </summary>
+        public void ClearAllBuffs()
+        {
+            _buffs.Clear();
         }
 
         /// <summary>

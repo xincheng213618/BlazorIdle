@@ -11,6 +11,7 @@ namespace BlazorIdle.Game.Buffs
     public class CharacterBuffOwner : IBuffOwner
     {
         private readonly Character _character;
+        private readonly string _memberId;
         private readonly ResourceBucketCollection? _resources;
         private readonly Dictionary<string, BuffInstance> _buffs;
         private readonly Action<int, DamageMeta>? _onDamageReceived;
@@ -18,18 +19,20 @@ namespace BlazorIdle.Game.Buffs
 
         public CharacterBuffOwner(
             Character character,
+            string memberId,
             ResourceBucketCollection? resources = null,
             Action<int, DamageMeta>? onDamageReceived = null,
             Action<int, HealMeta>? onHealReceived = null)
         {
             _character = character ?? throw new ArgumentNullException(nameof(character));
+            _memberId = memberId ?? throw new ArgumentNullException(nameof(memberId));
             _resources = resources;
             _buffs = new Dictionary<string, BuffInstance>();
             _onDamageReceived = onDamageReceived;
             _onHealReceived = onHealReceived;
         }
 
-        public string Id => $"character_{_character.ActiveCombatProfessionId}";
+        public string Id => _memberId;
         public bool IsPlayer => true;
         public int CurrentHp => _character.Hp;
         public int MaxHp => _character.MaxHp;
@@ -40,13 +43,20 @@ namespace BlazorIdle.Game.Buffs
         {
             if (buff == null) throw new ArgumentNullException(nameof(buff));
             
+            // Validate OwnerId matches
+            if (buff.OwnerId != Id)
+            {
+                throw new ArgumentException($"Buff OwnerId '{buff.OwnerId}' does not match BuffOwner Id '{Id}'", nameof(buff));
+            }
+            
             if (_buffs.TryGetValue(buff.Id, out var existing))
             {
                 // Handle stacking policy
-                switch (buff.StackingPolicy)
+                switch (existing.StackingPolicy)
                 {
                     case BuffStackingPolicy.Refresh:
-                        if (buff.RemainingDurationSec.HasValue)
+                        // Refresh duration using the existing buff's initial duration
+                        if (existing.RemainingDurationSec.HasValue && buff.RemainingDurationSec.HasValue)
                         {
                             existing.RefreshDuration(buff.RemainingDurationSec.Value);
                         }
@@ -54,14 +64,15 @@ namespace BlazorIdle.Game.Buffs
                     
                     case BuffStackingPolicy.Stack:
                         existing.AddStack();
-                        if (buff.RemainingDurationSec.HasValue)
+                        // Also refresh duration when stacking
+                        if (existing.RemainingDurationSec.HasValue && buff.RemainingDurationSec.HasValue)
                         {
                             existing.RefreshDuration(buff.RemainingDurationSec.Value);
                         }
                         break;
                     
                     case BuffStackingPolicy.Ignore:
-                        // Do nothing
+                        // Do nothing - ignore new application
                         break;
                 }
             }
@@ -88,9 +99,17 @@ namespace BlazorIdle.Game.Buffs
         {
             if (amount < 0) throw new ArgumentException("Heal amount cannot be negative", nameof(amount));
             
-            int healedAmount = Math.Min(amount, _character.MaxHp - _character.Hp);
-            _character.Hp = Math.Min(_character.MaxHp, _character.Hp + amount);
-            _onHealReceived?.Invoke(healedAmount, meta);
+            int actualHealAmount = Math.Min(amount, _character.MaxHp - _character.Hp);
+            _character.Hp = Math.Min(_character.MaxHp, _character.Hp + actualHealAmount);
+            _onHealReceived?.Invoke(actualHealAmount, meta);
+        }
+
+        /// <summary>
+        /// Clears all buffs on this entity (e.g., on death).
+        /// </summary>
+        public void ClearAllBuffs()
+        {
+            _buffs.Clear();
         }
 
         /// <summary>

@@ -20,7 +20,7 @@ namespace BlazorIdle.Tests
             var character = new Character { Hp = 100, MaxHp = 200 };
             var resources = new ResourceBucketCollection();
             
-            var owner = new CharacterBuffOwner(character, resources);
+            var owner = new CharacterBuffOwner(character, "test_char_id", resources);
 
             Assert.True(owner.IsPlayer);
             Assert.Equal(100, owner.CurrentHp);
@@ -33,7 +33,7 @@ namespace BlazorIdle.Tests
         public void CharacterBuffOwner_ApplyBuff_AddsNewBuff()
         {
             var character = new Character();
-            var owner = new CharacterBuffOwner(character);
+            var owner = new CharacterBuffOwner(character, "test_char_id");
             
             var buff = new BuffInstance(
                 "test_buff",
@@ -52,7 +52,7 @@ namespace BlazorIdle.Tests
         public void CharacterBuffOwner_ApplyBuff_RefreshPolicy_RefreshesDuration()
         {
             var character = new Character();
-            var owner = new CharacterBuffOwner(character);
+            var owner = new CharacterBuffOwner(character, "test_char_id");
             
             var buff1 = new BuffInstance(
                 "refresh_buff",
@@ -85,7 +85,7 @@ namespace BlazorIdle.Tests
         public void CharacterBuffOwner_ApplyBuff_StackPolicy_IncreasesStacks()
         {
             var character = new Character();
-            var owner = new CharacterBuffOwner(character);
+            var owner = new CharacterBuffOwner(character, "test_char_id");
             
             var buff1 = new BuffInstance(
                 "stack_buff",
@@ -116,7 +116,7 @@ namespace BlazorIdle.Tests
         public void CharacterBuffOwner_ApplyBuff_IgnorePolicy_DoesNothing()
         {
             var character = new Character();
-            var owner = new CharacterBuffOwner(character);
+            var owner = new CharacterBuffOwner(character, "test_char_id");
             
             var buff1 = new BuffInstance(
                 "ignore_buff",
@@ -148,7 +148,7 @@ namespace BlazorIdle.Tests
         public void CharacterBuffOwner_RemoveBuff_RemovesExistingBuff()
         {
             var character = new Character();
-            var owner = new CharacterBuffOwner(character);
+            var owner = new CharacterBuffOwner(character, "test_char_id");
             
             var buff = new BuffInstance(
                 "test_buff",
@@ -169,7 +169,7 @@ namespace BlazorIdle.Tests
         public void CharacterBuffOwner_RemoveBuff_ReturnsFalseWhenNotFound()
         {
             var character = new Character();
-            var owner = new CharacterBuffOwner(character);
+            var owner = new CharacterBuffOwner(character, "test_char_id");
 
             bool removed = owner.RemoveBuff("nonexistent", "test");
             Assert.False(removed);
@@ -179,7 +179,7 @@ namespace BlazorIdle.Tests
         public void CharacterBuffOwner_ReceiveDamage_ReducesHp()
         {
             var character = new Character { Hp = 100, MaxHp = 200 };
-            var owner = new CharacterBuffOwner(character);
+            var owner = new CharacterBuffOwner(character, "test_char_id");
 
             owner.ReceiveDamage(30, new DamageMeta("test"));
 
@@ -191,7 +191,7 @@ namespace BlazorIdle.Tests
         public void CharacterBuffOwner_ReceiveDamage_ClampsToZero()
         {
             var character = new Character { Hp = 50, MaxHp = 200 };
-            var owner = new CharacterBuffOwner(character);
+            var owner = new CharacterBuffOwner(character, "test_char_id");
 
             owner.ReceiveDamage(100, new DamageMeta("test"));
 
@@ -205,7 +205,7 @@ namespace BlazorIdle.Tests
             int damageReceived = 0;
             DamageMeta? metaReceived = null;
 
-            var owner = new CharacterBuffOwner(character, null, (amount, meta) =>
+            var owner = new CharacterBuffOwner(character, "test_char_id", null, (amount, meta) =>
             {
                 damageReceived = amount;
                 metaReceived = meta;
@@ -222,7 +222,7 @@ namespace BlazorIdle.Tests
         public void CharacterBuffOwner_ReceiveHeal_IncreasesHp()
         {
             var character = new Character { Hp = 50, MaxHp = 200 };
-            var owner = new CharacterBuffOwner(character);
+            var owner = new CharacterBuffOwner(character, "test_char_id");
 
             owner.ReceiveHeal(30, new HealMeta("test"));
 
@@ -234,7 +234,7 @@ namespace BlazorIdle.Tests
         public void CharacterBuffOwner_ReceiveHeal_ClampsToMax()
         {
             var character = new Character { Hp = 180, MaxHp = 200 };
-            var owner = new CharacterBuffOwner(character);
+            var owner = new CharacterBuffOwner(character, "test_char_id");
 
             owner.ReceiveHeal(50, new HealMeta("test"));
 
@@ -248,7 +248,7 @@ namespace BlazorIdle.Tests
             int healReceived = 0;
             HealMeta? metaReceived = null;
 
-            var owner = new CharacterBuffOwner(character, null, null, (amount, meta) =>
+            var owner = new CharacterBuffOwner(character, "test_char_id", null, null, (amount, meta) =>
             {
                 healReceived = amount;
                 metaReceived = meta;
@@ -401,7 +401,7 @@ namespace BlazorIdle.Tests
         public void BuffOwner_MultipleBuffs_CanCoexist()
         {
             var character = new Character();
-            var owner = new CharacterBuffOwner(character);
+            var owner = new CharacterBuffOwner(character, "test_char_id");
 
             var buff1 = new BuffInstance(
                 "buff1",
@@ -457,6 +457,87 @@ namespace BlazorIdle.Tests
             // Simulate tick
             int tickCount = dotBuff.Tick(1.5);
             Assert.Equal(1, tickCount);
+        }
+
+        [Fact]
+        public void CharacterBuffOwner_ApplyBuff_ValidatesOwnerId()
+        {
+            var character = new Character();
+            var owner = new CharacterBuffOwner(character, "test_char_id");
+            
+            var buff = new BuffInstance(
+                "test_buff",
+                "wrong_owner_id",  // Wrong owner ID
+                BuffKind.Buff,
+                new List<BuffEffect>()
+            );
+
+            var ex = Assert.Throws<ArgumentException>(() => owner.ApplyBuff(buff));
+            Assert.Contains("OwnerId", ex.Message);
+        }
+
+        [Fact]
+        public void CharacterBuffOwner_ClearAllBuffs_RemovesAllBuffs()
+        {
+            var character = new Character();
+            var owner = new CharacterBuffOwner(character, "test_char_id");
+            
+            var buff1 = new BuffInstance("buff1", owner.Id, BuffKind.Buff, new List<BuffEffect>());
+            var buff2 = new BuffInstance("buff2", owner.Id, BuffKind.Buff, new List<BuffEffect>());
+            
+            owner.ApplyBuff(buff1);
+            owner.ApplyBuff(buff2);
+            Assert.Equal(2, owner.Buffs.Count);
+            
+            owner.ClearAllBuffs();
+            Assert.Empty(owner.Buffs);
+        }
+
+        [Fact]
+        public void CharacterBuffOwner_Id_UsesStableMemberId()
+        {
+            var character = new Character { ActiveCombatProfessionId = "warrior" };
+            var owner = new CharacterBuffOwner(character, "stable_member_id");
+            
+            Assert.Equal("stable_member_id", owner.Id);
+            
+            // Change profession - ID should remain stable
+            character.ActiveCombatProfessionId = "mage";
+            Assert.Equal("stable_member_id", owner.Id);
+        }
+
+        [Fact]
+        public void EnemyBuffOwner_ApplyBuff_ValidatesOwnerId()
+        {
+            var enemy = new Enemy();
+            var owner = new EnemyBuffOwner(enemy, "enemy_1");
+            
+            var buff = new BuffInstance(
+                "test_debuff",
+                "wrong_owner_id",  // Wrong owner ID
+                BuffKind.Debuff,
+                new List<BuffEffect>()
+            );
+
+            var ex = Assert.Throws<ArgumentException>(() => owner.ApplyBuff(buff));
+            Assert.Contains("OwnerId", ex.Message);
+        }
+
+        [Fact]
+        public void EnemyBuffOwner_ClearAllBuffs_RemovesAllBuffs()
+        {
+            var enemy = new Enemy();
+            var owner = new EnemyBuffOwner(enemy, "enemy_1");
+            
+            var buff1 = new BuffInstance("debuff1", owner.Id, BuffKind.Debuff, new List<BuffEffect>());
+            var buff2 = new BuffInstance("debuff2", owner.Id, BuffKind.Debuff, new List<BuffEffect>());
+            
+            owner.ApplyBuff(buff1);
+            owner.ApplyBuff(buff2);
+            Assert.Equal(2, owner.Buffs.Count);
+            
+            owner.ClearAllBuffs();
+            Assert.Empty(owner.Buffs);
         }
 
         #endregion

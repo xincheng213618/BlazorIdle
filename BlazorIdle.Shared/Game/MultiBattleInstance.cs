@@ -173,6 +173,7 @@ namespace BlazorIdle.Game
                 // Phase 4: 创建 Buff 所有者 / Create buff owner
                 _playerBuffOwners[member.Id] = new Buffs.CharacterBuffOwner(
                     character,
+                    member.Id,
                     _playerResources[member.Id]);
             }
 
@@ -1002,6 +1003,39 @@ namespace BlazorIdle.Game
                 // 复活玩家队伍
                 _playerTeam.ReviveAll(_config.ReviveWithFullHp);
 
+                // Phase 4: 清除玩家所有 buff 和重置资源
+                // Clear all player buffs and reset resources on death
+                foreach (var kvp in _playerBuffOwners)
+                {
+                    var charId = kvp.Key;
+                    var buffOwner = kvp.Value;
+                    
+                    // 清除所有 buff
+                    buffOwner.ClearAllBuffs();
+                    
+                    // 重置资源
+                    if (_playerResources.TryGetValue(charId, out var resources))
+                    {
+                        // 获取资源配置以重置到初始值
+                        if (_professionResourceConfigs != null &&
+                            buffOwner.Character.ActiveCombatProfessionId != null &&
+                            _professionResourceConfigs.TryGetValue(buffOwner.Character.ActiveCombatProfessionId, out var profConfig))
+                        {
+                            // 重置到职业初始资源值
+                            var bucket = resources.GetBucket(profConfig.Id);
+                            bucket.Reset(profConfig.Initial);
+                        }
+                        else
+                        {
+                            // 后备：重置所有资源到 0
+                            foreach (var bucket in resources.GetAll().Values)
+                            {
+                                bucket.Reset(0);
+                            }
+                        }
+                    }
+                }
+
                 // 对称重置：玩家与敌人轨道全部重置到 now，避免冷却期间积压触发
                 foreach (var tracks in _characterTracks.Values)
                 {
@@ -1018,6 +1052,13 @@ namespace BlazorIdle.Game
             {
                 // 刷新敌人队伍
                 _enemyTeam.ReviveAll(true);
+
+                // Phase 4: 清除敌人所有 buff
+                // Clear all enemy buffs on death
+                foreach (var buffOwner in _enemyBuffOwners.Values)
+                {
+                    buffOwner.ClearAllBuffs();
+                }
 
                 // 对称重置：敌人与玩家轨道全部重置到 now，避免冷却期间积压触发
                 foreach (var track in _enemyTracks.Values)
