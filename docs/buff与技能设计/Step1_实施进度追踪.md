@@ -800,11 +800,116 @@ Total tests: 145
 
 ### 阶段 3：Buff 系统核心实现（P0 - 必须）
 
-**状态：** ⬜ 未开始
+**状态：** ✅ 已完成
+
+**完成时间：** 2025-11-12
 
 **目标：** 实现 BuffInstance 和多种 Effect 类型，支持 Buff 的生命周期管理。
 
-**预计工作量：** 4-5 小时
+**任务清单：**
+
+- [x] 3.1 创建 Buff 系统目录结构
+  - 创建 `BlazorIdle.Shared/Game/Buffs/` 目录
+  
+- [x] 3.2 实现 Effect 类型体系
+  - BuffEffectType 枚举（7个效果类型）
+  - BuffEffect 类（含工厂方法）
+  - BuffKind 枚举（Buff/Debuff）
+  - BuffStackingPolicy 枚举（Refresh/Stack/Ignore）
+  
+- [x] 3.3 实现 BuffInstance 核心类
+  - 字段：id, ownerId, kind, effects, stackingPolicy, stacks, maxStacks, durationSec, tickIntervalSec, tickAccumulator, sourceSkillId
+  - 方法：Tick, IsExpired, RefreshDuration, AddStack
+  - Helper 方法：HasDamageOverTime, HasHealOverTime, HasInstantHeal, GetDamagePerTick, GetHealPerTick, GetInstantHealAmount
+  
+- [x] 3.4 实现 IBuffOwner 接口
+  - 属性：Id, IsPlayer, CurrentHp, MaxHp, Buckets, Buffs
+  - 方法：ApplyBuff, RemoveBuff, ReceiveDamage, ReceiveHeal
+  
+- [x] 3.5 实现 Buff 事件类型
+  - BuffApplyEvent（Buff 应用事件）
+  - BuffRemoveEvent（Buff 移除事件）
+  - BuffTickEvent（Buff tick 事件，DoT/HoT）
+  - HealEvent（治疗事件）
+  - BuffTickType 枚举
+  
+- [x] 3.6 单元测试（33个测试）
+  - BuffEffect 工厂方法测试（7个）
+  - BuffInstance 构造函数测试（2个）
+  - 持续时间管理测试（5个）
+  - Tick 逻辑测试（3个）
+  - 堆叠策略测试（3个）
+  - Helper 方法测试（7个）
+  - 复杂场景测试（3个）
+
+**实施细节：**
+
+1. **BuffEffect 类型体系**
+   - 支持 7 种效果类型：StatMultiplier, StatAdditive, ForceCrit, DamageOverTime, HealOverTime, InstantHeal, StatReduction
+   - 提供静态工厂方法简化创建（如 `BuffEffect.StatMultiplier("DamagePerAttack", 0.15)`）
+   
+2. **BuffInstance 生命周期**
+   - 支持有限时长和永久 Buff（durationSec 为 null）
+   - 支持 DoT/HoT tick 计时（tickIntervalSec, tickAccumulator）
+   - 支持堆叠策略：Refresh（刷新时长）、Stack（增加层数）、Ignore（忽略）
+   - 层数效果叠加：DoT/HoT 伤害/治疗量乘以层数
+   
+3. **IBuffOwner 接口**
+   - 统一玩家和怪物的 Buff 管理接口
+   - 支持资源桶访问（可选，怪物可能不使用）
+   - 提供 Buff 应用、移除、伤害、治疗接口
+   
+4. **事件系统扩展**
+   - BuffApplyEvent：记录 Buff 应用（含效果摘要、时长、层数）
+   - BuffRemoveEvent：记录 Buff 移除（含移除原因）
+   - BuffTickEvent：记录 DoT/HoT tick（含伤害/治疗量、结果 HP）
+   - HealEvent：记录治疗事件（含治疗量、来源）
+
+**验收标准：**
+- ✅ 实现完整的 Effect 类型体系
+- ✅ BuffInstance 支持生命周期管理
+- ✅ BuffInstance 支持 DoT/HoT tick 逻辑
+- ✅ BuffInstance 支持堆叠策略
+- ✅ IBuffOwner 接口定义完成
+- ✅ Buff 事件类型完整
+- ✅ 33 个单元测试全部通过
+- ✅ 所有 178 个测试通过（145 原有 + 33 新增）
+- ✅ 编译通过，无错误
+
+**测试结果：**
+```
+Total tests: 178
+- Original tests: 145 (all passing)
+- New tests (Phase 3): 33 (all passing)
+  - BuffEffect factory tests: 7
+  - BuffInstance constructor tests: 2
+  - Duration management tests: 5
+  - Tick logic tests: 3
+  - Stacking policy tests: 3
+  - Helper method tests: 7
+  - Complex scenario tests: 3
+- Failed: 0
+- Skipped: 0
+- Duration: ~757ms
+```
+
+**代码改动：**
+- 新增文件：
+  - `BlazorIdle.Shared/Game/Buffs/BuffEffectType.cs`
+  - `BlazorIdle.Shared/Game/Buffs/BuffEffect.cs`
+  - `BlazorIdle.Shared/Game/Buffs/BuffKind.cs`
+  - `BlazorIdle.Shared/Game/Buffs/BuffStackingPolicy.cs`
+  - `BlazorIdle.Shared/Game/Buffs/BuffInstance.cs`
+  - `BlazorIdle.Shared/Game/Buffs/IBuffOwner.cs`
+  - `BlazorIdle.Shared/Game/Buffs/BuffApplyEvent.cs`
+  - `BlazorIdle.Shared/Game/Buffs/BuffRemoveEvent.cs`
+  - `BlazorIdle.Shared/Game/Buffs/BuffTickEvent.cs`
+  - `BlazorIdle.Shared/Game/Buffs/HealEvent.cs`
+  - `BlazorIdle.Tests/BuffSystemTests.cs`
+
+**提交哈希：** 718bd97
+
+**预计工作量：** 4-5 小时 → **实际：** ~2 小时
 
 ---
 
@@ -890,7 +995,7 @@ Total tests: 145
 | 阶段 2.7.1 - 前端集成修复 | ✅ 已完成 | 2025-11-12 | 66f0144 | 0 (143 total) |
 | 阶段 2.7.2 - rogue+上限修复 | ✅ 已完成 | 2025-11-12 | 771760f | +1 (144 total) |
 | 阶段 2.7.3 - 副本重启修复 | ✅ 已完成 | 2025-11-12 | 6bfbe6c | +1 (145 total) |
-| 阶段 3 - Buff 系统核心 | ⬜ 未开始 | - | - | - |
+| 阶段 3 - Buff 系统核心 | ✅ 已完成 | 2025-11-12 | 718bd97 | +33 (178 total) |
 | 阶段 4 - IBuffOwner 接口 | ⬜ 未开始 | - | - | - |
 | 阶段 5 - SkillResolver 扩展 | ⬜ 未开始 | - | - | - |
 | 阶段 6 - Special 脉冲 Buff | ⬜ 未开始 | - | - | - |
@@ -899,7 +1004,7 @@ Total tests: 145
 | 阶段 9 - UI 展示 | ⬜ 未开始 | - | - | - |
 | 阶段 10 - 验收测试 | ⬜ 未开始 | - | - | - |
 
-**总体进度：** 2.7.3/10 (27%) ✅
+**总体进度：** 3/10 (30%) ✅
 
 ---
 
@@ -914,33 +1019,38 @@ Total tests: 145
 - ✅ **阶段 2.7.1**：前端集成修复（完整的API数据流，动态UI显示）
 - ✅ **阶段 2.7.2**：rogue职业配置 + 副本资源上限修复
 - ✅ **阶段 2.7.3**：副本重启资源重置修复
-- ✅ **51 个新测试全部通过**（31 单元 + 7 集成 + 3 持久化 + 9 职业 + 2 修复）
+- ✅ **阶段 3**：Buff 系统核心实现（Effect 类型体系、BuffInstance、IBuffOwner、事件系统）
+- ✅ **84 个新测试全部通过**（31 资源 + 7 集成 + 3 持久化 + 9 职业 + 2 修复 + 33 Buff）
 - ✅ **保持 94 个原有测试通过**，无回归
 - ✅ **资源系统 100% 完成**：创建、战斗集成、UI显示、波次持久化、职业特定化、Bug修复
+- ✅ **Buff 系统核心 100% 完成**：类型定义、生命周期、tick 逻辑、堆叠策略、事件系统
 
 **质量指标：**
-- 测试总数：145（94 原有 + 51 新增）
+- 测试总数：178（94 原有 + 84 新增）
 - 测试通过率：100%
 - 代码覆盖率：核心逻辑 100%
 - 向下兼容性：完美（所有原有测试通过）
 - Bug修复：3个（前端集成、资源上限、重启重置）
 
 **实现特性：**
-- ✅ 4个职业各有独特资源机制（战士/法师/游侠/盗贼）
+- ✅ 资源系统：4个职业各有独特资源机制（战士/法师/游侠/盗贼）
 - ✅ 配置驱动的资源管理（professionAttributes.json）
 - ✅ 完整的前端UI展示（动态名称、动态上限）
 - ✅ 副本波次间资源持久化（与血量行为一致）
-- ✅ 为未来扩展预留接口（装备/buff修改资源上限和增益）
+- ✅ Buff系统：7种效果类型（StatMultiplier, StatAdditive, ForceCrit, DoT, HoT, InstantHeal, StatReduction）
+- ✅ Buff生命周期管理（持续时间、tick、过期、堆叠）
+- ✅ IBuffOwner接口（统一玩家/怪物buff管理）
+- ✅ Buff事件系统（Apply, Remove, Tick, Heal）
 
-**下一步（Phase 3）：**
-- 📍 **阶段 3**：Buff 系统核心实现
-  - 实现 BuffInstance 类（生命周期管理）
-  - 实现 Effect 类型体系（StatMultiplier, DoT, HoT, InstantHeal, ForceCrit）
-  - 实现 IBuffOwner 接口（统一玩家/怪物 buff 管理）
-  - 实现 Buff 堆叠策略（Refresh, Stack, Ignore）
-  - 编写完整的单元测试
+**下一步（Phase 4）：**
+- 📍 **阶段 4**：IBuffOwner 接口与玩家/怪物集成
+  - 为 BattleContext 添加 Buff 支持
+  - 实现玩家/怪物的 IBuffOwner 实现
+  - 在 MultiBattleInstance 中集成 Buff 管理
+  - 实现 Buff tick 处理循环
+  - 编写集成测试
 
-**预计剩余工作量：** 30-37 小时（已完成 10-13 小时）
+**预计剩余工作量：** 26-32 小时（已完成 14 小时）
 
 **时间投入统计：**
 - 阶段 1：2.5 小时
@@ -951,7 +1061,8 @@ Total tests: 145
 - 阶段 2.7.1：1.5 小时
 - 阶段 2.7.2：1 小时
 - 阶段 2.7.3：0.5 小时
-- **总计：12 小时 / 40-50 小时（24%）**
+- 阶段 3：2 小时
+- **总计：14 小时 / 40-50 小时（30%）**
 
 ---
 
