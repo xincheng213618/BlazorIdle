@@ -15,6 +15,7 @@ namespace BlazorIdle.Server.Services
         private readonly List<BattleScenarioDef> _battleScenarios = new();
         private readonly List<BattleConfigDef> _battleConfigs = new();
         private readonly List<LevelExperienceRequirement> _experienceCurve = new();
+        private readonly Dictionary<string, ProfessionAttributeConfig> _professionAttributes = new();
         private int _maxProfessionLevel = 100;
         private volatile bool _loaded;
 
@@ -30,6 +31,7 @@ namespace BlazorIdle.Server.Services
         public IReadOnlyList<BattleScenarioDef> BattleScenarios => _battleScenarios;
         public IReadOnlyList<BattleConfigDef> BattleConfigs => _battleConfigs;
         public IReadOnlyList<LevelExperienceRequirement> ExperienceCurve => _experienceCurve;
+        public IReadOnlyDictionary<string, ProfessionAttributeConfig> ProfessionAttributes => _professionAttributes;
         public int MaxProfessionLevel => _maxProfessionLevel;
         public string Version { get; private set; } = "unloaded";
 
@@ -46,6 +48,7 @@ namespace BlazorIdle.Server.Services
             var battleConfigsPath = Path.Combine(contentRoot, "Config", "battleConfigs.json");
             var experienceCurvePath = Path.Combine(contentRoot, "Config", "experienceCurve.json");
             var professionLimitsPath = Path.Combine(contentRoot, "Config", "professionLimits.json");
+            var professionAttributesPath = Path.Combine(contentRoot, "Config", "professionAttributes.json");
 
             List<ProfessionDef>? profs = null;
             List<MonsterDef>? mons = null;
@@ -55,6 +58,7 @@ namespace BlazorIdle.Server.Services
             List<BattleConfigDef>? battleConfigs = null;
             List<LevelExperienceRequirement>? experienceCurve = null;
             ExperienceConfig? professionLimits = null;
+            Dictionary<string, ProfessionAttributeConfig>? professionAttributes = null;
 
             try
             {
@@ -142,6 +146,18 @@ namespace BlazorIdle.Server.Services
             }
             catch { /* ignore to fallback */ }
 
+            // Phase 2.7: 加载职业属性配置（包含资源配置）
+            // Phase 2.7: Load profession attribute configuration (includes resource configuration)
+            try
+            {
+                if (File.Exists(professionAttributesPath))
+                {
+                    await using var s = File.OpenRead(professionAttributesPath);
+                    professionAttributes = await JsonSerializer.DeserializeAsync<Dictionary<string, ProfessionAttributeConfig>>(s, cancellationToken: ct);
+                }
+            }
+            catch { /* ignore to fallback */ }
+
             // fallback to shared defaults
             profs ??= DefaultGameConfig.DefaultProfessions();
             mons ??= DefaultGameConfig.DefaultMonsters();
@@ -150,6 +166,7 @@ namespace BlazorIdle.Server.Services
             battleScenarios ??= new List<BattleScenarioDef>();
             battleConfigs ??= new List<BattleConfigDef>();
             experienceCurve ??= CreateDefaultExperienceCurve();
+            professionAttributes ??= new Dictionary<string, ProfessionAttributeConfig>();
 
             _professions.Clear();
             _professions.AddRange(profs.Where(p => !string.IsNullOrWhiteSpace(p.Id)));
@@ -172,10 +189,16 @@ namespace BlazorIdle.Server.Services
             _experienceCurve.Clear();
             _experienceCurve.AddRange(experienceCurve.OrderBy(e => e.Level));
 
+            _professionAttributes.Clear();
+            foreach (var kvp in professionAttributes)
+            {
+                _professionAttributes[kvp.Key] = kvp.Value;
+            }
+
             // 设置职业最大等级
             _maxProfessionLevel = professionLimits?.MaxProfessionLevel ?? 100;
 
-            Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-exp:{_experienceCurve.Count}-maxLvl:{_maxProfessionLevel}";
+            Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-exp:{_experienceCurve.Count}-maxLvl:{_maxProfessionLevel}-profAttrs:{_professionAttributes.Count}";
             _loaded = true;
         }
 

@@ -29,6 +29,10 @@ namespace BlazorIdle.Game
         // Phase 2.6: Preserve player resources (for maintaining resources between waves)
         private Dictionary<string, Resources.ResourceBucketCollection>? _preservedPlayerResources;
 
+        // Phase 2.7: 职业资源配置
+        // Phase 2.7: Profession resource configurations
+        private readonly Dictionary<string, Shared.Models.ProfessionResourceConfig>? _professionResourceConfigs;
+
         // 波次计时器
         private int _nextActionAtMs = 0;
 
@@ -61,13 +65,15 @@ namespace BlazorIdle.Game
             IGameClock clock,
             RngContext rng,
             BattleTeam<Character> playerTeam,
-            IGameConfigService gameConfig)
+            IGameConfigService gameConfig,
+            Dictionary<string, Shared.Models.ProfessionResourceConfig>? professionResourceConfigs = null)
         {
             _dungeonDef = dungeonDef ?? throw new ArgumentNullException(nameof(dungeonDef));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _rng = rng ?? throw new ArgumentNullException(nameof(rng));
             _playerTeam = playerTeam ?? throw new ArgumentNullException(nameof(playerTeam));
             _gameConfig = gameConfig ?? throw new ArgumentNullException(nameof(gameConfig));
+            _professionResourceConfigs = professionResourceConfigs;
         }
 
         /// <summary>
@@ -352,9 +358,9 @@ namespace BlazorIdle.Game
                 UnsubscribeBattleEvents();
             }
 
-            // 创建新战斗，传入保留的资源
-            // Create new battle, passing preserved resources
-            _currentBattle = new MultiBattleInstance(_clock, _rng, _playerTeam, _currentEnemyTeam, battleConfig, _preservedPlayerResources);
+            // 创建新战斗，传入保留的资源和职业资源配置
+            // Create new battle, passing preserved resources and profession resource configurations
+            _currentBattle = new MultiBattleInstance(_clock, _rng, _playerTeam, _currentEnemyTeam, battleConfig, _preservedPlayerResources, _professionResourceConfigs);
             SubscribeBattleEvents();
             // 不重置玩家队伍状态，保持波次之间的血量和资源
             // Don't reset player team state, preserve HP and resources between waves

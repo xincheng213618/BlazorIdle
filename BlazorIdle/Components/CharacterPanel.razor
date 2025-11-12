@@ -29,20 +29,23 @@
         </div>
     </div>
 
-    <!-- Phase 2.5: 资源条 (Rage) -->
-    @if (Resources != null && Resources.ContainsKey("rage"))
+    <!-- Phase 2.5/2.7: 资源条 (动态资源) / Resource bars (dynamic resources) -->
+    @if (Resources != null && ResourceConfig != null)
     {
-        var rage = Resources["rage"];
-        var rageMax = 10; // Default max from ResourceBucket
-        var ragePercent = (int)Math.Round(100.0 * rage / Math.Max(1, rageMax));
-        <div class="mb-2">
-            <div class="d-flex justify-content-between">
-                <small class="text-muted">Rage: @rage / @rageMax</small>
+        foreach (var (resourceId, currentValue) in Resources)
+        {
+            var maxValue = ResourceConfig.Max;
+            var resourceName = ResourceConfig.Name;
+            var resourcePercent = (int)Math.Round(100.0 * currentValue / Math.Max(1, maxValue));
+            <div class="mb-2">
+                <div class="d-flex justify-content-between">
+                    <small class="text-muted">@resourceName: @currentValue / @maxValue</small>
+                </div>
+                <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@resourcePercent">
+                    <div class="progress-bar bg-danger" style="width:@($"{resourcePercent}%")"></div>
+                </div>
             </div>
-            <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@ragePercent">
-                <div class="progress-bar bg-danger" style="width:@($"{ragePercent}%")"></div>
-            </div>
-        </div>
+        }
     }
 
     <!-- Attack 进度 -->
@@ -83,9 +86,11 @@
 
     private int HpPercent => MaxHp <= 0 ? 0 : (int)Math.Round(100.0 * Hp / Math.Max(1, MaxHp));
 
-    // Phase 2.5: 资源信息（可选）
-    // Phase 2.5: Resource information (optional)
+    // Phase 2.5/2.7: 资源信息（可选）/ Resource information (optional)
     [Parameter] public Dictionary<string, int>? Resources { get; set; }
+    
+    // Phase 2.7: 资源配置（用于显示资源名称和上限）/ Resource configuration (for displaying resource name and max)
+    [Parameter] public BlazorIdle.Shared.Models.ProfessionResourceConfig? ResourceConfig { get; set; }
 
     // 进度（0..1）与剩余毫秒
     [Parameter] public double AttackProgress01 { get; set; }

@@ -35,6 +35,12 @@ namespace BlazorIdle.Shared.DTOs
         public List<BattleConfigDef> BattleConfigs { get; set; } = new();
 
         /// <summary>
+        /// Phase 2.7: 职业属性配置 - 包含职业的资源配置
+        /// Phase 2.7: Profession attribute configurations - includes resource configurations for professions
+        /// </summary>
+        public Dictionary<string, ProfessionAttributeConfig> ProfessionAttributes { get; set; } = new();
+
+        /// <summary>
         /// 职业最大等级限制
         /// Maximum profession level limit
         /// </summary>

@@ -174,8 +174,8 @@ namespace BlazorIdle.Components
         // Get enemy attack time remaining - not displayed for now (in multi-enemy scenario)
         private double enemyRemainMs => 0.0;
 
-        // Phase 2.5: 获取玩家资源信息
-        // Phase 2.5: Get player resource information
+        // Phase 2.5/2.7: 获取玩家资源信息
+        // Phase 2.5/2.7: Get player resource information
         private Dictionary<string, int>? playerResources
         {
             get
@@ -183,6 +183,24 @@ namespace BlazorIdle.Components
                 if (battle == null || SelectedCharacter == null) return null;
                 var resourceSnapshot = battle.GetResourceSnapshot();
                 return resourceSnapshot.GetValueOrDefault(SelectedCharacter.Id);
+            }
+        }
+
+        // Phase 2.7: 获取玩家职业资源配置
+        // Phase 2.7: Get player profession resource configuration
+        private ProfessionResourceConfig? playerResourceConfig
+        {
+            get
+            {
+                if (SelectedCharacter == null) return null;
+                var professionId = SelectedCharacter.ActiveCombatProfessionId;
+                if (string.IsNullOrEmpty(professionId)) return null;
+                
+                if (GameConfig.ProfessionAttributes.TryGetValue(professionId, out var profAttr))
+                {
+                    return profAttr.Resource;
+                }
+                return null;
             }
         }
 
@@ -249,6 +267,26 @@ namespace BlazorIdle.Components
         private string GetProfessionName(string professionId)
         {
             return professions.FirstOrDefault(p => p.Id == professionId)?.Name ?? professionId;
+        }
+
+        /// <summary>
+        /// Phase 2.7: 构建职业资源配置映射
+        /// Phase 2.7: Build profession resource configuration map
+        /// </summary>
+        private Dictionary<string, ProfessionResourceConfig>? BuildProfessionResourceConfigs()
+        {
+            if (GameConfig.ProfessionAttributes == null || GameConfig.ProfessionAttributes.Count == 0)
+                return null;
+
+            var configs = new Dictionary<string, ProfessionResourceConfig>();
+            foreach (var kvp in GameConfig.ProfessionAttributes)
+            {
+                if (kvp.Value.Resource != null)
+                {
+                    configs[kvp.Key] = kvp.Value.Resource;
+                }
+            }
+            return configs.Count > 0 ? configs : null;
         }
 
         /// <summary>
@@ -383,8 +421,12 @@ namespace BlazorIdle.Components
                 ? enemyTeam.Members.First().Entity.RespawnMs
                 : DefaultEnemyRespawnMs;
 
+            // Phase 2.7: 获取职业资源配置
+            // Phase 2.7: Get profession resource configurations
+            var professionResourceConfigs = BuildProfessionResourceConfigs();
+
             // 创建战斗实例并订阅事件
-            battle = new MultiBattleInstance(clock, rng, playerTeam, enemyTeam, config);
+            battle = new MultiBattleInstance(clock, rng, playerTeam, enemyTeam, config, null, professionResourceConfigs);
             battle.CombatEventFired += OnCombatEvent;
             battle.LootDropped += OnLootDropped;
             battle.ExperienceGained += OnExperienceGained;
@@ -433,7 +475,11 @@ namespace BlazorIdle.Components
             playerTeam = new BattleTeam<Character>("player_team", "玩家队伍", TeamType.Player);
             playerTeam.AddMember(SelectedCharacter.Id, character, character.MaxHp);
 
-            dungeonManager = new DungeonManager(currentDungeon, clock, rng, playerTeam, GameConfig);
+            // Phase 2.7: 获取职业资源配置
+            // Phase 2.7: Get profession resource configurations
+            var professionResourceConfigs = BuildProfessionResourceConfigs();
+
+            dungeonManager = new DungeonManager(currentDungeon, clock, rng, playerTeam, GameConfig, professionResourceConfigs);
 
             // 默认开启自动循环
             dungeonManager.EnableAutoRepeat(AutoRepeatDelayMs);

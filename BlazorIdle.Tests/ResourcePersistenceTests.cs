@@ -2,6 +2,7 @@ using Xunit;
 using BlazorIdle.Game;
 using BlazorIdle.Game.Resources;
 using BlazorIdle.Game.Config;
+using BlazorIdle.Shared.Models;
 using System.Linq;
 
 namespace BlazorIdle.Tests
@@ -290,6 +291,9 @@ namespace BlazorIdle.Tests
         
         public System.Collections.Generic.IReadOnlyList<BattleConfigDef> BattleConfigs => 
             new System.Collections.Generic.List<BattleConfigDef>();
+        
+        public System.Collections.Generic.IReadOnlyDictionary<string, ProfessionAttributeConfig> ProfessionAttributes => 
+            new System.Collections.Generic.Dictionary<string, ProfessionAttributeConfig>();
         
         public int MaxProfessionLevel => 100;
         

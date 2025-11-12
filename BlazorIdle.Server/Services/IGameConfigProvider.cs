@@ -36,6 +36,12 @@ namespace BlazorIdle.Server.Services
         /// </summary>
         IReadOnlyList<BattleConfigDef> BattleConfigs { get; }
 
+        /// <summary>
+        /// Phase 2.7: 职业属性配置 - 包含职业的资源配置
+        /// Phase 2.7: Profession attribute configurations - includes resource configurations for professions
+        /// </summary>
+        IReadOnlyDictionary<string, ProfessionAttributeConfig> ProfessionAttributes { get; }
+
         ProfessionDef? GetProfession(string id);
         MonsterDef? GetMonster(string id);
         ItemDefinition? GetItem(string id);
