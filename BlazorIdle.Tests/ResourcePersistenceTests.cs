@@ -258,6 +258,148 @@ namespace BlazorIdle.Tests
             // Assert - 资源应该从 0 开始
             Assert.Equal(0, rage);
         }
+
+        [Fact]
+        public void DungeonWaves_ProfessionSpecificResourceMax_PreservedCorrectly()
+        {
+            // Phase 2.7.2: 测试职业特定资源上限在波次间正确保持
+            // Phase 2.7.2: Test profession-specific resource max is preserved correctly between waves
+            
+            // Arrange - 创建战士角色（max rage = 5）
+            var clock = new SimClock();
+            var rng = new RngContext(12345);
+            
+            var warrior = new Character
+            {
+                ActiveCombatProfessionId = "warrior",
+                MaxHp = 1000,
+                Hp = 1000,
+                DamagePerAttack = 100,
+                AttackRateAPS = 2.0,
+                CritChancePercent = 0.0,
+                CritMultiplier = 2.0,
+                HastePercent = 0.0,
+                VariancePct = 0.0,
+                SpecialIntervalSec = 10.0,
+                SpecialDamage = 200
+            };
+
+            var playerTeam = new BattleTeam<Character>("player_team", "Player Team", TeamType.Player);
+            playerTeam.AddMember("warrior1", warrior, maxHp: 1000, currentHp: 1000);
+
+            var dungeonDef = new DungeonDef
+            {
+                Id = "test_dungeon",
+                Name = "Test Dungeon",
+                Waves = new System.Collections.Generic.List<DungeonWave>
+                {
+                    new DungeonWave
+                    {
+                        WaveNumber = 1,
+                        Name = "Wave 1",
+                        MonsterGroups = new System.Collections.Generic.List<MonsterGroup>
+                        {
+                            new MonsterGroup
+                            {
+                                MonsterId = "test_monster",
+                                Count = 1,
+                                HpMultiplier = 1.0,
+                                DamageMultiplier = 1.0,
+                                AttackSpeedMultiplier = 1.0
+                            }
+                        },
+                        WaveStartDelaySec = 0.1
+                    },
+                    new DungeonWave
+                    {
+                        WaveNumber = 2,
+                        Name = "Wave 2",
+                        MonsterGroups = new System.Collections.Generic.List<MonsterGroup>
+                        {
+                            new MonsterGroup
+                            {
+                                MonsterId = "test_monster",
+                                Count = 1,
+                                HpMultiplier = 1.0,
+                                DamageMultiplier = 1.0,
+                                AttackSpeedMultiplier = 1.0
+                            }
+                        },
+                        WaveStartDelaySec = 0.1
+                    }
+                },
+                AllowRevive = true
+            };
+
+            // 配置战士职业资源（rage, max=5, initial=0）
+            var professionConfigs = new System.Collections.Generic.Dictionary<string, ProfessionResourceConfig>
+            {
+                ["warrior"] = new ProfessionResourceConfig
+                {
+                    Id = "rage",
+                    Name = "怒气",
+                    Max = 5,
+                    Initial = 0,
+                    GainPerAttack = 1,
+                    GainPerCritExtra = 1
+                }
+            };
+
+            var mockConfig = new MockGameConfigService();
+            var dungeonManager = new DungeonManager(dungeonDef, clock, rng, playerTeam, mockConfig, professionConfigs);
+
+            // Act - 开始副本并积累资源到上限
+            dungeonManager.StartDungeon();
+            
+            // 推进战斗，让战士攻击积累满 rage（5点）
+            for (int i = 0; i < 30; i++)
+            {
+                dungeonManager.AdvanceTick(100);
+            }
+
+            // 获取第一波的资源
+            int rageWave1 = 0;
+            if (dungeonManager.CurrentBattle != null)
+            {
+                var resources = dungeonManager.CurrentBattle.GetResourceSnapshot();
+                if (resources.ContainsKey("warrior1") && resources["warrior1"].ContainsKey("rage"))
+                {
+                    rageWave1 = resources["warrior1"]["rage"];
+                }
+            }
+
+            // 继续推进到第二波
+            for (int i = 0; i < 100; i++)
+            {
+                dungeonManager.AdvanceTick(100);
+                if (dungeonManager.CurrentWaveIndex >= 1)
+                {
+                    break;
+                }
+            }
+
+            // 再多攻击几次，测试上限是否仍然是 5
+            for (int i = 0; i < 10; i++)
+            {
+                dungeonManager.AdvanceTick(100);
+            }
+
+            // 获取第二波的资源
+            int rageWave2 = 0;
+            if (dungeonManager.CurrentBattle != null)
+            {
+                var resources = dungeonManager.CurrentBattle.GetResourceSnapshot();
+                if (resources.ContainsKey("warrior1") && resources["warrior1"].ContainsKey("rage"))
+                {
+                    rageWave2 = resources["warrior1"]["rage"];
+                }
+            }
+
+            // Assert - 战士的 rage 应该 clamp 到 5（不是默认的 10）
+            Assert.True(rageWave1 > 0, "Warrior should have gained rage in wave 1");
+            Assert.True(rageWave1 <= 5, $"Warrior rage should be clamped to 5, but was {rageWave1}");
+            Assert.True(rageWave2 <= 5, $"Warrior rage should still be clamped to 5 in wave 2, but was {rageWave2}");
+        }
     }
 
     // Mock GameConfigService for testing

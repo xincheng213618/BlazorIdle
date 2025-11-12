@@ -343,9 +343,31 @@ namespace BlazorIdle.Game
                 {
                     if (resourceSnapshot.TryGetValue(member.Id, out var resources))
                     {
-                        // 创建新的资源集合并恢复值
-                        // Create new resource collection and restore values
-                        var newCollection = new Resources.ResourceBucketCollection();
+                        // Phase 2.7.2: 使用职业配置创建资源集合，以保持正确的上限
+                        // Phase 2.7.2: Create resource collection using profession config to maintain correct max
+                        Resources.ResourceBucketCollection newCollection;
+                        
+                        // 尝试从 Character 获取 ActiveCombatProfessionId
+                        // Try to get ActiveCombatProfessionId from Character
+                        var character = member.Entity as Character;
+                        if (_professionResourceConfigs != null && 
+                            character != null &&
+                            _professionResourceConfigs.TryGetValue(character.ActiveCombatProfessionId, out var profConfig))
+                        {
+                            // 使用职业特定的配置创建资源集合
+                            // Create resource collection with profession-specific configuration
+                            newCollection = new Resources.ResourceBucketCollection(
+                                profConfig.Id, 
+                                profConfig.Max, 
+                                0); // initial = 0，因为我们会通过 Reset 恢复实际值
+                        }
+                        else
+                        {
+                            // 回退到默认配置
+                            // Fallback to default configuration
+                            newCollection = new Resources.ResourceBucketCollection();
+                        }
+                        
                         foreach (var (bucketId, value) in resources)
                         {
                             var bucket = newCollection.GetBucket(bucketId);
