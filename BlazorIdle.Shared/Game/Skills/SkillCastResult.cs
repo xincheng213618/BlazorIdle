@@ -40,5 +40,17 @@ namespace BlazorIdle.Game.Skills
         /// 记录施放技能后添加或移除的 Buff ID
         /// </summary>
         public List<string> BuffChanges { get; set; } = new();
+
+        /// <summary>
+        /// Buff 操作列表（Phase 5）
+        /// List of buff operations to perform
+        /// </summary>
+        public List<BuffOperation> BuffOperations { get; set; } = new();
+
+        /// <summary>
+        /// 即时治疗量（Phase 5）
+        /// Instant heal amount (if skill provides instant healing)
+        /// </summary>
+        public int InstantHeal { get; set; }
     }
 }
