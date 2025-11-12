@@ -129,6 +129,18 @@ namespace BlazorIdle.Game
             // Phase 2.6: 清除保留的资源，新开始的副本从头开始
             // Phase 2.6: Clear preserved resources, fresh dungeon start
             _preservedPlayerResources = null;
+            
+            // Phase 2.7.2: 清除当前战斗实例，确保完全重新开始
+            // Phase 2.7.2: Clear current battle instance to ensure complete restart
+            if (_currentBattle != null)
+            {
+                if (_currentBattle.IsRunning)
+                {
+                    _currentBattle.Stop();
+                }
+                UnsubscribeBattleEvents();
+                _currentBattle = null;
+            }
 
             // 恢复玩家队伍
             _playerTeam.ReviveAll(true);
@@ -568,6 +580,18 @@ namespace BlazorIdle.Game
             // Phase 2.6: 清除保留的资源，新一轮副本从头开始
             // Phase 2.6: Clear preserved resources, new dungeon run starts fresh
             _preservedPlayerResources = null;
+            
+            // Phase 2.7.2: 清除当前战斗实例，防止资源被意外保留
+            // Phase 2.7.2: Clear current battle instance to prevent resource preservation
+            if (_currentBattle != null)
+            {
+                if (_currentBattle.IsRunning)
+                {
+                    _currentBattle.Stop();
+                }
+                UnsubscribeBattleEvents();
+                _currentBattle = null;
+            }
 
             FireProgressEvent();
             PrepareNextWave();

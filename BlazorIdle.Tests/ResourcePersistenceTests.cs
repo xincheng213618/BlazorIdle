@@ -458,4 +458,143 @@ namespace BlazorIdle.Tests
         
         public BattleConfigDef? GetBattleConfig(string id) => null;
     }
+    
+    public class DungeonResourceResetTests
+    {
+        [Fact]
+        public void DungeonRestart_ResourcesResetToInitialValues()
+        {
+            // Phase 2.7.2: 测试副本重启时资源重置为初始值
+            // Phase 2.7.2: Test resources reset to initial values when dungeon restarts
+            
+            // Arrange - 创建战士角色（max rage = 5, initial = 0）
+            var clock = new SimClock();
+            var rng = new RngContext(12345);
+            
+            var warrior = new Character
+            {
+                ActiveCombatProfessionId = "warrior",
+                MaxHp = 1000,
+                Hp = 1000,
+                DamagePerAttack = 100,
+                AttackRateAPS = 2.0,
+                CritChancePercent = 0.0,
+                CritMultiplier = 2.0,
+                HastePercent = 0.0,
+                VariancePct = 0.0,
+                SpecialIntervalSec = 10.0,
+                SpecialDamage = 200
+            };
+
+            var playerTeam = new BattleTeam<Character>("player_team", "Player Team", TeamType.Player);
+            playerTeam.AddMember("warrior1", warrior, maxHp: 1000, currentHp: 1000);
+
+            var dungeonDef = new DungeonDef
+            {
+                Id = "test_dungeon",
+                Name = "Test Dungeon",
+                AllowRevive = true,
+                Waves = new System.Collections.Generic.List<DungeonWave>
+                {
+                    new DungeonWave
+                    {
+                        WaveNumber = 1,
+                        Name = "Wave 1",
+                        MonsterGroups = new System.Collections.Generic.List<MonsterGroup>
+                        {
+                            new MonsterGroup
+                            {
+                                MonsterId = "test_monster",
+                                Count = 1,
+                                HpMultiplier = 1.0,
+                                DamageMultiplier = 1.0,
+                                AttackSpeedMultiplier = 1.0
+                            }
+                        }
+                    }
+                }
+            };
+
+            var profConfig = new ProfessionResourceConfig
+            {
+                Id = "rage",
+                Name = "怒气",
+                Max = 5,
+                Initial = 0,
+                GainPerAttack = 1,
+                GainPerCritExtra = 1
+            };
+
+            var professionResourceConfigs = new System.Collections.Generic.Dictionary<string, ProfessionResourceConfig>
+            {
+                { "warrior", profConfig }
+            };
+
+            var mockGameConfig = new MockGameConfigService();
+            var dungeonManager = new DungeonManager(dungeonDef, clock, rng, playerTeam, mockGameConfig, professionResourceConfigs);
+            
+            dungeonManager.EnableAutoRepeat(100); // 短延迟以便快速测试
+
+            // Act - 启动副本，打一波，让资源积累
+            dungeonManager.StartDungeon();
+            
+            // 推进到战斗开始
+            for (int i = 0; i < 5; i++)
+            {
+                dungeonManager.AdvanceTick(100);
+            }
+            
+            // 推进战斗让资源积累
+            for (int i = 0; i < 30; i++)
+            {
+                dungeonManager.AdvanceTick(100);
+            }
+            
+            // 检查资源已经积累
+            var resourcesAfterWave1 = dungeonManager.CurrentBattle?.GetResourceSnapshot();
+            Assert.NotNull(resourcesAfterWave1);
+            int rageAfterWave1 = resourcesAfterWave1["warrior1"]["rage"];
+            Assert.True(rageAfterWave1 > 0, "Resources should have accumulated during first run");
+            
+            // 快速完成副本（让敌人死亡）
+            for (int i = 0; i < 1000; i++)
+            {
+                dungeonManager.AdvanceTick(100);
+                if (dungeonManager.State == DungeonState.Completed || dungeonManager.State == DungeonState.CompletionDelay)
+                {
+                    break;
+                }
+            }
+            
+            // 等待自动重启
+            for (int i = 0; i < 50; i++)
+            {
+                dungeonManager.AdvanceTick(100);
+                if (dungeonManager.State == DungeonState.Fighting || dungeonManager.State == DungeonState.Preparing)
+                {
+                    break;
+                }
+            }
+            
+            // Assert - 重启后资源应该重置为初始值 0
+            Assert.True(dungeonManager.State == DungeonState.Fighting || dungeonManager.State == DungeonState.Preparing || dungeonManager.State == DungeonState.WaveStartDelay);
+            
+            // 推进到战斗开始
+            for (int i = 0; i < 10; i++)
+            {
+                dungeonManager.AdvanceTick(100);
+                if (dungeonManager.CurrentBattle != null)
+                {
+                    break;
+                }
+            }
+            
+            var resourcesAfterRestart = dungeonManager.CurrentBattle?.GetResourceSnapshot();
+            Assert.NotNull(resourcesAfterRestart);
+            int rageAfterRestart = resourcesAfterRestart["warrior1"]["rage"];
+            
+            // 资源应该重置为初始值 0（战士的初始值）
+            Assert.Equal(0, rageAfterRestart);
+        }
+    }
 }
