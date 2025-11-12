@@ -403,6 +403,11 @@ namespace BlazorIdle.Game
             ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Attack, 
                 isAoe: false, isCrit: result.IsCrit, skillId: SkillIds.AttackBasic, bundleId: result.BundleId);
 
+            // Phase 6: 处理 Buff 操作和即时治疗
+            // Phase 6: Process buff operations and instant heal
+            ProcessBuffOperations(result, charId, targetId, isCasterPlayer: true);
+            ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true);
+
             // Phase 2 & 2.7: 产生资源 / Generate resource
             if (_playerResources.TryGetValue(charId, out var resources))
             {
@@ -486,6 +491,11 @@ namespace BlazorIdle.Game
 
                     ApplyDamageToEnemy(charId, member, enemyId, target, damage, EventSource.Special, 
                         isAoe: true, isCrit: result.IsCrit, skillId: SkillIds.SpecialPulse, bundleId: result.BundleId);
+                    
+                    // Phase 6: 处理 Buff 操作和即时治疗（AOE特殊技能）
+                    // Phase 6: Process buff operations and instant heal (AOE special)
+                    ProcessBuffOperations(result, charId, enemyId, isCasterPlayer: true);
+                    ApplyInstantHeal(result, charId, enemyId, isCasterPlayer: true);
                 }
             }
             else
@@ -517,6 +527,11 @@ namespace BlazorIdle.Game
 
                 ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Special, 
                     isAoe: false, isCrit: result.IsCrit, skillId: SkillIds.SpecialPulse, bundleId: result.BundleId);
+                
+                // Phase 6: 处理 Buff 操作和即时治疗（单体特殊技能）
+                // Phase 6: Process buff operations and instant heal (single target special)
+                ProcessBuffOperations(result, charId, targetId, isCasterPlayer: true);
+                ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true);
             }
         }
 
@@ -647,6 +662,11 @@ namespace BlazorIdle.Game
             // Apply damage (pass skill ID and bundle ID)
             ApplyDamageToPlayer(enemyId, member, targetId, target, result.DamageDealt, 
                 skillId: SkillIds.EnemyAttackBasic, bundleId: result.BundleId);
+            
+            // Phase 6: 处理 Buff 操作和即时治疗（敌人攻击）
+            // Phase 6: Process buff operations and instant heal (enemy attack)
+            ProcessBuffOperations(result, enemyId, targetId, isCasterPlayer: false);
+            ApplyInstantHeal(result, enemyId, targetId, isCasterPlayer: false);
         }
 
         /// <summary>
@@ -953,6 +973,314 @@ namespace BlazorIdle.Game
                 
                 // TODO: 记录 BuffRemoveEvent 到战斗段落
                 // TODO: Record BuffRemoveEvent to combat segment
+            }
+        }
+
+        /// <summary>
+        /// Phase 6: 处理技能释放结果中的 Buff 操作
+        /// Phase 6: Process buff operations from skill cast result
+        /// </summary>
+        private void ProcessBuffOperations(
+            SkillCastResult result,
+            string casterId,
+            string? targetId,
+            bool isCasterPlayer)
+        {
+            if (result.BuffOperations == null || result.BuffOperations.Count == 0)
+                return;
+
+            foreach (var operation in result.BuffOperations)
+            {
+                if (operation.Type == Skills.BuffOperationType.Apply)
+                {
+                    ApplyBuffOperation(operation, casterId, targetId, isCasterPlayer);
+                }
+                else if (operation.Type == Skills.BuffOperationType.Remove)
+                {
+                    RemoveBuffOperation(operation, casterId, targetId, isCasterPlayer);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Phase 6: 应用 Buff 操作
+        /// Phase 6: Apply buff operation
+        /// </summary>
+        private void ApplyBuffOperation(
+            Skills.BuffOperation operation,
+            string casterId,
+            string? targetId,
+            bool isCasterPlayer)
+        {
+            if (operation.BuffTemplate == null)
+                return;
+
+            // 解析目标列表
+            // Resolve target list
+            var targets = ResolveBuffTargets(operation.Target, casterId, targetId, isCasterPlayer);
+
+            foreach (var target in targets)
+            {
+                // 克隆 buff 模板并设置 OwnerId
+                // Clone buff template and set OwnerId
+                var buffToApply = new Buffs.BuffInstance(
+                    id: operation.BuffTemplate.Id,
+                    ownerId: target.Id, // Phase 6: 设置正确的 OwnerId
+                    kind: operation.BuffTemplate.Kind,
+                    effects: operation.BuffTemplate.Effects,
+                    stackingPolicy: operation.BuffTemplate.StackingPolicy,
+                    durationSec: operation.BuffTemplate.RemainingDurationSec,
+                    tickIntervalSec: operation.BuffTemplate.TickIntervalSec,
+                    maxStacks: operation.BuffTemplate.MaxStacks
+                );
+
+                // 应用 buff
+                // Apply buff
+                target.ApplyBuff(buffToApply);
+
+                // TODO: 记录 BuffApplyEvent 到战斗段落
+                // TODO: Record BuffApplyEvent to combat segment
+            }
+        }
+
+        /// <summary>
+        /// Phase 6: 移除 Buff 操作
+        /// Phase 6: Remove buff operation
+        /// </summary>
+        private void RemoveBuffOperation(
+            Skills.BuffOperation operation,
+            string casterId,
+            string? targetId,
+            bool isCasterPlayer)
+        {
+            if (string.IsNullOrEmpty(operation.BuffIdToRemove))
+                return;
+
+            // 解析目标列表
+            // Resolve target list
+            var targets = ResolveBuffTargets(operation.Target, casterId, targetId, isCasterPlayer);
+
+            foreach (var target in targets)
+            {
+                target.RemoveBuff(operation.BuffIdToRemove, operation.Reason ?? "skill_effect");
+
+                // TODO: 记录 BuffRemoveEvent 到战斗段落
+                // TODO: Record BuffRemoveEvent to combat segment
+            }
+        }
+
+        /// <summary>
+        /// Phase 6: 解析 Buff 目标
+        /// Phase 6: Resolve buff targets
+        /// </summary>
+        private List<Buffs.IBuffOwner> ResolveBuffTargets(
+            Skills.BuffTarget targetType,
+            string casterId,
+            string? primaryTargetId,
+            bool isCasterPlayer)
+        {
+            var targets = new List<Buffs.IBuffOwner>();
+
+            switch (targetType)
+            {
+                case Skills.BuffTarget.Self:
+                    // 施法者自己
+                    // Caster itself
+                    if (isCasterPlayer)
+                    {
+                        if (_playerBuffOwners.TryGetValue(casterId, out var playerOwner))
+                            targets.Add(playerOwner);
+                    }
+                    else
+                    {
+                        if (_enemyBuffOwners.TryGetValue(casterId, out var enemyOwner))
+                            targets.Add(enemyOwner);
+                    }
+                    break;
+
+                case Skills.BuffTarget.Target:
+                    // 主要目标
+                    // Primary target
+                    if (!string.IsNullOrEmpty(primaryTargetId))
+                    {
+                        if (isCasterPlayer)
+                        {
+                            // 玩家施法，目标是敌人
+                            // Player casts, target is enemy
+                            if (_enemyBuffOwners.TryGetValue(primaryTargetId, out var enemyOwner))
+                                targets.Add(enemyOwner);
+                        }
+                        else
+                        {
+                            // 敌人施法，目标是玩家
+                            // Enemy casts, target is player
+                            if (_playerBuffOwners.TryGetValue(primaryTargetId, out var playerOwner))
+                                targets.Add(playerOwner);
+                        }
+                    }
+                    break;
+
+                case Skills.BuffTarget.AllEnemies:
+                    // 所有敌人
+                    // All enemies
+                    if (isCasterPlayer)
+                    {
+                        // 玩家施法，目标是所有存活的敌人
+                        // Player casts, targets are all alive enemies
+                        foreach (var enemyId in _enemyTeam.GetAliveMemberIds())
+                        {
+                            if (_enemyBuffOwners.TryGetValue(enemyId, out var enemyOwner))
+                                targets.Add(enemyOwner);
+                        }
+                    }
+                    else
+                    {
+                        // 敌人施法，目标是所有存活的玩家
+                        // Enemy casts, targets are all alive players
+                        foreach (var playerId in _playerTeam.GetAliveMemberIds())
+                        {
+                            if (_playerBuffOwners.TryGetValue(playerId, out var playerOwner))
+                                targets.Add(playerOwner);
+                        }
+                    }
+                    break;
+
+                case Skills.BuffTarget.AllAllies:
+                    // 所有队友（包括自己）
+                    // All allies (including self)
+                    if (isCasterPlayer)
+                    {
+                        // 玩家施法，目标是所有存活的玩家
+                        // Player casts, targets are all alive players
+                        foreach (var playerId in _playerTeam.GetAliveMemberIds())
+                        {
+                            if (_playerBuffOwners.TryGetValue(playerId, out var playerOwner))
+                                targets.Add(playerOwner);
+                        }
+                    }
+                    else
+                    {
+                        // 敌人施法，目标是所有存活的敌人
+                        // Enemy casts, targets are all alive enemies
+                        foreach (var enemyId in _enemyTeam.GetAliveMemberIds())
+                        {
+                            if (_enemyBuffOwners.TryGetValue(enemyId, out var enemyOwner))
+                                targets.Add(enemyOwner);
+                        }
+                    }
+                    break;
+
+                case Skills.BuffTarget.RandomEnemy:
+                    // 随机敌人
+                    // Random enemy
+                    if (isCasterPlayer)
+                    {
+                        var aliveEnemies = _enemyTeam.GetAliveMemberIds().ToList();
+                        if (aliveEnemies.Count > 0)
+                        {
+                            var randomIndex = _rng.NextRange(0, aliveEnemies.Count - 1);
+                            var randomId = aliveEnemies[randomIndex];
+                            if (_enemyBuffOwners.TryGetValue(randomId, out var enemyOwner))
+                                targets.Add(enemyOwner);
+                        }
+                    }
+                    else
+                    {
+                        var alivePlayers = _playerTeam.GetAliveMemberIds().ToList();
+                        if (alivePlayers.Count > 0)
+                        {
+                            var randomIndex = _rng.NextRange(0, alivePlayers.Count - 1);
+                            var randomId = alivePlayers[randomIndex];
+                            if (_playerBuffOwners.TryGetValue(randomId, out var playerOwner))
+                                targets.Add(playerOwner);
+                        }
+                    }
+                    break;
+
+                case Skills.BuffTarget.LowestHpAlly:
+                    // 血量最低的队友
+                    // Lowest HP ally
+                    if (isCasterPlayer)
+                    {
+                        Buffs.IBuffOwner? lowestHpOwner = null;
+                        int lowestHp = int.MaxValue;
+
+                        foreach (var playerId in _playerTeam.GetAliveMemberIds())
+                        {
+                            if (_playerBuffOwners.TryGetValue(playerId, out var playerOwner))
+                            {
+                                if (playerOwner.CurrentHp < lowestHp)
+                                {
+                                    lowestHp = playerOwner.CurrentHp;
+                                    lowestHpOwner = playerOwner;
+                                }
+                            }
+                        }
+
+                        if (lowestHpOwner != null)
+                            targets.Add(lowestHpOwner);
+                    }
+                    else
+                    {
+                        Buffs.IBuffOwner? lowestHpOwner = null;
+                        int lowestHp = int.MaxValue;
+
+                        foreach (var enemyId in _enemyTeam.GetAliveMemberIds())
+                        {
+                            if (_enemyBuffOwners.TryGetValue(enemyId, out var enemyOwner))
+                            {
+                                if (enemyOwner.CurrentHp < lowestHp)
+                                {
+                                    lowestHp = enemyOwner.CurrentHp;
+                                    lowestHpOwner = enemyOwner;
+                                }
+                            }
+                        }
+
+                        if (lowestHpOwner != null)
+                            targets.Add(lowestHpOwner);
+                    }
+                    break;
+            }
+
+            return targets;
+        }
+
+        /// <summary>
+        /// Phase 6: 应用即时治疗
+        /// Phase 6: Apply instant heal
+        /// </summary>
+        private void ApplyInstantHeal(
+            SkillCastResult result,
+            string casterId,
+            string? targetId,
+            bool isCasterPlayer)
+        {
+            if (result.InstantHeal <= 0)
+                return;
+
+            // 即时治疗通常施加在施法者自己身上
+            // Instant heal is usually applied to the caster
+            Buffs.IBuffOwner? target = null;
+
+            if (isCasterPlayer)
+            {
+                if (_playerBuffOwners.TryGetValue(casterId, out var playerOwner))
+                    target = playerOwner;
+            }
+            else
+            {
+                if (_enemyBuffOwners.TryGetValue(casterId, out var enemyOwner))
+                    target = enemyOwner;
+            }
+
+            if (target != null)
+            {
+                var healMeta = new Buffs.HealMeta("instant_heal", "skill_cast");
+                target.ReceiveHeal(result.InstantHeal, healMeta);
+
+                // TODO: 记录 HealEvent 到战斗段落
+                // TODO: Record HealEvent to combat segment
             }
         }
 
