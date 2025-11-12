@@ -35,6 +35,10 @@ namespace BlazorIdle.Game
         // Phase 2.7: 职业资源配置映射 / Profession resource configuration map
         private readonly Dictionary<string, Shared.Models.ProfessionResourceConfig>? _professionResourceConfigs;
         
+        // Phase 4: Buff 系统 / Buff system
+        private readonly Dictionary<string, Buffs.CharacterBuffOwner> _playerBuffOwners = new();
+        private readonly Dictionary<string, Buffs.EnemyBuffOwner> _enemyBuffOwners = new();
+        
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
         // Current implementation directly uses TrackState + SkillResolver for better clarity.
@@ -165,6 +169,11 @@ namespace BlazorIdle.Game
                 // 初始化统计
                 _damageDealtByCharacter[member.Id] = 0;
                 _damageTakenByCharacter[member.Id] = 0;
+                
+                // Phase 4: 创建 Buff 所有者 / Create buff owner
+                _playerBuffOwners[member.Id] = new Buffs.CharacterBuffOwner(
+                    character,
+                    _playerResources[member.Id]);
             }
 
             // 为每个怪物初始化攻击轨道
@@ -176,6 +185,9 @@ namespace BlazorIdle.Game
 
                 // 初始化统计
                 _damageDealtByEnemy[member.Id] = 0;
+                
+                // Phase 4: 创建 Buff 所有者 / Create buff owner
+                _enemyBuffOwners[member.Id] = new Buffs.EnemyBuffOwner(enemy, member.Id);
             }
         }
 
@@ -287,6 +299,14 @@ namespace BlazorIdle.Game
             // 检查战斗结束条件
             if (_state == MultiBattleState.Fighting)
             {
+                // Phase 4: 处理 Buff tick（在行动处理之前）
+                // Phase 4: Process buff ticks (before action processing)
+                double deltaTimeSec = _lastTickTime > 0 ? (now - _lastTickTime) / 1000.0 : 0;
+                if (deltaTimeSec > 0)
+                {
+                    ProcessBuffTicks(deltaTimeSec);
+                }
+                
                 // 处理角色行动
                 ProcessCharacterActions(now);
 
@@ -357,8 +377,8 @@ namespace BlazorIdle.Game
             var target = _enemyTeam.GetMember(targetId);
             if (member == null || target == null) return;
 
-            // 创建战斗上下文（Phase 2: 添加资源引用）
-            // Create battle context (Phase 2: Add resource reference)
+            // 创建战斗上下文（Phase 2: 添加资源引用，Phase 4: 添加 Buff 所有者）
+            // Create battle context (Phase 2: Add resource reference, Phase 4: Add buff owners)
             var ctx = new BattleContext
             {
                 Player = character,
@@ -367,7 +387,9 @@ namespace BlazorIdle.Game
                 EnemyTeam = _enemyTeam,
                 Rng = _rng,
                 Clock = _clock,
-                PlayerResources = _playerResources.GetValueOrDefault(charId)
+                PlayerResources = _playerResources.GetValueOrDefault(charId),
+                PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(charId),
+                EnemyBuffOwners = _enemyBuffOwners
             };
 
             // 使用 SkillResolver 计算伤害
@@ -442,7 +464,7 @@ namespace BlazorIdle.Game
                     var target = _enemyTeam.GetMember(enemyId);
                     if (target == null) continue;
 
-                    // 创建战斗上下文
+                    // 创建战斗上下文（Phase 4: 添加 Buff 所有者）
                     var ctx = new BattleContext
                     {
                         Player = character,
@@ -450,7 +472,10 @@ namespace BlazorIdle.Game
                         PlayerTeam = _playerTeam,
                         EnemyTeam = _enemyTeam,
                         Rng = _rng,
-                        Clock = _clock
+                        Clock = _clock,
+                        PlayerResources = _playerResources.GetValueOrDefault(charId),
+                        PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(charId),
+                        EnemyBuffOwners = _enemyBuffOwners
                     };
 
                     // 使用 SkillResolver 计算伤害（应用 AOE 倍率）
@@ -471,7 +496,7 @@ namespace BlazorIdle.Game
                 var target = _enemyTeam.GetMember(targetId);
                 if (target == null) return;
 
-                // 创建战斗上下文
+                // 创建战斗上下文（Phase 4: 添加 Buff 所有者）
                 var ctx = new BattleContext
                 {
                     Player = character,
@@ -479,7 +504,10 @@ namespace BlazorIdle.Game
                     PlayerTeam = _playerTeam,
                     EnemyTeam = _enemyTeam,
                     Rng = _rng,
-                    Clock = _clock
+                    Clock = _clock,
+                    PlayerResources = _playerResources.GetValueOrDefault(charId),
+                    PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(charId),
+                    EnemyBuffOwners = _enemyBuffOwners
                 };
 
                 // 使用 SkillResolver 计算伤害
@@ -594,8 +622,8 @@ namespace BlazorIdle.Game
             var target = _playerTeam.GetMember(targetId);
             if (member == null || target == null) return;
 
-            // 创建战斗上下文
-            // Create battle context
+            // 创建战斗上下文（Phase 4: 添加 Buff 所有者）
+            // Create battle context (Phase 4: Add buff owners)
             var ctx = new BattleContext
             {
                 Enemy = enemy,
@@ -603,7 +631,10 @@ namespace BlazorIdle.Game
                 PlayerTeam = _playerTeam,
                 EnemyTeam = _enemyTeam,
                 Rng = _rng,
-                Clock = _clock
+                Clock = _clock,
+                PlayerResources = _playerResources.GetValueOrDefault(targetId),
+                PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(targetId),
+                EnemyBuffOwners = _enemyBuffOwners
             };
 
             // 使用 SkillResolver 计算伤害
@@ -820,6 +851,107 @@ namespace BlazorIdle.Game
 
                 default:
                     return _playerTeam.GetRandomAliveMemberId(_rng);
+            }
+        }
+
+        /// <summary>
+        /// 处理 Buff tick（Phase 4）
+        /// Process buff ticks (Phase 4)
+        /// </summary>
+        private void ProcessBuffTicks(double deltaTimeSec)
+        {
+            // 处理玩家 Buff
+            // Process player buffs
+            foreach (var kvp in _playerBuffOwners)
+            {
+                var charId = kvp.Key;
+                var buffOwner = kvp.Value;
+                
+                // 获取角色成员
+                var member = _playerTeam.GetMember(charId);
+                if (member == null || member.IsDead) continue;
+                
+                ProcessEntityBuffs(buffOwner, deltaTimeSec);
+            }
+            
+            // 处理敌人 Buff
+            // Process enemy buffs
+            foreach (var kvp in _enemyBuffOwners)
+            {
+                var enemyId = kvp.Key;
+                var buffOwner = kvp.Value;
+                
+                // 获取敌人成员
+                var member = _enemyTeam.GetMember(enemyId);
+                if (member == null || member.IsDead) continue;
+                
+                ProcessEntityBuffs(buffOwner, deltaTimeSec);
+            }
+        }
+
+        /// <summary>
+        /// 处理单个实体的 Buff（Phase 4）
+        /// Process buffs for a single entity (Phase 4)
+        /// </summary>
+        private void ProcessEntityBuffs(Buffs.IBuffOwner buffOwner, double deltaTimeSec)
+        {
+            // 收集过期的 Buff
+            // Collect expired buffs
+            var expiredBuffs = new List<string>();
+            
+            foreach (var kvp in buffOwner.Buffs)
+            {
+                var buff = kvp.Value;
+                
+                // Tick buff（返回触发的 tick 次数）
+                // Tick buff (returns number of ticks triggered)
+                int tickCount = buff.Tick(deltaTimeSec);
+                
+                // 处理 DoT/HoT
+                // Process DoT/HoT
+                if (tickCount > 0)
+                {
+                    if (buff.HasDamageOverTime())
+                    {
+                        int damagePerTick = buff.GetDamagePerTick();
+                        int totalDamage = damagePerTick * tickCount;
+                        
+                        var damageMeta = new Buffs.DamageMeta("dot_tick", buff.Id);
+                        buffOwner.ReceiveDamage(totalDamage, damageMeta);
+                        
+                        // TODO: 记录 BuffTickEvent 到战斗段落
+                        // TODO: Record BuffTickEvent to combat segment
+                    }
+                    
+                    if (buff.HasHealOverTime())
+                    {
+                        int healPerTick = buff.GetHealPerTick();
+                        int totalHeal = healPerTick * tickCount;
+                        
+                        var healMeta = new Buffs.HealMeta("hot_tick", buff.Id);
+                        buffOwner.ReceiveHeal(totalHeal, healMeta);
+                        
+                        // TODO: 记录 BuffTickEvent 到战斗段落
+                        // TODO: Record BuffTickEvent to combat segment
+                    }
+                }
+                
+                // 检查是否过期
+                // Check if expired
+                if (buff.IsExpired())
+                {
+                    expiredBuffs.Add(buff.Id);
+                }
+            }
+            
+            // 移除过期的 Buff
+            // Remove expired buffs
+            foreach (var buffId in expiredBuffs)
+            {
+                buffOwner.RemoveBuff(buffId, "expired");
+                
+                // TODO: 记录 BuffRemoveEvent 到战斗段落
+                // TODO: Record BuffRemoveEvent to combat segment
             }
         }
 

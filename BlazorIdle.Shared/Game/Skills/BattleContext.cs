@@ -54,6 +54,19 @@ namespace BlazorIdle.Game.Skills
         /// </summary>
         public Resources.ResourceBucketCollection? EnemyResources { get; init; }
 
+        /// <summary>
+        /// 玩家 Buff 所有者（Phase 4）
+        /// Player buff owner (Phase 4)
+        /// </summary>
+        public Buffs.CharacterBuffOwner? PlayerBuffOwner { get; init; }
+
+        /// <summary>
+        /// 敌人 Buff 所有者字典（Phase 4）
+        /// Enemy buff owners dictionary (Phase 4)
+        /// Key = enemy ID
+        /// </summary>
+        public Dictionary<string, Buffs.EnemyBuffOwner>? EnemyBuffOwners { get; init; }
+
         // 预留其他上下文字段
         // Reserved for other context fields
     }
