@@ -20,6 +20,15 @@ public class ResourceBucketCollection
     }
 
     /// <summary>
+    /// Phase 2.7: 创建集合并初始化指定的资源桶
+    /// Phase 2.7: Create collection and initialize specified resource bucket
+    /// </summary>
+    public ResourceBucketCollection(string resourceId, int max, int initial)
+    {
+        _buckets[resourceId] = new ResourceBucket(resourceId, max, initial);
+    }
+
+    /// <summary>
     /// 获取指定 ID 的资源桶
     /// Get resource bucket by ID
     /// </summary>

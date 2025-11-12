@@ -36,6 +36,13 @@ namespace BlazorIdle.Shared.Models
 
         [JsonPropertyName("weights")]
         public AttributeWeights Weights { get; set; } = new();
+
+        /// <summary>
+        /// Phase 2.7: 职业资源配置 - 定义职业的资源类型、上限和初始值
+        /// Phase 2.7: Profession resource configuration - defines resource type, max and initial value
+        /// </summary>
+        [JsonPropertyName("resource")]
+        public ProfessionResourceConfig? Resource { get; set; }
     }
 
     /// <summary>
@@ -105,5 +112,54 @@ namespace BlazorIdle.Shared.Models
 
         [JsonPropertyName("hasteCap")]
         public double HasteCap { get; set; } = 0.4;
+    }
+
+    /// <summary>
+    /// Phase 2.7: 职业资源配置
+    /// Phase 2.7: Profession resource configuration
+    /// </summary>
+    public class ProfessionResourceConfig
+    {
+        /// <summary>
+        /// 资源ID（如 "rage", "mana", "energy"）
+        /// Resource ID (e.g., "rage", "mana", "energy")
+        /// </summary>
+        [JsonPropertyName("id")]
+        public string Id { get; set; } = "rage";
+
+        /// <summary>
+        /// 资源显示名称
+        /// Resource display name
+        /// </summary>
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = "怒气";
+
+        /// <summary>
+        /// 资源最大值
+        /// Resource maximum value
+        /// </summary>
+        [JsonPropertyName("max")]
+        public int Max { get; set; } = 10;
+
+        /// <summary>
+        /// 资源初始值
+        /// Resource initial value
+        /// </summary>
+        [JsonPropertyName("initial")]
+        public int Initial { get; set; } = 0;
+
+        /// <summary>
+        /// 每次攻击命中获得的资源量
+        /// Resource gained per attack hit
+        /// </summary>
+        [JsonPropertyName("gainPerAttack")]
+        public int GainPerAttack { get; set; } = 1;
+
+        /// <summary>
+        /// 暴击时额外获得的资源量
+        /// Extra resource gained on critical hit
+        /// </summary>
+        [JsonPropertyName("gainPerCritExtra")]
+        public int GainPerCritExtra { get; set; } = 1;
     }
 }
