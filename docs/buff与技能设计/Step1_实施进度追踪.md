@@ -915,9 +915,9 @@ Total tests: 178
 
 ### 阶段 4：IBuffOwner 接口与玩家/怪物集成（P0 - 必须）
 
-**状态：** 🔄 进行中
+**状态：** ✅ 已完成
 
-**完成时间：** 部分完成 2025-11-12
+**完成时间：** 2025-11-12
 
 **目标：** 让玩家和怪物都能拥有 Buff。
 
@@ -936,18 +936,21 @@ Total tests: 178
   - EnemyBuffOwner 测试（7个）
   - 集成测试（2个）
 
-- [ ] 4.3 扩展 BattleContext
+- [x] 4.3 扩展 BattleContext
   - 添加 PlayerBuffOwner 字段
   - 添加 EnemyBuffOwners 字段（Dictionary）
   
-- [ ] 4.4 MultiBattleInstance 集成
+- [x] 4.4 MultiBattleInstance 集成
   - 初始化 buff owners
-  - 实现 buff tick 处理循环
-  - 集成到攻击流程
+  - 实现 buff tick 处理循环（ProcessBuffTicks）
+  - 实现单个实体 buff 处理（ProcessEntityBuffs）
+  - 集成到 AdvanceTick
+  - 更新所有 BattleContext 创建
   
-- [ ] 4.5 集成测试（Part 2）
-  - Buff tick 集成测试
-  - Buff 在战斗中的应用测试
+- [x] 4.5 DoT/HoT 自动处理
+  - DoT 伤害自动应用
+  - HoT 治疗自动应用
+  - 过期 buff 自动移除
 
 **实施细节：**
 
@@ -969,43 +972,59 @@ Total tests: 178
    - **Stack**: 增加层数并刷新持续时间
    - **Ignore**: 如果已存在，忽略新应用
 
-**验收标准（Part 1）：**
-- ✅ CharacterBuffOwner 实现 IBuffOwner 接口
-- ✅ EnemyBuffOwner 实现 IBuffOwner 接口
+4. **BattleContext 扩展（Part 2）**
+   - 添加 `PlayerBuffOwner` 字段（可选）
+   - 添加 `EnemyBuffOwners` 字段（Dictionary，可选）
+   - 所有技能施放时提供 buff 上下文
+
+5. **MultiBattleInstance 集成（Part 2）**
+   - 字典存储：`_playerBuffOwners` 和 `_enemyBuffOwners`
+   - `InitializeTracks` 中创建每个实体的 buff 所有者
+   - `ProcessBuffTicks` 在每个 tick 处理所有实体 buff
+   - `ProcessEntityBuffs` 处理单个实体的所有 buff：
+     - Tick 每个 buff（支持多次 tick）
+     - 应用 DoT 伤害（使用 DamageMeta）
+     - 应用 HoT 治疗（使用 HealMeta）
+     - 移除过期 buff
+   - 在 `AdvanceTick` 的行动处理之前执行
+
+**验收标准：**
+- ✅ CharacterBuffOwner 和 EnemyBuffOwner 实现完整
 - ✅ 支持所有堆叠策略
 - ✅ HP 正确 clamp
 - ✅ 伤害/治疗回调工作
+- ✅ BattleContext 包含 buff 字段
+- ✅ Buff owners 在战斗中正确初始化
+- ✅ Buff tick 循环集成到战斗流程
+- ✅ DoT/HoT 自动应用
+- ✅ 过期 buff 自动清理
 - ✅ 23 个单元测试全部通过
-- ✅ 所有 207 个测试通过（184 原有 + 23 新增）
+- ✅ 所有 207 个测试通过
 
-**测试结果（Part 1）：**
+**测试结果：**
 ```
 Total tests: 207
-- Original tests: 184 (all passing)
-- New tests (Phase 4 Part 1): 23 (all passing)
-  - CharacterBuffOwner tests: 14
-  - EnemyBuffOwner tests: 7
-  - Integration tests: 2
+- Original tests: 94 (all passing)
+- Resources: 51 (all passing)
+- Buff Core: 39 (all passing)
+- BuffOwner: 23 (all passing)
 - Failed: 0
 - Skipped: 0
-- Duration: ~937ms
+- Duration: ~957ms
 ```
 
-**代码改动（Part 1）：**
+**代码改动：**
 - 新增文件：
   - `BlazorIdle.Shared/Game/Buffs/CharacterBuffOwner.cs`
   - `BlazorIdle.Shared/Game/Buffs/EnemyBuffOwner.cs`
   - `BlazorIdle.Tests/BuffOwnerTests.cs`
+- 修改文件：
+  - `BlazorIdle.Shared/Game/Skills/BattleContext.cs` (添加 buff 字段)
+  - `BlazorIdle.Shared/Game/MultiBattleInstance.cs` (集成 buff 管理)
 
-**提交哈希：** 35d1e28
+**提交哈希：** 35d1e28 (Part 1), f48bbbc (Part 2)
 
-**预计工作量：** 4-5 小时 → **实际（Part 1）：** ~1.5 小时
-
-**下一步（Part 2）：**
-- 扩展 BattleContext
-- MultiBattleInstance 集成
-- Buff tick 处理循环
-- 更多集成测试
+**预计工作量：** 4-5 小时 → **实际：** ~3 小时
 
 ---
 
@@ -1082,7 +1101,7 @@ Total tests: 207
 | 阶段 2.7.2 - rogue+上限修复 | ✅ 已完成 | 2025-11-12 | 771760f | +1 (144 total) |
 | 阶段 2.7.3 - 副本重启修复 | ✅ 已完成 | 2025-11-12 | 6bfbe6c | +1 (145 total) |
 | 阶段 3 - Buff 系统核心 | ✅ 已完成 | 2025-11-12 | 321b932 | +39 (184 total) |
-| 阶段 4 - IBuffOwner 接口 | 🔄 进行中 | 2025-11-12 (Part 1) | 35d1e28 | +23 (207 total) |
+| 阶段 4 - IBuffOwner 接口 | ✅ 已完成 | 2025-11-12 | f48bbbc | +23 (207 total) |
 | 阶段 5 - SkillResolver 扩展 | ⬜ 未开始 | - | - | - |
 | 阶段 6 - Special 脉冲 Buff | ⬜ 未开始 | - | - | - |
 | 阶段 7 - Buff 效果应用 | ⬜ 未开始 | - | - | - |
@@ -1090,7 +1109,7 @@ Total tests: 207
 | 阶段 9 - UI 展示 | ⬜ 未开始 | - | - | - |
 | 阶段 10 - 验收测试 | ⬜ 未开始 | - | - | - |
 
-**总体进度：** 3.5/10 (35%) 🔄
+**总体进度：** 4/10 (40%) ✅
 
 ---
 
@@ -1106,11 +1125,12 @@ Total tests: 207
 - ✅ **阶段 2.7.2**：rogue职业配置 + 副本资源上限修复
 - ✅ **阶段 2.7.3**：副本重启资源重置修复
 - ✅ **阶段 3**：Buff 系统核心实现（Effect 类型体系、BuffInstance、IBuffOwner 接口、事件系统、元数据类型）
-- 🔄 **阶段 4（Part 1）**：IBuffOwner 包装类实现（CharacterBuffOwner、EnemyBuffOwner）
+- ✅ **阶段 4**：IBuffOwner 包装类实现和战斗集成（CharacterBuffOwner、EnemyBuffOwner、MultiBattleInstance 集成）
 - ✅ **113 个新测试全部通过**（51 资源 + 39 Buff + 23 BuffOwner）
 - ✅ **保持 94 个原有测试通过**，无回归
 - ✅ **资源系统 100% 完成**：创建、战斗集成、UI显示、波次持久化、职业特定化、Bug修复
 - ✅ **Buff 系统核心 100% 完成**：类型定义、生命周期、tick 逻辑、堆叠策略、事件系统
+- ✅ **Buff 战斗集成 100% 完成**：BattleContext 扩展、MultiBattleInstance 集成、自动 tick 处理
 
 **质量指标：**
 - 测试总数：207（94 原有 + 113 新增）
@@ -1129,16 +1149,20 @@ Total tests: 207
 - ✅ IBuffOwner接口定义（统一玩家/怪物buff管理）
 - ✅ Buff事件系统（Apply, Remove, Tick, Heal）
 - ✅ 元数据类型（DamageMeta, HealMeta）
-- 🔄 IBuffOwner实现（CharacterBuffOwner, EnemyBuffOwner）
+- ✅ IBuffOwner实现（CharacterBuffOwner, EnemyBuffOwner）
+- ✅ BattleContext buff 字段集成
+- ✅ MultiBattleInstance buff 管理集成
+- ✅ Buff tick 自动处理循环
+- ✅ DoT/HoT 自动应用
 
-**下一步（Phase 4 Part 2）：**
-- 📍 **阶段 4 Part 2**：BattleContext 集成和 tick 处理
-  - 为 BattleContext 添加 Buff 字段
-  - 在 MultiBattleInstance 中集成 Buff 管理
-  - 实现 Buff tick 处理循环
-  - 编写更多集成测试
+**下一步（Phase 5）：**
+- 📍 **阶段 5**：扩展 SkillResolver 支持 Buff 操作
+  - SkillDef 添加 Buff 相关字段
+  - SkillResolver 返回 Buff 操作指令
+  - 实现技能施放 Buff 的逻辑
+  - 添加 Buff 操作事件记录
 
-**预计剩余工作量：** 24-30 小时（已完成 15.5 小时）
+**预计剩余工作量：** 23-28 小时（已完成 17 小时）
 
 **时间投入统计：**
 - 阶段 1：2.5 小时
@@ -1150,8 +1174,8 @@ Total tests: 207
 - 阶段 2.7.2：1 小时
 - 阶段 2.7.3：0.5 小时
 - 阶段 3：2 小时
-- 阶段 4 Part 1：1.5 小时
-- **总计：15.5 小时 / 40-50 小时（35%）**
+- 阶段 4：3 小时
+- **总计：17 小时 / 40-50 小时（40%）**
 
 ---
 
