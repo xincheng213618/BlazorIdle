@@ -793,6 +793,10 @@ namespace BlazorIdle.Game
             // 应用伤害
             int actualDamage = defender.TakeDamage(damage);
             bool isKill = defender.IsDead;
+            
+            // Phase 9.11: 同步HP变化到Entity（供Buff系统使用）
+            // Phase 9.11: Sync HP change to Entity (for buff system use)
+            defender.SyncHpToEntity();
 
             // 更新统计
             attacker.RecordDamageDealt(actualDamage, isKill);
@@ -851,6 +855,10 @@ namespace BlazorIdle.Game
             // 应用伤害
             int actualDamage = defender.TakeDamage(damage);
             bool isKill = defender.IsDead;
+            
+            // Phase 9.11: 同步HP变化到Entity（供Buff系统使用）
+            // Phase 9.11: Sync HP change to Entity (for buff system use)
+            defender.SyncHpToEntity();
 
             // 更新统计
             attacker.RecordDamageDealt(actualDamage, isKill);
