@@ -176,10 +176,29 @@ namespace BlazorIdle.Game
                 _damageTakenByCharacter[member.Id] = 0;
                 
                 // Phase 4: 创建 Buff 所有者 / Create buff owner
+                // Phase 9 fix: Add callbacks to sync HP changes from buffs to BattleMember
                 _playerBuffOwners[member.Id] = new Buffs.CharacterBuffOwner(
                     character,
                     member.Id,
-                    _playerResources[member.Id]);
+                    _playerResources[member.Id],
+                    onDamageReceived: (amount, meta) =>
+                    {
+                        // Sync HP change to BattleMember's CurrentHp
+                        var m = _playerTeam.GetMember(member.Id);
+                        if (m != null)
+                        {
+                            m.SyncHpFromEntity();
+                        }
+                    },
+                    onHealReceived: (amount, meta) =>
+                    {
+                        // Sync HP change to BattleMember's CurrentHp
+                        var m = _playerTeam.GetMember(member.Id);
+                        if (m != null)
+                        {
+                            m.SyncHpFromEntity();
+                        }
+                    });
             }
 
             // 为每个怪物初始化攻击轨道
@@ -193,7 +212,28 @@ namespace BlazorIdle.Game
                 _damageDealtByEnemy[member.Id] = 0;
                 
                 // Phase 4: 创建 Buff 所有者 / Create buff owner
-                _enemyBuffOwners[member.Id] = new Buffs.EnemyBuffOwner(enemy, member.Id);
+                // Phase 9 fix: Add callbacks to sync HP changes from buffs to BattleMember
+                _enemyBuffOwners[member.Id] = new Buffs.EnemyBuffOwner(
+                    enemy,
+                    member.Id,
+                    onDamageReceived: (amount, meta) =>
+                    {
+                        // Sync HP change to BattleMember's CurrentHp
+                        var m = _enemyTeam.GetMember(member.Id);
+                        if (m != null)
+                        {
+                            m.SyncHpFromEntity();
+                        }
+                    },
+                    onHealReceived: (amount, meta) =>
+                    {
+                        // Sync HP change to BattleMember's CurrentHp
+                        var m = _enemyTeam.GetMember(member.Id);
+                        if (m != null)
+                        {
+                            m.SyncHpFromEntity();
+                        }
+                    });
             }
         }
 
