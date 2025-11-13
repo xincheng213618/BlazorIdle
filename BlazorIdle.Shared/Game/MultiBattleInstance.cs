@@ -1930,6 +1930,34 @@ namespace BlazorIdle.Game
         }
 
         /// <summary>
+        /// Phase 9: 获取玩家 Buff 快照（用于 UI 显示）
+        /// Phase 9: Get player buff snapshot (for UI display)
+        /// </summary>
+        /// <param name="playerId">玩家 ID</param>
+        /// <returns>Buff 列表快照，如果玩家不存在则返回空列表</returns>
+        public List<Buffs.BuffInstance> GetPlayerBuffs(string playerId)
+        {
+            if (!_playerBuffOwners.TryGetValue(playerId, out var owner))
+                return new List<Buffs.BuffInstance>();
+            
+            return owner.Buffs.Values.ToList();
+        }
+
+        /// <summary>
+        /// Phase 9: 获取敌人 Buff 快照（用于 UI 显示）
+        /// Phase 9: Get enemy buff snapshot (for UI display)
+        /// </summary>
+        /// <param name="enemyId">敌人 ID</param>
+        /// <returns>Buff 列表快照，如果敌人不存在则返回空列表</returns>
+        public List<Buffs.BuffInstance> GetEnemyBuffs(string enemyId)
+        {
+            if (!_enemyBuffOwners.TryGetValue(enemyId, out var owner))
+                return new List<Buffs.BuffInstance>();
+            
+            return owner.Buffs.Values.ToList();
+        }
+
+        /// <summary>
         /// 构建战斗摘要
         /// Build battle digest
         /// </summary>
