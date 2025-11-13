@@ -204,6 +204,17 @@ namespace BlazorIdle.Components
             }
         }
 
+        // Phase 9: 获取玩家 Buff 列表
+        // Phase 9: Get player buff list
+        private List<BlazorIdle.Game.Buffs.BuffInstance>? playerBuffs
+        {
+            get
+            {
+                if (battle == null || SelectedCharacter == null) return null;
+                return battle.GetPlayerBuffs(SelectedCharacter.Id);
+            }
+        }
+
         // 日志列表 - 存储战斗日志
         // Log list - stores battle logs
         private readonly List<string> logs = new();

@@ -1,0 +1,160 @@
+@using BlazorIdle.Game.Buffs
+@namespace BlazorIdle.Components
+
+@* Phase 9: Buff/Debuff icon component *@
+<div class="buff-icon @KindClass" title="@TooltipText">
+    <div class="buff-icon-content">
+        @* Icon letter - first letter of buff ID *@
+        <span class="buff-letter">@IconLetter</span>
+    </div>
+    
+    @* Stack count *@
+    @if (Buff.Stacks > 1)
+    {
+        <span class="buff-stack">@Buff.Stacks</span>
+    }
+    
+    @* Remaining duration *@
+    @if (Buff.RemainingDurationSec.HasValue)
+    {
+        <span class="buff-duration">@DurationText</span>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public BuffInstance Buff { get; set; } = null!;
+
+    private string KindClass => Buff.Kind == BuffKind.Buff ? "buff" : "debuff";
+    
+    private string IconLetter => string.IsNullOrEmpty(Buff.Id) ? "?" : Buff.Id[0].ToString().ToUpper();
+    
+    private string DurationText
+    {
+        get
+        {
+            if (!Buff.RemainingDurationSec.HasValue)
+                return "";
+            
+            var seconds = (int)Math.Ceiling(Buff.RemainingDurationSec.Value);
+            return seconds.ToString();
+        }
+    }
+    
+    private string TooltipText
+    {
+        get
+        {
+            var lines = new System.Text.StringBuilder();
+            
+            // Buff name (use ID as name for now)
+            lines.AppendLine($"{Buff.Id} ({(Buff.Kind == BuffKind.Buff ? "增益" : "减益")})");
+            
+            // Stacks
+            if (Buff.Stacks > 1)
+            {
+                lines.AppendLine($"层数: {Buff.Stacks}");
+            }
+            
+            // Duration
+            if (Buff.RemainingDurationSec.HasValue)
+            {
+                lines.AppendLine($"剩余时间: {Buff.RemainingDurationSec.Value:F1}秒");
+            }
+            else
+            {
+                lines.AppendLine("永久效果");
+            }
+            
+            // Effects summary
+            if (Buff.Effects?.Count > 0)
+            {
+                lines.AppendLine("效果:");
+                foreach (var effect in Buff.Effects)
+                {
+                    lines.AppendLine($"  - {FormatEffect(effect)}");
+                }
+            }
+            
+            return lines.ToString();
+        }
+    }
+    
+    private string FormatEffect(BuffEffect effect)
+    {
+        return effect.Type switch
+        {
+            BuffEffectType.StatMultiplier => $"{effect.Target}: +{effect.Value * 100:F0}%",
+            BuffEffectType.StatAdditive => $"{effect.Target}: +{effect.Value}",
+            BuffEffectType.StatReduction => $"{effect.Target}: -{effect.Value * 100:F0}%",
+            BuffEffectType.DamageOverTime => $"持续伤害: {effect.Value}/次",
+            BuffEffectType.HealOverTime => $"持续治疗: {effect.Value}/次",
+            BuffEffectType.InstantHeal => $"立即治疗: {effect.Value}",
+            BuffEffectType.ForceCrit => "强制暴击",
+            _ => effect.Type.ToString()
+        };
+    }
+}
+
+<style>
+    .buff-icon {
+        position: relative;
+        width: 32px;
+        height: 32px;
+        border-radius: 4px;
+        border: 2px solid;
+        display: inline-block;
+        margin: 2px;
+        cursor: help;
+    }
+    
+    .buff-icon.buff {
+        border-color: #28a745; /* Green for buffs */
+        background-color: rgba(40, 167, 69, 0.1);
+    }
+    
+    .buff-icon.debuff {
+        border-color: #dc3545; /* Red for debuffs */
+        background-color: rgba(220, 53, 69, 0.1);
+    }
+    
+    .buff-icon-content {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .buff-letter {
+        font-size: 16px;
+        font-weight: bold;
+        color: currentColor;
+    }
+    
+    .buff-stack {
+        position: absolute;
+        bottom: 0;
+        right: 2px;
+        font-size: 10px;
+        font-weight: bold;
+        color: white;
+        background-color: rgba(0, 0, 0, 0.7);
+        padding: 0 3px;
+        border-radius: 2px;
+        line-height: 1.2;
+    }
+    
+    .buff-duration {
+        position: absolute;
+        top: 0;
+        right: 2px;
+        font-size: 9px;
+        font-weight: bold;
+        color: white;
+        background-color: rgba(0, 0, 0, 0.7);
+        padding: 0 2px;
+        border-radius: 2px;
+        line-height: 1.2;
+    }
+</style>

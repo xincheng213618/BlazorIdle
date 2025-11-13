@@ -88,3 +88,11 @@
 .progress-bar.no-transition {
     transition: none !important;
 }
+/* Phase 9: Buff container style */
+.buff-container-enemy {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    min-height: 36px;
+    align-items: flex-start;
+}
