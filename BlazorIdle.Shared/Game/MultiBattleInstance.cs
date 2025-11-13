@@ -87,6 +87,11 @@ namespace BlazorIdle.Game
         public event Action<LootDropEvent>? LootDropped;
         public event Action<ExperienceGainEvent>? ExperienceGained;
         public event Action<TeamStatusEvent>? TeamStatusChanged;
+        // Phase 9: Buff 事件 / Phase 9: Buff events
+        public event Action<Buffs.BuffApplyEvent>? BuffApplied;
+        public event Action<Buffs.BuffRemoveEvent>? BuffRemoved;
+        public event Action<Buffs.BuffTickEvent>? BuffTicked;
+        public event Action<Buffs.HealEvent>? Healed;
 
         /// <summary>
         /// 构造函数
@@ -171,10 +176,29 @@ namespace BlazorIdle.Game
                 _damageTakenByCharacter[member.Id] = 0;
                 
                 // Phase 4: 创建 Buff 所有者 / Create buff owner
+                // Phase 9 fix: Add callbacks to sync HP changes from buffs to BattleMember
                 _playerBuffOwners[member.Id] = new Buffs.CharacterBuffOwner(
                     character,
                     member.Id,
-                    _playerResources[member.Id]);
+                    _playerResources[member.Id],
+                    onDamageReceived: (amount, meta) =>
+                    {
+                        // Sync HP change to BattleMember's CurrentHp
+                        var m = _playerTeam.GetMember(member.Id);
+                        if (m != null)
+                        {
+                            m.SyncHpFromEntity();
+                        }
+                    },
+                    onHealReceived: (amount, meta) =>
+                    {
+                        // Sync HP change to BattleMember's CurrentHp
+                        var m = _playerTeam.GetMember(member.Id);
+                        if (m != null)
+                        {
+                            m.SyncHpFromEntity();
+                        }
+                    });
             }
 
             // 为每个怪物初始化攻击轨道
@@ -188,7 +212,28 @@ namespace BlazorIdle.Game
                 _damageDealtByEnemy[member.Id] = 0;
                 
                 // Phase 4: 创建 Buff 所有者 / Create buff owner
-                _enemyBuffOwners[member.Id] = new Buffs.EnemyBuffOwner(enemy, member.Id);
+                // Phase 9 fix: Add callbacks to sync HP changes from buffs to BattleMember
+                _enemyBuffOwners[member.Id] = new Buffs.EnemyBuffOwner(
+                    enemy,
+                    member.Id,
+                    onDamageReceived: (amount, meta) =>
+                    {
+                        // Sync HP change to BattleMember's CurrentHp
+                        var m = _enemyTeam.GetMember(member.Id);
+                        if (m != null)
+                        {
+                            m.SyncHpFromEntity();
+                        }
+                    },
+                    onHealReceived: (amount, meta) =>
+                    {
+                        // Sync HP change to BattleMember's CurrentHp
+                        var m = _enemyTeam.GetMember(member.Id);
+                        if (m != null)
+                        {
+                            m.SyncHpFromEntity();
+                        }
+                    });
             }
         }
 
@@ -347,6 +392,10 @@ namespace BlazorIdle.Game
 
                 var character = tracks.Character;
 
+                // Phase 9: 更新急速加成（基于当前 Buff）
+                // Phase 9: Update haste bonus (based on current buffs)
+                UpdateCharacterHaste(charId, character, tracks);
+
                 // 处理普通攻击 - Phase 7.2: 使用 SkillResolver
                 // Process normal attacks - Phase 7.2: Using SkillResolver
                 var atkCount = tracks.AttackTrack.CollectTriggers(now);
@@ -362,6 +411,58 @@ namespace BlazorIdle.Game
                 {
                     ProcessCharacterSpecialViaSkillResolver(charId, character);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Phase 9: 更新角色的急速加成（基于当前 Buff 效果）
+        /// Phase 9: Update character's haste bonus (based on current buff effects)
+        /// </summary>
+        private void UpdateCharacterHaste(string charId, Character character, CharacterTracks tracks)
+        {
+            // 获取基础急速
+            // Get base haste
+            double baseHastePercent = character.HastePercent;
+            
+            // 应用 Buff 效果到急速
+            // Apply buff effects to haste
+            if (_playerBuffOwners.TryGetValue(charId, out var buffOwner))
+            {
+                double modifiedHaste = baseHastePercent;
+                
+                // 按应用时间排序 Buff（与 SkillResolver 一致）
+                // Sort buffs by application time (consistent with SkillResolver)
+                var sortedBuffs = buffOwner.Buffs.Values
+                    .OrderBy(b => b.AppliedAtMs)
+                    .ToList();
+                
+                foreach (var buff in sortedBuffs)
+                {
+                    foreach (var effect in buff.Effects)
+                    {
+                        // 只处理影响急速的效果
+                        // Only process effects targeting haste
+                        if (effect.Target != "HastePercent")
+                            continue;
+                        
+                        switch (effect.Type)
+                        {
+                            case Buffs.BuffEffectType.StatMultiplier:
+                                modifiedHaste *= (1.0 + effect.Value);
+                                break;
+                            case Buffs.BuffEffectType.StatAdditive:
+                                modifiedHaste += effect.Value;
+                                break;
+                            case Buffs.BuffEffectType.StatReduction:
+                                modifiedHaste *= (1.0 - effect.Value);
+                                break;
+                        }
+                    }
+                }
+                
+                // 更新攻击轨道的急速倍率
+                // Update attack track haste multiplier
+                tracks.AttackTrack.SetHaste(1.0 + modifiedHaste / 100.0);
             }
         }
 
@@ -692,6 +793,10 @@ namespace BlazorIdle.Game
             // 应用伤害
             int actualDamage = defender.TakeDamage(damage);
             bool isKill = defender.IsDead;
+            
+            // Phase 9.11: 同步HP变化到Entity（供Buff系统使用）
+            // Phase 9.11: Sync HP change to Entity (for buff system use)
+            defender.SyncHpToEntity();
 
             // 更新统计
             attacker.RecordDamageDealt(actualDamage, isKill);
@@ -750,6 +855,10 @@ namespace BlazorIdle.Game
             // 应用伤害
             int actualDamage = defender.TakeDamage(damage);
             bool isKill = defender.IsDead;
+            
+            // Phase 9.11: 同步HP变化到Entity（供Buff系统使用）
+            // Phase 9.11: Sync HP change to Entity (for buff system use)
+            defender.SyncHpToEntity();
 
             // 更新统计
             attacker.RecordDamageDealt(actualDamage, isKill);
@@ -863,6 +972,10 @@ namespace BlazorIdle.Game
 
                 var flushed = _aggregator.AddEvent(evt);
                 if (flushed != null) _segments.Add(flushed);
+                
+                // Phase 9: 触发 Buff 应用事件
+                // Phase 9: Fire buff applied event
+                BuffApplied?.Invoke(evt);
             }
         }
 
@@ -896,6 +1009,10 @@ namespace BlazorIdle.Game
 
                 var flushed = _aggregator.AddEvent(evt);
                 if (flushed != null) _segments.Add(flushed);
+                
+                // Phase 9: 触发 Buff 移除事件
+                // Phase 9: Fire buff removed event
+                BuffRemoved?.Invoke(evt);
             }
         }
 
@@ -933,6 +1050,10 @@ namespace BlazorIdle.Game
 
                 var flushed = _aggregator.AddEvent(evt);
                 if (flushed != null) _segments.Add(flushed);
+                
+                // Phase 9: 触发 Buff Tick 事件
+                // Phase 9: Fire buff tick event
+                BuffTicked?.Invoke(evt);
             }
         }
 
@@ -967,6 +1088,10 @@ namespace BlazorIdle.Game
 
                 var flushed = _aggregator.AddEvent(evt);
                 if (flushed != null) _segments.Add(flushed);
+                
+                // Phase 9: 触发治疗事件
+                // Phase 9: Fire heal event
+                Healed?.Invoke(evt);
             }
         }
 
@@ -1927,6 +2052,34 @@ namespace BlazorIdle.Game
             }
             
             return snapshot;
+        }
+
+        /// <summary>
+        /// Phase 9: 获取玩家 Buff 快照（用于 UI 显示）
+        /// Phase 9: Get player buff snapshot (for UI display)
+        /// </summary>
+        /// <param name="playerId">玩家 ID</param>
+        /// <returns>Buff 列表快照，如果玩家不存在则返回空列表</returns>
+        public List<Buffs.BuffInstance> GetPlayerBuffs(string playerId)
+        {
+            if (!_playerBuffOwners.TryGetValue(playerId, out var owner))
+                return new List<Buffs.BuffInstance>();
+            
+            return owner.Buffs.Values.ToList();
+        }
+
+        /// <summary>
+        /// Phase 9: 获取敌人 Buff 快照（用于 UI 显示）
+        /// Phase 9: Get enemy buff snapshot (for UI display)
+        /// </summary>
+        /// <param name="enemyId">敌人 ID</param>
+        /// <returns>Buff 列表快照，如果敌人不存在则返回空列表</returns>
+        public List<Buffs.BuffInstance> GetEnemyBuffs(string enemyId)
+        {
+            if (!_enemyBuffOwners.TryGetValue(enemyId, out var owner))
+                return new List<Buffs.BuffInstance>();
+            
+            return owner.Buffs.Values.ToList();
         }
 
         /// <summary>

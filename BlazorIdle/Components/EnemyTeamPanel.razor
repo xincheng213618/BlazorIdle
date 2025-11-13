@@ -25,6 +25,21 @@
                         <span class="hp-text">@m.CurrentHp / @m.MaxHp</span>
                     </div>
 
+                    @* Phase 9: Buff/Debuff 图标 (仅在展开时显示) / Buff/Debuff icons (only show when expanded) *@
+                    @if (isSelected)
+                    {
+                        var enemyBuffs = Battle?.GetEnemyBuffs(m.Id);
+                        @if (enemyBuffs != null && enemyBuffs.Count > 0)
+                        {
+                            <div class="buff-container-enemy mb-1">
+                                @foreach (var buff in enemyBuffs)
+                                {
+                                    <BuffIcon Buff="@buff" />
+                                }
+                            </div>
+                        }
+                    }
+
                     @if (isSelected)
                     {
                         <div class="details">

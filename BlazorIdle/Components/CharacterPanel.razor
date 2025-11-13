@@ -48,6 +48,19 @@
         }
     }
 
+    <!-- Phase 9: Buff/Debuff 图标 / Buff/Debuff icons -->
+    @if (Buffs != null && Buffs.Count > 0)
+    {
+        <div class="mb-2">
+            <div class="buff-container">
+                @foreach (var buff in Buffs)
+                {
+                    <BuffIcon Buff="@buff" />
+                }
+            </div>
+        </div>
+    }
+
     <!-- Attack 进度 -->
     <div class="mb-2">
         <div class="d-flex justify-content-between small text-muted">
@@ -92,6 +105,9 @@
     // Phase 2.7: 资源配置（用于显示资源名称和上限）/ Resource configuration (for displaying resource name and max)
     [Parameter] public BlazorIdle.Shared.Models.ProfessionResourceConfig? ResourceConfig { get; set; }
 
+    // Phase 9: Buff/Debuff 列表（用于显示状态效果）/ Buff/Debuff list (for displaying status effects)
+    [Parameter] public List<BlazorIdle.Game.Buffs.BuffInstance>? Buffs { get; set; }
+
     // 进度（0..1）与剩余毫秒
     [Parameter] public double AttackProgress01 { get; set; }
     [Parameter] public double AttackRemainMs { get; set; }
@@ -128,5 +144,14 @@
     /* 回环时禁用过渡，确保视觉上瞬间归零到最左侧 */
     .character-panel .no-transition {
         transition: none !important;
+    }
+
+    /* Phase 9: Buff 容器样式 */
+    .character-panel .buff-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        min-height: 36px;
+        align-items: flex-start;
     }
 </style>

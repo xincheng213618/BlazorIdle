@@ -418,6 +418,46 @@ namespace BlazorIdle.Game
                 CurrentHp = Math.Min(CurrentHp, MaxHp);
             }
         }
+
+        /// <summary>
+        /// Phase 9: 从实体同步HP值到BattleMember
+        /// Phase 9: Sync HP value from Entity to BattleMember
+        /// 用于从Buff系统的HP修改同步到战斗成员状态
+        /// Used to sync HP changes from buff system to battle member state
+        /// </summary>
+        public void SyncHpFromEntity()
+        {
+            // 使用反射或类型检查来获取Entity的Hp属性
+            // Use reflection or type check to get Entity's Hp property
+            if (Entity is Character character)
+            {
+                CurrentHp = Math.Max(0, Math.Min(character.Hp, MaxHp));
+            }
+            else if (Entity is Enemy enemy)
+            {
+                CurrentHp = Math.Max(0, Math.Min(enemy.Hp, MaxHp));
+            }
+        }
+
+        /// <summary>
+        /// Phase 9.11: 从BattleMember同步HP值到实体
+        /// Phase 9.11: Sync HP value from BattleMember to Entity
+        /// 用于从战斗系统的HP修改同步到实体状态（供Buff系统使用）
+        /// Used to sync HP changes from battle system to entity state (for buff system use)
+        /// </summary>
+        public void SyncHpToEntity()
+        {
+            // 将BattleMember的CurrentHp同步回Entity
+            // Sync BattleMember's CurrentHp back to Entity
+            if (Entity is Character character)
+            {
+                character.Hp = CurrentHp;
+            }
+            else if (Entity is Enemy enemy)
+            {
+                enemy.Hp = CurrentHp;
+            }
+        }
     }
 
     /// <summary>

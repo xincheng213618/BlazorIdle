@@ -204,6 +204,17 @@ namespace BlazorIdle.Components
             }
         }
 
+        // Phase 9: 获取玩家 Buff 列表
+        // Phase 9: Get player buff list
+        private List<BlazorIdle.Game.Buffs.BuffInstance>? playerBuffs
+        {
+            get
+            {
+                if (battle == null || SelectedCharacter == null) return null;
+                return battle.GetPlayerBuffs(SelectedCharacter.Id);
+            }
+        }
+
         // 日志列表 - 存储战斗日志
         // Log list - stores battle logs
         private readonly List<string> logs = new();
@@ -303,6 +314,10 @@ namespace BlazorIdle.Components
                 battle.CombatEventFired -= OnCombatEvent;
                 battle.LootDropped -= OnLootDropped;
                 battle.ExperienceGained -= OnExperienceGained;
+                battle.BuffApplied -= OnBuffApplied;
+                battle.BuffRemoved -= OnBuffRemoved;
+                battle.BuffTicked -= OnBuffTicked;
+                battle.Healed -= OnHealed;
             }
 
             // 构建时钟和随机数上下文
@@ -430,6 +445,11 @@ namespace BlazorIdle.Components
             battle.CombatEventFired += OnCombatEvent;
             battle.LootDropped += OnLootDropped;
             battle.ExperienceGained += OnExperienceGained;
+            // Phase 9: 订阅 Buff 事件 / Phase 9: Subscribe to buff events
+            battle.BuffApplied += OnBuffApplied;
+            battle.BuffRemoved += OnBuffRemoved;
+            battle.BuffTicked += OnBuffTicked;
+            battle.Healed += OnHealed;
 
             digest = null;
         }
@@ -450,6 +470,10 @@ namespace BlazorIdle.Components
                 dungeonManager.ExperienceGained -= OnExperienceGained;
                 dungeonManager.WaveChanged -= OnDungeonWaveChanged;
                 dungeonManager.DungeonCompleted -= OnDungeonCompleted;
+                dungeonManager.BuffApplied -= OnBuffApplied;
+                dungeonManager.BuffRemoved -= OnBuffRemoved;
+                dungeonManager.BuffTicked -= OnBuffTicked;
+                dungeonManager.Healed -= OnHealed;
             }
 
             var clock = new SimClock();
@@ -489,6 +513,11 @@ namespace BlazorIdle.Components
             dungeonManager.ExperienceGained += OnExperienceGained;
             dungeonManager.WaveChanged += OnDungeonWaveChanged;
             dungeonManager.DungeonCompleted += OnDungeonCompleted;
+            // Phase 9: 订阅 Buff 事件 / Phase 9: Subscribe to buff events
+            dungeonManager.BuffApplied += OnBuffApplied;
+            dungeonManager.BuffRemoved += OnBuffRemoved;
+            dungeonManager.BuffTicked += OnBuffTicked;
+            dungeonManager.Healed += OnHealed;
 
             dungeonSnapshot = null;
         }
@@ -672,6 +701,9 @@ namespace BlazorIdle.Components
             var line =
                 $"[{sec:0.00}s] {attackerName} {src} 对 {defenderName} 造成 {ev.Damage} 伤害，{defenderName} HP：{ev.DefenderHpAfter}";
 
+            // Phase 9: 显示暴击标记
+            // Phase 9: Show crit indicator
+            if (ev.Crit) line += " [暴击!]";
             if (ev.IsAoe) line += " [AOE]";
             if (ev.IsKill) line += " [击杀!]";
 
@@ -1048,6 +1080,109 @@ namespace BlazorIdle.Components
         }
 
         // 资源清理 - 取消事件并释放资源
+        /// <summary>
+        /// Phase 9: Buff 应用事件处理 - 记录 Buff 应用到日志
+        /// Phase 9: Buff applied event handler - log buff application
+        /// </summary>
+        private void OnBuffApplied(BlazorIdle.Game.Buffs.BuffApplyEvent ev)
+        {
+            var sec = ev.TimeMs / 1000.0;
+            var ownerName = GetCharacterOrEnemyName(ev.OwnerId);
+            var kindText = ev.Kind == BlazorIdle.Game.Buffs.BuffKind.Buff ? "增益" : "减益";
+            var durationText = ev.DurationSec.HasValue ? $"{ev.DurationSec.Value:F1}秒" : "永久";
+            
+            var line = $"[{sec:0.00}s] {ownerName} 获得 {kindText} [{ev.BuffId}]，持续 {durationText}";
+            if (ev.Stacks > 1) line += $"，层数：{ev.Stacks}";
+            
+            logs.Add(line);
+            if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
+            
+            _ = InvokeAsync(StateHasChanged);
+        }
+
+        /// <summary>
+        /// Phase 9: Buff 移除事件处理 - 记录 Buff 移除到日志
+        /// Phase 9: Buff removed event handler - log buff removal
+        /// </summary>
+        private void OnBuffRemoved(BlazorIdle.Game.Buffs.BuffRemoveEvent ev)
+        {
+            var sec = ev.TimeMs / 1000.0;
+            var ownerName = GetCharacterOrEnemyName(ev.OwnerId);
+            var reasonText = ev.Reason switch
+            {
+                "expired" => "过期",
+                "dispelled" => "被驱散",
+                "manual" => "手动移除",
+                _ => ev.Reason
+            };
+            
+            var line = $"[{sec:0.00}s] {ownerName} 的 [{ev.BuffId}] {reasonText}";
+            
+            logs.Add(line);
+            if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
+            
+            _ = InvokeAsync(StateHasChanged);
+        }
+
+        /// <summary>
+        /// Phase 9: 获取角色或敌人名称（用于 Buff 事件）
+        /// Phase 9: Get character or enemy name (for buff events)
+        /// </summary>
+        private string GetCharacterOrEnemyName(string entityId)
+        {
+            // 如果是玩家角色
+            if (SelectedCharacter != null && entityId == SelectedCharacter.Id)
+            {
+                return SelectedCharacter.Name;
+            }
+            
+            // 如果是敌人
+            return GetEnemyDisplayName(entityId);
+        }
+
+        /// <summary>
+        /// Phase 9: Buff Tick 事件处理 - 记录 DoT/HoT 到日志
+        /// Phase 9: Buff tick event handler - log DoT/HoT effects
+        /// </summary>
+        private void OnBuffTicked(BlazorIdle.Game.Buffs.BuffTickEvent ev)
+        {
+            var sec = ev.TimeMs / 1000.0;
+            var ownerName = GetCharacterOrEnemyName(ev.OwnerId);
+            var tickTypeText = ev.TickType == BlazorIdle.Game.Buffs.BuffTickType.DamageOverTime ? "DoT" : "HoT";
+            
+            string line;
+            if (ev.TickType == BlazorIdle.Game.Buffs.BuffTickType.DamageOverTime)
+            {
+                line = $"[{sec:0.00}s] [{tickTypeText}] {ownerName} 的 [{ev.BuffId}] 造成 {ev.Amount} 伤害，HP: {ev.ResultingHp}";
+            }
+            else
+            {
+                line = $"[{sec:0.00}s] [{tickTypeText}] {ownerName} 的 [{ev.BuffId}] 恢复 {ev.Amount} 生命值，HP: {ev.ResultingHp}";
+            }
+            
+            logs.Add(line);
+            if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
+            
+            _ = InvokeAsync(StateHasChanged);
+        }
+
+        /// <summary>
+        /// Phase 9: 治疗事件处理 - 记录治疗效果到日志
+        /// Phase 9: Heal event handler - log healing effects
+        /// </summary>
+        private void OnHealed(BlazorIdle.Game.Buffs.HealEvent ev)
+        {
+            var sec = ev.TimeMs / 1000.0;
+            var ownerName = GetCharacterOrEnemyName(ev.OwnerId);
+            
+            var line = $"[{sec:0.00}s] [治疗] {ownerName} 恢复 {ev.Amount} 生命值 (来源: {ev.Source})，HP: {ev.ResultingHp}";
+            
+            logs.Add(line);
+            if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
+            
+            _ = InvokeAsync(StateHasChanged);
+        }
+
         public void Dispose()
         {
             _cts?.Cancel();
@@ -1058,6 +1193,10 @@ namespace BlazorIdle.Components
                 battle.CombatEventFired -= OnCombatEvent;
                 battle.LootDropped -= OnLootDropped;
                 battle.ExperienceGained -= OnExperienceGained;
+                battle.BuffApplied -= OnBuffApplied;
+                battle.BuffRemoved -= OnBuffRemoved;
+                battle.BuffTicked -= OnBuffTicked;
+                battle.Healed -= OnHealed;
             }
 
             if (dungeonManager is not null)
@@ -1067,6 +1206,10 @@ namespace BlazorIdle.Components
                 dungeonManager.ExperienceGained -= OnExperienceGained;
                 dungeonManager.WaveChanged -= OnDungeonWaveChanged;
                 dungeonManager.DungeonCompleted -= OnDungeonCompleted;
+                dungeonManager.BuffApplied -= OnBuffApplied;
+                dungeonManager.BuffRemoved -= OnBuffRemoved;
+                dungeonManager.BuffTicked -= OnBuffTicked;
+                dungeonManager.Healed -= OnHealed;
             }
         }
 
