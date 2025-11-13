@@ -59,14 +59,38 @@ namespace BlazorIdle.Game.Skills
                 AlwaysHits = true
             });
 
-            // Special pulse - no special effects yet (will be configured in Phase 6)
+            // Special pulse - Phase 9: Add test buff for warrior (self-buff with damage/haste/crit boost)
+            // Design doc: warrior special applies a 6s buff with +15% damage, +10% haste, +5% crit
             RegisterSkill(new SkillDef
             {
                 Id = SkillIds.SpecialPulse,
                 DamageMultiplier = 1.0,
                 CanCrit = true,
                 AlwaysHits = true,
-                IsAoe = true
+                IsAoe = true,
+                OnCastBuffs = new List<BuffOperation>
+                {
+                    new BuffOperation
+                    {
+                        Type = BuffOperationType.Apply,
+                        Target = BuffTarget.Self,
+                        BuffTemplate = new Buffs.BuffInstance(
+                            id: "test_warrior_special",
+                            ownerId: "template", // Placeholder - will be cloned with actual ownerId during application
+                            kind: Buffs.BuffKind.Buff,
+                            effects: new List<Buffs.BuffEffect>
+                            {
+                                Buffs.BuffEffect.StatMultiplier("DamagePerAttack", 0.15),
+                                Buffs.BuffEffect.StatAdditive("HastePercent", 10.0),
+                                Buffs.BuffEffect.StatAdditive("CritChancePercent", 5.0)
+                            },
+                            stackingPolicy: Buffs.BuffStackingPolicy.Refresh,
+                            durationSec: 6.0,
+                            tickIntervalSec: null,
+                            maxStacks: 0
+                        )
+                    }
+                }
             });
 
             // Enemy basic attack
