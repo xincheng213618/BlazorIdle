@@ -63,14 +63,15 @@ namespace BlazorIdle.Tests
                 battle.AdvanceTick(100); // 100ms per tick, special triggers at 1000ms
             }
 
-            // Assert - check that player has the test buff
+            // Assert - check that player has buffs
             var buffs = battle.GetPlayerBuffs("player1");
             
             Assert.NotNull(buffs);
             Assert.NotEmpty(buffs);
             
-            // Look for the warrior special test buff
-            var warriorBuff = buffs.FirstOrDefault(b => b.Id == "test_warrior_special");
+            // Phase 9: Updated to check for new buff ID (warrior_power_boost)
+            // Look for the warrior power boost buff
+            var warriorBuff = buffs.FirstOrDefault(b => b.Id == "warrior_power_boost");
             Assert.NotNull(warriorBuff);
             Assert.Equal(BuffKind.Buff, warriorBuff.Kind);
             Assert.Equal(BuffStackingPolicy.Refresh, warriorBuff.StackingPolicy);
@@ -86,6 +87,17 @@ namespace BlazorIdle.Tests
             
             // Verify duration is still active
             Assert.True(warriorBuff.RemainingDurationSec > 0);
+            
+            // Phase 9: Verify additional buffs are applied (HoT, instant heal, etc.)
+            // Check for regeneration buff
+            var regenBuff = buffs.FirstOrDefault(b => b.Id == "regeneration");
+            Assert.NotNull(regenBuff);
+            Assert.Equal(BuffKind.Buff, regenBuff.Kind);
+            
+            // Check for instant heal buff (might have expired quickly)
+            // Note: instant heal has very short duration, so it might not be present
+            var instantHealBuff = buffs.FirstOrDefault(b => b.Id == "instant_heal");
+            // Don't assert on instant heal as it expires very quickly
         }
 
     }
