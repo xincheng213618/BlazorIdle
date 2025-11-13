@@ -87,6 +87,9 @@ namespace BlazorIdle.Game
         public event Action<LootDropEvent>? LootDropped;
         public event Action<ExperienceGainEvent>? ExperienceGained;
         public event Action<TeamStatusEvent>? TeamStatusChanged;
+        // Phase 9: Buff 事件 / Phase 9: Buff events
+        public event Action<Buffs.BuffApplyEvent>? BuffApplied;
+        public event Action<Buffs.BuffRemoveEvent>? BuffRemoved;
 
         /// <summary>
         /// 构造函数
@@ -347,6 +350,10 @@ namespace BlazorIdle.Game
 
                 var character = tracks.Character;
 
+                // Phase 9: 更新急速加成（基于当前 Buff）
+                // Phase 9: Update haste bonus (based on current buffs)
+                UpdateCharacterHaste(charId, character, tracks);
+
                 // 处理普通攻击 - Phase 7.2: 使用 SkillResolver
                 // Process normal attacks - Phase 7.2: Using SkillResolver
                 var atkCount = tracks.AttackTrack.CollectTriggers(now);
@@ -362,6 +369,58 @@ namespace BlazorIdle.Game
                 {
                     ProcessCharacterSpecialViaSkillResolver(charId, character);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Phase 9: 更新角色的急速加成（基于当前 Buff 效果）
+        /// Phase 9: Update character's haste bonus (based on current buff effects)
+        /// </summary>
+        private void UpdateCharacterHaste(string charId, Character character, CharacterTracks tracks)
+        {
+            // 获取基础急速
+            // Get base haste
+            double baseHastePercent = character.HastePercent;
+            
+            // 应用 Buff 效果到急速
+            // Apply buff effects to haste
+            if (_playerBuffOwners.TryGetValue(charId, out var buffOwner))
+            {
+                double modifiedHaste = baseHastePercent;
+                
+                // 按应用时间排序 Buff（与 SkillResolver 一致）
+                // Sort buffs by application time (consistent with SkillResolver)
+                var sortedBuffs = buffOwner.Buffs.Values
+                    .OrderBy(b => b.AppliedAtMs)
+                    .ToList();
+                
+                foreach (var buff in sortedBuffs)
+                {
+                    foreach (var effect in buff.Effects)
+                    {
+                        // 只处理影响急速的效果
+                        // Only process effects targeting haste
+                        if (effect.Target != "HastePercent")
+                            continue;
+                        
+                        switch (effect.Type)
+                        {
+                            case Buffs.BuffEffectType.StatMultiplier:
+                                modifiedHaste *= (1.0 + effect.Value);
+                                break;
+                            case Buffs.BuffEffectType.StatAdditive:
+                                modifiedHaste += effect.Value;
+                                break;
+                            case Buffs.BuffEffectType.StatReduction:
+                                modifiedHaste *= (1.0 - effect.Value);
+                                break;
+                        }
+                    }
+                }
+                
+                // 更新攻击轨道的急速倍率
+                // Update attack track haste multiplier
+                tracks.AttackTrack.SetHaste(1.0 + modifiedHaste / 100.0);
             }
         }
 
@@ -863,6 +922,10 @@ namespace BlazorIdle.Game
 
                 var flushed = _aggregator.AddEvent(evt);
                 if (flushed != null) _segments.Add(flushed);
+                
+                // Phase 9: 触发 Buff 应用事件
+                // Phase 9: Fire buff applied event
+                BuffApplied?.Invoke(evt);
             }
         }
 
@@ -896,6 +959,10 @@ namespace BlazorIdle.Game
 
                 var flushed = _aggregator.AddEvent(evt);
                 if (flushed != null) _segments.Add(flushed);
+                
+                // Phase 9: 触发 Buff 移除事件
+                // Phase 9: Fire buff removed event
+                BuffRemoved?.Invoke(evt);
             }
         }
 
