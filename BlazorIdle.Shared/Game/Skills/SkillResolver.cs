@@ -42,6 +42,15 @@ namespace BlazorIdle.Game.Skills
             // Phase 5: 获取技能定义
             // Phase 5: Get skill definition
             var skillDef = _skillRepository.GetSkill(skillId);
+            
+            // Phase 7.10: 验证 SkillDef.Id 与 skillId 的一致性
+            // Phase 7.10: Validate SkillDef.Id consistency with skillId parameter
+            if (skillDef != null && skillDef.Id != skillId)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[SkillResolver] Warning: SkillDef.Id mismatch! " +
+                    $"Parameter skillId='{skillId}' but SkillDef.Id='{skillDef.Id}'");
+            }
 
             // Phase 8: 获取施法者的 Buff 所有者以应用 Buff 效果
             // Phase 8: Get caster's buff owner to apply buff effects

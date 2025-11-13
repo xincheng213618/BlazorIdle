@@ -36,10 +36,12 @@ namespace BlazorIdle.Game.Buffs
         ResourceBucketCollection? Buckets { get; }
 
         /// <summary>
-        /// Active buffs/debuffs on this entity.
+        /// Active buffs/debuffs on this entity (read-only).
         /// Key = buff ID.
+        /// Phase 7.11: Changed to IReadOnlyDictionary to prevent external modification.
+        /// Use ApplyBuff/RemoveBuff methods to modify buffs.
         /// </summary>
-        Dictionary<string, BuffInstance> Buffs { get; }
+        IReadOnlyDictionary<string, BuffInstance> Buffs { get; }
 
         /// <summary>
         /// Applies a buff/debuff to this entity.

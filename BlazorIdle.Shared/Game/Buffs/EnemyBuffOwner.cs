@@ -34,7 +34,11 @@ namespace BlazorIdle.Game.Buffs
         public int CurrentHp => _enemy.Hp;
         public int MaxHp => _enemy.MaxHp;
         public ResourceBucketCollection? Buckets => null; // Enemies don't use resources
-        public Dictionary<string, BuffInstance> Buffs => _buffs;
+        
+        /// <summary>
+        /// Phase 7.11: Return read-only view to prevent external modification.
+        /// </summary>
+        public IReadOnlyDictionary<string, BuffInstance> Buffs => _buffs;
 
         public void ApplyBuff(BuffInstance buff)
         {

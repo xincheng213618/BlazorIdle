@@ -1264,6 +1264,7 @@ namespace BlazorIdle.Game
         /// <summary>
         /// Phase 6: 解析 Buff 目标
         /// Phase 6: Resolve buff targets
+        /// Phase 7.9: Added diagnostic logging for target resolution failures
         /// </summary>
         private List<Buffs.IBuffOwner> ResolveBuffTargets(
             Skills.BuffTarget targetType,
@@ -1282,11 +1283,15 @@ namespace BlazorIdle.Game
                     {
                         if (_playerBuffOwners.TryGetValue(casterId, out var playerOwner))
                             targets.Add(playerOwner);
+                        else
+                            LogTargetResolutionFailure(targetType, casterId, isCasterPlayer, "Player buff owner not found");
                     }
                     else
                     {
                         if (_enemyBuffOwners.TryGetValue(casterId, out var enemyOwner))
                             targets.Add(enemyOwner);
+                        else
+                            LogTargetResolutionFailure(targetType, casterId, isCasterPlayer, "Enemy buff owner not found");
                     }
                     break;
 
@@ -1301,6 +1306,8 @@ namespace BlazorIdle.Game
                             // Player casts, target is enemy
                             if (_enemyBuffOwners.TryGetValue(primaryTargetId, out var enemyOwner))
                                 targets.Add(enemyOwner);
+                            else
+                                LogTargetResolutionFailure(targetType, primaryTargetId, isCasterPlayer, "Enemy target not found");
                         }
                         else
                         {
@@ -1308,7 +1315,13 @@ namespace BlazorIdle.Game
                             // Enemy casts, target is player
                             if (_playerBuffOwners.TryGetValue(primaryTargetId, out var playerOwner))
                                 targets.Add(playerOwner);
+                            else
+                                LogTargetResolutionFailure(targetType, primaryTargetId, isCasterPlayer, "Player target not found");
                         }
+                    }
+                    else
+                    {
+                        LogTargetResolutionFailure(targetType, casterId, isCasterPlayer, "Primary target ID is null or empty");
                     }
                     break;
 
@@ -1444,7 +1457,36 @@ namespace BlazorIdle.Game
                     break;
             }
 
+            // Phase 7.9: Log warning if no targets were resolved
+            if (targets.Count == 0)
+            {
+                LogTargetResolutionFailure(targetType, casterId, isCasterPlayer, "No valid targets found after resolution");
+            }
+
             return targets;
+        }
+
+        /// <summary>
+        /// Phase 7.9: 记录目标解析失败的诊断信息
+        /// Phase 7.9: Log diagnostic information for target resolution failures
+        /// </summary>
+        private void LogTargetResolutionFailure(
+            Skills.BuffTarget targetType,
+            string entityId,
+            bool isCasterPlayer,
+            string reason)
+        {
+            // 使用 System.Diagnostics 进行诊断输出
+            // Use System.Diagnostics for diagnostic output
+            // 在生产环境中，这可以替换为更完善的日志系统
+            // In production, this can be replaced with a more robust logging system
+            System.Diagnostics.Debug.WriteLine(
+                $"[MultiBattle] Target resolution failed: " +
+                $"TargetType={targetType}, " +
+                $"EntityId={entityId}, " +
+                $"IsCasterPlayer={isCasterPlayer}, " +
+                $"Reason={reason}, " +
+                $"Time={_clock.NowMs}ms");
         }
 
         /// <summary>
