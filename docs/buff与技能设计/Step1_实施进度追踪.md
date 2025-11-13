@@ -1327,20 +1327,21 @@ Total tests: 233
   - 多次使用同一 SkillDef 会共享实例
   - 考虑：深拷贝或使用不可变设计
 
-- [ ] 7.9 目标解析失败处理
-  - 当前静默失败（返回空列表）
-  - 添加日志或警告
-  - 便于调试和错误诊断
+- [x] 7.9 目标解析失败处理 ✅
+  - ✅ 添加 LogTargetResolutionFailure 诊断方法
+  - ✅ 记录目标解析失败的详细信息
+  - ✅ 使用 System.Diagnostics.Debug.WriteLine
 
-- [ ] 7.10 SkillDef.Id 一致性验证
-  - SkillRepository 通过 ID 存储
-  - SkillResolver.Cast 使用 skillId 参数
-  - 验证 SkillDef.Id 与 skillId 是否匹配
+- [x] 7.10 SkillDef.Id 一致性验证 ✅
+  - ✅ SkillRepository.RegisterSkill 添加参数验证
+  - ✅ 检查 null 和空 ID
+  - ✅ SkillResolver.Cast 验证 ID 一致性
+  - ✅ 覆盖技能时记录警告
 
-- [ ] 7.11 IBuffOwner.Buffs 保护
-  - 当前直接返回可修改字典
-  - 外部可绕过 ApplyBuff/RemoveBuff
-  - 考虑返回只读集合或防御性拷贝
+- [x] 7.11 IBuffOwner.Buffs 保护 ✅
+  - ✅ 改为返回 IReadOnlyDictionary
+  - ✅ API 层面防止外部修改
+  - ✅ 强制使用 ApplyBuff/RemoveBuff
 
 - [ ] 7.12 命中率实现（AlwaysHits=false）
   - 当前所有技能总是命中
@@ -1552,7 +1553,8 @@ Total tests: 271 (259 原有 + 12 新增)
 - ✅ **阶段 6**：Buff 应用与目标解析（ResolveBuffTargets、ProcessBuffOperations、资源消耗实现）
 - ✅ **阶段 7**：事件记录完整性（BuffApplyEvent、BuffRemoveEvent、BuffTickEvent、HealEvent 记录）
 - ✅ **阶段 8**：Buff 效果应用到属性计算（StatMultiplier、StatAdditive、StatReduction、ForceCrit）
-- ✅ **177 个新测试全部通过**（51 资源 + 39 Buff + 23 BuffOwner + 21 SkillResolver + 23 Buff应用 + 3 事件记录 + 12 Buff效果应用 + 5 其他）
+- ✅ **Phase 7+ 优化**：后续优化项目（IBuffOwner.Buffs保护、目标解析诊断、SkillDef.Id验证）
+- ✅ **189 个新测试全部通过**（51 资源 + 39 Buff + 23 BuffOwner + 21 SkillResolver + 23 Buff应用 + 3 事件记录 + 12 Buff效果应用 + 12 Phase7+优化 + 5 其他）
 - ✅ **保持 94 个原有测试通过**，无回归
 - ✅ **资源系统 100% 完成**：创建、战斗集成、UI显示、波次持久化、职业特定化、Bug修复
 - ✅ **Buff 系统核心 100% 完成**：类型定义、生命周期、tick 逻辑、堆叠策略、事件系统
@@ -1560,13 +1562,15 @@ Total tests: 271 (259 原有 + 12 新增)
 - ✅ **技能配置系统 100% 完成**：SkillDef、SkillRepository、BuffOperation、BuffTarget
 - ✅ **事件记录系统 100% 完成**：所有 Buff 相关事件完整记录到 combat segment
 - ✅ **Buff 效果系统 100% 完成**：StatMultiplier、StatAdditive、StatReduction、ForceCrit 全部生效
+- ✅ **代码质量优化 100% 完成**：IReadOnlyDictionary 保护、诊断日志、ID 一致性验证
 
 **质量指标：**
-- 测试总数：271（94 原有 + 177 新增）
+- 测试总数：283（94 原有 + 189 新增）
 - 测试通过率：100%
 - 代码覆盖率：核心逻辑 100%
 - 向下兼容性：完美（所有原有测试通过）
 - Bug修复：6个（前端集成、资源上限、重启重置、BuffTemplate持续时间、LowestHpAlly百分比、资源消耗实现）
+- 代码安全性：提升（IReadOnlyDictionary、参数验证、诊断日志）
 
 **实现特性：**
 - ✅ 资源系统：4个职业各有独特资源机制（战士/法师/游侠/盗贼）
@@ -1591,7 +1595,7 @@ Total tests: 271 (259 原有 + 12 新增)
   - 区分 Buff 和 Debuff
   - 添加 UI 测试
 
-**预计剩余工作量：** 10-13 小时（已完成 30 小时）
+**预计剩余工作量：** 8-11 小时（已完成 32 小时）
 
 **时间投入统计：**
 - 阶段 1：2.5 小时
@@ -1608,7 +1612,8 @@ Total tests: 271 (259 原有 + 12 新增)
 - 阶段 6：6 小时（含修复）
 - 阶段 7：2 小时
 - 阶段 8：2 小时
-- **总计：30 小时 / 40-50 小时（75%）**
+- Phase 7+：2 小时
+- **总计：32 小时 / 40-50 小时（80%）**
 
 ---
 
