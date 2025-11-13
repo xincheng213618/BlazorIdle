@@ -90,6 +90,8 @@ namespace BlazorIdle.Game
         // Phase 9: Buff 事件 / Phase 9: Buff events
         public event Action<Buffs.BuffApplyEvent>? BuffApplied;
         public event Action<Buffs.BuffRemoveEvent>? BuffRemoved;
+        public event Action<Buffs.BuffTickEvent>? BuffTicked;
+        public event Action<Buffs.HealEvent>? Healed;
 
         /// <summary>
         /// 构造函数
@@ -1000,6 +1002,10 @@ namespace BlazorIdle.Game
 
                 var flushed = _aggregator.AddEvent(evt);
                 if (flushed != null) _segments.Add(flushed);
+                
+                // Phase 9: 触发 Buff Tick 事件
+                // Phase 9: Fire buff tick event
+                BuffTicked?.Invoke(evt);
             }
         }
 
@@ -1034,6 +1040,10 @@ namespace BlazorIdle.Game
 
                 var flushed = _aggregator.AddEvent(evt);
                 if (flushed != null) _segments.Add(flushed);
+                
+                // Phase 9: 触发治疗事件
+                // Phase 9: Fire heal event
+                Healed?.Invoke(evt);
             }
         }
 

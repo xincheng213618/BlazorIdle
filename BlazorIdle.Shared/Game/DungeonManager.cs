@@ -58,6 +58,8 @@ namespace BlazorIdle.Game
         // Phase 9: Buff 事件 / Phase 9: Buff events
         public event Action<Buffs.BuffApplyEvent>? BuffApplied;
         public event Action<Buffs.BuffRemoveEvent>? BuffRemoved;
+        public event Action<Buffs.BuffTickEvent>? BuffTicked;
+        public event Action<Buffs.HealEvent>? Healed;
 
         /// <summary>
         /// 构造函数
@@ -701,6 +703,8 @@ namespace BlazorIdle.Game
             // Phase 9: 订阅 Buff 事件 / Phase 9: Subscribe to buff events
             _currentBattle.BuffApplied += OnBuffApplied;
             _currentBattle.BuffRemoved += OnBuffRemoved;
+            _currentBattle.BuffTicked += OnBuffTicked;
+            _currentBattle.Healed += OnHealed;
         }
 
         /// <summary>
@@ -718,6 +722,8 @@ namespace BlazorIdle.Game
             // Phase 9: 取消订阅 Buff 事件 / Phase 9: Unsubscribe from buff events
             _currentBattle.BuffApplied -= OnBuffApplied;
             _currentBattle.BuffRemoved -= OnBuffRemoved;
+            _currentBattle.BuffTicked -= OnBuffTicked;
+            _currentBattle.Healed -= OnHealed;
         }
 
         /// <summary>
@@ -789,6 +795,24 @@ namespace BlazorIdle.Game
         private void OnBuffRemoved(Buffs.BuffRemoveEvent ev)
         {
             BuffRemoved?.Invoke(ev);
+        }
+
+        /// <summary>
+        /// Phase 9: 处理 Buff Tick 事件
+        /// Phase 9: Handle buff tick event
+        /// </summary>
+        private void OnBuffTicked(Buffs.BuffTickEvent ev)
+        {
+            BuffTicked?.Invoke(ev);
+        }
+
+        /// <summary>
+        /// Phase 9: 处理治疗事件
+        /// Phase 9: Handle heal event
+        /// </summary>
+        private void OnHealed(Buffs.HealEvent ev)
+        {
+            Healed?.Invoke(ev);
         }
 
         /// <summary>
