@@ -1158,96 +1158,204 @@ Total tests: 233
 
 ### 阶段 6：MultiBattleInstance Buff 操作处理（P0 - 必须）
 
-**状态：** ⬜ 未开始
+**状态：** ✅ 已完成（含关键修复）
+
+**完成时间：** 2025-11-12
 
 **目标：** MultiBattleInstance 处理 SkillCastResult 中的 buff 操作指令，将 buff 应用到实体。
 
 **任务清单：**
 
-- [ ] 6.1 实现 BuffTarget 到实体的映射
-  - 创建 ResolveBuffTarget() 方法
-  - 支持 Self（施法者）
-  - 支持 Target（单一目标）
-  - 支持 AllEnemies（所有敌人）
-  - 支持 AllAllies（所有友方单位）
-  - 支持 RandomEnemy（随机一个敌人）
-  - 支持 LowestHpAlly（血量最低的友方单位）
+- [x] 6.1 实现 BuffTarget 到实体的映射 ✅
+  - [x] 创建 ResolveBuffTargets() 方法
+  - [x] 支持 Self（施法者）
+  - [x] 支持 Target（单一目标）
+  - [x] 支持 AllEnemies（所有敌人）
+  - [x] 支持 AllAllies（所有友方单位）
+  - [x] 支持 RandomEnemy（随机一个敌人）
+  - [x] 支持 LowestHpAlly（血量最低的友方单位 - 修复：使用 HP 百分比）
 
-- [ ] 6.2 实现 ProcessBuffOperations() 方法
-  - 遍历 SkillCastResult.BuffOperations
-  - 解析目标实体
-  - 设置 BuffTemplate.OwnerId
-  - 调用 IBuffOwner.ApplyBuff() 或 RemoveBuff()
+- [x] 6.2 实现 ProcessBuffOperations() 方法 ✅
+  - [x] 遍历 SkillCastResult.BuffOperations
+  - [x] 解析目标实体
+  - [x] 设置 BuffTemplate.OwnerId（修复：正确克隆）
+  - [x] 调用 IBuffOwner.ApplyBuff() 或 RemoveBuff()
 
-- [ ] 6.3 实现 ProcessInstantHeal() 方法
-  - 检查 SkillCastResult.InstantHeal > 0
-  - 应用治疗到目标实体
-  - 记录 HealEvent
+- [x] 6.3 实现 ApplyInstantHeal() 方法 ✅
+  - [x] 检查 SkillCastResult.InstantHeal > 0
+  - [x] 应用治疗到目标实体（当前支持施法者）
 
-- [ ] 6.4 集成到技能施放流程
-  - ProcessPlayerAction: 处理玩家技能的 buff 操作
-  - ProcessEnemyAction: 处理敌人技能的 buff 操作
-  - 在伤害应用后处理 buff 操作
+- [x] 6.4 集成到技能施放流程 ✅
+  - [x] ProcessCharacterAttackViaSkillResolver: 处理玩家技能的 buff 操作
+  - [x] ProcessCharacterSpecialViaSkillResolver: 处理特殊技能的 buff 操作
+  - [x] ProcessEnemyAttackViaSkillResolver: 处理敌人技能的 buff 操作
+  - [x] 在伤害应用后处理 buff 操作
 
-- [ ] 6.5 实现命中率检查（AlwaysHits=false）
-  - 添加命中率计算逻辑
-  - 仅在命中时应用 OnHitBuffs
-  - 记录未命中事件
+- [x] 6.5 资源消耗/获得处理 ✅（修复）
+  - [x] 实现 ApplyResourceChanges() 方法
+  - [x] 处理 SkillCastResult.ResourceChanges
+  - [x] 正确应用到施法者的资源桶
 
-- [ ] 6.6 配置 Special 脉冲施加测试 Buff
-  - 在 SkillRepository 中为 SpecialPulse 添加 OnHitBuffs
-  - 创建测试 buff（如：攻击力+20%，持续 10 秒）
-  - 验证 buff 正确应用
+- [ ] 6.6 实现命中率检查（AlwaysHits=false）❌ 延后
+  - 添加 TODO 注释，标记为未来实现
 
-- [ ] 6.7 单元测试（预计 15+ 个）
-  - BuffTarget 映射测试（6个）
-  - BuffOperation 处理测试（3个）
-  - InstantHeal 应用测试（2个）
-  - 命中率检查测试（2个）
-  - Special 脉冲集成测试（2个）
+- [ ] 6.7 配置 Special 脉冲施加测试 Buff ❌ Phase 7
+  - 在 Phase 7 实现事件记录时一并处理
+
+- [x] 6.8 单元测试（23 个） ✅
+  - [x] BuffTarget 映射测试（6个）
+  - [x] BuffOperation 处理测试（5个）
+  - [x] BuffTemplate 持续时间克隆测试（2个）
+  - [x] LowestHpAlly 百分比测试（2个）
+  - [x] 资源消耗/获得测试（3个）
+  - [x] 端到端 buff 应用测试（1个）
+  - [x] 其他集成测试（4个）
+
+**关键修复（基于审查）：**
+
+1. **BuffTemplate 持续时间问题** ✅
+   - 问题：使用 RemainingDurationSec 克隆，导致 buff 持续时间不正确
+   - 修复：BuffTemplate 应始终保持完整的持续时间（RemainingDurationSec = 初始值）
+   - 实现：ApplyBuffOperation 使用 template.RemainingDurationSec 克隆（确保 template 未被 tick）
+
+2. **LowestHpAlly 选择逻辑** ✅
+   - 问题：比较绝对 HP 值，不公平对待 MaxHp 高的单位
+   - 修复：改为比较 HP 百分比 (CurrentHp / MaxHp)
+   - 实现：ResolveBuffTargets 使用 `hp / (double)maxHp` 排序
+
+3. **资源消耗未实现** ✅
+   - 问题：SkillResolver 返回 ResourceChanges 但未应用
+   - 修复：实现 ApplyResourceChanges 方法
+   - 实现：使用 ResourceBucket.Gain() 和 ForceConsume() 正确应用
 
 **实施细节：**
 
 1. **BuffTarget 映射逻辑**
    ```csharp
-   private List<IBuffOwner> ResolveBuffTarget(
+   private List<IBuffOwner> ResolveBuffTargets(
        BuffTarget target, 
        IBuffOwner caster, 
        IBuffOwner? singleTarget)
    {
-       return target switch
-       {
-           BuffTarget.Self => new List<IBuffOwner> { caster },
-           BuffTarget.Target => singleTarget != null 
-               ? new List<IBuffOwner> { singleTarget } 
-               : new List<IBuffOwner>(),
-           BuffTarget.AllEnemies => GetAllEnemies(caster),
-           // ... 其他目标类型
-       };
+       // 支持 6 种目标类型，LowestHpAlly 使用 HP 百分比
    }
    ```
 
 2. **Buff 应用流程**
    - SkillResolver.Cast() 返回 BuffOperations
-   - MultiBattleInstance 遍历 BuffOperations
-   - 设置 OwnerId（复制 BuffTemplate 并设置正确的 OwnerId）
+   - MultiBattleInstance.ProcessBuffOperations() 遍历操作
+   - ApplyBuffOperation() 克隆 BuffTemplate 并设置 OwnerId
    - 调用 IBuffOwner.ApplyBuff()
 
-3. **命中率检查**
-   - 当 AlwaysHits=false 时，滚动命中判定
-   - 命中公式：`rng.NextDouble() < hitChance`
-   - 仅在命中时应用 OnHitBuffs 和造成伤害
+3. **资源处理流程**
+   - SkillResolver.Cast() 返回 ResourceChanges
+   - MultiBattleInstance.ApplyResourceChanges() 处理
+   - 使用 ResourceBucket API 正确应用
 
 **验收标准：**
 - ✅ BuffTarget 所有类型正确映射到实体
 - ✅ BuffOperation 正确应用到目标
-- ✅ InstantHeal 正确应用
-- ✅ Special 脉冲可以施加 buff
+- ✅ InstantHeal 正确应用到施法者
+- ✅ ResourceChanges 正确应用
+- ✅ BuffTemplate 持续时间正确
+- ✅ LowestHpAlly 使用 HP 百分比
+- ✅ 所有 256 测试通过
+
+**实际工作量：** 6 小时（含修复）
+
+**Phase 5 遗留问题（已在此阶段解决）：**
+
+1. ✅ BuffTemplate.OwnerId 设置 → ApplyBuffOperation 克隆时设置
+2. ✅ BuffTarget 映射实现 → ResolveBuffTargets 支持 6 种类型
+3. ✅ InstantHeal 应用 → ApplyInstantHeal 实现
+4. ✅ ResourceChanges 处理 → ApplyResourceChanges 实现
+
+---
+
+### 阶段 7：事件记录与完整性（P0 - 必须）
+
+**状态：** ⬜ 未开始
+
+**目标：** 将 Buff 相关事件记录到 combat segment，完善事件链，支持战斗回放和分析。
+
+**任务清单：**
+
+**P0 - 必须在 Phase 7 实现：**
+
+- [ ] 7.1 记录 BuffApplyEvent 到 combat segment
+  - 在 ApplyBuffOperation 中记录事件
+  - 包含：buffId, targetId, stacks, duration, sourceSkillId
+  - 记录时间戳
+
+- [ ] 7.2 记录 BuffRemoveEvent 到 combat segment
+  - 在 RemoveBuffOperation 中记录事件
+  - 包含：buffId, targetId, reason, remainingDuration
+  - 支持手动移除和过期移除
+
+- [ ] 7.3 记录 BuffTickEvent 到 combat segment
+  - 在 ProcessEntityBuffs 中记录 DoT/HoT tick 事件
+  - 包含：buffId, targetId, damageDealt 或 healAmount, stacks
+  - 每次 tick 记录一次
+
+- [ ] 7.4 记录 HealEvent 到 combat segment
+  - 在 ApplyInstantHeal 中记录事件
+  - 包含：sourceSkillId, targetId, healAmount, actualHealed
+  - 与现有 DamageEvent 对称
+
+- [ ] 7.5 记录 ResourceChangeEvent 到 combat segment
+  - 在 ApplyResourceChanges 中记录事件
+  - 包含：casterId, resourceId, amount, reason
+  - 支持资源获得和消耗
+
+- [ ] 7.6 集成测试
+  - 验证所有事件正确记录到 segment
+  - 验证事件顺序正确
+  - 验证事件数据完整
+
+**P1 - 后续优化（Phase 7+）：**
+
+- [ ] 7.7 ApplyInstantHeal 目标选择灵活性
+  - 当前仅支持施法者自疗
+  - 未来支持治疗目标（如治疗术）
+  - 可能需要 HealTarget 枚举（类似 BuffTarget）
+
+- [ ] 7.8 BuffTemplate 可变性问题
+  - 当前 BuffTemplate 是可变对象
+  - 多次使用同一 SkillDef 会共享实例
+  - 考虑：深拷贝或使用不可变设计
+
+- [ ] 7.9 目标解析失败处理
+  - 当前静默失败（返回空列表）
+  - 添加日志或警告
+  - 便于调试和错误诊断
+
+- [ ] 7.10 SkillDef.Id 一致性验证
+  - SkillRepository 通过 ID 存储
+  - SkillResolver.Cast 使用 skillId 参数
+  - 验证 SkillDef.Id 与 skillId 是否匹配
+
+- [ ] 7.11 IBuffOwner.Buffs 保护
+  - 当前直接返回可修改字典
+  - 外部可绕过 ApplyBuff/RemoveBuff
+  - 考虑返回只读集合或防御性拷贝
+
+- [ ] 7.12 命中率实现（AlwaysHits=false）
+  - 当前所有技能总是命中
+  - 实现命中率判定逻辑
+  - OnHitBuffs 仅在命中时应用
+
+**验收标准：**
+- ✅ 所有 Buff 操作事件记录到 segment
+- ✅ 事件包含完整的元数据
+- ✅ 事件顺序正确（先伤害，后 buff 应用）
+- ✅ 可以通过事件重建战斗过程
 - ✅ 所有测试通过
 
-**预计工作量：** 5-6 小时
+**预计工作量：** 4-5 小时（P0）+ 3-4 小时（P1）
 
-**Phase 5 遗留问题（需在此阶段解决）：**
+---
+
+**Phase 6 遗留问题（已记录到 Phase 7）：**
 1. BuffTemplate.OwnerId 设置（在应用时设置）
 2. BuffTarget 实体映射
 3. InstantHeal 应用

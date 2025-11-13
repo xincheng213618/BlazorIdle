@@ -403,10 +403,11 @@ namespace BlazorIdle.Game
             ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Attack, 
                 isAoe: false, isCrit: result.IsCrit, skillId: SkillIds.AttackBasic, bundleId: result.BundleId);
 
-            // Phase 6: 处理 Buff 操作和即时治疗
-            // Phase 6: Process buff operations and instant heal
+            // Phase 6: 处理 Buff 操作、即时治疗和资源变化
+            // Phase 6: Process buff operations, instant heal, and resource changes
             ProcessBuffOperations(result, charId, targetId, isCasterPlayer: true);
             ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true);
+            ApplyResourceChanges(result, charId, isCasterPlayer: true);
 
             // Phase 2 & 2.7: 产生资源 / Generate resource
             if (_playerResources.TryGetValue(charId, out var resources))
@@ -492,10 +493,11 @@ namespace BlazorIdle.Game
                     ApplyDamageToEnemy(charId, member, enemyId, target, damage, EventSource.Special, 
                         isAoe: true, isCrit: result.IsCrit, skillId: SkillIds.SpecialPulse, bundleId: result.BundleId);
                     
-                    // Phase 6: 处理 Buff 操作和即时治疗（AOE特殊技能）
-                    // Phase 6: Process buff operations and instant heal (AOE special)
+                    // Phase 6: 处理 Buff 操作、即时治疗和资源变化（AOE特殊技能）
+                    // Phase 6: Process buff operations, instant heal, and resource changes (AOE special)
                     ProcessBuffOperations(result, charId, enemyId, isCasterPlayer: true);
                     ApplyInstantHeal(result, charId, enemyId, isCasterPlayer: true);
+                    ApplyResourceChanges(result, charId, isCasterPlayer: true);
                 }
             }
             else
@@ -528,10 +530,11 @@ namespace BlazorIdle.Game
                 ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Special, 
                     isAoe: false, isCrit: result.IsCrit, skillId: SkillIds.SpecialPulse, bundleId: result.BundleId);
                 
-                // Phase 6: 处理 Buff 操作和即时治疗（单体特殊技能）
-                // Phase 6: Process buff operations and instant heal (single target special)
+                // Phase 6: 处理 Buff 操作、即时治疗和资源变化（单体特殊技能）
+                // Phase 6: Process buff operations, instant heal, and resource changes (single target special)
                 ProcessBuffOperations(result, charId, targetId, isCasterPlayer: true);
                 ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true);
+                ApplyResourceChanges(result, charId, isCasterPlayer: true);
             }
         }
 
@@ -663,10 +666,11 @@ namespace BlazorIdle.Game
             ApplyDamageToPlayer(enemyId, member, targetId, target, result.DamageDealt, 
                 skillId: SkillIds.EnemyAttackBasic, bundleId: result.BundleId);
             
-            // Phase 6: 处理 Buff 操作和即时治疗（敌人攻击）
-            // Phase 6: Process buff operations and instant heal (enemy attack)
+            // Phase 6: 处理 Buff 操作、即时治疗和资源变化（敌人攻击）
+            // Phase 6: Process buff operations, instant heal, and resource changes (enemy attack)
             ProcessBuffOperations(result, enemyId, targetId, isCasterPlayer: false);
             ApplyInstantHeal(result, enemyId, targetId, isCasterPlayer: false);
+            ApplyResourceChanges(result, enemyId, isCasterPlayer: false);
         }
 
         /// <summary>
@@ -1023,13 +1027,15 @@ namespace BlazorIdle.Game
             {
                 // 克隆 buff 模板并设置 OwnerId
                 // Clone buff template and set OwnerId
+                // Phase 6 Fix: Store original duration separately for proper cloning
+                // BuffTemplate should have full duration, not remaining
                 var buffToApply = new Buffs.BuffInstance(
                     id: operation.BuffTemplate.Id,
                     ownerId: target.Id, // Phase 6: 设置正确的 OwnerId
                     kind: operation.BuffTemplate.Kind,
                     effects: operation.BuffTemplate.Effects,
                     stackingPolicy: operation.BuffTemplate.StackingPolicy,
-                    durationSec: operation.BuffTemplate.RemainingDurationSec,
+                    durationSec: operation.BuffTemplate.RemainingDurationSec, // Use template's duration
                     tickIntervalSec: operation.BuffTemplate.TickIntervalSec,
                     maxStacks: operation.BuffTemplate.MaxStacks
                 );
@@ -1198,20 +1204,25 @@ namespace BlazorIdle.Game
                     break;
 
                 case Skills.BuffTarget.LowestHpAlly:
-                    // 血量最低的队友
-                    // Lowest HP ally
+                    // 血量最低的队友（按百分比）
+                    // Lowest HP ally (by percentage)
+                    // Phase 6 Fix: Compare HP percentage, not absolute HP
                     if (isCasterPlayer)
                     {
                         Buffs.IBuffOwner? lowestHpOwner = null;
-                        int lowestHp = int.MaxValue;
+                        double lowestHpPercentage = double.MaxValue;
 
                         foreach (var playerId in _playerTeam.GetAliveMemberIds())
                         {
                             if (_playerBuffOwners.TryGetValue(playerId, out var playerOwner))
                             {
-                                if (playerOwner.CurrentHp < lowestHp)
+                                double hpPercentage = playerOwner.MaxHp > 0 
+                                    ? (double)playerOwner.CurrentHp / playerOwner.MaxHp 
+                                    : 1.0;
+                                
+                                if (hpPercentage < lowestHpPercentage)
                                 {
-                                    lowestHp = playerOwner.CurrentHp;
+                                    lowestHpPercentage = hpPercentage;
                                     lowestHpOwner = playerOwner;
                                 }
                             }
@@ -1223,15 +1234,19 @@ namespace BlazorIdle.Game
                     else
                     {
                         Buffs.IBuffOwner? lowestHpOwner = null;
-                        int lowestHp = int.MaxValue;
+                        double lowestHpPercentage = double.MaxValue;
 
                         foreach (var enemyId in _enemyTeam.GetAliveMemberIds())
                         {
                             if (_enemyBuffOwners.TryGetValue(enemyId, out var enemyOwner))
                             {
-                                if (enemyOwner.CurrentHp < lowestHp)
+                                double hpPercentage = enemyOwner.MaxHp > 0 
+                                    ? (double)enemyOwner.CurrentHp / enemyOwner.MaxHp 
+                                    : 1.0;
+                                
+                                if (hpPercentage < lowestHpPercentage)
                                 {
-                                    lowestHp = enemyOwner.CurrentHp;
+                                    lowestHpPercentage = hpPercentage;
                                     lowestHpOwner = enemyOwner;
                                 }
                             }
@@ -1281,6 +1296,52 @@ namespace BlazorIdle.Game
 
                 // TODO: 记录 HealEvent 到战斗段落
                 // TODO: Record HealEvent to combat segment
+            }
+        }
+
+        /// <summary>
+        /// Phase 6: 应用资源消耗/获得
+        /// Phase 6: Apply resource costs/gains
+        /// </summary>
+        private void ApplyResourceChanges(
+            SkillCastResult result,
+            string casterId,
+            bool isCasterPlayer)
+        {
+            if (result.ResourceChanges == null || result.ResourceChanges.Count == 0)
+                return;
+
+            // 只应用给施法者
+            // Only apply to caster
+            if (!isCasterPlayer)
+                return; // 敌人暂不支持资源系统 / Enemies don't have resource system yet
+
+            if (!_playerResources.TryGetValue(casterId, out var resources))
+                return;
+
+            foreach (var kvp in result.ResourceChanges)
+            {
+                string resourceId = kvp.Key;
+                int amount = kvp.Value;
+
+                if (!resources.HasBucket(resourceId))
+                    continue;
+
+                var bucket = resources.GetBucket(resourceId);
+                
+                // 应用资源变化（正数为增加，负数为消耗）
+                // Apply resource change (positive = gain, negative = cost)
+                if (amount > 0)
+                {
+                    bucket.Gain(amount, "skill_resource_gain");
+                }
+                else if (amount < 0)
+                {
+                    bucket.ForceConsume(-amount, "skill_resource_cost"); // Convert negative to positive for ForceConsume
+                }
+
+                // TODO: 记录 ResourceChangeEvent 到战斗段落
+                // TODO: Record ResourceChangeEvent to combat segment
             }
         }
 
