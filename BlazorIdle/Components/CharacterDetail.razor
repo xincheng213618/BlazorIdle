@@ -9,14 +9,22 @@
 @implements IDisposable
 
 <div class="character-detail-card">
-    <div class="cd-header">
-        <h5 class="mb-0">
+    <div class="cd-header d-flex align-items-center justify-content-between"
+         role="button"
+         @onclick="ToggleCollapse"
+         aria-expanded="@(!isCollapsed)">
+        <h5 class="mb-0 text-white d-flex align-items-center">
             <span class="me-2">📊</span>
             角色详情 @(character != null ? $"- {character.Name}" : "")
         </h5>
+        <button class="btn btn-sm btn-outline-light"
+                @onclick:stopPropagation="true"
+                @onclick="ToggleCollapse">
+            @(isCollapsed ? "展开" : "收起")
+        </button>
     </div>
 
-    <div class="cd-body">
+    <div class="cd-body" style="@(isCollapsed ? "display:none" : null)">
         @if (character == null)
         {
             <div class="text-muted">请先选择一个角色...</div>
@@ -31,7 +39,6 @@
         }
         else
         {
-            <!-- 基础属性部分 -->
             <div class="section">
                 <h6 class="section-title">基础属性 (Base Attributes)</h6>
                 <div class="stats-grid">
@@ -54,12 +61,11 @@
                 </div>
             </div>
 
-            <!-- 战斗属性 -->
             <div class="section">
                 <h6 class="section-title">战斗属性 (Combat Stats)</h6>
                 <div class="stats-grid">
                     <div class="stat-item">
-                        <span class="stat-label">职业:</span>
+                        <span class="stat-label">当前职业:</span>
                         <span class="stat-value">@professionName ⭐ Lv.@currentLevel</span>
                     </div>
                     <div class="stat-item">
@@ -93,7 +99,6 @@
                 </div>
             </div>
 
-            <!-- 技能属性 -->
             <div class="section">
                 <h6 class="section-title">技能属性 (Skill Stats)</h6>
                 <div class="stats-grid">
@@ -112,7 +117,6 @@
                 </div>
             </div>
 
-            <!-- DPS统计 -->
             <div class="section section-dps">
                 <h6 class="section-title">输出统计 (DPS Stats)</h6>
                 <div class="stats-grid">
@@ -138,108 +142,30 @@
                     </div>
                 </div>
             </div>
-
-            <!-- 战斗职业列表 -->
-            <div class="section">
-                <h6 class="section-title">战斗职业 (Combat Professions)</h6>
-                <div class="profession-list">
-                    @foreach (var prof in combatProfessions)
-                    {
-                        var progress = character.Professions.GetValueOrDefault(prof.Id);
-                        var isActive = character.ActiveCombatProfessionId == prof.Id;
-                        
-                        <div class="profession-detail @(isActive ? "active" : "")">
-                            <div class="prof-name">
-                                @prof.Name
-                                @if (isActive)
-                                {
-                                    <span class="badge bg-success ms-2">激活</span>
-                                }
-                            </div>
-                            @if (progress != null)
-                            {
-                                <div class="prof-progress">
-                                    <span>等级 @progress.Level <small class="text-muted">(Max: @GameConfig.MaxProfessionLevel)</small></span>
-                                    <span class="exp-info">经验: @progress.Experience / @progress.ExperienceToNext</span>
-                                </div>
-                                <div class="progress" style="height: 6px;">
-                                    <div class="progress-bar bg-primary" 
-                                         role="progressbar" 
-                                         style="width: @(GetExpPercentage(progress))%">
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    }
-                </div>
-            </div>
-
-            <!-- 非战斗职业列表 -->
-            <div class="section">
-                <h6 class="section-title">非战斗职业 (Non-Combat Professions)</h6>
-                <div class="profession-list">
-                    @foreach (var prof in nonCombatProfessions)
-                    {
-                        var progress = character.Professions.GetValueOrDefault(prof.Id);
-                        
-                        <div class="profession-detail">
-                            <div class="prof-name">@prof.Name</div>
-                            @if (progress != null)
-                            {
-                                <div class="prof-progress">
-                                    <span>等级 @progress.Level <small class="text-muted">(Max: @GameConfig.MaxProfessionLevel)</small></span>
-                                    <span class="exp-info">经验: @progress.Experience / @progress.ExperienceToNext</span>
-                                </div>
-                                <div class="progress" style="height: 6px;">
-                                    <div class="progress-bar bg-info" 
-                                         role="progressbar" 
-                                         style="width: @(GetExpPercentage(progress))%">
-                                    </div>
-                                </div>
-                            }
-                            <div class="prof-note">
-                                <small class="text-muted">未来将解锁采集点和配方</small>
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
         }
     </div>
 </div>
 
 @code {
-    [Parameter]
-    public CharacterData? Character { get; set; }
+    [Parameter] public CharacterData? Character { get; set; }
+    [Parameter] public bool StartCollapsed { get; set; } = true;
 
+    private bool isCollapsed;
     private CharacterData? character;
-    private List<ProfessionDef> combatProfessions = new();
-    private List<ProfessionDef> nonCombatProfessions = new();
-    private bool isLoading = false;
-    
-    // 计算属性
+    private bool isLoading;
     private CalculatedAttributes? calculatedAttrs;
     private string professionName = "";
     private int currentLevel = 1;
-    
-    // DPS统计
-    private double expectedDamage = 0;
-    private double effectiveAPS = 0;
-    private double basicDPS = 0;
-    private double skillDPS = 0;
-    private double totalDPS = 0;
+    private double expectedDamage;
+    private double effectiveAPS;
+    private double basicDPS;
+    private double skillDPS;
+    private double totalDPS;
 
     protected override async Task OnInitializedAsync()
     {
+        isCollapsed = StartCollapsed;
         await GameConfig.EnsureLoadedAsync();
-        combatProfessions = GameConfig.Professions
-            .Where(p => p.Type == ProfessionType.Combat)
-            .ToList();
-        nonCombatProfessions = GameConfig.Professions
-            .Where(p => p.Type == ProfessionType.NonCombat)
-            .ToList();
-        
-        // Subscribe to character change events for real-time updates
         CharacterService.SelectedCharacterChanged += OnCharacterChanged;
     }
 
@@ -251,33 +177,20 @@
 
     private async Task RefreshAttributesAsync()
     {
-        if (character == null)
-        {
-            calculatedAttrs = null;
-            return;
-        }
+        if (character == null) { calculatedAttrs = null; return; }
 
         try
         {
             isLoading = true;
-            StateHasChanged();
-
-            // 计算属性
             calculatedAttrs = await AttributeService.CalculateAttributesAsync(character);
-
             if (calculatedAttrs != null)
             {
-                // 获取职业名称
                 var config = await ProfessionService.GetConfigAsync(character.ActiveCombatProfessionId);
-                professionName = config?.Name ?? GetProfessionName(character.ActiveCombatProfessionId);
+                professionName = config?.Name ?? character.ActiveCombatProfessionId;
 
-                // 获取当前等级
                 if (character.Professions.TryGetValue(character.ActiveCombatProfessionId, out var progress))
-                {
                     currentLevel = progress.Level;
-                }
 
-                // 计算DPS统计
                 expectedDamage = AttributeCalculator.CalculateExpectedHitDamage(calculatedAttrs);
                 effectiveAPS = AttributeCalculator.CalculateEffectiveAPS(calculatedAttrs);
                 basicDPS = AttributeCalculator.CalculateBasicDPS(calculatedAttrs);
@@ -287,65 +200,21 @@
         }
         catch (Exception ex)
         {
-            // Log error but don't crash the component
             System.Diagnostics.Debug.WriteLine($"Error calculating attributes: {ex.Message}");
             calculatedAttrs = null;
         }
         finally
         {
             isLoading = false;
-            StateHasChanged();
         }
     }
 
-    public async Task RefreshAsync()
-    {
-        await RefreshAttributesAsync();
-    }
+    private string GetMainStatName() => calculatedAttrs?.MainStatName ?? "主属性";
+    private int GetMainStatTotal() => calculatedAttrs?.MainStatTotal ?? 0;
+    private int GetStaminaTotal() => calculatedAttrs?.StaminaTotal ?? 0;
+    private int GetHasteRating() => calculatedAttrs?.HasteRating ?? 0;
+    private int GetCritRating() => calculatedAttrs?.CritRating ?? 0;
 
-    private double GetExpPercentage(ProfessionProgress progress)
-    {
-        if (progress.ExperienceToNext <= 0) return 100;
-        return Math.Min(100, (progress.Experience * 100.0) / progress.ExperienceToNext);
-    }
-
-    private string GetProfessionName(string profId)
-    {
-        var prof = combatProfessions.FirstOrDefault(p => p.Id == profId) 
-                   ?? nonCombatProfessions.FirstOrDefault(p => p.Id == profId);
-        return prof?.Name ?? profId;
-    }
-
-    // Attribute display helpers
-    private string GetMainStatName()
-    {
-        if (calculatedAttrs == null) return "主属性";
-        return !string.IsNullOrEmpty(calculatedAttrs.MainStatName) 
-            ? calculatedAttrs.MainStatName 
-            : "主属性";
-    }
-
-    private int GetMainStatTotal()
-    {
-        return calculatedAttrs?.MainStatTotal ?? 0;
-    }
-
-    private int GetStaminaTotal()
-    {
-        return calculatedAttrs?.StaminaTotal ?? 0;
-    }
-
-    private int GetHasteRating()
-    {
-        return calculatedAttrs?.HasteRating ?? 0;
-    }
-
-    private int GetCritRating()
-    {
-        return calculatedAttrs?.CritRating ?? 0;
-    }
-
-    // Event handler for character changes (e.g., from level-ups during combat)
     private async void OnCharacterChanged(CharacterData? newCharacter)
     {
         character = newCharacter;
@@ -353,12 +222,8 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    // IDisposable implementation
-    public void Dispose()
-    {
-        // Unsubscribe from events to prevent memory leaks
-        CharacterService.SelectedCharacterChanged -= OnCharacterChanged;
-    }
+    private void ToggleCollapse() => isCollapsed = !isCollapsed;
+    public void Dispose() => CharacterService.SelectedCharacterChanged -= OnCharacterChanged;
 }
 
 <style>
@@ -368,13 +233,22 @@
         border-radius: 8px;
         margin-bottom: 20px;
         box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        overflow: hidden;
     }
 
     .cd-header {
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        background: linear-gradient(135deg,#764ba2 0%,#667eea 100%);
         color: #fff;
         padding: 12px 16px;
+        cursor: pointer;
     }
+
+        .cd-header .btn {
+            margin-top: 0;
+            padding: .25rem .5rem;
+            line-height: 1.2;
+            border: 1px solid rgba(255,255,255,.5);
+        }
 
     .cd-body {
         padding: 20px;
@@ -384,20 +258,19 @@
         margin-bottom: 24px;
     }
 
-    .section:last-child {
-        margin-bottom: 0;
-    }
-
     .section-title {
         color: #495057;
         margin-bottom: 12px;
         padding-bottom: 8px;
         border-bottom: 2px solid #dee2e6;
+        font-size: .95rem;
+        font-weight: 600;
+        letter-spacing: .5px;
     }
 
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fill,minmax(200px,1fr));
         gap: 12px;
     }
 
@@ -411,7 +284,7 @@
 
     .stat-label {
         color: #6c757d;
-        font-size: 0.9rem;
+        font-size: .9rem;
     }
 
     .stat-value {
@@ -419,50 +292,8 @@
         color: #212529;
     }
 
-    .profession-list {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .profession-detail {
-        padding: 12px;
-        background: #f8f9fa;
-        border-radius: 6px;
-        border: 1px solid #dee2e6;
-    }
-
-    .profession-detail.active {
-        background: #f0fff4;
-        border-color: #28a745;
-    }
-
-    .prof-name {
-        font-weight: 600;
-        margin-bottom: 6px;
-        display: flex;
-        align-items: center;
-    }
-
-    .prof-progress {
-        display: flex;
-        justify-content: space-between;
-        font-size: 0.85rem;
-        color: #6c757d;
-        margin-bottom: 6px;
-    }
-
-    .exp-info {
-        font-size: 0.8rem;
-    }
-
-    .prof-note {
-        margin-top: 6px;
-    }
-
-    /* New attribute system styles */
     .highlight-stat {
-        background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
+        background: linear-gradient(135deg,rgba(255,215,0,.1),rgba(255,215,0,.05));
         border-left: 3px solid #FFD700;
     }
 
@@ -485,17 +316,17 @@
 
     .stat-cap {
         color: #999;
-        font-size: 0.85rem;
+        font-size: .85rem;
         margin-left: 4px;
     }
 
     .section-dps {
-        background: rgba(255, 99, 71, 0.05);
+        background: rgba(255,99,71,.05);
         border-radius: 8px;
-        border: 1px solid rgba(255, 99, 71, 0.2);
+        border: 1px solid rgba(255,99,71,.2);
     }
 
-    .section-dps .section-title {
-        color: #FF6347;
-    }
+        .section-dps .section-title {
+            color: #FF6347;
+        }
 </style>
