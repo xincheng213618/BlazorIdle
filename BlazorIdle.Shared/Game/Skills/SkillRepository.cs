@@ -25,9 +25,23 @@ namespace BlazorIdle.Game.Skills
 
         /// <summary>
         /// Register a skill definition.
+        /// Phase 7.10: Added validation for SkillDef.Id consistency.
         /// </summary>
         public void RegisterSkill(SkillDef skillDef)
         {
+            if (skillDef == null)
+                throw new System.ArgumentNullException(nameof(skillDef));
+            
+            if (string.IsNullOrEmpty(skillDef.Id))
+                throw new System.ArgumentException("SkillDef.Id cannot be null or empty", nameof(skillDef));
+            
+            // Phase 7.10: Warn if skill is being overwritten
+            if (_skills.ContainsKey(skillDef.Id))
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[SkillRepository] Warning: Overwriting existing skill definition for Id='{skillDef.Id}'");
+            }
+            
             _skills[skillDef.Id] = skillDef;
         }
 

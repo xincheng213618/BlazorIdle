@@ -32,8 +32,8 @@ namespace BlazorIdle.Game.Skills
         }
 
         /// <summary>
-        /// 施放单个技能（Phase 5: 支持 Buff 操作）
-        /// Cast a single skill (Phase 5: Supports buff operations)
+        /// 施放单个技能（Phase 5: 支持 Buff 操作，Phase 8: 应用 Buff 效果到属性计算）
+        /// Cast a single skill (Phase 5: Supports buff operations, Phase 8: Apply buff effects to stat calculations)
         /// </summary>
         public SkillCastResult Cast(string skillId, BattleContext ctx, SkillCastOptions? opts = null)
         {
@@ -42,6 +42,23 @@ namespace BlazorIdle.Game.Skills
             // Phase 5: 获取技能定义
             // Phase 5: Get skill definition
             var skillDef = _skillRepository.GetSkill(skillId);
+            
+            // Phase 7.10: 验证 SkillDef.Id 与 skillId 的一致性
+            // Phase 7.10: Validate SkillDef.Id consistency with skillId parameter
+            if (skillDef != null && skillDef.Id != skillId)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[SkillResolver] Warning: SkillDef.Id mismatch! " +
+                    $"Parameter skillId='{skillId}' but SkillDef.Id='{skillDef.Id}'");
+            }
+
+            // Phase 8: 获取施法者的 Buff 所有者以应用 Buff 效果
+            // Phase 8: Get caster's buff owner to apply buff effects
+            Buffs.IBuffOwner? casterBuffOwner = null;
+            if (!skillId.StartsWith("enemy_") && ctx.PlayerBuffOwner != null)
+            {
+                casterBuffOwner = ctx.PlayerBuffOwner;
+            }
 
             // 根据技能类型确定基础伤害
             // Determine base damage based on skill type
@@ -52,6 +69,17 @@ namespace BlazorIdle.Game.Skills
                 SkillIds.EnemyAttackBasic => ctx.Enemy?.DamagePerHit ?? 0,
                 _ => 0
             };
+
+            // Phase 8: 应用 Buff 效果到基础伤害
+            // Phase 8: Apply buff effects to base damage
+            if (casterBuffOwner != null && skillId == SkillIds.AttackBasic)
+            {
+                baseDamage = ApplyBuffEffects(baseDamage, "DamagePerAttack", casterBuffOwner);
+            }
+            else if (casterBuffOwner != null && skillId == SkillIds.SpecialPulse)
+            {
+                baseDamage = ApplyBuffEffects(baseDamage, "SpecialDamage", casterBuffOwner);
+            }
 
             // Phase 5: 应用技能的伤害倍率
             // Phase 5: Apply skill damage multiplier
@@ -68,16 +96,66 @@ namespace BlazorIdle.Game.Skills
             double dmg = Math.Floor(ctx.Rng.Jitter(baseDamage, variancePct));
             if (dmg < 1) dmg = 1;
 
+            // Phase 8: 检查是否有 ForceCrit 效果
+            // Phase 8: Check for ForceCrit effect
+            bool hasForceCrit = casterBuffOwner != null && HasForceCritEffect(casterBuffOwner);
+
             // 检查暴击（仅玩家攻击有暴击）
             // Check for critical hit (only player attacks can crit)
             bool isCrit = false;
             bool canCrit = skillDef?.CanCrit ?? true;
             if (!skillId.StartsWith("enemy_") && ctx.Player != null && canCrit)
             {
-                isCrit = opts.ForceCrit || ctx.Rng.NextDouble() < (ctx.Player.CritChancePercent / 100.0);
+                // Phase 8: ForceCrit 优先级最高
+                // Phase 8: ForceCrit has highest priority
+                if (hasForceCrit)
+                {
+                    isCrit = true;
+                    
+                    // 消耗 ForceCrit buff（立即移除）
+                    // Consume ForceCrit buff (remove immediately)
+                    // Critical fix: ForceCrit should be one-time effect
+                    var buffsToRemove = new List<string>();
+                    foreach (var buff in casterBuffOwner!.Buffs.Values)
+                    {
+                        bool hasForceCritEffect = buff.Effects.Any(e => e.Type == Buffs.BuffEffectType.ForceCrit);
+                        if (hasForceCritEffect)
+                        {
+                            buffsToRemove.Add(buff.Id);
+                            break; // Only remove one ForceCrit buff per attack
+                        }
+                    }
+                    
+                    // Remove the buff(s) after iteration to avoid collection modification
+                    foreach (var buffId in buffsToRemove)
+                    {
+                        casterBuffOwner.RemoveBuff(buffId, "consumed_forcecrit");
+                    }
+                }
+                else
+                {
+                    // Phase 8: 应用 Buff 效果到暴击率
+                    // Phase 8: Apply buff effects to crit chance
+                    double critChance = ctx.Player.CritChancePercent;
+                    if (casterBuffOwner != null)
+                    {
+                        critChance = ApplyBuffEffectsToDouble(critChance, "CritChancePercent", casterBuffOwner);
+                    }
+                    
+                    isCrit = opts.ForceCrit || ctx.Rng.NextDouble() < (critChance / 100.0);
+                }
+                
                 if (isCrit)
                 {
-                    dmg = Math.Floor(dmg * Math.Max(1.0, ctx.Player.CritMultiplier));
+                    // Phase 8: 应用 Buff 效果到暴击倍率
+                    // Phase 8: Apply buff effects to crit multiplier
+                    double critMultiplier = ctx.Player.CritMultiplier;
+                    if (casterBuffOwner != null)
+                    {
+                        critMultiplier = ApplyBuffEffectsToDouble(critMultiplier, "CritMultiplier", casterBuffOwner);
+                    }
+                    
+                    dmg = Math.Floor(dmg * Math.Max(1.0, critMultiplier));
                 }
             }
 
@@ -197,6 +275,135 @@ namespace BlazorIdle.Game.Skills
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// Phase 8: 应用 Buff 效果到整数属性
+        /// Phase 8: Apply buff effects to integer attributes
+        /// Method B: Buffs are applied in time order (earlier applied first)
+        /// Same-type effects use multiplicative stacking to prevent runaway scaling
+        /// </summary>
+        private int ApplyBuffEffects(int baseValue, string statName, Buffs.IBuffOwner buffOwner)
+        {
+            double modifiedValue = baseValue;
+
+            // Method B: Sort buffs by application time (earlier first)
+            // This ensures deterministic and intuitive behavior
+            var sortedBuffs = buffOwner.Buffs.Values
+                .OrderBy(b => b.AppliedAtMs)
+                .ToList();
+
+            foreach (var buff in sortedBuffs)
+            {
+                foreach (var effect in buff.Effects)
+                {
+                    // 只处理影响指定属性的效果
+                    // Only process effects targeting the specified stat
+                    if (effect.Target != statName)
+                        continue;
+
+                    switch (effect.Type)
+                    {
+                        case Buffs.BuffEffectType.StatMultiplier:
+                            // 倍率效果：基础值 * (1 + value)
+                            // Multiplier effect: base * (1 + value)
+                            // value 为 0.15 表示 +15%
+                            // value of 0.15 means +15%
+                            // Multiplicative stacking prevents runaway scaling
+                            modifiedValue *= (1.0 + effect.Value);
+                            break;
+
+                        case Buffs.BuffEffectType.StatAdditive:
+                            // 加法效果：直接加上数值
+                            // Additive effect: directly add value
+                            modifiedValue += effect.Value;
+                            break;
+
+                        case Buffs.BuffEffectType.StatReduction:
+                            // 减益效果：基础值 * (1 - value)
+                            // Reduction effect: base * (1 - value)
+                            // value 为 0.10 表示 -10%
+                            // value of 0.10 means -10%
+                            // Multiplicative stacking for debuffs too
+                            modifiedValue *= (1.0 - effect.Value);
+                            break;
+                    }
+                }
+            }
+
+            return (int)Math.Floor(modifiedValue);
+        }
+
+        /// <summary>
+        /// Phase 8: 应用 Buff 效果到浮点数属性
+        /// Phase 8: Apply buff effects to double attributes
+        /// Method B: Buffs are applied in time order (earlier applied first)
+        /// Same-type effects use multiplicative stacking to prevent runaway scaling
+        /// </summary>
+        private double ApplyBuffEffectsToDouble(double baseValue, string statName, Buffs.IBuffOwner buffOwner)
+        {
+            double modifiedValue = baseValue;
+
+            // Method B: Sort buffs by application time (earlier first)
+            // This ensures deterministic and intuitive behavior
+            var sortedBuffs = buffOwner.Buffs.Values
+                .OrderBy(b => b.AppliedAtMs)
+                .ToList();
+
+            foreach (var buff in sortedBuffs)
+            {
+                foreach (var effect in buff.Effects)
+                {
+                    // 只处理影响指定属性的效果
+                    // Only process effects targeting the specified stat
+                    if (effect.Target != statName)
+                        continue;
+
+                    switch (effect.Type)
+                    {
+                        case Buffs.BuffEffectType.StatMultiplier:
+                            // 倍率效果：基础值 * (1 + value)
+                            // Multiplier effect: base * (1 + value)
+                            // Multiplicative stacking prevents runaway scaling
+                            modifiedValue *= (1.0 + effect.Value);
+                            break;
+
+                        case Buffs.BuffEffectType.StatAdditive:
+                            // 加法效果：直接加上数值
+                            // Additive effect: directly add value
+                            modifiedValue += effect.Value;
+                            break;
+
+                        case Buffs.BuffEffectType.StatReduction:
+                            // 减益效果：基础值 * (1 - value)
+                            // Reduction effect: base * (1 - value)
+                            // Multiplicative stacking for debuffs too
+                            modifiedValue *= (1.0 - effect.Value);
+                            break;
+                    }
+                }
+            }
+
+            return modifiedValue;
+        }
+
+        /// <summary>
+        /// Phase 8: 检查是否有强制暴击效果
+        /// Phase 8: Check if there's a force crit effect
+        /// </summary>
+        private bool HasForceCritEffect(Buffs.IBuffOwner buffOwner)
+        {
+            foreach (var buff in buffOwner.Buffs.Values)
+            {
+                foreach (var effect in buff.Effects)
+                {
+                    if (effect.Type == Buffs.BuffEffectType.ForceCrit)
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
     }
 }

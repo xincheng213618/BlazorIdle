@@ -176,12 +176,18 @@ namespace BlazorIdle.Tests
         /// </summary>
         private class TestBuffOwner : IBuffOwner
         {
+            private readonly Dictionary<string, BuffInstance> _buffs = new Dictionary<string, BuffInstance>();
+            
             public string Id { get; }
             public bool IsPlayer => true;
             public int CurrentHp { get; set; }
             public int MaxHp { get; }
             public ResourceBucketCollection? Buckets => null;
-            public Dictionary<string, BuffInstance> Buffs { get; } = new Dictionary<string, BuffInstance>();
+            
+            /// <summary>
+            /// Phase 7.11: Return read-only view to prevent external modification.
+            /// </summary>
+            public IReadOnlyDictionary<string, BuffInstance> Buffs => _buffs;
 
             public TestBuffOwner(string id, int currentHp, int maxHp)
             {
@@ -190,8 +196,8 @@ namespace BlazorIdle.Tests
                 MaxHp = maxHp;
             }
 
-            public void ApplyBuff(BuffInstance buff) => Buffs[buff.Id] = buff;
-            public bool RemoveBuff(string buffId, string reason) => Buffs.Remove(buffId);
+            public void ApplyBuff(BuffInstance buff) => _buffs[buff.Id] = buff;
+            public bool RemoveBuff(string buffId, string reason) => _buffs.Remove(buffId);
             public void ReceiveDamage(int amount, DamageMeta meta) => CurrentHp = System.Math.Max(0, CurrentHp - amount);
             public void ReceiveHeal(int amount, HealMeta meta) => CurrentHp = System.Math.Min(MaxHp, CurrentHp + amount);
         }

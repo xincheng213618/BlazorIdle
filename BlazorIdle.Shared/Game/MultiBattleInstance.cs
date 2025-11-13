@@ -406,8 +406,8 @@ namespace BlazorIdle.Game
             // Phase 6: 处理 Buff 操作、即时治疗和资源变化
             // Phase 6: Process buff operations, instant heal, and resource changes
             ProcessBuffOperations(result, charId, targetId, isCasterPlayer: true);
-            ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true);
-            ApplyResourceChanges(result, charId, isCasterPlayer: true);
+            ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true, skillId: SkillIds.AttackBasic);
+            ApplyResourceChanges(result, charId, isCasterPlayer: true, skillId: SkillIds.AttackBasic);
 
             // Phase 2 & 2.7: 产生资源 / Generate resource
             if (_playerResources.TryGetValue(charId, out var resources))
@@ -496,8 +496,8 @@ namespace BlazorIdle.Game
                     // Phase 6: 处理 Buff 操作、即时治疗和资源变化（AOE特殊技能）
                     // Phase 6: Process buff operations, instant heal, and resource changes (AOE special)
                     ProcessBuffOperations(result, charId, enemyId, isCasterPlayer: true);
-                    ApplyInstantHeal(result, charId, enemyId, isCasterPlayer: true);
-                    ApplyResourceChanges(result, charId, isCasterPlayer: true);
+                    ApplyInstantHeal(result, charId, enemyId, isCasterPlayer: true, skillId: SkillIds.SpecialPulse);
+                    ApplyResourceChanges(result, charId, isCasterPlayer: true, skillId: SkillIds.SpecialPulse);
                 }
             }
             else
@@ -533,8 +533,8 @@ namespace BlazorIdle.Game
                 // Phase 6: 处理 Buff 操作、即时治疗和资源变化（单体特殊技能）
                 // Phase 6: Process buff operations, instant heal, and resource changes (single target special)
                 ProcessBuffOperations(result, charId, targetId, isCasterPlayer: true);
-                ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true);
-                ApplyResourceChanges(result, charId, isCasterPlayer: true);
+                ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true, skillId: SkillIds.SpecialPulse);
+                ApplyResourceChanges(result, charId, isCasterPlayer: true, skillId: SkillIds.SpecialPulse);
             }
         }
 
@@ -669,8 +669,8 @@ namespace BlazorIdle.Game
             // Phase 6: 处理 Buff 操作、即时治疗和资源变化（敌人攻击）
             // Phase 6: Process buff operations, instant heal, and resource changes (enemy attack)
             ProcessBuffOperations(result, enemyId, targetId, isCasterPlayer: false);
-            ApplyInstantHeal(result, enemyId, targetId, isCasterPlayer: false);
-            ApplyResourceChanges(result, enemyId, isCasterPlayer: false);
+            ApplyInstantHeal(result, enemyId, targetId, isCasterPlayer: false, skillId: SkillIds.EnemyAttackBasic);
+            ApplyResourceChanges(result, enemyId, isCasterPlayer: false, skillId: SkillIds.EnemyAttackBasic);
         }
 
         /// <summary>
@@ -826,6 +826,151 @@ namespace BlazorIdle.Game
         }
 
         /// <summary>
+        /// Phase 7: 记录 Buff 应用事件
+        /// Phase 7: Record buff apply event
+        /// </summary>
+        private void RecordBuffApply(
+            string ownerId,
+            string buffId,
+            Buffs.BuffKind kind,
+            double? durationSec,
+            int stacks,
+            string effectsSummary,
+            string? sourceSkillId = null,
+            string? bundleId = null)
+        {
+            if (_combatConfig.EmitCastEvents)
+            {
+                var evt = new Buffs.BuffApplyEvent
+                {
+                    TimeMs = _clock.NowMs,
+                    OwnerId = ownerId,
+                    BuffId = buffId,
+                    Kind = kind,
+                    DurationSec = durationSec,
+                    Stacks = stacks,
+                    EffectsSummary = effectsSummary,
+                    SourceSkillId = sourceSkillId,
+                    BundleId = bundleId,
+                    Attacker = ActorType.Player,
+                    Defender = ActorType.Player,
+                    Source = EventSource.Attack,
+                    Damage = 0,
+                    Crit = false,
+                    RngIndexAfter = _rng.Index,
+                    DefenderHpAfter = 0
+                };
+
+                var flushed = _aggregator.AddEvent(evt);
+                if (flushed != null) _segments.Add(flushed);
+            }
+        }
+
+        /// <summary>
+        /// Phase 7: 记录 Buff 移除事件
+        /// Phase 7: Record buff remove event
+        /// </summary>
+        private void RecordBuffRemove(
+            string ownerId,
+            string buffId,
+            string reason,
+            string? bundleId = null)
+        {
+            if (_combatConfig.EmitCastEvents)
+            {
+                var evt = new Buffs.BuffRemoveEvent
+                {
+                    TimeMs = _clock.NowMs,
+                    OwnerId = ownerId,
+                    BuffId = buffId,
+                    Reason = reason,
+                    BundleId = bundleId,
+                    Attacker = ActorType.Player,
+                    Defender = ActorType.Player,
+                    Source = EventSource.Attack,
+                    Damage = 0,
+                    Crit = false,
+                    RngIndexAfter = _rng.Index,
+                    DefenderHpAfter = 0
+                };
+
+                var flushed = _aggregator.AddEvent(evt);
+                if (flushed != null) _segments.Add(flushed);
+            }
+        }
+
+        /// <summary>
+        /// Phase 7: 记录 Buff Tick 事件
+        /// Phase 7: Record buff tick event
+        /// </summary>
+        private void RecordBuffTick(
+            string ownerId,
+            string buffId,
+            Buffs.BuffTickType tickType,
+            int amount,
+            int resultingHp,
+            string? bundleId = null)
+        {
+            if (_combatConfig.EmitCastEvents)
+            {
+                var evt = new Buffs.BuffTickEvent
+                {
+                    TimeMs = _clock.NowMs,
+                    OwnerId = ownerId,
+                    BuffId = buffId,
+                    TickType = tickType,
+                    Amount = amount,
+                    ResultingHp = resultingHp,
+                    BundleId = bundleId,
+                    Attacker = ActorType.Player,
+                    Defender = ActorType.Player,
+                    Source = EventSource.Attack,
+                    Damage = 0,
+                    Crit = false,
+                    RngIndexAfter = _rng.Index,
+                    DefenderHpAfter = 0
+                };
+
+                var flushed = _aggregator.AddEvent(evt);
+                if (flushed != null) _segments.Add(flushed);
+            }
+        }
+
+        /// <summary>
+        /// Phase 7: 记录治疗事件
+        /// Phase 7: Record heal event
+        /// </summary>
+        private void RecordHeal(
+            string ownerId,
+            int amount,
+            int resultingHp,
+            string healSource,
+            string? bundleId = null)
+        {
+            if (_combatConfig.EmitCastEvents)
+            {
+                var evt = new Buffs.HealEvent
+                {
+                    TimeMs = _clock.NowMs,
+                    OwnerId = ownerId,
+                    Amount = amount,
+                    ResultingHp = resultingHp,
+                    BundleId = bundleId,
+                    Source = healSource,  // HealEvent's own Source property
+                    Attacker = ActorType.Player,
+                    Defender = ActorType.Player,
+                    Damage = 0,
+                    Crit = false,
+                    RngIndexAfter = _rng.Index,
+                    DefenderHpAfter = 0
+                };
+
+                var flushed = _aggregator.AddEvent(evt);
+                if (flushed != null) _segments.Add(flushed);
+            }
+        }
+
+        /// <summary>
         /// 选择敌人目标
         /// Select enemy target
         /// </summary>
@@ -944,8 +1089,16 @@ namespace BlazorIdle.Game
                         var damageMeta = new Buffs.DamageMeta("dot_tick", buff.Id);
                         buffOwner.ReceiveDamage(totalDamage, damageMeta);
                         
-                        // TODO: 记录 BuffTickEvent 到战斗段落
-                        // TODO: Record BuffTickEvent to combat segment
+                        // Phase 7: 记录 BuffTickEvent (DoT)
+                        // Phase 7: Record BuffTickEvent (DoT)
+                        RecordBuffTick(
+                            ownerId: buffOwner.Id,
+                            buffId: buff.Id,
+                            tickType: Buffs.BuffTickType.DamageOverTime,
+                            amount: totalDamage,
+                            resultingHp: buffOwner.CurrentHp,
+                            bundleId: null
+                        );
                     }
                     
                     if (buff.HasHealOverTime())
@@ -956,8 +1109,16 @@ namespace BlazorIdle.Game
                         var healMeta = new Buffs.HealMeta("hot_tick", buff.Id);
                         buffOwner.ReceiveHeal(totalHeal, healMeta);
                         
-                        // TODO: 记录 BuffTickEvent 到战斗段落
-                        // TODO: Record BuffTickEvent to combat segment
+                        // Phase 7: 记录 BuffTickEvent (HoT)
+                        // Phase 7: Record BuffTickEvent (HoT)
+                        RecordBuffTick(
+                            ownerId: buffOwner.Id,
+                            buffId: buff.Id,
+                            tickType: Buffs.BuffTickType.HealOverTime,
+                            amount: totalHeal,
+                            resultingHp: buffOwner.CurrentHp,
+                            bundleId: null
+                        );
                     }
                 }
                 
@@ -975,8 +1136,14 @@ namespace BlazorIdle.Game
             {
                 buffOwner.RemoveBuff(buffId, "expired");
                 
-                // TODO: 记录 BuffRemoveEvent 到战斗段落
-                // TODO: Record BuffRemoveEvent to combat segment
+                // Phase 7: 记录 BuffRemoveEvent (过期)
+                // Phase 7: Record BuffRemoveEvent (expired)
+                RecordBuffRemove(
+                    ownerId: buffOwner.Id,
+                    buffId: buffId,
+                    reason: "expired",
+                    bundleId: null
+                );
             }
         }
 
@@ -993,15 +1160,18 @@ namespace BlazorIdle.Game
             if (result.BuffOperations == null || result.BuffOperations.Count == 0)
                 return;
 
+            // Pass bundleId from result to buff operations
+            string? bundleId = result.BundleId;
+
             foreach (var operation in result.BuffOperations)
             {
                 if (operation.Type == Skills.BuffOperationType.Apply)
                 {
-                    ApplyBuffOperation(operation, casterId, targetId, isCasterPlayer);
+                    ApplyBuffOperation(operation, casterId, targetId, isCasterPlayer, bundleId);
                 }
                 else if (operation.Type == Skills.BuffOperationType.Remove)
                 {
-                    RemoveBuffOperation(operation, casterId, targetId, isCasterPlayer);
+                    RemoveBuffOperation(operation, casterId, targetId, isCasterPlayer, bundleId);
                 }
             }
         }
@@ -1014,7 +1184,8 @@ namespace BlazorIdle.Game
             Skills.BuffOperation operation,
             string casterId,
             string? targetId,
-            bool isCasterPlayer)
+            bool isCasterPlayer,
+            string? bundleId = null)
         {
             if (operation.BuffTemplate == null)
                 return;
@@ -1029,23 +1200,38 @@ namespace BlazorIdle.Game
                 // Clone buff template and set OwnerId
                 // Phase 6 Fix: Store original duration separately for proper cloning
                 // BuffTemplate should have full duration, not remaining
+                // Critical fix: Deep copy Effects list to avoid shared references
+                // Method B: Set AppliedAtMs for time-ordered stacking
                 var buffToApply = new Buffs.BuffInstance(
                     id: operation.BuffTemplate.Id,
                     ownerId: target.Id, // Phase 6: 设置正确的 OwnerId
                     kind: operation.BuffTemplate.Kind,
-                    effects: operation.BuffTemplate.Effects,
+                    effects: new List<Buffs.BuffEffect>(operation.BuffTemplate.Effects), // Deep copy
                     stackingPolicy: operation.BuffTemplate.StackingPolicy,
                     durationSec: operation.BuffTemplate.RemainingDurationSec, // Use template's duration
                     tickIntervalSec: operation.BuffTemplate.TickIntervalSec,
-                    maxStacks: operation.BuffTemplate.MaxStacks
+                    maxStacks: operation.BuffTemplate.MaxStacks,
+                    appliedAtMs: _clock.NowMs // Set application timestamp for time-ordered stacking
                 );
 
                 // 应用 buff
                 // Apply buff
                 target.ApplyBuff(buffToApply);
 
-                // TODO: 记录 BuffApplyEvent 到战斗段落
-                // TODO: Record BuffApplyEvent to combat segment
+                // Phase 7: 记录 BuffApplyEvent
+                // Phase 7: Record BuffApplyEvent
+                string effectsSummary = string.Join(", ", buffToApply.Effects.Select(e => 
+                    $"{e.Type}={e.Value}"));
+                RecordBuffApply(
+                    ownerId: target.Id,
+                    buffId: buffToApply.Id,
+                    kind: buffToApply.Kind,
+                    durationSec: buffToApply.RemainingDurationSec,
+                    stacks: buffToApply.Stacks,
+                    effectsSummary: effectsSummary,
+                    sourceSkillId: operation.BuffTemplate.SourceSkillId,
+                    bundleId: bundleId // Fix: Pass bundleId from skill cast context
+                );
             }
         }
 
@@ -1057,7 +1243,8 @@ namespace BlazorIdle.Game
             Skills.BuffOperation operation,
             string casterId,
             string? targetId,
-            bool isCasterPlayer)
+            bool isCasterPlayer,
+            string? bundleId = null)
         {
             if (string.IsNullOrEmpty(operation.BuffIdToRemove))
                 return;
@@ -1068,16 +1255,24 @@ namespace BlazorIdle.Game
 
             foreach (var target in targets)
             {
-                target.RemoveBuff(operation.BuffIdToRemove, operation.Reason ?? "skill_effect");
+                string reason = operation.Reason ?? "skill_effect";
+                target.RemoveBuff(operation.BuffIdToRemove, reason);
 
-                // TODO: 记录 BuffRemoveEvent 到战斗段落
-                // TODO: Record BuffRemoveEvent to combat segment
+                // Phase 7: 记录 BuffRemoveEvent
+                // Phase 7: Record BuffRemoveEvent
+                RecordBuffRemove(
+                    ownerId: target.Id,
+                    buffId: operation.BuffIdToRemove,
+                    reason: reason,
+                    bundleId: bundleId // Fix: Pass bundleId from skill cast context
+                );
             }
         }
 
         /// <summary>
         /// Phase 6: 解析 Buff 目标
         /// Phase 6: Resolve buff targets
+        /// Phase 7.9: Added diagnostic logging for target resolution failures
         /// </summary>
         private List<Buffs.IBuffOwner> ResolveBuffTargets(
             Skills.BuffTarget targetType,
@@ -1096,11 +1291,15 @@ namespace BlazorIdle.Game
                     {
                         if (_playerBuffOwners.TryGetValue(casterId, out var playerOwner))
                             targets.Add(playerOwner);
+                        else
+                            LogTargetResolutionFailure(targetType, casterId, isCasterPlayer, "Player buff owner not found");
                     }
                     else
                     {
                         if (_enemyBuffOwners.TryGetValue(casterId, out var enemyOwner))
                             targets.Add(enemyOwner);
+                        else
+                            LogTargetResolutionFailure(targetType, casterId, isCasterPlayer, "Enemy buff owner not found");
                     }
                     break;
 
@@ -1115,6 +1314,8 @@ namespace BlazorIdle.Game
                             // Player casts, target is enemy
                             if (_enemyBuffOwners.TryGetValue(primaryTargetId, out var enemyOwner))
                                 targets.Add(enemyOwner);
+                            else
+                                LogTargetResolutionFailure(targetType, primaryTargetId, isCasterPlayer, "Enemy target not found");
                         }
                         else
                         {
@@ -1122,7 +1323,13 @@ namespace BlazorIdle.Game
                             // Enemy casts, target is player
                             if (_playerBuffOwners.TryGetValue(primaryTargetId, out var playerOwner))
                                 targets.Add(playerOwner);
+                            else
+                                LogTargetResolutionFailure(targetType, primaryTargetId, isCasterPlayer, "Player target not found");
                         }
+                    }
+                    else
+                    {
+                        LogTargetResolutionFailure(targetType, casterId, isCasterPlayer, "Primary target ID is null or empty");
                     }
                     break;
 
@@ -1258,7 +1465,36 @@ namespace BlazorIdle.Game
                     break;
             }
 
+            // Phase 7.9: Log warning if no targets were resolved
+            if (targets.Count == 0)
+            {
+                LogTargetResolutionFailure(targetType, casterId, isCasterPlayer, "No valid targets found after resolution");
+            }
+
             return targets;
+        }
+
+        /// <summary>
+        /// Phase 7.9: 记录目标解析失败的诊断信息
+        /// Phase 7.9: Log diagnostic information for target resolution failures
+        /// </summary>
+        private void LogTargetResolutionFailure(
+            Skills.BuffTarget targetType,
+            string entityId,
+            bool isCasterPlayer,
+            string reason)
+        {
+            // 使用 System.Diagnostics 进行诊断输出
+            // Use System.Diagnostics for diagnostic output
+            // 在生产环境中，这可以替换为更完善的日志系统
+            // In production, this can be replaced with a more robust logging system
+            System.Diagnostics.Debug.WriteLine(
+                $"[MultiBattle] Target resolution failed: " +
+                $"TargetType={targetType}, " +
+                $"EntityId={entityId}, " +
+                $"IsCasterPlayer={isCasterPlayer}, " +
+                $"Reason={reason}, " +
+                $"Time={_clock.NowMs}ms");
         }
 
         /// <summary>
@@ -1269,7 +1505,8 @@ namespace BlazorIdle.Game
             SkillCastResult result,
             string casterId,
             string? targetId,
-            bool isCasterPlayer)
+            bool isCasterPlayer,
+            string? skillId = null)
         {
             if (result.InstantHeal <= 0)
                 return;
@@ -1292,10 +1529,18 @@ namespace BlazorIdle.Game
             if (target != null)
             {
                 var healMeta = new Buffs.HealMeta("instant_heal", "skill_cast");
-                target.ReceiveHeal(result.InstantHeal, healMeta);
+                int healAmount = result.InstantHeal;
+                target.ReceiveHeal(healAmount, healMeta);
 
-                // TODO: 记录 HealEvent 到战斗段落
-                // TODO: Record HealEvent to combat segment
+                // Phase 7: 记录 HealEvent
+                // Phase 7: Record HealEvent
+                RecordHeal(
+                    ownerId: target.Id,
+                    amount: healAmount,
+                    resultingHp: target.CurrentHp,
+                    healSource: skillId ?? "unknown_skill",
+                    bundleId: result.BundleId
+                );
             }
         }
 
@@ -1306,7 +1551,8 @@ namespace BlazorIdle.Game
         private void ApplyResourceChanges(
             SkillCastResult result,
             string casterId,
-            bool isCasterPlayer)
+            bool isCasterPlayer,
+            string? skillId = null)
         {
             if (result.ResourceChanges == null || result.ResourceChanges.Count == 0)
                 return;
@@ -1331,17 +1577,36 @@ namespace BlazorIdle.Game
                 
                 // 应用资源变化（正数为增加，负数为消耗）
                 // Apply resource change (positive = gain, negative = cost)
+                string reason;
+                int actualChange;
+                
                 if (amount > 0)
                 {
-                    bucket.Gain(amount, "skill_resource_gain");
+                    actualChange = bucket.Gain(amount, "skill_resource_gain");
+                    reason = "skill_resource_gain";
                 }
                 else if (amount < 0)
                 {
                     bucket.ForceConsume(-amount, "skill_resource_cost"); // Convert negative to positive for ForceConsume
+                    actualChange = amount; // Negative for cost
+                    reason = "skill_resource_cost";
+                }
+                else
+                {
+                    continue; // Skip zero changes
                 }
 
-                // TODO: 记录 ResourceChangeEvent 到战斗段落
-                // TODO: Record ResourceChangeEvent to combat segment
+                // Phase 7: 记录 ResourceGainEvent (包括消耗)
+                // Phase 7: Record ResourceGainEvent (includes costs as negative)
+                RecordResourceGain(
+                    actorId: casterId,
+                    bucketId: resourceId,
+                    delta: actualChange,
+                    newValue: bucket.Current,
+                    reason: reason,
+                    skillId: skillId,
+                    bundleId: result.BundleId
+                );
             }
         }
 

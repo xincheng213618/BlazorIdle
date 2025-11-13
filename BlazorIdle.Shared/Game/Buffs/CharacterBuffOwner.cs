@@ -37,7 +37,11 @@ namespace BlazorIdle.Game.Buffs
         public int CurrentHp => _character.Hp;
         public int MaxHp => _character.MaxHp;
         public ResourceBucketCollection? Buckets => _resources;
-        public Dictionary<string, BuffInstance> Buffs => _buffs;
+        
+        /// <summary>
+        /// Phase 7.11: Return read-only view to prevent external modification.
+        /// </summary>
+        public IReadOnlyDictionary<string, BuffInstance> Buffs => _buffs;
 
         public void ApplyBuff(BuffInstance buff)
         {
