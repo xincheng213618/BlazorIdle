@@ -35,6 +35,10 @@ namespace BlazorIdle.Game
         // Phase 2.7: 职业资源配置映射 / Profession resource configuration map
         private readonly Dictionary<string, Shared.Models.ProfessionResourceConfig>? _professionResourceConfigs;
         
+        // Phase 4: Buff 系统 / Buff system
+        private readonly Dictionary<string, Buffs.CharacterBuffOwner> _playerBuffOwners = new();
+        private readonly Dictionary<string, Buffs.EnemyBuffOwner> _enemyBuffOwners = new();
+        
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
         // Current implementation directly uses TrackState + SkillResolver for better clarity.
@@ -165,6 +169,12 @@ namespace BlazorIdle.Game
                 // 初始化统计
                 _damageDealtByCharacter[member.Id] = 0;
                 _damageTakenByCharacter[member.Id] = 0;
+                
+                // Phase 4: 创建 Buff 所有者 / Create buff owner
+                _playerBuffOwners[member.Id] = new Buffs.CharacterBuffOwner(
+                    character,
+                    member.Id,
+                    _playerResources[member.Id]);
             }
 
             // 为每个怪物初始化攻击轨道
@@ -176,6 +186,9 @@ namespace BlazorIdle.Game
 
                 // 初始化统计
                 _damageDealtByEnemy[member.Id] = 0;
+                
+                // Phase 4: 创建 Buff 所有者 / Create buff owner
+                _enemyBuffOwners[member.Id] = new Buffs.EnemyBuffOwner(enemy, member.Id);
             }
         }
 
@@ -287,6 +300,14 @@ namespace BlazorIdle.Game
             // 检查战斗结束条件
             if (_state == MultiBattleState.Fighting)
             {
+                // Phase 4: 处理 Buff tick（在行动处理之前）
+                // Phase 4: Process buff ticks (before action processing)
+                double deltaTimeSec = _lastTickTime > 0 ? (now - _lastTickTime) / 1000.0 : 0;
+                if (deltaTimeSec > 0)
+                {
+                    ProcessBuffTicks(deltaTimeSec);
+                }
+                
                 // 处理角色行动
                 ProcessCharacterActions(now);
 
@@ -357,8 +378,8 @@ namespace BlazorIdle.Game
             var target = _enemyTeam.GetMember(targetId);
             if (member == null || target == null) return;
 
-            // 创建战斗上下文（Phase 2: 添加资源引用）
-            // Create battle context (Phase 2: Add resource reference)
+            // 创建战斗上下文（Phase 2: 添加资源引用，Phase 4: 添加 Buff 所有者）
+            // Create battle context (Phase 2: Add resource reference, Phase 4: Add buff owners)
             var ctx = new BattleContext
             {
                 Player = character,
@@ -367,7 +388,9 @@ namespace BlazorIdle.Game
                 EnemyTeam = _enemyTeam,
                 Rng = _rng,
                 Clock = _clock,
-                PlayerResources = _playerResources.GetValueOrDefault(charId)
+                PlayerResources = _playerResources.GetValueOrDefault(charId),
+                PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(charId),
+                EnemyBuffOwners = _enemyBuffOwners
             };
 
             // 使用 SkillResolver 计算伤害
@@ -379,6 +402,12 @@ namespace BlazorIdle.Game
             // Apply damage (pass crit information, skill ID and bundle ID)
             ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Attack, 
                 isAoe: false, isCrit: result.IsCrit, skillId: SkillIds.AttackBasic, bundleId: result.BundleId);
+
+            // Phase 6: 处理 Buff 操作、即时治疗和资源变化
+            // Phase 6: Process buff operations, instant heal, and resource changes
+            ProcessBuffOperations(result, charId, targetId, isCasterPlayer: true);
+            ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true);
+            ApplyResourceChanges(result, charId, isCasterPlayer: true);
 
             // Phase 2 & 2.7: 产生资源 / Generate resource
             if (_playerResources.TryGetValue(charId, out var resources))
@@ -442,7 +471,7 @@ namespace BlazorIdle.Game
                     var target = _enemyTeam.GetMember(enemyId);
                     if (target == null) continue;
 
-                    // 创建战斗上下文
+                    // 创建战斗上下文（Phase 4: 添加 Buff 所有者）
                     var ctx = new BattleContext
                     {
                         Player = character,
@@ -450,7 +479,10 @@ namespace BlazorIdle.Game
                         PlayerTeam = _playerTeam,
                         EnemyTeam = _enemyTeam,
                         Rng = _rng,
-                        Clock = _clock
+                        Clock = _clock,
+                        PlayerResources = _playerResources.GetValueOrDefault(charId),
+                        PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(charId),
+                        EnemyBuffOwners = _enemyBuffOwners
                     };
 
                     // 使用 SkillResolver 计算伤害（应用 AOE 倍率）
@@ -460,6 +492,12 @@ namespace BlazorIdle.Game
 
                     ApplyDamageToEnemy(charId, member, enemyId, target, damage, EventSource.Special, 
                         isAoe: true, isCrit: result.IsCrit, skillId: SkillIds.SpecialPulse, bundleId: result.BundleId);
+                    
+                    // Phase 6: 处理 Buff 操作、即时治疗和资源变化（AOE特殊技能）
+                    // Phase 6: Process buff operations, instant heal, and resource changes (AOE special)
+                    ProcessBuffOperations(result, charId, enemyId, isCasterPlayer: true);
+                    ApplyInstantHeal(result, charId, enemyId, isCasterPlayer: true);
+                    ApplyResourceChanges(result, charId, isCasterPlayer: true);
                 }
             }
             else
@@ -471,7 +509,7 @@ namespace BlazorIdle.Game
                 var target = _enemyTeam.GetMember(targetId);
                 if (target == null) return;
 
-                // 创建战斗上下文
+                // 创建战斗上下文（Phase 4: 添加 Buff 所有者）
                 var ctx = new BattleContext
                 {
                     Player = character,
@@ -479,7 +517,10 @@ namespace BlazorIdle.Game
                     PlayerTeam = _playerTeam,
                     EnemyTeam = _enemyTeam,
                     Rng = _rng,
-                    Clock = _clock
+                    Clock = _clock,
+                    PlayerResources = _playerResources.GetValueOrDefault(charId),
+                    PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(charId),
+                    EnemyBuffOwners = _enemyBuffOwners
                 };
 
                 // 使用 SkillResolver 计算伤害
@@ -488,6 +529,12 @@ namespace BlazorIdle.Game
 
                 ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Special, 
                     isAoe: false, isCrit: result.IsCrit, skillId: SkillIds.SpecialPulse, bundleId: result.BundleId);
+                
+                // Phase 6: 处理 Buff 操作、即时治疗和资源变化（单体特殊技能）
+                // Phase 6: Process buff operations, instant heal, and resource changes (single target special)
+                ProcessBuffOperations(result, charId, targetId, isCasterPlayer: true);
+                ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true);
+                ApplyResourceChanges(result, charId, isCasterPlayer: true);
             }
         }
 
@@ -594,8 +641,8 @@ namespace BlazorIdle.Game
             var target = _playerTeam.GetMember(targetId);
             if (member == null || target == null) return;
 
-            // 创建战斗上下文
-            // Create battle context
+            // 创建战斗上下文（Phase 4: 添加 Buff 所有者）
+            // Create battle context (Phase 4: Add buff owners)
             var ctx = new BattleContext
             {
                 Enemy = enemy,
@@ -603,7 +650,10 @@ namespace BlazorIdle.Game
                 PlayerTeam = _playerTeam,
                 EnemyTeam = _enemyTeam,
                 Rng = _rng,
-                Clock = _clock
+                Clock = _clock,
+                PlayerResources = _playerResources.GetValueOrDefault(targetId),
+                PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(targetId),
+                EnemyBuffOwners = _enemyBuffOwners
             };
 
             // 使用 SkillResolver 计算伤害
@@ -615,6 +665,12 @@ namespace BlazorIdle.Game
             // Apply damage (pass skill ID and bundle ID)
             ApplyDamageToPlayer(enemyId, member, targetId, target, result.DamageDealt, 
                 skillId: SkillIds.EnemyAttackBasic, bundleId: result.BundleId);
+            
+            // Phase 6: 处理 Buff 操作、即时治疗和资源变化（敌人攻击）
+            // Phase 6: Process buff operations, instant heal, and resource changes (enemy attack)
+            ProcessBuffOperations(result, enemyId, targetId, isCasterPlayer: false);
+            ApplyInstantHeal(result, enemyId, targetId, isCasterPlayer: false);
+            ApplyResourceChanges(result, enemyId, isCasterPlayer: false);
         }
 
         /// <summary>
@@ -824,6 +880,472 @@ namespace BlazorIdle.Game
         }
 
         /// <summary>
+        /// 处理 Buff tick（Phase 4）
+        /// Process buff ticks (Phase 4)
+        /// </summary>
+        private void ProcessBuffTicks(double deltaTimeSec)
+        {
+            // 处理玩家 Buff
+            // Process player buffs
+            foreach (var kvp in _playerBuffOwners)
+            {
+                var charId = kvp.Key;
+                var buffOwner = kvp.Value;
+                
+                // 获取角色成员
+                var member = _playerTeam.GetMember(charId);
+                if (member == null || member.IsDead) continue;
+                
+                ProcessEntityBuffs(buffOwner, deltaTimeSec);
+            }
+            
+            // 处理敌人 Buff
+            // Process enemy buffs
+            foreach (var kvp in _enemyBuffOwners)
+            {
+                var enemyId = kvp.Key;
+                var buffOwner = kvp.Value;
+                
+                // 获取敌人成员
+                var member = _enemyTeam.GetMember(enemyId);
+                if (member == null || member.IsDead) continue;
+                
+                ProcessEntityBuffs(buffOwner, deltaTimeSec);
+            }
+        }
+
+        /// <summary>
+        /// 处理单个实体的 Buff（Phase 4）
+        /// Process buffs for a single entity (Phase 4)
+        /// </summary>
+        private void ProcessEntityBuffs(Buffs.IBuffOwner buffOwner, double deltaTimeSec)
+        {
+            // 收集过期的 Buff
+            // Collect expired buffs
+            var expiredBuffs = new List<string>();
+            
+            foreach (var kvp in buffOwner.Buffs)
+            {
+                var buff = kvp.Value;
+                
+                // Tick buff（返回触发的 tick 次数）
+                // Tick buff (returns number of ticks triggered)
+                int tickCount = buff.Tick(deltaTimeSec);
+                
+                // 处理 DoT/HoT
+                // Process DoT/HoT
+                if (tickCount > 0)
+                {
+                    if (buff.HasDamageOverTime())
+                    {
+                        int damagePerTick = buff.GetDamagePerTick();
+                        int totalDamage = damagePerTick * tickCount;
+                        
+                        var damageMeta = new Buffs.DamageMeta("dot_tick", buff.Id);
+                        buffOwner.ReceiveDamage(totalDamage, damageMeta);
+                        
+                        // TODO: 记录 BuffTickEvent 到战斗段落
+                        // TODO: Record BuffTickEvent to combat segment
+                    }
+                    
+                    if (buff.HasHealOverTime())
+                    {
+                        int healPerTick = buff.GetHealPerTick();
+                        int totalHeal = healPerTick * tickCount;
+                        
+                        var healMeta = new Buffs.HealMeta("hot_tick", buff.Id);
+                        buffOwner.ReceiveHeal(totalHeal, healMeta);
+                        
+                        // TODO: 记录 BuffTickEvent 到战斗段落
+                        // TODO: Record BuffTickEvent to combat segment
+                    }
+                }
+                
+                // 检查是否过期
+                // Check if expired
+                if (buff.IsExpired())
+                {
+                    expiredBuffs.Add(buff.Id);
+                }
+            }
+            
+            // 移除过期的 Buff
+            // Remove expired buffs
+            foreach (var buffId in expiredBuffs)
+            {
+                buffOwner.RemoveBuff(buffId, "expired");
+                
+                // TODO: 记录 BuffRemoveEvent 到战斗段落
+                // TODO: Record BuffRemoveEvent to combat segment
+            }
+        }
+
+        /// <summary>
+        /// Phase 6: 处理技能释放结果中的 Buff 操作
+        /// Phase 6: Process buff operations from skill cast result
+        /// </summary>
+        private void ProcessBuffOperations(
+            SkillCastResult result,
+            string casterId,
+            string? targetId,
+            bool isCasterPlayer)
+        {
+            if (result.BuffOperations == null || result.BuffOperations.Count == 0)
+                return;
+
+            foreach (var operation in result.BuffOperations)
+            {
+                if (operation.Type == Skills.BuffOperationType.Apply)
+                {
+                    ApplyBuffOperation(operation, casterId, targetId, isCasterPlayer);
+                }
+                else if (operation.Type == Skills.BuffOperationType.Remove)
+                {
+                    RemoveBuffOperation(operation, casterId, targetId, isCasterPlayer);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Phase 6: 应用 Buff 操作
+        /// Phase 6: Apply buff operation
+        /// </summary>
+        private void ApplyBuffOperation(
+            Skills.BuffOperation operation,
+            string casterId,
+            string? targetId,
+            bool isCasterPlayer)
+        {
+            if (operation.BuffTemplate == null)
+                return;
+
+            // 解析目标列表
+            // Resolve target list
+            var targets = ResolveBuffTargets(operation.Target, casterId, targetId, isCasterPlayer);
+
+            foreach (var target in targets)
+            {
+                // 克隆 buff 模板并设置 OwnerId
+                // Clone buff template and set OwnerId
+                // Phase 6 Fix: Store original duration separately for proper cloning
+                // BuffTemplate should have full duration, not remaining
+                var buffToApply = new Buffs.BuffInstance(
+                    id: operation.BuffTemplate.Id,
+                    ownerId: target.Id, // Phase 6: 设置正确的 OwnerId
+                    kind: operation.BuffTemplate.Kind,
+                    effects: operation.BuffTemplate.Effects,
+                    stackingPolicy: operation.BuffTemplate.StackingPolicy,
+                    durationSec: operation.BuffTemplate.RemainingDurationSec, // Use template's duration
+                    tickIntervalSec: operation.BuffTemplate.TickIntervalSec,
+                    maxStacks: operation.BuffTemplate.MaxStacks
+                );
+
+                // 应用 buff
+                // Apply buff
+                target.ApplyBuff(buffToApply);
+
+                // TODO: 记录 BuffApplyEvent 到战斗段落
+                // TODO: Record BuffApplyEvent to combat segment
+            }
+        }
+
+        /// <summary>
+        /// Phase 6: 移除 Buff 操作
+        /// Phase 6: Remove buff operation
+        /// </summary>
+        private void RemoveBuffOperation(
+            Skills.BuffOperation operation,
+            string casterId,
+            string? targetId,
+            bool isCasterPlayer)
+        {
+            if (string.IsNullOrEmpty(operation.BuffIdToRemove))
+                return;
+
+            // 解析目标列表
+            // Resolve target list
+            var targets = ResolveBuffTargets(operation.Target, casterId, targetId, isCasterPlayer);
+
+            foreach (var target in targets)
+            {
+                target.RemoveBuff(operation.BuffIdToRemove, operation.Reason ?? "skill_effect");
+
+                // TODO: 记录 BuffRemoveEvent 到战斗段落
+                // TODO: Record BuffRemoveEvent to combat segment
+            }
+        }
+
+        /// <summary>
+        /// Phase 6: 解析 Buff 目标
+        /// Phase 6: Resolve buff targets
+        /// </summary>
+        private List<Buffs.IBuffOwner> ResolveBuffTargets(
+            Skills.BuffTarget targetType,
+            string casterId,
+            string? primaryTargetId,
+            bool isCasterPlayer)
+        {
+            var targets = new List<Buffs.IBuffOwner>();
+
+            switch (targetType)
+            {
+                case Skills.BuffTarget.Self:
+                    // 施法者自己
+                    // Caster itself
+                    if (isCasterPlayer)
+                    {
+                        if (_playerBuffOwners.TryGetValue(casterId, out var playerOwner))
+                            targets.Add(playerOwner);
+                    }
+                    else
+                    {
+                        if (_enemyBuffOwners.TryGetValue(casterId, out var enemyOwner))
+                            targets.Add(enemyOwner);
+                    }
+                    break;
+
+                case Skills.BuffTarget.Target:
+                    // 主要目标
+                    // Primary target
+                    if (!string.IsNullOrEmpty(primaryTargetId))
+                    {
+                        if (isCasterPlayer)
+                        {
+                            // 玩家施法，目标是敌人
+                            // Player casts, target is enemy
+                            if (_enemyBuffOwners.TryGetValue(primaryTargetId, out var enemyOwner))
+                                targets.Add(enemyOwner);
+                        }
+                        else
+                        {
+                            // 敌人施法，目标是玩家
+                            // Enemy casts, target is player
+                            if (_playerBuffOwners.TryGetValue(primaryTargetId, out var playerOwner))
+                                targets.Add(playerOwner);
+                        }
+                    }
+                    break;
+
+                case Skills.BuffTarget.AllEnemies:
+                    // 所有敌人
+                    // All enemies
+                    if (isCasterPlayer)
+                    {
+                        // 玩家施法，目标是所有存活的敌人
+                        // Player casts, targets are all alive enemies
+                        foreach (var enemyId in _enemyTeam.GetAliveMemberIds())
+                        {
+                            if (_enemyBuffOwners.TryGetValue(enemyId, out var enemyOwner))
+                                targets.Add(enemyOwner);
+                        }
+                    }
+                    else
+                    {
+                        // 敌人施法，目标是所有存活的玩家
+                        // Enemy casts, targets are all alive players
+                        foreach (var playerId in _playerTeam.GetAliveMemberIds())
+                        {
+                            if (_playerBuffOwners.TryGetValue(playerId, out var playerOwner))
+                                targets.Add(playerOwner);
+                        }
+                    }
+                    break;
+
+                case Skills.BuffTarget.AllAllies:
+                    // 所有队友（包括自己）
+                    // All allies (including self)
+                    if (isCasterPlayer)
+                    {
+                        // 玩家施法，目标是所有存活的玩家
+                        // Player casts, targets are all alive players
+                        foreach (var playerId in _playerTeam.GetAliveMemberIds())
+                        {
+                            if (_playerBuffOwners.TryGetValue(playerId, out var playerOwner))
+                                targets.Add(playerOwner);
+                        }
+                    }
+                    else
+                    {
+                        // 敌人施法，目标是所有存活的敌人
+                        // Enemy casts, targets are all alive enemies
+                        foreach (var enemyId in _enemyTeam.GetAliveMemberIds())
+                        {
+                            if (_enemyBuffOwners.TryGetValue(enemyId, out var enemyOwner))
+                                targets.Add(enemyOwner);
+                        }
+                    }
+                    break;
+
+                case Skills.BuffTarget.RandomEnemy:
+                    // 随机敌人
+                    // Random enemy
+                    if (isCasterPlayer)
+                    {
+                        var aliveEnemies = _enemyTeam.GetAliveMemberIds().ToList();
+                        if (aliveEnemies.Count > 0)
+                        {
+                            var randomIndex = _rng.NextRange(0, aliveEnemies.Count - 1);
+                            var randomId = aliveEnemies[randomIndex];
+                            if (_enemyBuffOwners.TryGetValue(randomId, out var enemyOwner))
+                                targets.Add(enemyOwner);
+                        }
+                    }
+                    else
+                    {
+                        var alivePlayers = _playerTeam.GetAliveMemberIds().ToList();
+                        if (alivePlayers.Count > 0)
+                        {
+                            var randomIndex = _rng.NextRange(0, alivePlayers.Count - 1);
+                            var randomId = alivePlayers[randomIndex];
+                            if (_playerBuffOwners.TryGetValue(randomId, out var playerOwner))
+                                targets.Add(playerOwner);
+                        }
+                    }
+                    break;
+
+                case Skills.BuffTarget.LowestHpAlly:
+                    // 血量最低的队友（按百分比）
+                    // Lowest HP ally (by percentage)
+                    // Phase 6 Fix: Compare HP percentage, not absolute HP
+                    if (isCasterPlayer)
+                    {
+                        Buffs.IBuffOwner? lowestHpOwner = null;
+                        double lowestHpPercentage = double.MaxValue;
+
+                        foreach (var playerId in _playerTeam.GetAliveMemberIds())
+                        {
+                            if (_playerBuffOwners.TryGetValue(playerId, out var playerOwner))
+                            {
+                                double hpPercentage = playerOwner.MaxHp > 0 
+                                    ? (double)playerOwner.CurrentHp / playerOwner.MaxHp 
+                                    : 1.0;
+                                
+                                if (hpPercentage < lowestHpPercentage)
+                                {
+                                    lowestHpPercentage = hpPercentage;
+                                    lowestHpOwner = playerOwner;
+                                }
+                            }
+                        }
+
+                        if (lowestHpOwner != null)
+                            targets.Add(lowestHpOwner);
+                    }
+                    else
+                    {
+                        Buffs.IBuffOwner? lowestHpOwner = null;
+                        double lowestHpPercentage = double.MaxValue;
+
+                        foreach (var enemyId in _enemyTeam.GetAliveMemberIds())
+                        {
+                            if (_enemyBuffOwners.TryGetValue(enemyId, out var enemyOwner))
+                            {
+                                double hpPercentage = enemyOwner.MaxHp > 0 
+                                    ? (double)enemyOwner.CurrentHp / enemyOwner.MaxHp 
+                                    : 1.0;
+                                
+                                if (hpPercentage < lowestHpPercentage)
+                                {
+                                    lowestHpPercentage = hpPercentage;
+                                    lowestHpOwner = enemyOwner;
+                                }
+                            }
+                        }
+
+                        if (lowestHpOwner != null)
+                            targets.Add(lowestHpOwner);
+                    }
+                    break;
+            }
+
+            return targets;
+        }
+
+        /// <summary>
+        /// Phase 6: 应用即时治疗
+        /// Phase 6: Apply instant heal
+        /// </summary>
+        private void ApplyInstantHeal(
+            SkillCastResult result,
+            string casterId,
+            string? targetId,
+            bool isCasterPlayer)
+        {
+            if (result.InstantHeal <= 0)
+                return;
+
+            // 即时治疗通常施加在施法者自己身上
+            // Instant heal is usually applied to the caster
+            Buffs.IBuffOwner? target = null;
+
+            if (isCasterPlayer)
+            {
+                if (_playerBuffOwners.TryGetValue(casterId, out var playerOwner))
+                    target = playerOwner;
+            }
+            else
+            {
+                if (_enemyBuffOwners.TryGetValue(casterId, out var enemyOwner))
+                    target = enemyOwner;
+            }
+
+            if (target != null)
+            {
+                var healMeta = new Buffs.HealMeta("instant_heal", "skill_cast");
+                target.ReceiveHeal(result.InstantHeal, healMeta);
+
+                // TODO: 记录 HealEvent 到战斗段落
+                // TODO: Record HealEvent to combat segment
+            }
+        }
+
+        /// <summary>
+        /// Phase 6: 应用资源消耗/获得
+        /// Phase 6: Apply resource costs/gains
+        /// </summary>
+        private void ApplyResourceChanges(
+            SkillCastResult result,
+            string casterId,
+            bool isCasterPlayer)
+        {
+            if (result.ResourceChanges == null || result.ResourceChanges.Count == 0)
+                return;
+
+            // 只应用给施法者
+            // Only apply to caster
+            if (!isCasterPlayer)
+                return; // 敌人暂不支持资源系统 / Enemies don't have resource system yet
+
+            if (!_playerResources.TryGetValue(casterId, out var resources))
+                return;
+
+            foreach (var kvp in result.ResourceChanges)
+            {
+                string resourceId = kvp.Key;
+                int amount = kvp.Value;
+
+                if (!resources.HasBucket(resourceId))
+                    continue;
+
+                var bucket = resources.GetBucket(resourceId);
+                
+                // 应用资源变化（正数为增加，负数为消耗）
+                // Apply resource change (positive = gain, negative = cost)
+                if (amount > 0)
+                {
+                    bucket.Gain(amount, "skill_resource_gain");
+                }
+                else if (amount < 0)
+                {
+                    bucket.ForceConsume(-amount, "skill_resource_cost"); // Convert negative to positive for ForceConsume
+                }
+
+                // TODO: 记录 ResourceChangeEvent 到战斗段落
+                // TODO: Record ResourceChangeEvent to combat segment
+            }
+        }
+
+        /// <summary>
         /// 检查战斗状态
         /// Check battle state
         /// </summary>
@@ -870,6 +1392,39 @@ namespace BlazorIdle.Game
                 // 复活玩家队伍
                 _playerTeam.ReviveAll(_config.ReviveWithFullHp);
 
+                // Phase 4: 清除玩家所有 buff 和重置资源
+                // Clear all player buffs and reset resources on death
+                foreach (var kvp in _playerBuffOwners)
+                {
+                    var charId = kvp.Key;
+                    var buffOwner = kvp.Value;
+                    
+                    // 清除所有 buff
+                    buffOwner.ClearAllBuffs();
+                    
+                    // 重置资源
+                    if (_playerResources.TryGetValue(charId, out var resources))
+                    {
+                        // 获取资源配置以重置到初始值
+                        if (_professionResourceConfigs != null &&
+                            buffOwner.Character.ActiveCombatProfessionId != null &&
+                            _professionResourceConfigs.TryGetValue(buffOwner.Character.ActiveCombatProfessionId, out var profConfig))
+                        {
+                            // 重置到职业初始资源值
+                            var bucket = resources.GetBucket(profConfig.Id);
+                            bucket.Reset(profConfig.Initial);
+                        }
+                        else
+                        {
+                            // 后备：重置所有资源到 0
+                            foreach (var bucket in resources.GetAll().Values)
+                            {
+                                bucket.Reset(0);
+                            }
+                        }
+                    }
+                }
+
                 // 对称重置：玩家与敌人轨道全部重置到 now，避免冷却期间积压触发
                 foreach (var tracks in _characterTracks.Values)
                 {
@@ -886,6 +1441,13 @@ namespace BlazorIdle.Game
             {
                 // 刷新敌人队伍
                 _enemyTeam.ReviveAll(true);
+
+                // Phase 4: 清除敌人所有 buff
+                // Clear all enemy buffs on death
+                foreach (var buffOwner in _enemyBuffOwners.Values)
+                {
+                    buffOwner.ClearAllBuffs();
+                }
 
                 // 对称重置：敌人与玩家轨道全部重置到 now，避免冷却期间积压触发
                 foreach (var track in _enemyTracks.Values)

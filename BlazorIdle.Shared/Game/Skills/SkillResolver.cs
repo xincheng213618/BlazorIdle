@@ -10,6 +10,7 @@ namespace BlazorIdle.Game.Skills
     public sealed class SkillResolver : ISkillResolver
     {
         private readonly Config.CombatConfig? _config;
+        private readonly SkillRepository _skillRepository;
         private int _castCounter = 0;
         private int _currentTickCasts = 0;
         private int _lastTickTime = 0;
@@ -23,18 +24,24 @@ namespace BlazorIdle.Game.Skills
         /// Constructor
         /// </summary>
         /// <param name="config">战斗配置（可选）/ Combat configuration (optional)</param>
-        public SkillResolver(Config.CombatConfig? config = null)
+        /// <param name="skillRepository">技能配置仓库（可选，Phase 5）/ Skill repository (optional, Phase 5)</param>
+        public SkillResolver(Config.CombatConfig? config = null, SkillRepository? skillRepository = null)
         {
             _config = config;
+            _skillRepository = skillRepository ?? new SkillRepository();
         }
 
         /// <summary>
-        /// 施放单个技能
-        /// Cast a single skill
+        /// 施放单个技能（Phase 5: 支持 Buff 操作）
+        /// Cast a single skill (Phase 5: Supports buff operations)
         /// </summary>
         public SkillCastResult Cast(string skillId, BattleContext ctx, SkillCastOptions? opts = null)
         {
             opts ??= new SkillCastOptions();
+
+            // Phase 5: 获取技能定义
+            // Phase 5: Get skill definition
+            var skillDef = _skillRepository.GetSkill(skillId);
 
             // 根据技能类型确定基础伤害
             // Determine base damage based on skill type
@@ -45,6 +52,13 @@ namespace BlazorIdle.Game.Skills
                 SkillIds.EnemyAttackBasic => ctx.Enemy?.DamagePerHit ?? 0,
                 _ => 0
             };
+
+            // Phase 5: 应用技能的伤害倍率
+            // Phase 5: Apply skill damage multiplier
+            if (skillDef != null)
+            {
+                baseDamage = (int)(baseDamage * skillDef.DamageMultiplier);
+            }
 
             // 应用浮动
             // Apply variance
@@ -57,7 +71,8 @@ namespace BlazorIdle.Game.Skills
             // 检查暴击（仅玩家攻击有暴击）
             // Check for critical hit (only player attacks can crit)
             bool isCrit = false;
-            if (!skillId.StartsWith("enemy_") && ctx.Player != null)
+            bool canCrit = skillDef?.CanCrit ?? true;
+            if (!skillId.StartsWith("enemy_") && ctx.Player != null && canCrit)
             {
                 isCrit = opts.ForceCrit || ctx.Rng.NextDouble() < (ctx.Player.CritChancePercent / 100.0);
                 if (isCrit)
@@ -66,12 +81,63 @@ namespace BlazorIdle.Game.Skills
                 }
             }
 
-            return new SkillCastResult
+            // Phase 5: 创建结果并添加 buff 操作
+            // Phase 5: Create result and add buff operations
+            var result = new SkillCastResult
             {
                 DamageDealt = (int)dmg,
                 IsCrit = isCrit,
-                BundleId = opts.BundleId
+                BundleId = opts.BundleId,
+                InstantHeal = skillDef?.InstantHeal ?? 0
             };
+
+            // Phase 5: 添加 OnCast buff 操作
+            // Phase 5: Add OnCast buff operations
+            if (skillDef != null)
+            {
+                result.BuffOperations.AddRange(skillDef.OnCastBuffs);
+
+                // 添加 OnHit buff 操作
+                // Add OnHit buff operations
+                // 注意：当前 Step 0 设计中技能总是命中，AlwaysHits=true 表示必定命中
+                // Note: In current Step 0 design, skills always hit, AlwaysHits=true means guaranteed hit
+                // TODO Phase 6: 实现命中率检查，当 AlwaysHits=false 时需要滚动命中判定
+                // TODO Phase 6: Implement hit chance check when AlwaysHits=false
+                bool skillHits = skillDef.AlwaysHits || true; // Currently always hits in Step 0
+                if (skillHits)
+                {
+                    result.BuffOperations.AddRange(skillDef.OnHitBuffs);
+                }
+
+                // 添加 OnCrit buff 操作
+                // Add OnCrit buff operations
+                if (isCrit)
+                {
+                    result.BuffOperations.AddRange(skillDef.OnCritBuffs);
+                }
+
+                // Phase 5: 添加资源消耗和获得到结果中
+                // Phase 5: Add resource costs and gains to result
+                foreach (var (resId, cost) in skillDef.ResourceCosts)
+                {
+                    result.ResourceChanges[resId] = -cost; // 负数表示消耗 / negative means cost
+                }
+                foreach (var (resId, gain) in skillDef.ResourceGains)
+                {
+                    // 如果已经有消耗，则累加；否则直接设置
+                    // If already has cost, accumulate; otherwise set directly
+                    if (result.ResourceChanges.ContainsKey(resId))
+                    {
+                        result.ResourceChanges[resId] += gain;
+                    }
+                    else
+                    {
+                        result.ResourceChanges[resId] = gain;
+                    }
+                }
+            }
+
+            return result;
         }
 
         /// <summary>
