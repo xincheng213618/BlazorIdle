@@ -1403,23 +1403,90 @@ Total tests: 259
 
 ---
 
-### 阶段 7：Buff 效果应用到属性计算（P0 - 必须）
+### 阶段 8：Buff 效果应用到属性计算（P0 - 必须）
 
-**状态：** ⬜ 未开始
+**状态：** ✅ 已完成
+
+**完成时间：** 2025-11-13
 
 **目标：** Buff 的属性加成在伤害计算中生效。
 
-**预计工作量：** 4-5 小时
+**任务清单：**
 
----
+- [x] 8.1 StatMultiplier 效果应用
+  - ✅ 应用到 DamagePerAttack
+  - ✅ 应用到 SpecialDamage
+  - ✅ 应用到 CritMultiplier
+  - ✅ 公式：base * (1 + value)
 
-### 阶段 8：扩展事件系统（P0 - 必须）
+- [x] 8.2 StatAdditive 效果应用
+  - ✅ 固定数值加成到属性
+  - ✅ 公式：base + value
 
-**状态：** ⬜ 未开始
+- [x] 8.3 StatReduction 效果应用
+  - ✅ 减益效果（debuff）
+  - ✅ 公式：base * (1 - value)
 
-**目标：** 记录 Buff 相关的所有事件。
+- [x] 8.4 ForceCrit 效果应用
+  - ✅ 强制下一次攻击暴击
+  - ✅ 优先级高于暴击率判定
 
-**预计工作量：** 3-4 小时
+- [x] 8.5 CritChancePercent 和 CritMultiplier 修改
+  - ✅ Buff 可以增加暴击率
+  - ✅ Buff 可以增加暴击倍率
+
+- [x] 8.6 单元测试
+  - ✅ 12 个测试覆盖所有效果类型
+  - ✅ 测试多个 Buff 叠加
+  - ✅ 测试复杂交互场景
+
+**实施细节：**
+
+1. **新增方法**
+   - `ApplyBuffEffects(int, string, IBuffOwner)`: 应用 Buff 效果到整数属性
+   - `ApplyBuffEffectsToDouble(double, string, IBuffOwner)`: 应用 Buff 效果到浮点数属性
+   - `HasForceCritEffect(IBuffOwner)`: 检查是否有强制暴击效果
+
+2. **集成点**
+   - SkillResolver.Cast() 方法中获取施法者 BuffOwner
+   - 基础伤害计算后应用 Buff 效果
+   - 暴击率和暴击倍率计算时应用 Buff 效果
+   - ForceCrit 效果优先于随机暴击判定
+
+3. **设计特性**
+   - Buff 效果只影响指定的目标属性
+   - 多个 Buff 按应用顺序依次叠加
+   - 支持普通攻击和特殊技能
+   - 没有 BuffOwner 时正常工作（向后兼容）
+
+**验收标准：**
+- ✅ StatMultiplier 正确增加属性
+- ✅ StatAdditive 正确添加固定值
+- ✅ StatReduction 正确减少属性
+- ✅ ForceCrit 强制暴击
+- ✅ 多个 Buff 正确叠加
+- ✅ 所有 271 个测试通过
+
+**测试结果：**
+```
+Total tests: 271 (259 原有 + 12 新增)
+- StatMultiplier_IncreasesBaseDamage ✅
+- StatAdditive_AddsFlatDamage ✅
+- StatReduction_ReducesBaseDamage ✅
+- MultipleBuffs_StackCorrectly ✅
+- ForceCrit_ForcesNextAttackToCrit ✅
+- CritChanceBuff_IncreaseCritRate ✅
+- CritMultiplierBuff_IncreaseCritDamage ✅
+- NoBuffOwner_NormalDamageCalculation ✅
+- EmptyBuffs_NormalDamageCalculation ✅
+- SpecialSkill_AppliesBuffEffects ✅
+- BuffsOnlyAffectTargetedStats ✅
+- ComplexBuffInteraction_MultipleEffectsAndCrit ✅
+```
+
+**提交哈希：** 663984a
+
+**预计工作量：** 4-5 小时 → **实际：** ~2 小时
 
 ---
 
@@ -1460,11 +1527,11 @@ Total tests: 259
 | 阶段 5 - SkillResolver 扩展 | ✅ 已完成 | 2025-11-12 | ad98165 | +21 (233 total) |
 | 阶段 6 - Buff 应用与目标 | ✅ 已完成 | 2025-11-12 | 006fe72 | +23 (256 total) |
 | 阶段 7 - 事件记录完整性 | ✅ 已完成 | 2025-11-13 | 93365db | +3 (259 total) |
-| 阶段 8 - Buff 效果应用 | ⬜ 未开始 | - | - | - |
+| 阶段 8 - Buff 效果应用 | ✅ 已完成 | 2025-11-13 | 663984a | +12 (271 total) |
 | 阶段 9 - UI 展示 | ⬜ 未开始 | - | - | - |
 | 阶段 10 - 验收测试 | ⬜ 未开始 | - | - | - |
 
-**总体进度：** 7/10 (70%) ✅
+**总体进度：** 8/10 (80%) ✅
 
 ---
 
@@ -1484,16 +1551,18 @@ Total tests: 259
 - ✅ **阶段 5**：SkillResolver Buff 操作支持（BuffOperation、SkillRepository、技能配置系统）
 - ✅ **阶段 6**：Buff 应用与目标解析（ResolveBuffTargets、ProcessBuffOperations、资源消耗实现）
 - ✅ **阶段 7**：事件记录完整性（BuffApplyEvent、BuffRemoveEvent、BuffTickEvent、HealEvent 记录）
-- ✅ **165 个新测试全部通过**（51 资源 + 39 Buff + 23 BuffOwner + 21 SkillResolver + 23 Buff应用 + 3 事件记录 + 5 其他）
+- ✅ **阶段 8**：Buff 效果应用到属性计算（StatMultiplier、StatAdditive、StatReduction、ForceCrit）
+- ✅ **177 个新测试全部通过**（51 资源 + 39 Buff + 23 BuffOwner + 21 SkillResolver + 23 Buff应用 + 3 事件记录 + 12 Buff效果应用 + 5 其他）
 - ✅ **保持 94 个原有测试通过**，无回归
 - ✅ **资源系统 100% 完成**：创建、战斗集成、UI显示、波次持久化、职业特定化、Bug修复
 - ✅ **Buff 系统核心 100% 完成**：类型定义、生命周期、tick 逻辑、堆叠策略、事件系统
 - ✅ **Buff 战斗集成 100% 完成**：BattleContext 扩展、MultiBattleInstance 集成、自动 tick 处理
 - ✅ **技能配置系统 100% 完成**：SkillDef、SkillRepository、BuffOperation、BuffTarget
 - ✅ **事件记录系统 100% 完成**：所有 Buff 相关事件完整记录到 combat segment
+- ✅ **Buff 效果系统 100% 完成**：StatMultiplier、StatAdditive、StatReduction、ForceCrit 全部生效
 
 **质量指标：**
-- 测试总数：259（94 原有 + 165 新增）
+- 测试总数：271（94 原有 + 177 新增）
 - 测试通过率：100%
 - 代码覆盖率：核心逻辑 100%
 - 向下兼容性：完美（所有原有测试通过）
@@ -1515,14 +1584,14 @@ Total tests: 259
 - ✅ Buff tick 自动处理循环
 - ✅ DoT/HoT 自动应用
 
-**下一步（Phase 8）：**
-- 📍 **阶段 8**：Buff 效果应用到属性计算
-  - 在伤害计算中读取并应用 Buff 效果
-  - 实现 StatMultiplier、StatAdditive 效果
-  - 实现 ForceCrit 效果
-  - 添加相关测试
+**下一步（Phase 9）：**
+- 📍 **阶段 9**：UI 展示 Buff/Debuff
+  - 在前端显示 Buff 图标
+  - 显示堆栈数和剩余时间
+  - 区分 Buff 和 Debuff
+  - 添加 UI 测试
 
-**预计剩余工作量：** 12-15 小时（已完成 21 小时）
+**预计剩余工作量：** 10-13 小时（已完成 30 小时）
 
 **时间投入统计：**
 - 阶段 1：2.5 小时
@@ -1538,7 +1607,8 @@ Total tests: 259
 - 阶段 5：3.5 小时（含修复）
 - 阶段 6：6 小时（含修复）
 - 阶段 7：2 小时
-- **总计：28 小时 / 40-50 小时（70%）**
+- 阶段 8：2 小时
+- **总计：30 小时 / 40-50 小时（75%）**
 
 ---
 
