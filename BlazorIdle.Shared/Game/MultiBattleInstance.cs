@@ -1201,6 +1201,7 @@ namespace BlazorIdle.Game
                 // Phase 6 Fix: Store original duration separately for proper cloning
                 // BuffTemplate should have full duration, not remaining
                 // Critical fix: Deep copy Effects list to avoid shared references
+                // Method B: Set AppliedAtMs for time-ordered stacking
                 var buffToApply = new Buffs.BuffInstance(
                     id: operation.BuffTemplate.Id,
                     ownerId: target.Id, // Phase 6: 设置正确的 OwnerId
@@ -1209,7 +1210,8 @@ namespace BlazorIdle.Game
                     stackingPolicy: operation.BuffTemplate.StackingPolicy,
                     durationSec: operation.BuffTemplate.RemainingDurationSec, // Use template's duration
                     tickIntervalSec: operation.BuffTemplate.TickIntervalSec,
-                    maxStacks: operation.BuffTemplate.MaxStacks
+                    maxStacks: operation.BuffTemplate.MaxStacks,
+                    appliedAtMs: _clock.NowMs // Set application timestamp for time-ordered stacking
                 );
 
                 // 应用 buff

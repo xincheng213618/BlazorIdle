@@ -280,12 +280,20 @@ namespace BlazorIdle.Game.Skills
         /// <summary>
         /// Phase 8: 应用 Buff 效果到整数属性
         /// Phase 8: Apply buff effects to integer attributes
+        /// Method B: Buffs are applied in time order (earlier applied first)
+        /// Same-type effects use multiplicative stacking to prevent runaway scaling
         /// </summary>
         private int ApplyBuffEffects(int baseValue, string statName, Buffs.IBuffOwner buffOwner)
         {
             double modifiedValue = baseValue;
 
-            foreach (var buff in buffOwner.Buffs.Values)
+            // Method B: Sort buffs by application time (earlier first)
+            // This ensures deterministic and intuitive behavior
+            var sortedBuffs = buffOwner.Buffs.Values
+                .OrderBy(b => b.AppliedAtMs)
+                .ToList();
+
+            foreach (var buff in sortedBuffs)
             {
                 foreach (var effect in buff.Effects)
                 {
@@ -301,6 +309,7 @@ namespace BlazorIdle.Game.Skills
                             // Multiplier effect: base * (1 + value)
                             // value 为 0.15 表示 +15%
                             // value of 0.15 means +15%
+                            // Multiplicative stacking prevents runaway scaling
                             modifiedValue *= (1.0 + effect.Value);
                             break;
 
@@ -315,6 +324,7 @@ namespace BlazorIdle.Game.Skills
                             // Reduction effect: base * (1 - value)
                             // value 为 0.10 表示 -10%
                             // value of 0.10 means -10%
+                            // Multiplicative stacking for debuffs too
                             modifiedValue *= (1.0 - effect.Value);
                             break;
                     }
@@ -327,12 +337,20 @@ namespace BlazorIdle.Game.Skills
         /// <summary>
         /// Phase 8: 应用 Buff 效果到浮点数属性
         /// Phase 8: Apply buff effects to double attributes
+        /// Method B: Buffs are applied in time order (earlier applied first)
+        /// Same-type effects use multiplicative stacking to prevent runaway scaling
         /// </summary>
         private double ApplyBuffEffectsToDouble(double baseValue, string statName, Buffs.IBuffOwner buffOwner)
         {
             double modifiedValue = baseValue;
 
-            foreach (var buff in buffOwner.Buffs.Values)
+            // Method B: Sort buffs by application time (earlier first)
+            // This ensures deterministic and intuitive behavior
+            var sortedBuffs = buffOwner.Buffs.Values
+                .OrderBy(b => b.AppliedAtMs)
+                .ToList();
+
+            foreach (var buff in sortedBuffs)
             {
                 foreach (var effect in buff.Effects)
                 {
@@ -346,6 +364,7 @@ namespace BlazorIdle.Game.Skills
                         case Buffs.BuffEffectType.StatMultiplier:
                             // 倍率效果：基础值 * (1 + value)
                             // Multiplier effect: base * (1 + value)
+                            // Multiplicative stacking prevents runaway scaling
                             modifiedValue *= (1.0 + effect.Value);
                             break;
 
@@ -358,6 +377,7 @@ namespace BlazorIdle.Game.Skills
                         case Buffs.BuffEffectType.StatReduction:
                             // 减益效果：基础值 * (1 - value)
                             // Reduction effect: base * (1 - value)
+                            // Multiplicative stacking for debuffs too
                             modifiedValue *= (1.0 - effect.Value);
                             break;
                     }

@@ -63,6 +63,13 @@ namespace BlazorIdle.Game.Buffs
         /// </summary>
         public string? SourceSkillId { get; set; }
 
+        /// <summary>
+        /// Timestamp in milliseconds when this buff was applied.
+        /// Used for determining application order when stacking multiple buffs.
+        /// Method B: Time-order stacking approach.
+        /// </summary>
+        public long AppliedAtMs { get; set; }
+
         public BuffInstance()
         {
             Id = string.Empty;
@@ -84,7 +91,8 @@ namespace BlazorIdle.Game.Buffs
             double? durationSec = null,
             double? tickIntervalSec = null,
             int maxStacks = 0,
-            string? sourceSkillId = null)
+            string? sourceSkillId = null,
+            long appliedAtMs = 0)
         {
             // Validation
             if (string.IsNullOrEmpty(id))
@@ -109,6 +117,7 @@ namespace BlazorIdle.Game.Buffs
             TickIntervalSec = tickIntervalSec;
             TickAccumulator = 0;
             SourceSkillId = sourceSkillId;
+            AppliedAtMs = appliedAtMs;
         }
 
         /// <summary>

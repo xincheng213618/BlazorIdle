@@ -486,23 +486,64 @@ public void BuffEffects_AppliedInTimeOrder()
 
 ---
 
-## 待决策问题
+## 决策结果 ✅
 
-请针对以下问题做出决策：
+**决策时间**: 2025-11-13  
+**决策者**: @Solaireshen97  
+**决策内容**: 方案 B + 累乘
 
 ### 问题 1: Buff 处理顺序
 - [ ] 方案 A: 保持当前（不推荐）
-- [ ] 方案 B: 按应用时间顺序（推荐）⭐
+- [x] 方案 B: 按应用时间顺序（推荐）⭐ **已实施**
 - [ ] 方案 C: 按效果类型分阶段
 - [ ] 方案 D: 按优先级
 
 ### 问题 2: 同类型效果叠加
-- [ ] 累乘（当前实现，推荐）⭐
+- [x] 累乘（当前实现，推荐）⭐ **已实施**
 - [ ] 累加
 
 ### 问题 3: 单个 Buff 内的 Effect 顺序
-- [ ] 按 Effect 列表顺序（推荐）⭐
+- [x] 按 Effect 列表顺序（推荐）⭐ **已实施**
 - [ ] 按效果类型排序
+
+## 实施状态
+
+### ✅ 已完成
+
+1. **BuffInstance.AppliedAtMs 字段**: 添加时间戳字段用于记录 Buff 应用时间
+2. **ApplyBuffEffects 方法**: 修改为按 AppliedAtMs 排序后处理
+3. **ApplyBuffEffectsToDouble 方法**: 修改为按 AppliedAtMs 排序后处理
+4. **MultiBattleInstance.ApplyBuffOperation**: 创建 BuffInstance 时设置 AppliedAtMs
+5. **测试覆盖**: 添加 9 个单元测试验证时间顺序和累乘行为
+
+### 测试结果
+
+所有 292 个测试通过：
+- 283 个原有测试 ✅
+- 9 个新增时间顺序叠加测试 ✅
+  - TimeOrderedStacking_MultiplierThenAdditive_CorrectOrder
+  - TimeOrderedStacking_AdditiveThenMultiplier_CorrectOrder
+  - TimeOrderedStacking_ThreeBuffs_CorrectOrder
+  - MultiplicativeStacking_TwoMultipliers_PreventRunaway
+  - TimeOrderedStacking_SameTimestamp_StableOrder
+  - TimeOrderedStacking_CritMultiplier_DoubleValues
+  - TimeOrderedStacking_Debuffs_CorrectReduction
+  - TimeOrderedStacking_MixedBuffsAndDebuffs_CorrectCalculation
+  - TimeOrderedStacking_BuffInstanceHasAppliedAtMs
+
+### 实施细节
+
+**代码变更**:
+- BuffInstance.cs: 添加 AppliedAtMs 属性
+- SkillResolver.cs: 修改 ApplyBuffEffects 和 ApplyBuffEffectsToDouble 方法
+- MultiBattleInstance.cs: 在创建 BuffInstance 时设置 AppliedAtMs
+- Phase8BuffStackingOrderTests.cs: 新增测试文件
+
+**行为确认**:
+- Buff 按应用时间顺序生效（早应用早生效）
+- 同类型效果采用累乘（防止失控）
+- 单个 Buff 内按 Effect 列表顺序处理
+- 行为完全确定，无随机性
 
 ---
 
