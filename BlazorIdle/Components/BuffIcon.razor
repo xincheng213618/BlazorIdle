@@ -45,38 +45,39 @@
     {
         get
         {
-            var lines = new System.Text.StringBuilder();
+            var parts = new System.Collections.Generic.List<string>();
             
             // Buff name (use ID as name for now)
-            lines.AppendLine($"{Buff.Id} ({(Buff.Kind == BuffKind.Buff ? "增益" : "减益")})");
+            parts.Add($"{Buff.Id} ({(Buff.Kind == BuffKind.Buff ? "增益" : "减益")})");
             
             // Stacks
             if (Buff.Stacks > 1)
             {
-                lines.AppendLine($"层数: {Buff.Stacks}");
+                parts.Add($"层数: {Buff.Stacks}");
             }
             
             // Duration
             if (Buff.RemainingDurationSec.HasValue)
             {
-                lines.AppendLine($"剩余时间: {Buff.RemainingDurationSec.Value:F1}秒");
+                parts.Add($"剩余时间: {Buff.RemainingDurationSec.Value:F1}秒");
             }
             else
             {
-                lines.AppendLine("永久效果");
+                parts.Add("永久效果");
             }
             
             // Effects summary
             if (Buff.Effects?.Count > 0)
             {
-                lines.AppendLine("效果:");
+                parts.Add("效果:");
                 foreach (var effect in Buff.Effects)
                 {
-                    lines.AppendLine($"  - {FormatEffect(effect)}");
+                    parts.Add($"  • {FormatEffect(effect)}");
                 }
             }
             
-            return lines.ToString();
+            // Join with newline for HTML title attribute
+            return string.Join("\n", parts);
         }
     }
     

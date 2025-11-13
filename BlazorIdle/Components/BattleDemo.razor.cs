@@ -466,6 +466,8 @@ namespace BlazorIdle.Components
                 dungeonManager.ExperienceGained -= OnExperienceGained;
                 dungeonManager.WaveChanged -= OnDungeonWaveChanged;
                 dungeonManager.DungeonCompleted -= OnDungeonCompleted;
+                dungeonManager.BuffApplied -= OnBuffApplied;
+                dungeonManager.BuffRemoved -= OnBuffRemoved;
             }
 
             var clock = new SimClock();
@@ -505,6 +507,9 @@ namespace BlazorIdle.Components
             dungeonManager.ExperienceGained += OnExperienceGained;
             dungeonManager.WaveChanged += OnDungeonWaveChanged;
             dungeonManager.DungeonCompleted += OnDungeonCompleted;
+            // Phase 9: 订阅 Buff 事件 / Phase 9: Subscribe to buff events
+            dungeonManager.BuffApplied += OnBuffApplied;
+            dungeonManager.BuffRemoved += OnBuffRemoved;
 
             dungeonSnapshot = null;
         }
@@ -1148,6 +1153,8 @@ namespace BlazorIdle.Components
                 dungeonManager.ExperienceGained -= OnExperienceGained;
                 dungeonManager.WaveChanged -= OnDungeonWaveChanged;
                 dungeonManager.DungeonCompleted -= OnDungeonCompleted;
+                dungeonManager.BuffApplied -= OnBuffApplied;
+                dungeonManager.BuffRemoved -= OnBuffRemoved;
             }
         }
 
