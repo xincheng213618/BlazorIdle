@@ -1160,15 +1160,18 @@ namespace BlazorIdle.Game
             if (result.BuffOperations == null || result.BuffOperations.Count == 0)
                 return;
 
+            // Pass bundleId from result to buff operations
+            string? bundleId = result.BundleId;
+
             foreach (var operation in result.BuffOperations)
             {
                 if (operation.Type == Skills.BuffOperationType.Apply)
                 {
-                    ApplyBuffOperation(operation, casterId, targetId, isCasterPlayer);
+                    ApplyBuffOperation(operation, casterId, targetId, isCasterPlayer, bundleId);
                 }
                 else if (operation.Type == Skills.BuffOperationType.Remove)
                 {
-                    RemoveBuffOperation(operation, casterId, targetId, isCasterPlayer);
+                    RemoveBuffOperation(operation, casterId, targetId, isCasterPlayer, bundleId);
                 }
             }
         }
@@ -1181,7 +1184,8 @@ namespace BlazorIdle.Game
             Skills.BuffOperation operation,
             string casterId,
             string? targetId,
-            bool isCasterPlayer)
+            bool isCasterPlayer,
+            string? bundleId = null)
         {
             if (operation.BuffTemplate == null)
                 return;
@@ -1196,11 +1200,12 @@ namespace BlazorIdle.Game
                 // Clone buff template and set OwnerId
                 // Phase 6 Fix: Store original duration separately for proper cloning
                 // BuffTemplate should have full duration, not remaining
+                // Critical fix: Deep copy Effects list to avoid shared references
                 var buffToApply = new Buffs.BuffInstance(
                     id: operation.BuffTemplate.Id,
                     ownerId: target.Id, // Phase 6: 设置正确的 OwnerId
                     kind: operation.BuffTemplate.Kind,
-                    effects: operation.BuffTemplate.Effects,
+                    effects: new List<Buffs.BuffEffect>(operation.BuffTemplate.Effects), // Deep copy
                     stackingPolicy: operation.BuffTemplate.StackingPolicy,
                     durationSec: operation.BuffTemplate.RemainingDurationSec, // Use template's duration
                     tickIntervalSec: operation.BuffTemplate.TickIntervalSec,
@@ -1223,7 +1228,7 @@ namespace BlazorIdle.Game
                     stacks: buffToApply.Stacks,
                     effectsSummary: effectsSummary,
                     sourceSkillId: operation.BuffTemplate.SourceSkillId,
-                    bundleId: null // TODO: Pass bundleId from skill cast context
+                    bundleId: bundleId // Fix: Pass bundleId from skill cast context
                 );
             }
         }
@@ -1236,7 +1241,8 @@ namespace BlazorIdle.Game
             Skills.BuffOperation operation,
             string casterId,
             string? targetId,
-            bool isCasterPlayer)
+            bool isCasterPlayer,
+            string? bundleId = null)
         {
             if (string.IsNullOrEmpty(operation.BuffIdToRemove))
                 return;
@@ -1256,7 +1262,7 @@ namespace BlazorIdle.Game
                     ownerId: target.Id,
                     buffId: operation.BuffIdToRemove,
                     reason: reason,
-                    bundleId: null // TODO: Pass bundleId from skill cast context
+                    bundleId: bundleId // Fix: Pass bundleId from skill cast context
                 );
             }
         }

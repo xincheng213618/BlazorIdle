@@ -111,8 +111,26 @@ namespace BlazorIdle.Game.Skills
                 if (hasForceCrit)
                 {
                     isCrit = true;
-                    // 消耗 ForceCrit buff（在下一次攻击后会被移除）
-                    // Consume ForceCrit buff (will be removed after next attack)
+                    
+                    // 消耗 ForceCrit buff（立即移除）
+                    // Consume ForceCrit buff (remove immediately)
+                    // Critical fix: ForceCrit should be one-time effect
+                    var buffsToRemove = new List<string>();
+                    foreach (var buff in casterBuffOwner!.Buffs.Values)
+                    {
+                        bool hasForceCritEffect = buff.Effects.Any(e => e.Type == Buffs.BuffEffectType.ForceCrit);
+                        if (hasForceCritEffect)
+                        {
+                            buffsToRemove.Add(buff.Id);
+                            break; // Only remove one ForceCrit buff per attack
+                        }
+                    }
+                    
+                    // Remove the buff(s) after iteration to avoid collection modification
+                    foreach (var buffId in buffsToRemove)
+                    {
+                        casterBuffOwner.RemoveBuff(buffId, "consumed_forcecrit");
+                    }
                 }
                 else
                 {
