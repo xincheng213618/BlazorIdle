@@ -41,17 +41,19 @@ namespace BlazorIdle.Game.Buffs
 
         /// <summary>
         /// Private constructor for singleton pattern.
-        /// Loads buffs from embedded JSON resource or falls back to default buffs.
+        /// Loads buffs from embedded JSON resource.
         /// </summary>
         private BuffRepository()
         {
-            // P0 Fix: Load from JSON file instead of hardcoded initialization
+            // Load from JSON file - no fallback to verify JSON is being used
             bool loaded = TryLoadFromEmbeddedJson();
             if (!loaded)
             {
-                // Fallback to hardcoded initialization if JSON loading fails
-                System.Diagnostics.Debug.WriteLine("[BuffRepository] Failed to load from JSON, using hardcoded defaults");
-                InitializeDefaultBuffs();
+                // No fallback - throw exception to make it clear JSON loading failed
+                var errorMsg = "[BuffRepository] CRITICAL ERROR: Failed to load buffs.json from embedded resources. " +
+                              "Cannot initialize buff system. Check that buffs.json is properly embedded in the assembly.";
+                Console.WriteLine(errorMsg);
+                throw new InvalidOperationException(errorMsg);
             }
             
             // P1 Fix: Validate configuration at startup
@@ -64,299 +66,6 @@ namespace BlazorIdle.Game.Buffs
         public static BuffRepository CreateNew()
         {
             return new BuffRepository();
-        }
-
-        /// <summary>
-        /// Initializes default buff configurations.
-        /// P0 Fix: Simplified - only used as fallback when JSON loading fails.
-        /// P1 Fix: Fixed HastePercent to use 10.0 (not 0.10) to match original implementation.
-        /// </summary>
-        private void InitializeDefaultBuffs()
-        {
-            // Note: This is a fallback. Normally buffs are loaded from buffs.json
-            
-            // Warrior buff: Rage Boost (+15% damage, +10 haste, +5 crit for 6s)
-            RegisterBuff(new BuffConfig
-            {
-                Id = "warrior_rage_boost",
-                Name = "狂暴",
-                Description = "增加攻击力、攻击速度和暴击率",
-                Icon = "⚔️",
-                Kind = BuffKind.Buff,
-                DurationSec = 6.0,
-                StackingPolicy = BuffStackingPolicy.Refresh,
-                MaxStacks = 1,
-                DefaultTarget = Skills.BuffTarget.Self,
-                Effects = new List<BuffEffect>
-                {
-                    BuffEffect.StatMultiplier("DamagePerAttack", 0.15),
-                    BuffEffect.StatAdditive("HastePercent", 10.0),  // P1 Fix: 10.0 not 0.10
-                    BuffEffect.StatAdditive("CritChancePercent", 5.0)
-                }
-            });
-
-            // Mage DoT: Burn (6 damage per second for 6s)
-            RegisterBuff(new BuffConfig
-            {
-                Id = "mage_burn_dot",
-                Name = "燃烧",
-                Description = "持续造成火焰伤害",
-                Icon = "🔥",
-                Kind = BuffKind.Debuff,
-                DurationSec = 6.0,
-                TickIntervalSec = 1.0,
-                StackingPolicy = BuffStackingPolicy.Refresh,
-                MaxStacks = 1,
-                DefaultTarget = Skills.BuffTarget.AllEnemies,
-                Effects = new List<BuffEffect>
-                {
-                    BuffEffect.DamageOverTime(6)
-                }
-            });
-
-            // Generic damage buff
-            RegisterBuff(new BuffConfig
-            {
-                Id = "damage_boost",
-                Name = "伤害增幅",
-                Description = "提高攻击伤害",
-                Icon = "💪",
-                Kind = BuffKind.Buff,
-                DurationSec = 10.0,
-                StackingPolicy = BuffStackingPolicy.Stack,
-                MaxStacks = 3,
-                DefaultTarget = Skills.BuffTarget.Self,
-                Effects = new List<BuffEffect>
-                {
-                    BuffEffect.StatMultiplier("DamagePerAttack", 0.10)
-                }
-            });
-
-            // Generic HoT: Regeneration
-            RegisterBuff(new BuffConfig
-            {
-                Id = "regeneration",
-                Name = "恢复",
-                Description = "持续恢复生命值",
-                Icon = "💚",
-                Kind = BuffKind.Buff,
-                DurationSec = 15.0,
-                TickIntervalSec = 3.0,
-                StackingPolicy = BuffStackingPolicy.Refresh,
-                MaxStacks = 1,
-                DefaultTarget = Skills.BuffTarget.Self,
-                Effects = new List<BuffEffect>
-                {
-                    BuffEffect.HealOverTime(10)
-                }
-            });
-
-            // Debuff: Weakness (-20% damage)
-            RegisterBuff(new BuffConfig
-            {
-                Id = "weakness",
-                Name = "虚弱",
-                Description = "降低攻击伤害",
-                Icon = "😰",
-                Kind = BuffKind.Debuff,
-                DurationSec = 8.0,
-                StackingPolicy = BuffStackingPolicy.Refresh,
-                MaxStacks = 1,
-                DefaultTarget = Skills.BuffTarget.Target,
-                Effects = new List<BuffEffect>
-                {
-                    BuffEffect.StatReduction("DamagePerAttack", 0.20)
-                }
-            });
-
-            // Buff: Shield (reduces incoming damage)
-            RegisterBuff(new BuffConfig
-            {
-                Id = "shield",
-                Name = "护盾",
-                Description = "减少受到的伤害",
-                Icon = "🛡️",
-                Kind = BuffKind.Buff,
-                DurationSec = 12.0,
-                StackingPolicy = BuffStackingPolicy.Ignore,
-                MaxStacks = 1,
-                DefaultTarget = Skills.BuffTarget.Self,
-                Effects = new List<BuffEffect>
-                {
-                    // Note: Damage reduction on self not yet fully implemented in combat
-                    // This is a placeholder for future implementation
-                    BuffEffect.StatMultiplier("DamageReduction", 0.25)
-                }
-            });
-
-            // Buff: Haste (increases attack speed)
-            RegisterBuff(new BuffConfig
-            {
-                Id = "haste",
-                Name = "急速",
-                Description = "提高攻击速度",
-                Icon = "⚡",
-                Kind = BuffKind.Buff,
-                DurationSec = 10.0,
-                StackingPolicy = BuffStackingPolicy.Stack,
-                MaxStacks = 2,
-                DefaultTarget = Skills.BuffTarget.Self,
-                Effects = new List<BuffEffect>
-                {
-                    BuffEffect.StatAdditive("HastePercent", 15.0)  // P1 Fix: 15.0 not 0.15
-                }
-            });
-
-            // Debuff: Poison DoT
-            RegisterBuff(new BuffConfig
-            {
-                Id = "poison",
-                Name = "中毒",
-                Description = "持续受到毒素伤害",
-                Icon = "☠️",
-                Kind = BuffKind.Debuff,
-                DurationSec = 10.0,
-                TickIntervalSec = 2.0,
-                StackingPolicy = BuffStackingPolicy.Stack,
-                MaxStacks = 3,
-                DefaultTarget = Skills.BuffTarget.Target,
-                Effects = new List<BuffEffect>
-                {
-                    BuffEffect.DamageOverTime(4)
-                }
-            });
-
-            // Buff: Crit Boost
-            RegisterBuff(new BuffConfig
-            {
-                Id = "crit_boost",
-                Name = "致命强化",
-                Description = "提高暴击率和暴击伤害",
-                Icon = "💥",
-                Kind = BuffKind.Buff,
-                DurationSec = 8.0,
-                StackingPolicy = BuffStackingPolicy.Refresh,
-                MaxStacks = 1,
-                DefaultTarget = Skills.BuffTarget.Self,
-                Effects = new List<BuffEffect>
-                {
-                    BuffEffect.StatAdditive("CritChancePercent", 0.10),
-                    BuffEffect.StatMultiplier("CritMultiplier", 0.20)
-                }
-            });
-
-            // Buff: Force Crit (next attack is guaranteed crit)
-            RegisterBuff(new BuffConfig
-            {
-                Id = "force_crit",
-                Name = "必定暴击",
-                Description = "下次攻击必定暴击",
-                Icon = "🎯",
-                Kind = BuffKind.Buff,
-                DurationSec = 5.0,
-                StackingPolicy = BuffStackingPolicy.Ignore,
-                MaxStacks = 1,
-                DefaultTarget = Skills.BuffTarget.Self,
-                Effects = new List<BuffEffect>
-                {
-                    BuffEffect.ForceCrit()
-                }
-            });
-
-            // Phase 3: Additional buffs used in SkillRepository
-            // Warrior Power Boost (for special pulse)
-            RegisterBuff(new BuffConfig
-            {
-                Id = "warrior_power_boost",
-                Name = "战士强化",
-                Description = "大幅增加攻击力、攻击速度和暴击率",
-                Icon = "⚔️",
-                Kind = BuffKind.Buff,
-                DurationSec = 6.0,
-                StackingPolicy = BuffStackingPolicy.Refresh,
-                MaxStacks = 1,
-                DefaultTarget = Skills.BuffTarget.Self,
-                Effects = new List<BuffEffect>
-                {
-                    BuffEffect.StatMultiplier("DamagePerAttack", 0.15),
-                    BuffEffect.StatAdditive("HastePercent", 10.0),
-                    BuffEffect.StatAdditive("CritChancePercent", 5.0)
-                }
-            });
-
-            // Instant Heal
-            RegisterBuff(new BuffConfig
-            {
-                Id = "instant_heal",
-                Name = "瞬间治疗",
-                Description = "立即恢复生命值",
-                Icon = "💚",
-                Kind = BuffKind.Buff,
-                DurationSec = 0.1,
-                StackingPolicy = BuffStackingPolicy.Refresh,
-                MaxStacks = 1,
-                DefaultTarget = Skills.BuffTarget.Self,
-                Effects = new List<BuffEffect>
-                {
-                    BuffEffect.InstantHeal(20)
-                }
-            });
-
-            // Regeneration HoT (stackable)
-            RegisterBuff(new BuffConfig
-            {
-                Id = "regeneration_hot",
-                Name = "持续恢复",
-                Description = "持续恢复生命值（可叠加）",
-                Icon = "💚",
-                Kind = BuffKind.Buff,
-                DurationSec = 8.0,
-                TickIntervalSec = 2.0,
-                StackingPolicy = BuffStackingPolicy.Stack,
-                MaxStacks = 3,
-                DefaultTarget = Skills.BuffTarget.Self,
-                Effects = new List<BuffEffect>
-                {
-                    BuffEffect.HealOverTime(5)
-                }
-            });
-
-            // Burning DoT (stackable)
-            RegisterBuff(new BuffConfig
-            {
-                Id = "burning",
-                Name = "燃烧",
-                Description = "持续造成火焰伤害（可叠加）",
-                Icon = "🔥",
-                Kind = BuffKind.Debuff,
-                DurationSec = 10.0,
-                TickIntervalSec = 2.0,
-                StackingPolicy = BuffStackingPolicy.Stack,
-                MaxStacks = 5,
-                DefaultTarget = Skills.BuffTarget.AllEnemies,
-                Effects = new List<BuffEffect>
-                {
-                    BuffEffect.DamageOverTime(8)
-                }
-            });
-
-            // Weakened (stat reduction on enemies)
-            RegisterBuff(new BuffConfig
-            {
-                Id = "weakened",
-                Name = "虚弱",
-                Description = "降低敌人伤害",
-                Icon = "😰",
-                Kind = BuffKind.Debuff,
-                DurationSec = 8.0,
-                StackingPolicy = BuffStackingPolicy.Refresh,
-                MaxStacks = 1,
-                DefaultTarget = Skills.BuffTarget.AllEnemies,
-                Effects = new List<BuffEffect>
-                {
-                    BuffEffect.StatReduction("DamagePerHit", 0.20)
-                }
-            });
         }
 
         /// <summary>
@@ -413,7 +122,19 @@ namespace BlazorIdle.Game.Buffs
             {
                 var json = reader.ReadToEnd();
                 LoadFromJson(json);
-                Console.WriteLine($"[BuffRepository] Successfully loaded {_buffs.Count} buffs from JSON");
+                Console.WriteLine($"[BuffRepository] ✅ Successfully loaded {_buffs.Count} buffs from buffs.json");
+                
+                // Log a sample buff to confirm values are from JSON
+                var sampleBuff = GetBuffById("warrior_power_boost");
+                if (sampleBuff != null)
+                {
+                    var hasteEffect = sampleBuff.Effects.FirstOrDefault(e => e.Target == "HastePercent");
+                    if (hasteEffect != null)
+                    {
+                        Console.WriteLine($"[BuffRepository] Sample verification - warrior_power_boost HastePercent = {hasteEffect.Value}");
+                    }
+                }
+                
                 return true;
             }
         }
