@@ -1,11 +1,22 @@
 @using BlazorIdle.Game.Buffs
+@using BlazorIdle.Models
 @namespace BlazorIdle.Components
 
-@* Phase 9: Buff/Debuff icon component *@
-<div class="buff-icon @KindClass" title="@TooltipText">
+@* Phase 9: Buff/Debuff icon component with JSON icon support *@
+<div class="buff-icon @KindClass" 
+     @onmouseenter="ShowTooltip" 
+     @onmouseleave="HideTooltip">
     <div class="buff-icon-content">
-        @* Icon letter - first letter of buff ID *@
-        <span class="buff-letter">@IconLetter</span>
+        @if (!string.IsNullOrEmpty(IconDisplay))
+        {
+            @* Display icon from JSON configuration (emoji or text) *@
+            <span class="buff-icon-display">@IconDisplay</span>
+        }
+        else
+        {
+            @* Fallback: first letter of buff ID *@
+            <span class="buff-letter">@IconLetter</span>
+        }
     </div>
     
     @* Stack count *@
@@ -19,15 +30,44 @@
     {
         <span class="buff-duration">@DurationText</span>
     }
+    
+    @* Custom tooltip overlay *@
+    @if (_showTooltip)
+    {
+        <div class="buff-tooltip">@((MarkupString)TooltipHtml)</div>
+    }
 </div>
 
 @code {
     [Parameter, EditorRequired]
     public BuffInstance Buff { get; set; } = null!;
 
+    private bool _showTooltip = false;
+    private string? _cachedIconDisplay = null;
+    private string? _cachedBuffName = null;
+    private int _lastStacks = -1;
+    private double? _lastDuration = null;
+
     private string KindClass => Buff.Kind == BuffKind.Buff ? "buff" : "debuff";
     
     private string IconLetter => string.IsNullOrEmpty(Buff.Id) ? "?" : Buff.Id[0].ToString().ToUpper();
+    
+    private string IconDisplay
+    {
+        get
+        {
+            if (_cachedIconDisplay == null)
+            {
+                // Look up BuffConfig from repository to get the icon
+                var buffConfig = BlazorIdle.Game.Buffs.BuffRepository.Instance.GetBuffById(Buff.Id);
+                _cachedIconDisplay = buffConfig?.Icon ?? "";
+                _cachedBuffName = buffConfig?.Name;
+            }
+            return _cachedIconDisplay;
+        }
+    }
+    
+    private string BuffName => _cachedBuffName ?? Buff.Id;
     
     private string DurationText
     {
@@ -41,43 +81,84 @@
         }
     }
     
-    private string TooltipText
+    private void ShowTooltip()
+    {
+        _showTooltip = true;
+        StateHasChanged();
+    }
+    
+    private void HideTooltip()
+    {
+        _showTooltip = false;
+        StateHasChanged();
+    }
+    
+    protected override bool ShouldRender()
+    {
+        // Only re-render if meaningful properties have changed
+        // This prevents constant re-renders from timer ticks
+        bool shouldRender = _lastStacks != Buff.Stacks;
+        
+        // Check duration change (only care about second-level changes)
+        if (Buff.RemainingDurationSec.HasValue && _lastDuration.HasValue)
+        {
+            var currentSecond = (int)Math.Ceiling(Buff.RemainingDurationSec.Value);
+            var lastSecond = (int)Math.Ceiling(_lastDuration.Value);
+            shouldRender = shouldRender || (currentSecond != lastSecond);
+        }
+        else if (Buff.RemainingDurationSec.HasValue != _lastDuration.HasValue)
+        {
+            shouldRender = true;
+        }
+        
+        _lastStacks = Buff.Stacks;
+        _lastDuration = Buff.RemainingDurationSec;
+        
+        return shouldRender || _showTooltip;
+    }
+    
+    private string TooltipHtml
     {
         get
         {
-            var parts = new System.Collections.Generic.List<string>();
+            var html = new System.Text.StringBuilder();
             
-            // Buff name (use ID as name for now)
-            parts.Add($"{Buff.Id} ({(Buff.Kind == BuffKind.Buff ? "增益" : "减益")})");
+            html.Append("<div class='tooltip-content'>");
+            
+            // Buff name with kind
+            html.Append($"<div class='tooltip-title'>{BuffName}</div>");
+            html.Append($"<div class='tooltip-kind'>{(Buff.Kind == BuffKind.Buff ? "增益" : "减益")}</div>");
             
             // Stacks
             if (Buff.Stacks > 1)
             {
-                parts.Add($"层数: {Buff.Stacks}");
+                html.Append($"<div class='tooltip-info'>层数: <strong>{Buff.Stacks}</strong></div>");
             }
             
             // Duration
             if (Buff.RemainingDurationSec.HasValue)
             {
-                parts.Add($"剩余时间: {Buff.RemainingDurationSec.Value:F1}秒");
+                html.Append($"<div class='tooltip-info'>剩余: <strong>{Buff.RemainingDurationSec.Value:F1}秒</strong></div>");
             }
             else
             {
-                parts.Add("永久效果");
+                html.Append("<div class='tooltip-info'>永久效果</div>");
             }
             
             // Effects summary
             if (Buff.Effects?.Count > 0)
             {
-                parts.Add("效果:");
+                html.Append("<div class='tooltip-effects'>");
                 foreach (var effect in Buff.Effects)
                 {
-                    parts.Add($"  • {FormatEffect(effect)}");
+                    html.Append($"<div class='tooltip-effect'>• {FormatEffect(effect)}</div>");
                 }
+                html.Append("</div>");
             }
             
-            // Join with newline for HTML title attribute
-            return string.Join("\n", parts);
+            html.Append("</div>");
+            
+            return html.ToString();
         }
     }
     
@@ -88,9 +169,9 @@
             BuffEffectType.StatMultiplier => $"{effect.Target}: +{effect.Value * 100:F0}%",
             BuffEffectType.StatAdditive => $"{effect.Target}: +{effect.Value}",
             BuffEffectType.StatReduction => $"{effect.Target}: -{effect.Value * 100:F0}%",
-            BuffEffectType.DamageOverTime => $"持续伤害: {effect.Value}/次",
-            BuffEffectType.HealOverTime => $"持续治疗: {effect.Value}/次",
-            BuffEffectType.InstantHeal => $"立即治疗: {effect.Value}",
+            BuffEffectType.DamageOverTime => $"持续伤害: {effect.AmountPerTick}/次",
+            BuffEffectType.HealOverTime => $"持续治疗: {effect.AmountPerTick}/次",
+            BuffEffectType.InstantHeal => $"立即治疗: {effect.AmountPerTick}",
             BuffEffectType.ForceCrit => "强制暴击",
             _ => effect.Type.ToString()
         };
@@ -127,6 +208,12 @@
         justify-content: center;
     }
     
+    .buff-icon-display {
+        font-size: 20px;
+        line-height: 1;
+        user-select: none;
+    }
+    
     .buff-letter {
         font-size: 16px;
         font-weight: bold;
@@ -157,5 +244,68 @@
         padding: 0 2px;
         border-radius: 2px;
         line-height: 1.2;
+    }
+    
+    /* Custom tooltip styling */
+    .buff-tooltip {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        margin-bottom: 8px;
+        background-color: rgba(0, 0, 0, 0.95);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        white-space: nowrap;
+        z-index: 1000;
+        pointer-events: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        font-size: 12px;
+        min-width: 150px;
+    }
+    
+    .buff-tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 5px solid transparent;
+        border-top-color: rgba(0, 0, 0, 0.95);
+    }
+    
+    .tooltip-content {
+        text-align: left;
+    }
+    
+    .tooltip-title {
+        font-weight: bold;
+        font-size: 13px;
+        margin-bottom: 4px;
+        color: #ffc107;
+    }
+    
+    .tooltip-kind {
+        font-size: 11px;
+        color: #aaa;
+        margin-bottom: 6px;
+    }
+    
+    .tooltip-info {
+        margin: 3px 0;
+        font-size: 11px;
+    }
+    
+    .tooltip-effects {
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .tooltip-effect {
+        margin: 2px 0;
+        font-size: 11px;
+        color: #ddd;
     }
 </style>
