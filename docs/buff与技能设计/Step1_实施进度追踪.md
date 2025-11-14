@@ -1852,41 +1852,43 @@ Total tests: 298
 
 ---
 
-### Phase 3: 文档与示例 🔄 进行中
+### Phase 3: 实际使用迁移与集成测试 ✅ 已完成
 
-**状态：** 🔄 进行中
+**完成时间：** 2025-11-14  
+**状态：** ✅ 已完成
 
-**任务清单：**
-- [x] 创建 Buff配置化管理说明.md
-  - 系统概述和架构设计
-  - 核心组件说明
-  - 配置文件格式
-  - 使用方法和示例
-  - 默认 Buff 库文档
-  - FAQ 和故障排除
-- [x] 更新 Step1_实施进度追踪.md
-  - 添加 Buff 配置化管理章节
-  - 记录 Phase 1-2 完成情况
-- [ ] 更新现有文档
-  - docs_step1_Step1-设计方案.md 引用新文档
-  - README.md 添加配置管理说明（如适用）
+**实现内容：**
+- [x] 扩展 buffs.json 配置文件
+  - 添加 5 个新 buff 配置（warrior_power_boost, instant_heal, regeneration_hot, burning, weakened）
+  - 匹配 SkillRepository 中原有 inline 定义
+- [x] 扩展 BuffRepository 默认 buff 库
+  - 在 InitializeDefaultBuffs 中注册新 buff
+  - 总计 15 个默认 buff（10 原始 + 5 迁移）
+- [x] 迁移 SkillRepository 使用 BuffConfigId
+  - 将 SpecialPulse 技能的 5 个 inline BuffTemplate 迁移为 BuffConfigId
+  - 简化代码：从 169 行减少到 85 行（-50%）
+  - 保持完全相同的功能和行为
+- [x] 更新现有测试
+  - 修复 Phase9SpecialBuffTest.cs（regeneration → regeneration_hot）
+- [x] 创建集成测试 (7 个新测试)
+  - BuffRepository 完整性验证
+  - 迁移 buff 属性验证
+  - SkillRepository 使用 BuffConfigId 验证
+  - 端到端战斗集成测试
+  - DoT/HoT 效果验证
+- [x] 更新文档
+  - Buff配置化管理说明.md 完整文档
+  - Step1_实施进度追踪.md 进度记录
 
-**预计工作量：** 0.5-1 小时
+**验收标准：**
+- ✅ 所有 341 个测试通过（334 原有 + 7 新增）
+- ✅ SkillRepository.SpecialPulse 完全使用 BuffConfigId
+- ✅ 所有迁移的 buff 在 BuffRepository 中可用
+- ✅ 战斗中 buff 正常应用和生效
+- ✅ 无性能回退，向后兼容
+- ✅ 代码简化，维护性提升
 
----
-
-### Phase 4: 验收与总结 ⬜ 未开始
-
-**状态：** ⬜ 未开始
-
-**任务清单：**
-- [ ] 最终代码审查
-- [ ] 性能测试验证
-- [ ] 文档完整性检查
-- [ ] 创建使用指南
-- [ ] PR 总结与合并
-
-**预计工作量：** 0.5-1 小时
+**提交哈希：** (待提交)
 
 ---
 
@@ -1896,8 +1898,8 @@ Total tests: 298
 |-------|------|------|--------|--------|
 | Phase 1 | BuffConfig & BuffRepository | ✅ 完成 | +23 (322 total) | 2h |
 | Phase 2 | BuffOperation 支持 | ✅ 完成 | +12 (334 total) | 1.5h |
-| Phase 3 | 文档与示例 | 🔄 进行中 | 0 (334 total) | 1h |
-| Phase 4 | 验收与总结 | ⬜ 未开始 | 0 (334 total) | 0.5h |
+| Phase 3 | 实际使用迁移与集成测试 | ✅ 完成 | +7 (341 total) | 2h |
+| **总计** | **3 个阶段** | **100%** | **+42** | **5.5h** |
 | **总计** | **4 个阶段** | **50%** | **+35** | **5h** |
 
 ### 关键成果

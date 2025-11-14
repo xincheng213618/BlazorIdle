@@ -59,7 +59,7 @@ namespace BlazorIdle.Game.Skills
                 AlwaysHits = true
             });
 
-            // Special pulse - Phase 9: Comprehensive buff/debuff demonstration
+            // Special pulse - Phase 3: Migrated to use BuffConfigId
             // Tests various buff types: self-buffs, instant heal, DoT, HoT, and debuffs
             RegisterSkill(new SkillDef
             {
@@ -70,103 +70,20 @@ namespace BlazorIdle.Game.Skills
                 IsAoe = true,
                 OnCastBuffs = new List<BuffOperation>
                 {
-                    // 1. Self-buff: Damage/Haste/Crit boost (original warrior buff)
-                    new BuffOperation
-                    {
-                        Type = BuffOperationType.Apply,
-                        Target = BuffTarget.Self,
-                        BuffTemplate = new Buffs.BuffInstance(
-                            id: "warrior_power_boost",
-                            ownerId: "template",
-                            kind: Buffs.BuffKind.Buff,
-                            effects: new List<Buffs.BuffEffect>
-                            {
-                                Buffs.BuffEffect.StatMultiplier("DamagePerAttack", 0.15),
-                                Buffs.BuffEffect.StatAdditive("HastePercent", 10.0),
-                                Buffs.BuffEffect.StatAdditive("CritChancePercent", 5.0)
-                            },
-                            stackingPolicy: Buffs.BuffStackingPolicy.Refresh,
-                            durationSec: 6.0,
-                            tickIntervalSec: null,
-                            maxStacks: 0
-                        )
-                    },
+                    // 1. Self-buff: Damage/Haste/Crit boost (warrior power boost)
+                    BuffOperation.ApplyByConfigId("warrior_power_boost"),
+                    
                     // 2. Instant Heal: Heal self immediately
-                    new BuffOperation
-                    {
-                        Type = BuffOperationType.Apply,
-                        Target = BuffTarget.Self,
-                        BuffTemplate = new Buffs.BuffInstance(
-                            id: "instant_heal",
-                            ownerId: "template",
-                            kind: Buffs.BuffKind.Buff,
-                            effects: new List<Buffs.BuffEffect>
-                            {
-                                Buffs.BuffEffect.InstantHeal(20)
-                            },
-                            stackingPolicy: Buffs.BuffStackingPolicy.Refresh,
-                            durationSec: 0.1, // Very short duration for instant effect
-                            tickIntervalSec: null,
-                            maxStacks: 0
-                        )
-                    },
+                    BuffOperation.ApplyByConfigId("instant_heal"),
+                    
                     // 3. HoT (Heal over Time): Regeneration buff on self
-                    new BuffOperation
-                    {
-                        Type = BuffOperationType.Apply,
-                        Target = BuffTarget.Self,
-                        BuffTemplate = new Buffs.BuffInstance(
-                            id: "regeneration",
-                            ownerId: "template",
-                            kind: Buffs.BuffKind.Buff,
-                            effects: new List<Buffs.BuffEffect>
-                            {
-                                Buffs.BuffEffect.HealOverTime(5)
-                            },
-                            stackingPolicy: Buffs.BuffStackingPolicy.Stack,
-                            durationSec: 8.0,
-                            tickIntervalSec: 2.0,
-                            maxStacks: 3
-                        )
-                    },
+                    BuffOperation.ApplyByConfigId("regeneration_hot"),
+                    
                     // 4. DoT (Damage over Time): Burn debuff on enemies
-                    new BuffOperation
-                    {
-                        Type = BuffOperationType.Apply,
-                        Target = BuffTarget.AllEnemies,
-                        BuffTemplate = new Buffs.BuffInstance(
-                            id: "burning",
-                            ownerId: "template",
-                            kind: Buffs.BuffKind.Debuff,
-                            effects: new List<Buffs.BuffEffect>
-                            {
-                                Buffs.BuffEffect.DamageOverTime(8)
-                            },
-                            stackingPolicy: Buffs.BuffStackingPolicy.Stack,
-                            durationSec: 10.0,
-                            tickIntervalSec: 2.0,
-                            maxStacks: 5
-                        )
-                    },
+                    BuffOperation.ApplyByConfigId("burning"),
+                    
                     // 5. Stat Reduction Debuff: Weaken enemy damage
-                    new BuffOperation
-                    {
-                        Type = BuffOperationType.Apply,
-                        Target = BuffTarget.AllEnemies,
-                        BuffTemplate = new Buffs.BuffInstance(
-                            id: "weakened",
-                            ownerId: "template",
-                            kind: Buffs.BuffKind.Debuff,
-                            effects: new List<Buffs.BuffEffect>
-                            {
-                                Buffs.BuffEffect.StatReduction("DamagePerHit", 0.20)
-                            },
-                            stackingPolicy: Buffs.BuffStackingPolicy.Refresh,
-                            durationSec: 8.0,
-                            tickIntervalSec: null,
-                            maxStacks: 0
-                        )
-                    }
+                    BuffOperation.ApplyByConfigId("weakened")
                 }
             });
 

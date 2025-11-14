@@ -191,5 +191,104 @@
         "type": "ForceCrit"
       }
     ]
+  },
+  {
+    "id": "warrior_power_boost",
+    "name": "战士强化",
+    "description": "大幅增加攻击力、攻击速度和暴击率",
+    "icon": "⚔️",
+    "kind": "Buff",
+    "durationSec": 6.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatMultiplier",
+        "target": "DamagePerAttack",
+        "value": 0.15
+      },
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": 10.0
+      },
+      {
+        "type": "StatAdditive",
+        "target": "CritChancePercent",
+        "value": 5.0
+      }
+    ]
+  },
+  {
+    "id": "instant_heal",
+    "name": "瞬间治疗",
+    "description": "立即恢复生命值",
+    "icon": "💚",
+    "kind": "Buff",
+    "durationSec": 0.1,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "InstantHeal",
+        "amountPerTick": 20
+      }
+    ]
+  },
+  {
+    "id": "regeneration_hot",
+    "name": "持续恢复",
+    "description": "持续恢复生命值（可叠加）",
+    "icon": "💚",
+    "kind": "Buff",
+    "durationSec": 8.0,
+    "tickIntervalSec": 2.0,
+    "stackingPolicy": "Stack",
+    "maxStacks": 3,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "HealOverTime",
+        "amountPerTick": 5
+      }
+    ]
+  },
+  {
+    "id": "burning",
+    "name": "燃烧",
+    "description": "持续造成火焰伤害（可叠加）",
+    "icon": "🔥",
+    "kind": "Debuff",
+    "durationSec": 10.0,
+    "tickIntervalSec": 2.0,
+    "stackingPolicy": "Stack",
+    "maxStacks": 5,
+    "defaultTarget": "AllEnemies",
+    "effects": [
+      {
+        "type": "DamageOverTime",
+        "amountPerTick": 8
+      }
+    ]
+  },
+  {
+    "id": "weakened",
+    "name": "虚弱",
+    "description": "降低敌人伤害",
+    "icon": "😰",
+    "kind": "Debuff",
+    "durationSec": 8.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "AllEnemies",
+    "effects": [
+      {
+        "type": "StatReduction",
+        "target": "DamagePerHit",
+        "value": 0.20
+      }
+    ]
   }
 ]

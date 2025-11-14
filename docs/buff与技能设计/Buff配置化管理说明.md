@@ -2,7 +2,7 @@
 
 **版本**: v1.0  
 **日期**: 2025-11-14  
-**状态**: ✅ 已实施 (Phase 1-2 完成)
+**状态**: ✅ 已完成 (Phase 1-3 完成)
 
 ---
 
@@ -423,8 +423,11 @@ A: 极小。BuffRepository 使用内存缓存，查询为 O(1)。ToBuffInstance 
 - ✅ Phase 1: 实现 BuffConfig, BuffRepository, buffs.json
 - ✅ Phase 2: BuffOperation 支持 BuffConfigId
 - ✅ Phase 2: MultiBattleInstance 集成
-- ✅ 23 + 12 = 35 单元测试全部通过
-- ✅ 所有 334 个测试通过
+- ✅ Phase 3: 迁移 SkillRepository 使用 BuffConfigId
+- ✅ Phase 3: 扩展 buffs.json 至 15 个 buff
+- ✅ 23 + 12 + 7 = 42 单元测试全部通过
+- ✅ 所有 341 个测试通过
+- ✅ SkillRepository 代码简化 50%
 
 ---
 

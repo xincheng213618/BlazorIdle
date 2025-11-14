@@ -239,6 +239,101 @@ namespace BlazorIdle.Game.Buffs
                     BuffEffect.ForceCrit()
                 }
             });
+
+            // Phase 3: Additional buffs used in SkillRepository
+            // Warrior Power Boost (for special pulse)
+            RegisterBuff(new BuffConfig
+            {
+                Id = "warrior_power_boost",
+                Name = "战士强化",
+                Description = "大幅增加攻击力、攻击速度和暴击率",
+                Icon = "⚔️",
+                Kind = BuffKind.Buff,
+                DurationSec = 6.0,
+                StackingPolicy = BuffStackingPolicy.Refresh,
+                MaxStacks = 1,
+                DefaultTarget = Skills.BuffTarget.Self,
+                Effects = new List<BuffEffect>
+                {
+                    BuffEffect.StatMultiplier("DamagePerAttack", 0.15),
+                    BuffEffect.StatAdditive("HastePercent", 10.0),
+                    BuffEffect.StatAdditive("CritChancePercent", 5.0)
+                }
+            });
+
+            // Instant Heal
+            RegisterBuff(new BuffConfig
+            {
+                Id = "instant_heal",
+                Name = "瞬间治疗",
+                Description = "立即恢复生命值",
+                Icon = "💚",
+                Kind = BuffKind.Buff,
+                DurationSec = 0.1,
+                StackingPolicy = BuffStackingPolicy.Refresh,
+                MaxStacks = 1,
+                DefaultTarget = Skills.BuffTarget.Self,
+                Effects = new List<BuffEffect>
+                {
+                    BuffEffect.InstantHeal(20)
+                }
+            });
+
+            // Regeneration HoT (stackable)
+            RegisterBuff(new BuffConfig
+            {
+                Id = "regeneration_hot",
+                Name = "持续恢复",
+                Description = "持续恢复生命值（可叠加）",
+                Icon = "💚",
+                Kind = BuffKind.Buff,
+                DurationSec = 8.0,
+                TickIntervalSec = 2.0,
+                StackingPolicy = BuffStackingPolicy.Stack,
+                MaxStacks = 3,
+                DefaultTarget = Skills.BuffTarget.Self,
+                Effects = new List<BuffEffect>
+                {
+                    BuffEffect.HealOverTime(5)
+                }
+            });
+
+            // Burning DoT (stackable)
+            RegisterBuff(new BuffConfig
+            {
+                Id = "burning",
+                Name = "燃烧",
+                Description = "持续造成火焰伤害（可叠加）",
+                Icon = "🔥",
+                Kind = BuffKind.Debuff,
+                DurationSec = 10.0,
+                TickIntervalSec = 2.0,
+                StackingPolicy = BuffStackingPolicy.Stack,
+                MaxStacks = 5,
+                DefaultTarget = Skills.BuffTarget.AllEnemies,
+                Effects = new List<BuffEffect>
+                {
+                    BuffEffect.DamageOverTime(8)
+                }
+            });
+
+            // Weakened (stat reduction on enemies)
+            RegisterBuff(new BuffConfig
+            {
+                Id = "weakened",
+                Name = "虚弱",
+                Description = "降低敌人伤害",
+                Icon = "😰",
+                Kind = BuffKind.Debuff,
+                DurationSec = 8.0,
+                StackingPolicy = BuffStackingPolicy.Refresh,
+                MaxStacks = 1,
+                DefaultTarget = Skills.BuffTarget.AllEnemies,
+                Effects = new List<BuffEffect>
+                {
+                    BuffEffect.StatReduction("DamagePerHit", 0.20)
+                }
+            });
         }
 
         /// <summary>
