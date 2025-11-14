@@ -410,11 +410,13 @@ namespace BlazorIdle.Shared.Game.Skills
 }
 ```
 
-### 1.4 技能解锁的永久性
+### 1.4 技能学习与使用机制
 
-**设计决策：**
+**核心设计决策：学会即可用**
 
-技能学习系统遵循"一旦学习，永久拥有"的原则：
+技能学习系统采用简化的"学会即可用"原则，降低玩家学习成本：
+
+#### 1.4.1 学习即拥有，永久有效
 
 1. **永久性保证**
    - 技能一旦学习成功，永久添加到 `LearnedSkills` 集合
@@ -423,35 +425,117 @@ namespace BlazorIdle.Shared.Game.Skills
 
 2. **解锁条件的作用范围**
    - `unlock.minLevel` 等条件**仅在学习时检查**
-   - 学习后，这些条件不再影响技能的可用性
-   - 这确保了玩家的进度不会倒退，提供良好的游戏体验
+   - **学习后，技能立即可以装备和使用，无需其他条件**
+   - 这确保了玩家的进度不会倒退，提供流畅的游戏体验
 
 3. **职业切换的影响**
    - `LearnedSkills` 跨职业共享 - 所有职业共用同一个已学习技能池
-   - 但技能的**装备**是按职业分组的（`EquippedSkillsByProfession`）
-   - 切换职业时，已学习的技能保留，但装备配置独立
+   - 但技能的**装备**受职业限制（`allowedProfessions`）
+   - 切换职业时，已学习的技能保留，但只能装备当前职业允许的技能
 
-4. **技术实现**
-   - `LearnedSkills` 是 `HashSet<string>`，只增不减
-   - 没有"忘记技能"或"失去技能"的API
-   - 序列化时完整保存，确保持久化
+#### 1.4.2 使用条件 vs 学习条件
 
-**示例场景：**
+**明确区分两种条件：**
+
+| 条件类型 | 检查时机 | 影响范围 | 示例 |
+|---------|---------|---------|------|
+| **学习条件** | 学习技能时 | 是否可学习 | minLevel=7（需要7级才能学） |
+| **使用条件** | 战斗中施放时 | 是否可施放 | hpBelowPct=50（HP<50%才能用） |
+
+- **学习条件（unlock）：** 
+  - 只在学习时检查一次
+  - 学习后不再检查
+  - 包括：minLevel, requiresProfessionLevel, accountFlags
+
+- **使用条件（conditions）：**
+  - 每次施放时都检查
+  - 战斗中动态判定
+  - 包括：hpBelowPct, hpAbovePct, requireBuffId, forbidBuffId, requireResource
+
+#### 1.4.3 固定技能初始化策略
+
+**防御式设计，确保固定技能总是可用：**
+
+- 在任何访问技能槽位的方法中，先检查当前职业配置是否存在
+- 如果不存在或为空，自动调用 `InitializeFixedSkills()` 初始化
+- 这样确保无论在何种情况下，固定技能都能正确初始化
+
+**建议检查位置：**
+- `GetEquippedSkills()` - 获取装备技能时检查
+- `EquipSkill()` - 装备技能时检查
+- `Character` 构造函数 - 创建时检查
+- `ChangeProfession()` - 切换职业时检查
+
+**实现示例：**
+```csharp
+public List<string> GetEquippedSkills(string professionId)
+{
+    // 防御式检查：如果职业配置不存在，自动初始化
+    if (!EquippedSkillsByProfession.ContainsKey(professionId) || 
+        EquippedSkillsByProfession[professionId] == null)
+    {
+        InitializeFixedSkills(professionId);
+    }
+    
+    // 返回技能列表
+    var config = EquippedSkillsByProfession[professionId];
+    var skills = new List<string>();
+    skills.AddRange(config.ActiveSlots.Values.Where(s => !string.IsNullOrEmpty(s)));
+    if (!string.IsNullOrEmpty(config.PassiveSlot))
+        skills.Add(config.PassiveSlot);
+    return skills;
+}
 ```
-1. 角色在战士职业 10 级时学习了"雷霆一击"（需要 7 级）
-2. 角色死亡，等级降至 6 级
-3. "雷霆一击"仍然在 LearnedSkills 中，可以继续使用
-4. 角色切换到法师职业
-5. "雷霆一击"仍然在 LearnedSkills 中，但因为职业限制无法装备
-6. 角色切换回战士职业
-7. "雷霆一击"可以重新装备到技能槽位
+
+#### 1.4.4 示例场景
+
+**场景 1：学习和使用**
+```
+1. 角色在战士职业 7 级时达到学习"雷霆一击"的条件（minLevel=7）
+2. 玩家点击"学习"，技能添加到 LearnedSkills
+3. 玩家立即可以将"雷霆一击"装备到技能槽位
+4. 战斗中，"雷霆一击"可以正常使用（无额外限制）
 ```
 
-**好处：**
-- ✅ 玩家进度不会倒退
+**场景 2：等级降低不影响使用**
+```
+1. 角色 10 级学习了"雷霆一击"（需要 7 级）
+2. 角色死亡惩罚，等级降至 6 级
+3. "雷霆一击"仍然在 LearnedSkills 中
+4. 仍然可以装备和使用"雷霆一击"（不受等级影响）
+```
+
+**场景 3：职业切换**
+```
+1. 战士职业学习了"雷霆一击"（allowedProfessions=["warrior"]）
+2. 角色切换到法师职业
+3. "雷霆一击"仍在 LearnedSkills 中（不丢失）
+4. 但无法装备"雷霆一击"（职业限制）
+5. 切换回战士后，可以重新装备
+```
+
+**场景 4：使用条件动态检查**
+```
+1. 学习了"肾上腺素"（条件：hpBelowPct=50）
+2. 可以装备到技能槽位（无学习后限制）
+3. 战斗中 HP > 50% 时，"肾上腺素"不会触发（使用条件不满足）
+4. 战斗中 HP < 50% 时，"肾上腺素"可以触发
+```
+
+#### 1.4.5 设计优势
+
+**简化玩家体验：**
+- ✅ 学会即可用，无需多余的装备前置条件
+- ✅ 玩家进度不会倒退（等级降低不影响已学技能）
 - ✅ 鼓励玩家探索和学习更多技能
-- ✅ 职业切换更加灵活
+- ✅ 职业切换更加灵活（技能不丢失）
 - ✅ 降低了玩家的挫败感
+
+**技术实现清晰：**
+- ✅ `LearnedSkills` 只增不减（HashSet<string>）
+- ✅ 学习条件和使用条件分离明确
+- ✅ 固定技能防御式初始化
+- ✅ 序列化持久化简单可靠
 
 ---
 
