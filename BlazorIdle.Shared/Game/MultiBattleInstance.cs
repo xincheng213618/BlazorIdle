@@ -1312,12 +1312,48 @@ namespace BlazorIdle.Game
             bool isCasterPlayer,
             string? bundleId = null)
         {
-            if (operation.BuffTemplate == null)
+            // Phase 2: 支持通过 BuffConfigId 引用配置化的 buff
+            // Phase 2: Support referencing configured buffs via BuffConfigId
+            Buffs.BuffInstance? templateToUse = null;
+            Skills.BuffTarget targetToUse = operation.Target;
+
+            if (!string.IsNullOrEmpty(operation.BuffConfigId))
+            {
+                // 从 BuffRepository 查找配置
+                // Look up configuration from BuffRepository
+                var buffConfig = Buffs.BuffRepository.Instance.GetBuffById(operation.BuffConfigId);
+                if (buffConfig == null)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[ApplyBuffOperation] Warning: BuffConfig '{operation.BuffConfigId}' not found in repository");
+                    return;
+                }
+
+                // 将 BuffConfig 转换为 BuffInstance 模板
+                // Convert BuffConfig to BuffInstance template
+                // Note: OwnerId will be set later for each target
+                templateToUse = buffConfig.ToBuffInstance("", operation.BuffTemplate?.SourceSkillId);
+                
+                // 使用 TargetOverride 或 BuffConfig 的 DefaultTarget
+                // Use TargetOverride or BuffConfig's DefaultTarget
+                targetToUse = operation.TargetOverride ?? buffConfig.DefaultTarget;
+            }
+            else if (operation.BuffTemplate != null)
+            {
+                // 向后兼容：使用 inline BuffTemplate
+                // Backward compatibility: use inline BuffTemplate
+                templateToUse = operation.BuffTemplate;
+            }
+            else
+            {
+                // 既没有 BuffConfigId 也没有 BuffTemplate，无法应用
+                // Neither BuffConfigId nor BuffTemplate provided, cannot apply
                 return;
+            }
 
             // 解析目标列表
             // Resolve target list
-            var targets = ResolveBuffTargets(operation.Target, casterId, targetId, isCasterPlayer);
+            var targets = ResolveBuffTargets(targetToUse, casterId, targetId, isCasterPlayer);
 
             foreach (var target in targets)
             {
@@ -1328,14 +1364,14 @@ namespace BlazorIdle.Game
                 // Critical fix: Deep copy Effects list to avoid shared references
                 // Method B: Set AppliedAtMs for time-ordered stacking
                 var buffToApply = new Buffs.BuffInstance(
-                    id: operation.BuffTemplate.Id,
+                    id: templateToUse.Id,
                     ownerId: target.Id, // Phase 6: 设置正确的 OwnerId
-                    kind: operation.BuffTemplate.Kind,
-                    effects: new List<Buffs.BuffEffect>(operation.BuffTemplate.Effects), // Deep copy
-                    stackingPolicy: operation.BuffTemplate.StackingPolicy,
-                    durationSec: operation.BuffTemplate.RemainingDurationSec, // Use template's duration
-                    tickIntervalSec: operation.BuffTemplate.TickIntervalSec,
-                    maxStacks: operation.BuffTemplate.MaxStacks,
+                    kind: templateToUse.Kind,
+                    effects: new List<Buffs.BuffEffect>(templateToUse.Effects), // Deep copy
+                    stackingPolicy: templateToUse.StackingPolicy,
+                    durationSec: templateToUse.RemainingDurationSec, // Use template's duration
+                    tickIntervalSec: templateToUse.TickIntervalSec,
+                    maxStacks: templateToUse.MaxStacks,
                     appliedAtMs: _clock.NowMs // Set application timestamp for time-ordered stacking
                 );
 
@@ -1354,7 +1390,7 @@ namespace BlazorIdle.Game
                     durationSec: buffToApply.RemainingDurationSec,
                     stacks: buffToApply.Stacks,
                     effectsSummary: effectsSummary,
-                    sourceSkillId: operation.BuffTemplate.SourceSkillId,
+                    sourceSkillId: templateToUse.SourceSkillId,
                     bundleId: bundleId // Fix: Pass bundleId from skill cast context
                 );
             }
