@@ -1,0 +1,164 @@
+{
+  "skills": [
+    {
+      "id": "warrior_attack_basic",
+      "name": "战士普通攻击（固定被动）",
+      "type": "passive",
+      "slotType": "passive",
+      "fixed": true,
+      "releaseType": "instant",
+      "targetPolicy": "current_target",
+      "cooldownSec": 0,
+      "allowedProfessions": ["warrior"]
+    },
+    {
+      "id": "warrior_special_pulse",
+      "name": "战士特殊（固定被动）",
+      "type": "passive",
+      "slotType": "passive",
+      "fixed": true,
+      "releaseType": "instant",
+      "targetPolicy": "self",
+      "cooldownSec": 0,
+      "onCastBuffs": [
+        { "op": "apply", "buffConfigId": "warrior_power_boost", "targetOverride": "self" }
+      ],
+      "allowedProfessions": ["warrior"]
+    },
+
+    {
+      "id": "warrior_slam",
+      "name": "猛击（固定主动，GCD）",
+      "type": "active",
+      "slotType": "active",
+      "fixed": true,
+      "releaseType": "instant",
+      "isGcd": true,
+      "targetPolicy": "current_target",
+      "cooldownSec": 10.0,
+      "damage": { "coefAtk": 1.2, "flat": 20, "isAoe": false },
+      "resourceGains": [{ "bucketId": "rage", "amount": 2 }],
+      "allowedProfessions": ["warrior"],
+      "unlock": { "minLevel": 1 }
+    },
+    {
+      "id": "warrior_mortal_strike",
+      "name": "致死打击（GCD）",
+      "type": "active",
+      "slotType": "active",
+      "fixed": false,
+      "releaseType": "instant",
+      "isGcd": true,
+      "targetPolicy": "current_target",
+      "cooldownSec": 3.0,
+      "costs": [{ "bucketId": "rage", "amount": 3 }],
+      "damage": { "coefAtk": 1.5, "flat": 30, "isAoe": false },
+      "allowedProfessions": ["warrior"],
+      "unlock": { "minLevel": 3 }
+    },
+    {
+      "id": "warrior_rend",
+      "name": "撕裂（GCD，流血）",
+      "type": "active",
+      "slotType": "active",
+      "fixed": false,
+      "releaseType": "instant",
+      "isGcd": true,
+      "targetPolicy": "current_target",
+      "cooldownSec": 10.0,
+      "costs": [{ "bucketId": "rage", "amount": 1 }],
+      "damage": { "coefAtk": 0.0, "flat": 0, "isAoe": false },
+      "onHitBuffs": [
+        { "op": "apply", "buffConfigId": "warrior_rend_dot", "targetOverride": "current_target" }
+      ],
+      "allowedProfessions": ["warrior"],
+      "unlock": { "minLevel": 5 }
+    },
+    {
+      "id": "warrior_thunderclap",
+      "name": "雷霆一击（瞬发非GCD，可与上面共触发）",
+      "type": "active",
+      "slotType": "active",
+      "fixed": false,
+      "releaseType": "instant",
+      "isGcd": false,
+      "targetPolicy": "enemies_all",
+      "cooldownSec": 10.0,
+      "damage": { "coefAtk": 0.8, "flat": 10, "isAoe": true },
+      "allowedProfessions": ["warrior"],
+      "unlock": { "minLevel": 7 }
+    },
+
+    {
+      "id": "adrenaline_rush",
+      "name": "肾上腺素（共享，HP<50%自疗20%）",
+      "type": "active",
+      "slotType": "active",
+      "fixed": false,
+      "releaseType": "instant",
+      "isGcd": true,
+      "targetPolicy": "self",
+      "cooldownSec": 20.0,
+      "conditions": { "hpBelowPct": 50 },
+      "onCastBuffs": [
+        { "op": "apply", "buffConfigId": "instant_heal_20pct", "targetOverride": "self" }
+      ],
+      "allowedProfessions": ["warrior","mage","ranger","rogue"],
+      "unlock": { "accountFlags": ["warrior_level_10_unlocked"] }
+    },
+
+    {
+      "id": "warrior_proc_passive",
+      "name": "战士被动触发（普攻20%附加打击）",
+      "type": "passive",
+      "slotType": "passive",
+      "fixed": false,
+      "releaseType": "instant",
+      "triggers": [
+        {
+          "when": "OnAttackHit",
+          "procChance": 0.20,
+          "fireSkillId": "warrior_proc_strike",
+          "priority": 15,
+          "conditions": {}
+        }
+      ],
+      "allowedProfessions": ["warrior"],
+      "unlock": { "minLevel": 1 }
+    },
+    {
+      "id": "warrior_proc_strike",
+      "name": "被动触发·附加打击（非GCD）",
+      "type": "active",
+      "slotType": "active",
+      "fixed": false,
+      "releaseType": "instant",
+      "isGcd": false,
+      "targetPolicy": "current_target",
+      "cooldownSec": 0.0,
+      "damage": { "coefAtk": 0.5, "flat": 0, "isAoe": false },
+      "allowedProfessions": ["warrior"]
+    },
+
+    {
+      "id": "mage_pyroblast",
+      "name": "炎爆术（施法 2.5s，完成后可追加瞬发）",
+      "type": "active",
+      "slotType": "active",
+      "fixed": false,
+      "releaseType": "cast",
+      "castTimeSec": 2.5,
+      "isGcd": true,
+      "allowCoTriggerAfterCast": true,
+      "targetPolicy": "current_target",
+      "cooldownSec": 8.0,
+      "costs": [{ "bucketId": "mana", "amount": 30 }],
+      "damage": { "coefAtk": 2.0, "flat": 50, "isAoe": false },
+      "onHitBuffs": [
+        { "op": "apply", "buffConfigId": "burning", "targetOverride": "current_target" }
+      ],
+      "allowedProfessions": ["mage"],
+      "unlock": { "minLevel": 5 }
+    }
+  ]
+}
