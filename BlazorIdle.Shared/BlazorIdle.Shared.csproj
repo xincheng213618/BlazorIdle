@@ -11,4 +11,8 @@
     <Folder Include="Models\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Config\buffs.json" />
+  </ItemGroup>
+
 </Project>

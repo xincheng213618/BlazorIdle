@@ -1324,8 +1324,11 @@ namespace BlazorIdle.Game
                 var buffConfig = Buffs.BuffRepository.Instance.GetBuffById(operation.BuffConfigId);
                 if (buffConfig == null)
                 {
-                    System.Diagnostics.Debug.WriteLine(
-                        $"[ApplyBuffOperation] Warning: BuffConfig '{operation.BuffConfigId}' not found in repository");
+                    // P1 Fix: Improved error logging for production visibility
+                    var errorMsg = $"[ApplyBuffOperation] ERROR: BuffConfig '{operation.BuffConfigId}' not found in repository. " +
+                                   $"Caster: {casterId}, Target: {targetId}";
+                    Console.WriteLine(errorMsg);
+                    System.Diagnostics.Debug.WriteLine(errorMsg);
                     return;
                 }
 

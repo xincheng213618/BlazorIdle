@@ -1,6 +1,7 @@
 using BlazorIdle.Models;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 
@@ -14,9 +15,11 @@ namespace BlazorIdle.Game.Buffs
     {
         private readonly Dictionary<string, BuffConfig> _buffs = new Dictionary<string, BuffConfig>();
         private static BuffRepository? _instance;
+        private static readonly object _lock = new object();
 
         /// <summary>
         /// Gets the singleton instance of BuffRepository.
+        /// Thread-safe implementation.
         /// </summary>
         public static BuffRepository Instance
         {
@@ -24,7 +27,13 @@ namespace BlazorIdle.Game.Buffs
             {
                 if (_instance == null)
                 {
-                    _instance = new BuffRepository();
+                    lock (_lock)
+                    {
+                        if (_instance == null)
+                        {
+                            _instance = new BuffRepository();
+                        }
+                    }
                 }
                 return _instance;
             }
@@ -32,10 +41,21 @@ namespace BlazorIdle.Game.Buffs
 
         /// <summary>
         /// Private constructor for singleton pattern.
+        /// Loads buffs from embedded JSON resource or falls back to default buffs.
         /// </summary>
         private BuffRepository()
         {
-            InitializeDefaultBuffs();
+            // P0 Fix: Load from JSON file instead of hardcoded initialization
+            bool loaded = TryLoadFromEmbeddedJson();
+            if (!loaded)
+            {
+                // Fallback to hardcoded initialization if JSON loading fails
+                System.Diagnostics.Debug.WriteLine("[BuffRepository] Failed to load from JSON, using hardcoded defaults");
+                InitializeDefaultBuffs();
+            }
+            
+            // P1 Fix: Validate configuration at startup
+            ValidateBuffConfigurations();
         }
 
         /// <summary>
@@ -48,11 +68,14 @@ namespace BlazorIdle.Game.Buffs
 
         /// <summary>
         /// Initializes default buff configurations.
-        /// These are examples that can be used for testing or as a starting point.
+        /// P0 Fix: Simplified - only used as fallback when JSON loading fails.
+        /// P1 Fix: Fixed HastePercent to use 10.0 (not 0.10) to match original implementation.
         /// </summary>
         private void InitializeDefaultBuffs()
         {
-            // Warrior buff: Rage Boost (+15% damage, +10% haste, +5% crit for 6s)
+            // Note: This is a fallback. Normally buffs are loaded from buffs.json
+            
+            // Warrior buff: Rage Boost (+15% damage, +10 haste, +5 crit for 6s)
             RegisterBuff(new BuffConfig
             {
                 Id = "warrior_rage_boost",
@@ -67,8 +90,8 @@ namespace BlazorIdle.Game.Buffs
                 Effects = new List<BuffEffect>
                 {
                     BuffEffect.StatMultiplier("DamagePerAttack", 0.15),
-                    BuffEffect.StatAdditive("HastePercent", 0.10),
-                    BuffEffect.StatAdditive("CritChancePercent", 0.05)
+                    BuffEffect.StatAdditive("HastePercent", 10.0),  // P1 Fix: 10.0 not 0.10
+                    BuffEffect.StatAdditive("CritChancePercent", 5.0)
                 }
             });
 
@@ -180,7 +203,7 @@ namespace BlazorIdle.Game.Buffs
                 DefaultTarget = Skills.BuffTarget.Self,
                 Effects = new List<BuffEffect>
                 {
-                    BuffEffect.StatAdditive("HastePercent", 0.15)
+                    BuffEffect.StatAdditive("HastePercent", 15.0)  // P1 Fix: 15.0 not 0.15
                 }
             });
 
@@ -334,6 +357,129 @@ namespace BlazorIdle.Game.Buffs
                     BuffEffect.StatReduction("DamagePerHit", 0.20)
                 }
             });
+        }
+
+        /// <summary>
+        /// P0 Fix: Attempts to load buff configurations from embedded JSON resource.
+        /// </summary>
+        /// <returns>True if successfully loaded, false otherwise.</returns>
+        private bool TryLoadFromEmbeddedJson()
+        {
+            try
+            {
+                var assembly = typeof(BuffRepository).Assembly;
+                var resourceName = "BlazorIdle.Shared.Config.buffs.json";
+                
+                using (var stream = assembly.GetManifestResourceStream(resourceName))
+                {
+                    if (stream == null)
+                    {
+                        // Try alternative resource name format
+                        var resources = assembly.GetManifestResourceNames();
+                        resourceName = resources.FirstOrDefault(r => r.EndsWith("buffs.json"));
+                        
+                        if (resourceName != null)
+                        {
+                            stream?.Dispose();
+                            using (var alternativeStream = assembly.GetManifestResourceStream(resourceName))
+                            {
+                                if (alternativeStream != null)
+                                {
+                                    return LoadFromStream(alternativeStream);
+                                }
+                            }
+                        }
+                        
+                        Console.WriteLine($"[BuffRepository] Warning: Could not find embedded resource 'buffs.json'. Available resources: {string.Join(", ", resources)}");
+                        return false;
+                    }
+                    
+                    return LoadFromStream(stream);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[BuffRepository] Error loading from embedded JSON: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Helper method to load buffs from a stream.
+        /// </summary>
+        private bool LoadFromStream(System.IO.Stream stream)
+        {
+            using (var reader = new System.IO.StreamReader(stream))
+            {
+                var json = reader.ReadToEnd();
+                LoadFromJson(json);
+                Console.WriteLine($"[BuffRepository] Successfully loaded {_buffs.Count} buffs from JSON");
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// P1 Fix: Validates all buff configurations at startup.
+        /// Logs errors for production visibility.
+        /// </summary>
+        private void ValidateBuffConfigurations()
+        {
+            var errors = new List<string>();
+            
+            foreach (var kvp in _buffs)
+            {
+                var buff = kvp.Value;
+                
+                // Validate required fields
+                if (string.IsNullOrEmpty(buff.Id))
+                {
+                    errors.Add($"Buff has empty Id");
+                }
+                else if (buff.Id != kvp.Key)
+                {
+                    errors.Add($"Buff Id '{buff.Id}' does not match dictionary key '{kvp.Key}'");
+                }
+                
+                if (string.IsNullOrEmpty(buff.Name))
+                {
+                    errors.Add($"Buff '{buff.Id}' has empty Name");
+                }
+                
+                if (buff.Effects == null || buff.Effects.Count == 0)
+                {
+                    errors.Add($"Buff '{buff.Id}' has no effects defined");
+                }
+                
+                // Validate logical constraints
+                if (buff.MaxStacks < 0)
+                {
+                    errors.Add($"Buff '{buff.Id}' has negative MaxStacks: {buff.MaxStacks}");
+                }
+                
+                if (buff.DurationSec.HasValue && buff.DurationSec.Value <= 0)
+                {
+                    errors.Add($"Buff '{buff.Id}' has non-positive duration: {buff.DurationSec}");
+                }
+                
+                if (buff.TickIntervalSec.HasValue && buff.TickIntervalSec.Value <= 0)
+                {
+                    errors.Add($"Buff '{buff.Id}' has non-positive tick interval: {buff.TickIntervalSec}");
+                }
+            }
+            
+            // P1 Fix: Log to Console for production visibility (not just Debug)
+            if (errors.Count > 0)
+            {
+                Console.WriteLine($"[BuffRepository] WARNING: Found {errors.Count} validation errors:");
+                foreach (var error in errors)
+                {
+                    Console.WriteLine($"  - {error}");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[BuffRepository] Validation passed for {_buffs.Count} buffs");
+            }
         }
 
         /// <summary>

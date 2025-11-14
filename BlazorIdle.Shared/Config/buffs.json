@@ -18,7 +18,7 @@
       {
         "type": "StatAdditive",
         "target": "HastePercent",
-        "value": 0.10
+        "value": 10.0
       },
       {
         "type": "StatAdditive",
@@ -131,7 +131,7 @@
       {
         "type": "StatAdditive",
         "target": "HastePercent",
-        "value": 0.15
+        "value": 15.0
       }
     ]
   },
