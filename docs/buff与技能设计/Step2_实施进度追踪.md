@@ -165,6 +165,10 @@
   - UnequipSkill() 方法
   - GetEquippedSkills() 方法
   - InitializeFixedSkills() 方法（自动装配固定技能）
+  - 固定技能初始化时机：
+    * 创建新角色时（Character 构造函数）
+    * 切换职业时（ChangeProfession 方法）
+    * 加载存档时（如果 EquippedSkillsByProfession 为空或对应职业配置不存在）
 
 - [ ] 2.5.5 数据持久化
   - 确保 CharacterData 序列化包含新字段
@@ -668,6 +672,12 @@
   - SkillEquipmentPanel.razor.css
   - SkillIcon.razor.css
   - CastingBar.razor.css
+
+- [ ] 10.7 技能视觉和听觉反馈（可选）
+  - 技能施放动画（图标闪烁、粒子效果）
+  - 技能施放音效（攻击声、技能特效声）
+  - 技能命中反馈（伤害数字、震动效果）
+  - 注：此任务为可选，可在后续迭代中实现
 
 **验收标准：**
 - ✅ 技能学习界面功能完整
