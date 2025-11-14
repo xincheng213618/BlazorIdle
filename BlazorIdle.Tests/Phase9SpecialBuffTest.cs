@@ -89,8 +89,8 @@ namespace BlazorIdle.Tests
             Assert.True(warriorBuff.RemainingDurationSec > 0);
             
             // Phase 9: Verify additional buffs are applied (HoT, instant heal, etc.)
-            // Check for regeneration buff
-            var regenBuff = buffs.FirstOrDefault(b => b.Id == "regeneration");
+            // Check for regeneration buff (Phase 3: updated to regeneration_hot)
+            var regenBuff = buffs.FirstOrDefault(b => b.Id == "regeneration_hot");
             Assert.NotNull(regenBuff);
             Assert.Equal(BuffKind.Buff, regenBuff.Kind);
             
