@@ -1,0 +1,195 @@
+[
+  {
+    "id": "warrior_rage_boost",
+    "name": "狂暴",
+    "description": "增加攻击力、攻击速度和暴击率",
+    "icon": "⚔️",
+    "kind": "Buff",
+    "durationSec": 6.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatMultiplier",
+        "target": "DamagePerAttack",
+        "value": 0.15
+      },
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": 0.10
+      },
+      {
+        "type": "StatAdditive",
+        "target": "CritChancePercent",
+        "value": 0.05
+      }
+    ]
+  },
+  {
+    "id": "mage_burn_dot",
+    "name": "燃烧",
+    "description": "持续造成火焰伤害",
+    "icon": "🔥",
+    "kind": "Debuff",
+    "durationSec": 6.0,
+    "tickIntervalSec": 1.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "AllEnemies",
+    "effects": [
+      {
+        "type": "DamageOverTime",
+        "amountPerTick": 6
+      }
+    ]
+  },
+  {
+    "id": "damage_boost",
+    "name": "伤害增幅",
+    "description": "提高攻击伤害",
+    "icon": "💪",
+    "kind": "Buff",
+    "durationSec": 10.0,
+    "stackingPolicy": "Stack",
+    "maxStacks": 3,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatMultiplier",
+        "target": "DamagePerAttack",
+        "value": 0.10
+      }
+    ]
+  },
+  {
+    "id": "regeneration",
+    "name": "恢复",
+    "description": "持续恢复生命值",
+    "icon": "💚",
+    "kind": "Buff",
+    "durationSec": 15.0,
+    "tickIntervalSec": 3.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "HealOverTime",
+        "amountPerTick": 10
+      }
+    ]
+  },
+  {
+    "id": "weakness",
+    "name": "虚弱",
+    "description": "降低攻击伤害",
+    "icon": "😰",
+    "kind": "Debuff",
+    "durationSec": 8.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Target",
+    "effects": [
+      {
+        "type": "StatReduction",
+        "target": "DamagePerAttack",
+        "value": 0.20
+      }
+    ]
+  },
+  {
+    "id": "shield",
+    "name": "护盾",
+    "description": "减少受到的伤害",
+    "icon": "🛡️",
+    "kind": "Buff",
+    "durationSec": 12.0,
+    "stackingPolicy": "Ignore",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatMultiplier",
+        "target": "DamageReduction",
+        "value": 0.25
+      }
+    ]
+  },
+  {
+    "id": "haste",
+    "name": "急速",
+    "description": "提高攻击速度",
+    "icon": "⚡",
+    "kind": "Buff",
+    "durationSec": 10.0,
+    "stackingPolicy": "Stack",
+    "maxStacks": 2,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": 0.15
+      }
+    ]
+  },
+  {
+    "id": "poison",
+    "name": "中毒",
+    "description": "持续受到毒素伤害",
+    "icon": "☠️",
+    "kind": "Debuff",
+    "durationSec": 10.0,
+    "tickIntervalSec": 2.0,
+    "stackingPolicy": "Stack",
+    "maxStacks": 3,
+    "defaultTarget": "Target",
+    "effects": [
+      {
+        "type": "DamageOverTime",
+        "amountPerTick": 4
+      }
+    ]
+  },
+  {
+    "id": "crit_boost",
+    "name": "致命强化",
+    "description": "提高暴击率和暴击伤害",
+    "icon": "💥",
+    "kind": "Buff",
+    "durationSec": 8.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatAdditive",
+        "target": "CritChancePercent",
+        "value": 0.10
+      },
+      {
+        "type": "StatMultiplier",
+        "target": "CritMultiplier",
+        "value": 0.20
+      }
+    ]
+  },
+  {
+    "id": "force_crit",
+    "name": "必定暴击",
+    "description": "下次攻击必定暴击",
+    "icon": "🎯",
+    "kind": "Buff",
+    "durationSec": 5.0,
+    "stackingPolicy": "Ignore",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "ForceCrit"
+      }
+    ]
+  }
+]
