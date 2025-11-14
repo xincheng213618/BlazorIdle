@@ -13,12 +13,12 @@
       {
         "type": "StatMultiplier",
         "target": "DamagePerAttack",
-        "value": 0.15
+        "value": 0.50
       },
       {
         "type": "StatAdditive",
         "target": "HastePercent",
-        "value": 10.0
+        "value": 50.0
       },
       {
         "type": "StatAdditive",
@@ -211,7 +211,7 @@
       {
         "type": "StatAdditive",
         "target": "HastePercent",
-        "value": 10.0
+        "value": 50.0
       },
       {
         "type": "StatAdditive",
