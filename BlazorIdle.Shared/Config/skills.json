@@ -32,9 +32,9 @@
     "allowedProfessions": ["warrior"],
     "onCastBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "warrior_stance",
-        "targetOverride": "self"
+        "targetOverride": "Self"
       }
     ],
     "triggers": [
@@ -63,12 +63,12 @@
     },
     "onCastBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "warrior_guaranteed_crit",
-        "targetOverride": "self"
+        "targetOverride": "Self"
       },
       {
-        "op": "remove",
+        "op": "Remove",
         "buffIdToRemove": "warrior_stance"
       }
     ]
@@ -140,9 +140,9 @@
     },
     "onHitBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "warrior_rend_dot",
-        "targetOverride": "current_target"
+        "targetOverride": "Target"
       }
     ]
   },
@@ -180,9 +180,9 @@
     "unlock": { "minLevel": 8 },
     "onCastBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "warrior_power_boost",
-        "targetOverride": "self"
+        "targetOverride": "Self"
       }
     ]
   },
@@ -273,9 +273,9 @@
     },
     "onCastBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "mage_arcane_power",
-        "targetOverride": "self"
+        "targetOverride": "Self"
       }
     ],
     "gains": [
@@ -305,9 +305,9 @@
     },
     "onHitBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "mage_frost_slow",
-        "targetOverride": "current_target"
+        "targetOverride": "Target"
       }
     ]
   },
@@ -358,9 +358,9 @@
     },
     "onHitBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "burning",
-        "targetOverride": "current_target"
+        "targetOverride": "Target"
       }
     ]
   },
@@ -387,9 +387,9 @@
     },
     "onHitBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "mage_blizzard_dot",
-        "targetOverride": "enemies_all"
+        "targetOverride": "AllEnemies"
       }
     ]
   },
@@ -433,9 +433,9 @@
     ],
     "onCastBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "mage_shield",
-        "targetOverride": "self"
+        "targetOverride": "Self"
       }
     ]
   },
@@ -479,9 +479,9 @@
     ],
     "onCastBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "mage_haste_buff",
-        "targetOverride": "self"
+        "targetOverride": "Self"
       }
     ]
   },
@@ -531,9 +531,9 @@
     },
     "onCastBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "rogue_combo",
-        "targetOverride": "self"
+        "targetOverride": "Self"
       }
     ]
   },
@@ -551,9 +551,9 @@
     "allowedProfessions": ["rogue"],
     "onCastBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "rogue_combo",
-        "targetOverride": "self"
+        "targetOverride": "Self"
       }
     ]
   },
@@ -606,7 +606,7 @@
     },
     "onCastBuffs": [
       {
-        "op": "remove",
+        "op": "Remove",
         "buffIdToRemove": "rogue_combo"
       }
     ]
@@ -634,9 +634,9 @@
     },
     "onHitBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "rogue_poison_dot",
-        "targetOverride": "current_target"
+        "targetOverride": "Target"
       }
     ]
   },
@@ -677,9 +677,9 @@
     "unlock": { "minLevel": 7 },
     "onCastBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "rogue_stealth_crit",
-        "targetOverride": "self"
+        "targetOverride": "Self"
       }
     ]
   },
@@ -698,9 +698,9 @@
     "unlock": { "minLevel": 8 },
     "onCastBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "rogue_deadly_poison_buff",
-        "targetOverride": "self"
+        "targetOverride": "Self"
       }
     ]
   },
@@ -719,9 +719,9 @@
     "unlock": { "minLevel": 9 },
     "onCastBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "rogue_sprint_buff",
-        "targetOverride": "self"
+        "targetOverride": "Self"
       }
     ]
   },
@@ -743,9 +743,9 @@
     ],
     "onCastBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "rogue_shadow_dance_buff",
-        "targetOverride": "self"
+        "targetOverride": "Self"
       }
     ]
   },
@@ -782,9 +782,9 @@
     "allowedProfessions": ["ranger"],
     "onCastBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "ranger_focus",
-        "targetOverride": "self"
+        "targetOverride": "Self"
       }
     ]
   },
@@ -847,9 +847,9 @@
     "unlock": { "minLevel": 5 },
     "onHitBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "ranger_poison_dot",
-        "targetOverride": "enemies_all"
+        "targetOverride": "AllEnemies"
       }
     ]
   },
@@ -891,9 +891,9 @@
     "unlock": { "minLevel": 7 },
     "onCastBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "ranger_heal_over_time",
-        "targetOverride": "self"
+        "targetOverride": "Self"
       }
     ]
   },
@@ -912,9 +912,9 @@
     "unlock": { "minLevel": 8 },
     "onCastBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "ranger_haste_buff",
-        "targetOverride": "self"
+        "targetOverride": "Self"
       }
     ]
   },
@@ -955,9 +955,9 @@
     "unlock": { "minLevel": 10 },
     "onCastBuffs": [
       {
-        "op": "apply",
+        "op": "Apply",
         "buffConfigId": "ranger_berserk_buff",
-        "targetOverride": "self"
+        "targetOverride": "Self"
       }
     ]
   }
