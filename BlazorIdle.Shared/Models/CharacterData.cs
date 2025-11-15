@@ -93,5 +93,20 @@ namespace BlazorIdle.Shared.Models
         /// </summary>
         [JsonPropertyName("activeCombatProfessionId")]
         public string ActiveCombatProfessionId { get; set; } = "warrior";
+
+        /// <summary>
+        /// 角色已学习的技能 - 跨职业共享 (Step 2 Phase 2.5)
+        /// Learned skills - shared across all professions
+        /// </summary>
+        [JsonPropertyName("learnedSkills")]
+        public HashSet<string> LearnedSkills { get; set; } = new HashSet<string>();
+
+        /// <summary>
+        /// 角色已装备的技能 - 按职业分组 (Step 2 Phase 2.5)
+        /// Equipped skills - grouped by profession
+        /// Key: professionId, Value: 装备的技能配置
+        /// </summary>
+        [JsonPropertyName("equippedSkillsByProfession")]
+        public Dictionary<string, EquippedSkillsConfig> EquippedSkillsByProfession { get; set; } = new Dictionary<string, EquippedSkillsConfig>();
     }
 }
