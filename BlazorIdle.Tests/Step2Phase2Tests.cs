@@ -201,6 +201,38 @@ namespace BlazorIdle.Tests
             Assert.False(result);
         }
 
+        [Fact]
+        public void CharacterSkillSlots_CannotEquipSkillBelowUnlockLevel()
+        {
+            // Arrange
+            var repo = new SkillRepository();
+            var slots = new CharacterSkillSlots(repo);
+            slots.Initialize("warrior");
+
+            // Act - Try to equip a level 10 skill with character level 5
+            // warrior_desperate_strike requires level 10
+            var result = slots.EquipSkill("active_2", "warrior_desperate_strike", characterLevel: 5);
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void CharacterSkillSlots_CanEquipSkillAtUnlockLevel()
+        {
+            // Arrange
+            var repo = new SkillRepository();
+            var slots = new CharacterSkillSlots(repo);
+            slots.Initialize("warrior");
+
+            // Act - Equip a level 3 skill with character level 3
+            // warrior_mortal_strike requires level 3
+            var result = slots.EquipSkill("active_2", "warrior_mortal_strike", characterLevel: 3);
+
+            // Assert
+            Assert.True(result);
+        }
+
         #endregion
 
         #region Query Tests (2 tests)

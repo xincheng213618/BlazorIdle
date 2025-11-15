@@ -89,7 +89,11 @@ namespace BlazorIdle.Game.Skills
         /// 装备技能到指定槽位
         /// Equip skill to specified slot
         /// </summary>
-        public bool EquipSkill(string slotId, string skillId)
+        /// <param name="slotId">槽位ID</param>
+        /// <param name="skillId">技能ID</param>
+        /// <param name="characterLevel">角色等级（用于验证解锁条件）</param>
+        /// <returns>是否装备成功</returns>
+        public bool EquipSkill(string slotId, string skillId, int characterLevel = int.MaxValue)
         {
             if (!_slots.TryGetValue(slotId, out var slot))
                 return false;
@@ -109,6 +113,14 @@ namespace BlazorIdle.Game.Skills
                 skill.AllowedProfessions.Count > 0 && 
                 !skill.AllowedProfessions.Contains(ProfessionId))
                 return false;
+
+            // 验证解锁条件（等级要求）
+            // Validate unlock conditions (level requirement)
+            if (skill.Unlock != null && skill.Unlock.MinLevel > 0)
+            {
+                if (characterLevel < skill.Unlock.MinLevel)
+                    return false;
+            }
 
             // 验证槽位类型匹配
             // Validate slot type matching
