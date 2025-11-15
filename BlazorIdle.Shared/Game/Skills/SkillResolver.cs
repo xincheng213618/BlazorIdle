@@ -196,10 +196,22 @@ namespace BlazorIdle.Game.Skills
 
                 // Phase 5: 添加资源消耗和获得到结果中
                 // Phase 5: Add resource costs and gains to result
+                // 支持旧的Dictionary格式（向后兼容）
                 foreach (var (resId, cost) in skillDef.ResourceCosts)
                 {
                     result.ResourceChanges[resId] = -cost; // 负数表示消耗 / negative means cost
                 }
+                
+                // 支持新的List<ResourceCost>格式
+                if (skillDef.Costs != null)
+                {
+                    foreach (var cost in skillDef.Costs)
+                    {
+                        result.ResourceChanges[cost.BucketId] = -cost.Amount;
+                    }
+                }
+
+                // 支持旧的Dictionary格式（向后兼容）
                 foreach (var (resId, gain) in skillDef.ResourceGains)
                 {
                     // 如果已经有消耗，则累加；否则直接设置
@@ -211,6 +223,24 @@ namespace BlazorIdle.Game.Skills
                     else
                     {
                         result.ResourceChanges[resId] = gain;
+                    }
+                }
+                
+                // 支持新的List<ResourceGain>格式
+                if (skillDef.Gains != null)
+                {
+                    foreach (var resourceGain in skillDef.Gains)
+                    {
+                        // 如果已经有消耗，则累加；否则直接设置
+                        // If already has cost, accumulate; otherwise set directly
+                        if (result.ResourceChanges.ContainsKey(resourceGain.BucketId))
+                        {
+                            result.ResourceChanges[resourceGain.BucketId] += resourceGain.Amount;
+                        }
+                        else
+                        {
+                        result.ResourceChanges[resourceGain.BucketId] = resourceGain.Amount;
+                        }
                     }
                 }
             }
