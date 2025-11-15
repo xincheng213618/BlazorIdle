@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Config\buffs.json" />
+    <EmbeddedResource Include="Config\skills.json" />
   </ItemGroup>
 
 </Project>

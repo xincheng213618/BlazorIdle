@@ -1,0 +1,964 @@
+[
+  {
+    "id": "warrior_attack_basic",
+    "name": "战士普通攻击",
+    "description": "战士的基础攻击，产生怒气",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "targetPolicy": "current_target",
+    "cooldownSec": 0,
+    "allowedProfessions": ["warrior"],
+    "damage": {
+      "coefAtk": 1.0,
+      "flat": 0,
+      "isAoe": false
+    },
+    "gains": [
+      { "bucketId": "rage", "amount": 1 }
+    ]
+  },
+  {
+    "id": "warrior_special_pulse",
+    "name": "战士战吼",
+    "description": "发出战吼，积累架势。满3层架势时获得必定暴击buff",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "targetPolicy": "self",
+    "cooldownSec": 0,
+    "allowedProfessions": ["warrior"],
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "warrior_stance",
+        "targetOverride": "Self"
+      }
+    ],
+    "triggers": [
+      {
+        "when": "OnPostCastWindow",
+        "procChance": 1.0,
+        "fireSkillId": "warrior_check_stance",
+        "priority": 1
+      }
+    ]
+  },
+  {
+    "id": "warrior_check_stance",
+    "name": "架势检查",
+    "description": "检查架势层数，满3层时获得必暴buff",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "self",
+    "cooldownSec": 0,
+    "allowedProfessions": ["warrior"],
+    "conditions": {
+      "requireBuffId": "warrior_stance"
+    },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "warrior_guaranteed_crit",
+        "targetOverride": "Self"
+      },
+      {
+        "op": "Remove",
+        "buffIdToRemove": "warrior_stance"
+      }
+    ]
+  },
+  {
+    "id": "warrior_slam",
+    "name": "猛击",
+    "description": "用力打击敌人，造成伤害并产生怒气",
+    "type": "active",
+    "slotType": "active",
+    "fixed": true,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 10.0,
+    "allowedProfessions": ["warrior"],
+    "unlock": { "minLevel": 1 },
+    "damage": {
+      "coefAtk": 1.2,
+      "flat": 20,
+      "isAoe": false
+    },
+    "gains": [
+      { "bucketId": "rage", "amount": 2 }
+    ]
+  },
+  {
+    "id": "warrior_mortal_strike",
+    "name": "致死打击",
+    "description": "消耗怒气进行强力一击",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 3.0,
+    "allowedProfessions": ["warrior"],
+    "unlock": { "minLevel": 3 },
+    "costs": [
+      { "bucketId": "rage", "amount": 3 }
+    ],
+    "damage": {
+      "coefAtk": 1.5,
+      "flat": 30,
+      "isAoe": false
+    }
+  },
+  {
+    "id": "warrior_rend",
+    "name": "撕裂",
+    "description": "撕裂敌人，造成持续流血伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 10.0,
+    "allowedProfessions": ["warrior"],
+    "unlock": { "minLevel": 5 },
+    "costs": [
+      { "bucketId": "rage", "amount": 1 }
+    ],
+    "damage": {
+      "coefAtk": 0.3,
+      "flat": 5,
+      "isAoe": false
+    },
+    "onHitBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "warrior_rend_dot",
+        "targetOverride": "Target"
+      }
+    ]
+  },
+  {
+    "id": "warrior_thunderclap",
+    "name": "雷霆一击",
+    "description": "对所有敌人造成伤害，非GCD技能",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "enemies_all",
+    "cooldownSec": 10.0,
+    "allowedProfessions": ["warrior"],
+    "unlock": { "minLevel": 7 },
+    "damage": {
+      "coefAtk": 0.8,
+      "flat": 10,
+      "isAoe": true
+    }
+  },
+  {
+    "id": "warrior_battle_shout",
+    "name": "战吼",
+    "description": "提升自身攻击力",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 30.0,
+    "allowedProfessions": ["warrior"],
+    "unlock": { "minLevel": 8 },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "warrior_power_boost",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "warrior_cleave",
+    "name": "顺劈斩",
+    "description": "对前方敌人造成AoE伤害，消耗怒气",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "enemies_all",
+    "cooldownSec": 6.0,
+    "allowedProfessions": ["warrior"],
+    "unlock": { "minLevel": 9 },
+    "costs": [
+      { "bucketId": "rage", "amount": 2 }
+    ],
+    "damage": {
+      "coefAtk": 1.0,
+      "flat": 15,
+      "isAoe": true
+    }
+  },
+  {
+    "id": "warrior_desperate_strike",
+    "name": "破釜沉舟",
+    "description": "血量低于50%时可用，必定暴击的强力一击",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 15.0,
+    "allowedProfessions": ["warrior"],
+    "unlock": { "minLevel": 10 },
+    "conditions": {
+      "hpBelowPct": 50
+    },
+    "costs": [
+      { "bucketId": "rage", "amount": 5 }
+    ],
+    "damage": {
+      "coefAtk": 2.5,
+      "flat": 50,
+      "isAoe": false
+    },
+    "canCrit": true,
+    "alwaysHits": true
+  },
+  {
+    "id": "mage_attack_basic",
+    "name": "火球术",
+    "description": "法师的基础攻击，消耗少量法力",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "targetPolicy": "current_target",
+    "cooldownSec": 0,
+    "allowedProfessions": ["mage"],
+    "damage": {
+      "coefAtk": 0.9,
+      "flat": 5,
+      "isAoe": false
+    },
+    "gains": [
+      { "bucketId": "mana", "amount": 1 }
+    ]
+  },
+  {
+    "id": "mage_special_pulse",
+    "name": "奥术脉冲",
+    "description": "释放奥术能量，获得奥术充能buff",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "targetPolicy": "self",
+    "cooldownSec": 0,
+    "allowedProfessions": ["mage"],
+    "damage": {
+      "coefAtk": 0.5,
+      "flat": 3,
+      "isAoe": true
+    },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "mage_arcane_power",
+        "targetOverride": "Self"
+      }
+    ],
+    "gains": [
+      { "bucketId": "mana", "amount": 2 }
+    ]
+  },
+  {
+    "id": "mage_frostbolt",
+    "name": "寒冰箭",
+    "description": "射出寒冰箭，减缓敌人速度",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 4.0,
+    "allowedProfessions": ["mage"],
+    "unlock": { "minLevel": 1 },
+    "costs": [
+      { "bucketId": "mana", "amount": 2 }
+    ],
+    "damage": {
+      "coefAtk": 1.1,
+      "flat": 15,
+      "isAoe": false
+    },
+    "onHitBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "mage_frost_slow",
+        "targetOverride": "Target"
+      }
+    ]
+  },
+  {
+    "id": "mage_arcane_missiles",
+    "name": "奥术飞弹",
+    "description": "快速施放奥术飞弹",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 3.0,
+    "allowedProfessions": ["mage"],
+    "unlock": { "minLevel": 3 },
+    "costs": [
+      { "bucketId": "mana", "amount": 3 }
+    ],
+    "damage": {
+      "coefAtk": 1.3,
+      "flat": 20,
+      "isAoe": false
+    }
+  },
+  {
+    "id": "mage_pyroblast",
+    "name": "炎爆术",
+    "description": "施法2.5秒，造成大量火焰伤害并施加燃烧",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "cast",
+    "castTimeSec": 2.5,
+    "isGcd": true,
+    "allowCoTriggerAfterCast": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 8.0,
+    "allowedProfessions": ["mage"],
+    "unlock": { "minLevel": 5 },
+    "costs": [
+      { "bucketId": "mana", "amount": 4 }
+    ],
+    "damage": {
+      "coefAtk": 2.0,
+      "flat": 50,
+      "isAoe": false
+    },
+    "onHitBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "burning",
+        "targetOverride": "Target"
+      }
+    ]
+  },
+  {
+    "id": "mage_blizzard",
+    "name": "暴风雪",
+    "description": "召唤暴风雪，对所有敌人造成持续伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "enemies_all",
+    "cooldownSec": 12.0,
+    "allowedProfessions": ["mage"],
+    "unlock": { "minLevel": 6 },
+    "costs": [
+      { "bucketId": "mana", "amount": 5 }
+    ],
+    "damage": {
+      "coefAtk": 0.7,
+      "flat": 10,
+      "isAoe": true
+    },
+    "onHitBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "mage_blizzard_dot",
+        "targetOverride": "AllEnemies"
+      }
+    ]
+  },
+  {
+    "id": "mage_arcane_blast",
+    "name": "奥术冲击",
+    "description": "快速奥术攻击，非GCD",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "current_target",
+    "cooldownSec": 5.0,
+    "allowedProfessions": ["mage"],
+    "unlock": { "minLevel": 7 },
+    "costs": [
+      { "bucketId": "mana", "amount": 2 }
+    ],
+    "damage": {
+      "coefAtk": 0.9,
+      "flat": 12,
+      "isAoe": false
+    }
+  },
+  {
+    "id": "mage_mana_shield",
+    "name": "法力护盾",
+    "description": "为自己施加护盾，吸收伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 20.0,
+    "allowedProfessions": ["mage"],
+    "unlock": { "minLevel": 8 },
+    "costs": [
+      { "bucketId": "mana", "amount": 3 }
+    ],
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "mage_shield",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "mage_fire_blast",
+    "name": "火焰冲击",
+    "description": "瞬发火焰伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 6.0,
+    "allowedProfessions": ["mage"],
+    "unlock": { "minLevel": 9 },
+    "costs": [
+      { "bucketId": "mana", "amount": 3 }
+    ],
+    "damage": {
+      "coefAtk": 1.4,
+      "flat": 25,
+      "isAoe": false
+    }
+  },
+  {
+    "id": "mage_time_warp",
+    "name": "时间扭曲",
+    "description": "大幅提升急速，持续10秒",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 40.0,
+    "allowedProfessions": ["mage"],
+    "unlock": { "minLevel": 10 },
+    "costs": [
+      { "bucketId": "mana", "amount": 8 }
+    ],
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "mage_haste_buff",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "rogue_attack_basic",
+    "name": "邪恶攻击",
+    "description": "盗贼的基础攻击，有几率获得连击点",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "targetPolicy": "current_target",
+    "cooldownSec": 0,
+    "allowedProfessions": ["rogue"],
+    "damage": {
+      "coefAtk": 0.95,
+      "flat": 0,
+      "isAoe": false
+    },
+    "gains": [
+      { "bucketId": "energy", "amount": 1 }
+    ],
+    "triggers": [
+      {
+        "when": "OnAttackHit",
+        "procChance": 0.4,
+        "fireSkillId": "rogue_gain_combo",
+        "priority": 10
+      }
+    ]
+  },
+  {
+    "id": "rogue_special_pulse",
+    "name": "切割",
+    "description": "快速切割敌人，获得连击点",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "targetPolicy": "current_target",
+    "cooldownSec": 0,
+    "allowedProfessions": ["rogue"],
+    "damage": {
+      "coefAtk": 0.8,
+      "flat": 5,
+      "isAoe": false
+    },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "rogue_combo",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "rogue_gain_combo",
+    "name": "连击点获得",
+    "description": "获得连击点",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "self",
+    "cooldownSec": 0,
+    "allowedProfessions": ["rogue"],
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "rogue_combo",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "rogue_backstab",
+    "name": "背刺",
+    "description": "高暴击率的背后攻击",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 5.0,
+    "allowedProfessions": ["rogue"],
+    "unlock": { "minLevel": 1 },
+    "costs": [
+      { "bucketId": "energy", "amount": 2 }
+    ],
+    "damage": {
+      "coefAtk": 1.3,
+      "flat": 18,
+      "isAoe": false
+    },
+    "canCrit": true
+  },
+  {
+    "id": "rogue_eviscerate",
+    "name": "剔骨",
+    "description": "消耗连击点数造成伤害，连击点越多伤害越高",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 0.0,
+    "allowedProfessions": ["rogue"],
+    "unlock": { "minLevel": 3 },
+    "conditions": {
+      "requireBuffId": "rogue_combo"
+    },
+    "costs": [
+      { "bucketId": "energy", "amount": 3 }
+    ],
+    "damage": {
+      "coefAtk": 1.8,
+      "flat": 30,
+      "isAoe": false
+    },
+    "onCastBuffs": [
+      {
+        "op": "Remove",
+        "buffIdToRemove": "rogue_combo"
+      }
+    ]
+  },
+  {
+    "id": "rogue_envenom",
+    "name": "毒刃",
+    "description": "涂毒的刀刃，造成持续毒素伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 8.0,
+    "allowedProfessions": ["rogue"],
+    "unlock": { "minLevel": 5 },
+    "costs": [
+      { "bucketId": "energy", "amount": 2 }
+    ],
+    "damage": {
+      "coefAtk": 0.8,
+      "flat": 10,
+      "isAoe": false
+    },
+    "onHitBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "rogue_poison_dot",
+        "targetOverride": "Target"
+      }
+    ]
+  },
+  {
+    "id": "rogue_fan_of_knives",
+    "name": "刀扇",
+    "description": "向所有敌人投掷飞刀",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "enemies_all",
+    "cooldownSec": 10.0,
+    "allowedProfessions": ["rogue"],
+    "unlock": { "minLevel": 6 },
+    "costs": [
+      { "bucketId": "energy", "amount": 3 }
+    ],
+    "damage": {
+      "coefAtk": 0.9,
+      "flat": 12,
+      "isAoe": true
+    }
+  },
+  {
+    "id": "rogue_vanish",
+    "name": "消失",
+    "description": "进入隐身，下次攻击必定暴击",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 25.0,
+    "allowedProfessions": ["rogue"],
+    "unlock": { "minLevel": 7 },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "rogue_stealth_crit",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "rogue_deadly_poison",
+    "name": "致命药膏",
+    "description": "为武器涂毒，攻击附带额外毒素伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 30.0,
+    "allowedProfessions": ["rogue"],
+    "unlock": { "minLevel": 8 },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "rogue_deadly_poison_buff",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "rogue_sprint",
+    "name": "疾跑",
+    "description": "大幅提升攻击速度",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "self",
+    "cooldownSec": 20.0,
+    "allowedProfessions": ["rogue"],
+    "unlock": { "minLevel": 9 },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "rogue_sprint_buff",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "rogue_shadow_dance",
+    "name": "暗影之舞",
+    "description": "进入暗影形态，大幅提升暴击率和暴击伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 40.0,
+    "allowedProfessions": ["rogue"],
+    "unlock": { "minLevel": 10 },
+    "costs": [
+      { "bucketId": "energy", "amount": 4 }
+    ],
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "rogue_shadow_dance_buff",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "ranger_attack_basic",
+    "name": "精准射击",
+    "description": "游侠的基础射击攻击",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "targetPolicy": "current_target",
+    "cooldownSec": 0,
+    "allowedProfessions": ["ranger"],
+    "damage": {
+      "coefAtk": 1.0,
+      "flat": 0,
+      "isAoe": false
+    },
+    "gains": [
+      { "bucketId": "energy", "amount": 1 }
+    ]
+  },
+  {
+    "id": "ranger_special_pulse",
+    "name": "集中瞄准",
+    "description": "进入集中状态，提升暴击率和攻击速度",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "targetPolicy": "self",
+    "cooldownSec": 0,
+    "allowedProfessions": ["ranger"],
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "ranger_focus",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "ranger_arcane_shot",
+    "name": "奥术射击",
+    "description": "稳定的远程伤害技能",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 4.0,
+    "allowedProfessions": ["ranger"],
+    "unlock": { "minLevel": 1 },
+    "costs": [
+      { "bucketId": "energy", "amount": 2 }
+    ],
+    "damage": {
+      "coefAtk": 1.2,
+      "flat": 15,
+      "isAoe": false
+    }
+  },
+  {
+    "id": "ranger_multi_shot",
+    "name": "多重射击",
+    "description": "对多个敌人造成伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "enemies_all",
+    "cooldownSec": 8.0,
+    "allowedProfessions": ["ranger"],
+    "unlock": { "minLevel": 3 },
+    "costs": [
+      { "bucketId": "energy", "amount": 3 }
+    ],
+    "damage": {
+      "coefAtk": 0.9,
+      "flat": 10,
+      "isAoe": true
+    }
+  },
+  {
+    "id": "ranger_snake_trap",
+    "name": "毒蛇陷阱",
+    "description": "放置陷阱，对敌人造成持续毒素伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "enemies_all",
+    "cooldownSec": 15.0,
+    "allowedProfessions": ["ranger"],
+    "unlock": { "minLevel": 5 },
+    "onHitBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "ranger_poison_dot",
+        "targetOverride": "AllEnemies"
+      }
+    ]
+  },
+  {
+    "id": "ranger_aimed_shot",
+    "name": "瞄准射击",
+    "description": "施法1.5秒，造成巨大伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "cast",
+    "castTimeSec": 1.5,
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 10.0,
+    "allowedProfessions": ["ranger"],
+    "unlock": { "minLevel": 6 },
+    "costs": [
+      { "bucketId": "energy", "amount": 3 }
+    ],
+    "damage": {
+      "coefAtk": 2.2,
+      "flat": 40,
+      "isAoe": false
+    }
+  },
+  {
+    "id": "ranger_feign_death",
+    "name": "假死",
+    "description": "短暂无敌，恢复生命值",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 30.0,
+    "allowedProfessions": ["ranger"],
+    "unlock": { "minLevel": 7 },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "ranger_heal_over_time",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "ranger_aspect_of_cheetah",
+    "name": "猎豹守护",
+    "description": "大幅提升攻击速度",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 25.0,
+    "allowedProfessions": ["ranger"],
+    "unlock": { "minLevel": 8 },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "ranger_haste_buff",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "ranger_kill_command",
+    "name": "杀戮命令",
+    "description": "强力攻击，对血量低于30%的敌人额外伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 6.0,
+    "allowedProfessions": ["ranger"],
+    "unlock": { "minLevel": 9 },
+    "costs": [
+      { "bucketId": "energy", "amount": 3 }
+    ],
+    "damage": {
+      "coefAtk": 1.6,
+      "flat": 28,
+      "isAoe": false
+    }
+  },
+  {
+    "id": "ranger_bestial_wrath",
+    "name": "狂野怒火",
+    "description": "进入狂野状态，大幅提升所有伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 45.0,
+    "allowedProfessions": ["ranger"],
+    "unlock": { "minLevel": 10 },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "ranger_berserk_buff",
+        "targetOverride": "Self"
+      }
+    ]
+  }
+]

@@ -3,8 +3,8 @@ using System.Collections.Generic;
 namespace BlazorIdle.Game.Skills
 {
     /// <summary>
-    /// 技能定义（Phase 5: 扩展支持 Buff 操作）
-    /// Skill definition (Phase 5: Extended with Buff operation support)
+    /// 技能定义（Step 2 Phase 1: 扩展配置基础设施）
+    /// Skill definition (Step 2 Phase 1: Extended configuration infrastructure)
     /// </summary>
     public sealed class SkillDef
     {
@@ -15,10 +15,64 @@ namespace BlazorIdle.Game.Skills
         public string Id { get; set; } = "";
 
         /// <summary>
-        /// 施法时间（秒）- 预留，Step 0 中为 0
-        /// Cast time in seconds - reserved, 0 in Step 0
+        /// 技能名称
+        /// Skill name
+        /// </summary>
+        public string Name { get; set; } = "";
+
+        /// <summary>
+        /// 技能描述
+        /// Skill description
+        /// </summary>
+        public string Description { get; set; } = "";
+
+        /// <summary>
+        /// 技能类型：active（主动）或 passive（被动）
+        /// Skill type: active or passive
+        /// </summary>
+        public string Type { get; set; } = "active";
+
+        /// <summary>
+        /// 槽位类型：active（主动槽）或 passive（被动槽）
+        /// Slot type: active or passive
+        /// </summary>
+        public string SlotType { get; set; } = "active";
+
+        /// <summary>
+        /// 是否为固定技能（自动装配）
+        /// Whether this is a fixed skill (auto-equipped)
+        /// </summary>
+        public bool Fixed { get; set; }
+
+        /// <summary>
+        /// 释放类型：instant（瞬发）或 cast（施法）
+        /// Release type: instant or cast
+        /// </summary>
+        public string ReleaseType { get; set; } = "instant";
+
+        /// <summary>
+        /// 施法时间（秒）- 仅对 cast 类型有效
+        /// Cast time in seconds - only valid for cast type
         /// </summary>
         public double CastTimeSec { get; set; } = 0;
+
+        /// <summary>
+        /// 是否占用GCD窗口（窗口互斥标识）
+        /// Whether this skill occupies GCD window (window exclusive flag)
+        /// </summary>
+        public bool IsGcd { get; set; } = true;
+
+        /// <summary>
+        /// 施法完成后是否允许共触发
+        /// Whether to allow co-trigger after cast completion
+        /// </summary>
+        public bool AllowCoTriggerAfterCast { get; set; }
+
+        /// <summary>
+        /// 目标选择策略
+        /// Target selection policy
+        /// </summary>
+        public string TargetPolicy { get; set; } = "current_target";
 
         /// <summary>
         /// 是否为 AOE 技能（预留）
@@ -26,12 +80,48 @@ namespace BlazorIdle.Game.Skills
         /// </summary>
         public bool IsAoe { get; set; } = false;
 
+        /// <summary>
+        /// 冷却时间（秒）
+        /// Cooldown time in seconds
+        /// </summary>
+        public double CooldownSec { get; set; }
+
+        /// <summary>
+        /// 允许使用此技能的职业列表
+        /// List of professions allowed to use this skill
+        /// </summary>
+        public List<string>? AllowedProfessions { get; set; }
+
+        /// <summary>
+        /// 解锁条件
+        /// Unlock conditions
+        /// </summary>
+        public UnlockConfig? Unlock { get; set; }
+
+        /// <summary>
+        /// 施放条件
+        /// Casting conditions
+        /// </summary>
+        public SkillConditions? Conditions { get; set; }
+
+        /// <summary>
+        /// 触发器定义
+        /// Trigger definitions
+        /// </summary>
+        public List<TriggerDef>? Triggers { get; set; }
+
         // Phase 5: Buff 操作支持
         // Phase 5: Buff operation support
 
         /// <summary>
-        /// 基础伤害倍率（1.0 = 正常伤害）
-        /// Base damage multiplier (1.0 = normal damage)
+        /// 技能伤害定义
+        /// Skill damage definition
+        /// </summary>
+        public DamageDef? Damage { get; set; }
+
+        /// <summary>
+        /// 基础伤害倍率（1.0 = 正常伤害） - 保留以向后兼容
+        /// Base damage multiplier (1.0 = normal damage) - kept for backward compatibility
         /// </summary>
         public double DamageMultiplier { get; set; } = 1.0;
 
@@ -40,6 +130,18 @@ namespace BlazorIdle.Game.Skills
         /// Instant heal amount (0 = no healing)
         /// </summary>
         public int InstantHeal { get; set; }
+
+        /// <summary>
+        /// 资源消耗列表（新格式）
+        /// Resource costs list (new format)
+        /// </summary>
+        public List<ResourceCost>? Costs { get; set; }
+
+        /// <summary>
+        /// 资源获得列表（新格式）
+        /// Resource gains list (new format)
+        /// </summary>
+        public List<ResourceGain>? Gains { get; set; }
 
         /// <summary>
         /// 施法时执行的 Buff 操作（无论是否命中）
@@ -60,14 +162,14 @@ namespace BlazorIdle.Game.Skills
         public List<BuffOperation> OnCritBuffs { get; set; } = new();
 
         /// <summary>
-        /// 资源消耗（Key = 资源ID，Value = 消耗量）
-        /// Resource costs (Key = resource ID, Value = amount to consume)
+        /// 资源消耗（Key = 资源ID，Value = 消耗量） - 保留以向后兼容
+        /// Resource costs (Key = resource ID, Value = amount to consume) - kept for backward compatibility
         /// </summary>
         public Dictionary<string, int> ResourceCosts { get; set; } = new();
 
         /// <summary>
-        /// 资源获得（Key = 资源ID，Value = 获得量）
-        /// Resource gains (Key = resource ID, Value = amount to gain)
+        /// 资源获得（Key = 资源ID，Value = 获得量） - 保留以向后兼容
+        /// Resource gains (Key = resource ID, Value = amount to gain) - kept for backward compatibility
         /// </summary>
         public Dictionary<string, int> ResourceGains { get; set; } = new();
 

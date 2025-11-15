@@ -77,6 +77,24 @@ public class GameDbContext : DbContext
                 .IsRequired()
                 .HasMaxLength(50)
                 .HasDefaultValue("warrior");
+
+            // 配置已学习的技能为 JSON 列 (Step 2 Phase 2.5)
+            // Configure learned skills as JSON column
+            entity.Property(e => e.LearnedSkills)
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => System.Text.Json.JsonSerializer.Deserialize<HashSet<string>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new HashSet<string>()
+                )
+                .HasColumnType("TEXT");
+
+            // 配置已装备的技能为 JSON 列 (Step 2 Phase 2.5)
+            // Configure equipped skills as JSON column - store Dictionary<string, EquippedSkillsConfig>
+            entity.Property(e => e.EquippedSkillsByProfession)
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, EquippedSkillsConfig>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<string, EquippedSkillsConfig>()
+                )
+                .HasColumnType("TEXT");
         });
     }
 }
