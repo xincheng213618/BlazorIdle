@@ -17,9 +17,13 @@ namespace BlazorIdle.Game.Skills
         {
             InitializeDefaultSkills();
             
-            // Try to load from embedded JSON
-            bool loaded = TryLoadFromEmbeddedJson();
-            if (loaded)
+            // Try to load player skills from embedded JSON
+            bool playerSkillsLoaded = TryLoadFromEmbeddedJson("skills.json");
+            
+            // Try to load monster skills from embedded JSON
+            bool monsterSkillsLoaded = TryLoadFromEmbeddedJson("monsterskills.json");
+            
+            if (playerSkillsLoaded || monsterSkillsLoaded)
             {
                 // Validate configuration after loading
                 ValidateSkillConfigurations();
@@ -115,14 +119,16 @@ namespace BlazorIdle.Game.Skills
 
         /// <summary>
         /// Step 2 Phase 1: Attempts to load skill configurations from embedded JSON resource.
+        /// Monster Skill System: Enhanced to support loading multiple JSON files (skills.json and monsterskills.json).
         /// </summary>
+        /// <param name="fileName">Name of the JSON file to load (e.g., "skills.json" or "monsterskills.json")</param>
         /// <returns>True if successfully loaded, false otherwise.</returns>
-        private bool TryLoadFromEmbeddedJson()
+        private bool TryLoadFromEmbeddedJson(string fileName)
         {
             try
             {
                 var assembly = typeof(SkillRepository).Assembly;
-                var resourceName = "BlazorIdle.Shared.Config.skills.json";
+                var resourceName = $"BlazorIdle.Shared.Config.{fileName}";
                 
                 using (var stream = assembly.GetManifestResourceStream(resourceName))
                 {
@@ -130,7 +136,7 @@ namespace BlazorIdle.Game.Skills
                     {
                         // Try alternative resource name format
                         var resources = assembly.GetManifestResourceNames();
-                        resourceName = resources.FirstOrDefault(r => r.EndsWith("skills.json"));
+                        resourceName = resources.FirstOrDefault(r => r.EndsWith(fileName));
                         
                         if (resourceName != null)
                         {
@@ -139,35 +145,41 @@ namespace BlazorIdle.Game.Skills
                             {
                                 if (alternativeStream != null)
                                 {
-                                    return LoadFromStream(alternativeStream);
+                                    return LoadFromStream(alternativeStream, fileName);
                                 }
                             }
                         }
                         
-                        Console.WriteLine($"[SkillRepository] Warning: Could not find embedded resource 'skills.json'. Available resources: {string.Join(", ", resources)}");
+                        Console.WriteLine($"[SkillRepository] Warning: Could not find embedded resource '{fileName}'. Available resources: {string.Join(", ", resources)}");
                         return false;
                     }
                     
-                    return LoadFromStream(stream);
+                    return LoadFromStream(stream, fileName);
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SkillRepository] Error loading from embedded JSON: {ex.Message}");
+                Console.WriteLine($"[SkillRepository] Error loading from embedded JSON '{fileName}': {ex.Message}");
                 return false;
             }
         }
 
         /// <summary>
         /// Helper method to load skills from a stream.
+        /// Monster Skill System: Enhanced to report which file is being loaded.
         /// </summary>
-        private bool LoadFromStream(System.IO.Stream stream)
+        /// <param name="stream">Stream to read from</param>
+        /// <param name="fileName">Name of the file being loaded (for logging)</param>
+        private bool LoadFromStream(System.IO.Stream stream, string fileName)
         {
             using (var reader = new System.IO.StreamReader(stream))
             {
                 var json = reader.ReadToEnd();
+                int countBefore = _skills.Count;
                 LoadFromJson(json);
-                Console.WriteLine($"[SkillRepository] ✅ Successfully loaded {_skills.Count} skills from skills.json");
+                int countAfter = _skills.Count;
+                int newSkills = countAfter - countBefore;
+                Console.WriteLine($"[SkillRepository] ✅ Successfully loaded {newSkills} skills from {fileName} (total: {countAfter})");
                 return true;
             }
         }

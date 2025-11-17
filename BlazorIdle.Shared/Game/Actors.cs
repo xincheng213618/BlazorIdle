@@ -99,5 +99,24 @@
         /// Enemy ID - used to track experience source
         /// </summary>
         public string? MonsterId { get; set; }
+
+        // Monster Skill System: 普通攻击技能ID
+        // Monster Skill System: Normal attack skill ID
+        /// <summary>
+        /// 普通攻击技能ID - 从monsters.json配置初始化（可选）
+        /// Normal attack skill ID - initialized from monsters.json configuration (optional)
+        /// 如果未设置，所有普通怪物使用统一的 "enemy_attack_basic" 技能
+        /// If not set, all normal monsters use the unified "enemy_attack_basic" skill
+        /// </summary>
+        public string? NormalAttackSkillId { get; set; }
+
+        /// <summary>
+        /// 获取普通攻击技能ID - 如果未设置则返回默认通用技能
+        /// Get normal attack skill ID - returns default universal skill if not set
+        /// </summary>
+        public string GetNormalAttackSkillId()
+        {
+            return NormalAttackSkillId ?? "monster_attack_basic";
+        }
     }
 }

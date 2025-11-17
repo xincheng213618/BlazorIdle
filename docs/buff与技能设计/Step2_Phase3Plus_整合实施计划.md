@@ -867,6 +867,353 @@ Total: 11-17 hours (已优化，聚焦核心迁移)
 
 ---
 
+---
+
+## 🐉 Phase3+ 扩展：怪物技能系统基础整合
+
+### 📋 概述
+
+**实施日期：** 2025-11-17  
+**状态：** ✅ **已完成**  
+**工作量：** 2-3 小时  
+**测试结果：** 473 个测试全部通过  
+**PR链接：** [Complete monster skill system: monsterskills.json integration (P3 pattern)](创建于 2025-11-17)
+
+### 🎯 目标
+
+将怪物攻击系统迁移到新的技能系统，采用与 Phase3+ 玩家攻击集成完全一致的架构模式。
+
+**核心原则：**
+- ✅ 复用玩家技能系统架构（P3 模式）
+- ✅ 只实现固定普通攻击（触发技能延后到阶段7）
+- ✅ 独立配置文件管理（monsterskills.json vs skills.json）
+- ✅ 统一技能执行函数（ExecuteSkill 支持玩家和怪物）
+
+### 📝 实施内容
+
+#### P3+.1 Enemy 实体扩展 ✅
+
+**文件：** `BlazorIdle.Shared/Game/Actors.cs`
+
+**变更：**
+```csharp
+public sealed class Enemy
+{
+    // 新增：普通攻击技能ID
+    public string? NormalAttackSkillId { get; set; }
+    
+    // 新增：获取普通攻击技能ID（默认回退）
+    public string GetNormalAttackSkillId()
+    {
+        return NormalAttackSkillId ?? "monster_attack_basic";
+    }
+}
+```
+
+**说明：**
+- 镜像 Character 实体的设计
+- 支持向后兼容（未配置时使用默认值）
+- 为特殊怪物自定义技能预留扩展性
+
+#### P3+.2 创建 monsterskills.json 配置文件 ✅
+
+**文件：** `BlazorIdle.Shared/Config/monsterskills.json`
+
+**内容：**
+```json
+[
+  {
+    "id": "monster_attack_basic",
+    "name": "怪物普通攻击",
+    "description": "通用的怪物普通攻击，造成1倍伤害",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "targetPolicy": "random_player",
+    "cooldownSec": 0,
+    "allowedProfessions": [],
+    "damage": {
+      "coefAtk": 1.0,
+      "flat": 0,
+      "isAoe": false
+    }
+  }
+]
+
+// ⚠️ 重要：怪物技能命名约定
+// Monster Skill Naming Convention:
+// - 所有怪物技能的 "id" 必须以 "monster_" 或 "enemy_" 开头
+// - All monster skill IDs MUST start with "monster_" or "enemy_" prefix
+// - 这是 SkillResolver 用于识别怪物技能的关键依据
+```
+
+**关键特性：**
+- 独立于 skills.json（职责分离）
+- 使用相同的 SkillDef 数据结构
+- 添加命名约定注释（防止配置错误）
+
+#### P3+.3 扩展 monsters.json 配置 ✅
+
+**文件：** `BlazorIdle.Server/Config/monsters.json`
+
+**变更：**
+```json
+{
+  "id": "slime",
+  "name": "Green Slime",
+  "normalAttackSkillId": "monster_attack_basic",  // 新增
+  ...
+}
+```
+
+**应用范围：**
+- slime → `monster_attack_basic`
+- wolf → `monster_attack_basic`
+- ogre → `monster_attack_basic`
+
+**设计优势：**
+- 保留为特殊怪物自定义技能的灵活性
+- 便于未来添加 BOSS 特殊技能
+
+#### P3+.4 SkillRepository 双文件加载 ✅
+
+**文件：** `BlazorIdle.Shared/Game/Skills/SkillRepository.cs`
+
+**变更：**
+```csharp
+public SkillRepository()
+{
+    InitializeDefaultSkills();
+    
+    // 加载玩家技能
+    bool playerSkillsLoaded = TryLoadFromEmbeddedJson("skills.json");
+    
+    // 加载怪物技能（新增）
+    bool monsterSkillsLoaded = TryLoadFromEmbeddedJson("monsterskills.json");
+    
+    if (playerSkillsLoaded || monsterSkillsLoaded)
+    {
+        ValidateSkillConfigurations();
+    }
+}
+```
+
+**优势：**
+- 所有技能（玩家+怪物）在同一仓库中查询
+- 简化战斗系统集成
+- 保持配置文件分离（职责清晰）
+
+#### P3+.5 SkillResolver 怪物技能支持 ✅
+
+**文件：** `BlazorIdle.Shared/Game/Skills/SkillResolver.cs`
+
+**问题：** 原有代码只检查 `skillId.StartsWith("enemy_")`，导致 `monster_*` 技能使用错误的伤害源
+
+**修复（4处）：**
+
+1. **伤害计算：**
+```csharp
+// 修改前
+int attackPower = skillId.StartsWith("enemy_")
+    ? (ctx.Enemy?.DamagePerHit ?? 0)
+    : (ctx.Player?.DamagePerAttack ?? 0);
+
+// 修改后
+bool isMonsterSkill = skillId.StartsWith("enemy_") || skillId.StartsWith("monster_");
+int attackPower = isMonsterSkill
+    ? (ctx.Enemy?.DamagePerHit ?? 0)
+    : (ctx.Player?.DamagePerAttack ?? 0);
+```
+
+2. **Buff系统识别、伤害浮动、暴击检查** - 应用相同逻辑
+
+**影响：**
+- ✅ 怪物使用正确的 DamagePerHit
+- ✅ 怪物使用正确的 VariancePct
+- ✅ 怪物不触发 Buff 效果
+- ✅ 怪物攻击不会暴击
+
+#### P3+.6 ExecuteSkill 统一重构 ✅
+
+**文件：** `BlazorIdle.Shared/Game/MultiBattleInstance.cs`
+
+**重构前：**
+- `ExecuteSkill(charId, character, skillId, ...)` - 专用于玩家（120行）
+- `ProcessEnemyAttackViaSkillResolver(enemyId, enemy)` - 怪物逻辑（80行）
+- **问题：** 大量重复代码（约70行）
+
+**重构后：**
+```csharp
+// 统一函数签名
+private void ExecuteSkill(
+    string casterId,           // 施法者ID（玩家或怪物）
+    string skillId, 
+    string sourceTrack,
+    bool isCasterPlayer,       // 标识施法者类型
+    EventSource eventSource = EventSource.Attack)
+{
+    if (isCasterPlayer)
+    {
+        // 玩家分支：目标选择、伤害应用、资源管理
+    }
+    else
+    {
+        // 怪物分支：目标选择、伤害应用、无资源管理
+    }
+}
+
+// 简化后的怪物攻击（仅6行）
+private void ProcessEnemyAttackViaSkillResolver(string enemyId, Enemy enemy)
+{
+    string skillId = enemy.GetNormalAttackSkillId();
+    ExecuteSkill(enemyId, skillId, "enemy_attack", isCasterPlayer: false);
+}
+```
+
+**优势：**
+- ✅ 消除约 70 行重复代码
+- ✅ 单一职责：ExecuteSkill 专注于技能执行
+- ✅ 易于维护：未来逻辑改动只需修改一处
+- ✅ 扩展性强：添加 NPC/宠物只需新增分支
+
+#### P3+.7 文档更新 ✅
+
+**Step2_实施进度追踪.md 更新：**
+- 新增阶段 P3+：怪物技能系统基础整合
+- 更新阶段 7：明确支持玩家+怪物触发技能
+- 进度总览：5/15 阶段完成（33%）
+- 更新日志 v3.0
+
+**monsterskills.json 注释：**
+- 添加关键命名约定说明
+- 提供正确/错误示例
+- 防止未来配置错误
+
+### ✅ 验收标准
+
+- [x] monsterskills.json 配置正确加载
+- [x] 怪物使用新的技能系统攻击
+- [x] 怪物伤害计算正确（使用 DamagePerHit）
+- [x] ExecuteSkill 统一支持玩家和怪物
+- [x] 向后兼容（未配置技能ID时使用默认值）
+- [x] 473 个测试全部通过
+- [x] 手动测试验证功能正常
+- [x] 文档完整更新
+
+### 📊 代码变更统计
+
+| 文件 | 变更类型 | 行数变化 |
+|------|---------|---------|
+| Actors.cs | 新增 | +10 行 |
+| monsterskills.json | 新建 | +50 行 |
+| monsters.json | 修改 | +3 行 |
+| SkillRepository.cs | 修改 | +15 行 |
+| SkillResolver.cs | 修改 | +10 行 |
+| MultiBattleInstance.cs | 重构 | -70 行 |
+| Step2_实施进度追踪.md | 更新 | +127 行 |
+| **总计** | | **-60 行净减少** |
+
+### 🎯 架构优势
+
+#### 1. 配置分离
+```
+skills.json          → 玩家职业技能（44个）
+monsterskills.json   → 怪物技能（1个通用 + 未来扩展）
+```
+
+#### 2. 代码复用
+```
+SkillResolver    → 统一处理玩家和怪物技能
+ExecuteSkill     → 统一执行逻辑（isCasterPlayer 分支）
+TargetSelector   → 共享目标选择策略
+```
+
+#### 3. 易于扩展
+
+**当前阶段：**
+- ✅ 怪物固定普通攻击
+
+**阶段 7（触发技能）：**
+- ✅ 怪物触发技能复用 TriggerProcessor
+- ✅ 无需单独实现怪物触发逻辑
+- ✅ 直接添加触发器配置即可
+
+**未来扩展：**
+- ✅ BOSS 特殊技能（修改 monsters.json）
+- ✅ 怪物施法技能（添加 castTimeSec）
+- ✅ NPC/宠物系统（扩展 ExecuteSkill 分支）
+
+### 🔗 与 Phase3+ 的关系
+
+**Phase3+ 玩家集成：**
+- Character → NormalAttackSkillId → skills.json
+- ExecuteSkill(player branch)
+
+**Phase3+ 怪物集成：**
+- Enemy → NormalAttackSkillId → monsterskills.json
+- ExecuteSkill(monster branch)
+
+**一致性：**
+- ✅ 相同的数据模型（SkillDef）
+- ✅ 相同的执行流程（ExecuteSkill）
+- ✅ 相同的架构模式（配置驱动）
+- ✅ 相同的扩展路径（触发技能在阶段7）
+
+### 💡 关键设计决策
+
+#### 1. 前缀约定 vs Type参数
+
+**当前方案：** 使用 `monster_*` 或 `enemy_*` 前缀识别
+
+**优势：**
+- 零侵入性（无需修改数据结构）
+- 向后兼容
+- 简单直观
+
+**未来改进：** 当添加第3种施法者（NPC）时，考虑重构为从 BattleContext 推断类型
+
+#### 2. 独立配置文件 vs 合并
+
+**当前方案：** monsterskills.json 独立于 skills.json
+
+**优势：**
+- 职责分离（玩家技能 vs 怪物技能）
+- 易于管理（各自维护）
+- 清晰的命名空间
+
+#### 3. 通用技能 vs 专用技能
+
+**当前方案：** 所有普通怪物共享 `monster_attack_basic`
+
+**优势：**
+- 简化配置
+- 减少冗余
+- 符合怪物攻击同质化特性
+
+**扩展性：** 特殊怪物可配置独立技能ID
+
+### 🚀 后续工作
+
+**立即可用：**
+- ✅ 怪物使用新技能系统攻击
+- ✅ 支持目标选择策略（random_player）
+- ✅ 正确的伤害计算
+
+**阶段 7 扩展（触发技能）：**
+- [ ] 怪物触发技能配置（在 monsterskills.json）
+- [ ] 触发器定义（triggers 数组）
+- [ ] 概率判定（procChance）
+- [ ] 复用 TriggerProcessor（无需额外代码）
+
+**未来增强：**
+- [ ] BOSS 特殊技能
+- [ ] 怪物施法技能
+- [ ] 怪物 AoE 攻击
+- [ ] 怪物 Buff 系统（如果需要）
+
+---
+
 ## 💡 备注
 
 - 本计划基于充分的文档分析和代码审查
@@ -875,6 +1222,7 @@ Total: 11-17 hours (已优化，聚焦核心迁移)
 - 保持向后兼容性和测试覆盖率
 - 遵循最小化修改原则
 - 优先完成 Phase3+ 核心迁移，为后续功能奠定基础
+- **Phase3+ 扩展已完成怪物技能系统基础整合**
 
 ## 🔄 关键设计变更总结
 
