@@ -10,6 +10,7 @@
     "variancePct": 0.05,
     "respawnSec": 2.5,
     "baseExperience": 5,
+    "normalAttackSkillId": "monster_attack_basic",
     "lootDrops": [
       {
         "itemId": "gold_coin",
@@ -30,6 +31,7 @@
     "variancePct": 0.06,
     "respawnSec": 3.0,
     "baseExperience": 7,
+    "normalAttackSkillId": "monster_attack_basic",
     "lootDrops": [
       {
         "itemId": "gold_coin",
@@ -50,6 +52,7 @@
     "variancePct": 0.05,
     "respawnSec": 4.0,
     "baseExperience": 10,
+    "normalAttackSkillId": "monster_attack_basic",
     "lootDrops": [
       {
         "itemId": "gold_coin",

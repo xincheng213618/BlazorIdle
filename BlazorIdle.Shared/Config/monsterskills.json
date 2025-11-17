@@ -1,0 +1,19 @@
+[
+  {
+    "id": "monster_attack_basic",
+    "name": "怪物普通攻击",
+    "description": "通用的怪物普通攻击，造成1倍伤害",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "targetPolicy": "random_player",
+    "cooldownSec": 0,
+    "allowedProfessions": [],
+    "damage": {
+      "coefAtk": 1.0,
+      "flat": 0,
+      "isAoe": false
+    }
+  }
+]
