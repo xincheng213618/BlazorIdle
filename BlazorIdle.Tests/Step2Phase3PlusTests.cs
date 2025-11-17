@@ -402,5 +402,98 @@ namespace BlazorIdle.Tests
         }
 
         #endregion
+
+        #region P3.6 Tests: skills.json validation
+
+        [Theory]
+        [InlineData("warrior_attack_basic", "current_target")]
+        [InlineData("warrior_special_pulse", "self")]
+        [InlineData("mage_attack_basic", "current_target")]
+        [InlineData("mage_special_pulse", "self")]
+        [InlineData("ranger_attack_basic", "current_target")]
+        [InlineData("ranger_special_pulse", "self")]
+        [InlineData("rogue_attack_basic", "current_target")]
+        [InlineData("rogue_special_pulse", "current_target")]
+        public void SkillsJson_ProfessionFixedSkills_HaveTargetPolicy(string skillId, string expectedTargetPolicy)
+        {
+            // Arrange
+            var skillRepo = new BlazorIdle.Game.Skills.SkillRepository();
+
+            // Act
+            var skill = skillRepo.GetSkill(skillId);
+
+            // Assert
+            Assert.NotNull(skill);
+            Assert.NotNull(skill.TargetPolicy);
+            Assert.Equal(expectedTargetPolicy, skill.TargetPolicy, ignoreCase: true);
+        }
+
+        #endregion
+
+        #region P3.7 Tests: Backward compatibility
+
+        [Fact]
+        public void CharacterData_OldSave_FixedSkillsByProfession_IsEmptyByDefault()
+        {
+            // Arrange & Act - Simulating an old save with no fixed skills
+            var characterData = new CharacterData
+            {
+                Id = "old-character",
+                Name = "Old Character",
+                ProfessionId = "warrior"
+                // FixedSkillsByProfession not set - simulates old save
+            };
+
+            // Assert
+            Assert.NotNull(characterData.FixedSkillsByProfession);
+            Assert.Empty(characterData.FixedSkillsByProfession);
+        }
+
+        [Fact]
+        public void Character_NoFixedSkills_FallsBackToDefaults()
+        {
+            // Arrange - Character with no fixed skills set
+            var character = new BlazorIdle.Game.Character
+            {
+                NormalAttackSkillId = null,
+                SpecialAttackSkillId = null
+            };
+
+            // Act
+            var normalSkillId = character.GetNormalAttackSkillId();
+            var specialSkillId = character.GetSpecialAttackSkillId();
+
+            // Assert - Should return default fallback values
+            Assert.Equal("attack_basic", normalSkillId);
+            Assert.Equal("special_pulse", specialSkillId);
+        }
+
+        [Fact]
+        public void CharacterData_MissingProfessionInFixedSkills_ReturnsNull()
+        {
+            // Arrange
+            var characterData = new CharacterData
+            {
+                ActiveCombatProfessionId = "mage",
+                FixedSkillsByProfession = new Dictionary<string, ProfessionFixedSkills>
+                {
+                    ["warrior"] = new ProfessionFixedSkills
+                    {
+                        NormalAttack = "warrior_attack_basic",
+                        SpecialAttack = "warrior_special_pulse"
+                    }
+                    // Note: mage not included - simulates missing profession
+                }
+            };
+
+            // Act
+            var hasMageSkills = characterData.FixedSkillsByProfession.TryGetValue("mage", out var mageSkills);
+
+            // Assert
+            Assert.False(hasMageSkills);
+            Assert.Null(mageSkills);
+        }
+
+        #endregion
     }
 }
