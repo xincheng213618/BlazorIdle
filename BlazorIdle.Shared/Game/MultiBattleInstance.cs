@@ -527,10 +527,13 @@ namespace BlazorIdle.Game
                     var target = _enemyTeam.GetMember(targetId);
                     if (target == null) continue;
 
-                    // 应用伤害到每个目标
-                    // Apply damage to each target
-                    ApplyDamageToEnemy(charId, member, targetId, target, damagePerTarget, EventSource.Attack, 
-                        isAoe: isAoe, isCrit: result.IsCrit, skillId: skillId, bundleId: result.BundleId);
+                    // Phase 3+: 只有造成伤害时才记录伤害事件
+                    // Phase 3+: Only log damage event if damage is dealt
+                    if (damagePerTarget > 0)
+                    {
+                        ApplyDamageToEnemy(charId, member, targetId, target, damagePerTarget, EventSource.Attack, 
+                            isAoe: isAoe, isCrit: result.IsCrit, skillId: skillId, bundleId: result.BundleId);
+                    }
 
                     // Phase 6: 处理 Buff 操作、即时治疗和资源变化
                     // Phase 6: Process buff operations, instant heal, and resource changes
@@ -662,8 +665,13 @@ namespace BlazorIdle.Game
                     var target = _enemyTeam.GetMember(targetId);
                     if (target == null) continue;
 
-                    ApplyDamageToEnemy(charId, member, targetId, target, damagePerTarget, EventSource.Special, 
-                        isAoe: isAoe, isCrit: result.IsCrit, skillId: skillId, bundleId: result.BundleId);
+                    // Phase 3+: 只有造成伤害时才记录伤害事件
+                    // Phase 3+: Only log damage event if damage is dealt
+                    if (damagePerTarget > 0)
+                    {
+                        ApplyDamageToEnemy(charId, member, targetId, target, damagePerTarget, EventSource.Special, 
+                            isAoe: isAoe, isCrit: result.IsCrit, skillId: skillId, bundleId: result.BundleId);
+                    }
                     
                     // Phase 6: 处理 Buff 操作、即时治疗
                     // Phase 6: Process buff operations and instant heal

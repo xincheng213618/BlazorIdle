@@ -63,32 +63,62 @@ namespace BlazorIdle.Game.Skills
                 casterBuffOwner = ctx.PlayerBuffOwner;
             }
 
-            // 根据技能类型确定基础伤害
-            // Determine base damage based on skill type
-            int baseDamage = skillId switch
+            // Phase 3+: 使用技能定义的伤害配置计算基础伤害
+            // Phase 3+: Calculate base damage using skill definition's damage config
+            int baseDamage = 0;
+            
+            if (skillDef?.Damage != null)
             {
-                SkillIds.AttackBasic => ctx.Player?.DamagePerAttack ?? 0,
-                SkillIds.SpecialPulse => ctx.Player?.SpecialDamage ?? 0,
-                SkillIds.EnemyAttackBasic => ctx.Enemy?.DamagePerHit ?? 0,
-                _ => 0
-            };
-
-            // Phase 8: 应用 Buff 效果到基础伤害
-            // Phase 8: Apply buff effects to base damage
-            if (casterBuffOwner != null && skillId == SkillIds.AttackBasic)
-            {
-                baseDamage = ApplyBuffEffects(baseDamage, "DamagePerAttack", casterBuffOwner);
+                // 使用新的 DamageDef 系统
+                // Use new DamageDef system
+                var damageDef = skillDef.Damage;
+                
+                // 获取角色的攻击力
+                // Get character's attack power
+                int attackPower = skillId.StartsWith("enemy_")
+                    ? (ctx.Enemy?.DamagePerHit ?? 0)
+                    : (ctx.Player?.DamagePerAttack ?? 0);
+                
+                // Phase 8: 应用 Buff 效果到攻击力
+                // Phase 8: Apply buff effects to attack power
+                if (casterBuffOwner != null && !skillId.StartsWith("enemy_"))
+                {
+                    attackPower = ApplyBuffEffects(attackPower, "DamagePerAttack", casterBuffOwner);
+                }
+                
+                // 计算伤害：系数 * 攻击力 + 固定值
+                // Calculate damage: coefficient * attack power + flat value
+                baseDamage = (int)(damageDef.CoefAtk * attackPower) + damageDef.Flat;
             }
-            else if (casterBuffOwner != null && skillId == SkillIds.SpecialPulse)
+            else
             {
-                baseDamage = ApplyBuffEffects(baseDamage, "SpecialDamage", casterBuffOwner);
-            }
+                // 向后兼容：使用旧的硬编码方式
+                // Backward compatibility: use old hardcoded method
+                baseDamage = skillId switch
+                {
+                    SkillIds.AttackBasic => ctx.Player?.DamagePerAttack ?? 0,
+                    SkillIds.SpecialPulse => ctx.Player?.SpecialDamage ?? 0,
+                    SkillIds.EnemyAttackBasic => ctx.Enemy?.DamagePerHit ?? 0,
+                    _ => 0
+                };
 
-            // Phase 5: 应用技能的伤害倍率
-            // Phase 5: Apply skill damage multiplier
-            if (skillDef != null)
-            {
-                baseDamage = (int)(baseDamage * skillDef.DamageMultiplier);
+                // Phase 8: 应用 Buff 效果到基础伤害（旧系统）
+                // Phase 8: Apply buff effects to base damage (old system)
+                if (casterBuffOwner != null && skillId == SkillIds.AttackBasic)
+                {
+                    baseDamage = ApplyBuffEffects(baseDamage, "DamagePerAttack", casterBuffOwner);
+                }
+                else if (casterBuffOwner != null && skillId == SkillIds.SpecialPulse)
+                {
+                    baseDamage = ApplyBuffEffects(baseDamage, "SpecialDamage", casterBuffOwner);
+                }
+
+                // Phase 5: 应用技能的伤害倍率（旧系统）
+                // Phase 5: Apply skill damage multiplier (old system)
+                if (skillDef != null)
+                {
+                    baseDamage = (int)(baseDamage * skillDef.DamageMultiplier);
+                }
             }
 
             // 应用浮动
