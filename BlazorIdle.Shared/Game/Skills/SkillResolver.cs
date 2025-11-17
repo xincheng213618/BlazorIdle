@@ -57,8 +57,11 @@ namespace BlazorIdle.Game.Skills
 
             // Phase 8: 获取施法者的 Buff 所有者以应用 Buff 效果
             // Phase 8: Get caster's buff owner to apply buff effects
+            // Monster Skill System: 怪物技能不使用 Buff 系统
+            // Monster Skill System: Monster skills don't use buff system
             Buffs.IBuffOwner? casterBuffOwner = null;
-            if (!skillId.StartsWith("enemy_") && ctx.PlayerBuffOwner != null)
+            bool isMonsterSkillForBuff = skillId.StartsWith("enemy_") || skillId.StartsWith("monster_");
+            if (!isMonsterSkillForBuff && ctx.PlayerBuffOwner != null)
             {
                 casterBuffOwner = ctx.PlayerBuffOwner;
             }
@@ -73,15 +76,18 @@ namespace BlazorIdle.Game.Skills
                 // Use new DamageDef system
                 var damageDef = skillDef.Damage;
                 
-                // 获取角色的攻击力
-                // Get character's attack power
-                int attackPower = skillId.StartsWith("enemy_")
+                // 获取施法者的攻击力
+                // Get caster's attack power
+                // Monster Skill System: 检查是否为怪物技能（enemy_ 或 monster_ 前缀）
+                // Monster Skill System: Check if this is a monster skill (enemy_ or monster_ prefix)
+                bool isMonsterSkill = skillId.StartsWith("enemy_") || skillId.StartsWith("monster_");
+                int attackPower = isMonsterSkill
                     ? (ctx.Enemy?.DamagePerHit ?? 0)
                     : (ctx.Player?.DamagePerAttack ?? 0);
                 
-                // Phase 8: 应用 Buff 效果到攻击力
-                // Phase 8: Apply buff effects to attack power
-                if (casterBuffOwner != null && !skillId.StartsWith("enemy_"))
+                // Phase 8: 应用 Buff 效果到攻击力（仅玩家）
+                // Phase 8: Apply buff effects to attack power (player only)
+                if (casterBuffOwner != null && !isMonsterSkill)
                 {
                     attackPower = ApplyBuffEffects(attackPower, "DamagePerAttack", casterBuffOwner);
                 }
@@ -123,7 +129,10 @@ namespace BlazorIdle.Game.Skills
 
             // 应用浮动
             // Apply variance
-            double variancePct = skillId.StartsWith("enemy_")
+            // Monster Skill System: 检查是否为怪物技能（enemy_ 或 monster_ 前缀）
+            // Monster Skill System: Check if this is a monster skill (enemy_ or monster_ prefix)
+            bool isMonsterSkillForVariance = skillId.StartsWith("enemy_") || skillId.StartsWith("monster_");
+            double variancePct = isMonsterSkillForVariance
                 ? ctx.Enemy?.VariancePct ?? 0.0
                 : ctx.Player?.VariancePct ?? 0.0;
             double dmg = Math.Floor(ctx.Rng.Jitter(baseDamage, variancePct));
@@ -135,9 +144,12 @@ namespace BlazorIdle.Game.Skills
 
             // 检查暴击（仅玩家攻击有暴击）
             // Check for critical hit (only player attacks can crit)
+            // Monster Skill System: 怪物技能不能暴击
+            // Monster Skill System: Monster skills cannot crit
             bool isCrit = false;
             bool canCrit = skillDef?.CanCrit ?? true;
-            if (!skillId.StartsWith("enemy_") && ctx.Player != null && canCrit)
+            bool isMonsterSkillForCrit = skillId.StartsWith("enemy_") || skillId.StartsWith("monster_");
+            if (!isMonsterSkillForCrit && ctx.Player != null && canCrit)
             {
                 // Phase 8: ForceCrit 优先级最高
                 // Phase 8: ForceCrit has highest priority

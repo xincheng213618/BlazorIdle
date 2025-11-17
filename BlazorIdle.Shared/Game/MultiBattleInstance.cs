@@ -467,135 +467,216 @@ namespace BlazorIdle.Game
         }
 
         /// <summary>
-        /// Phase 3+: 通用技能执行函数 - 处理伤害、Buff、治疗、资源变化
-        /// Phase 3+: Generic skill execution function - handles damage, buffs, heals, resource changes
+        /// Phase 3+ / Monster Skill System: 通用技能执行函数 - 同时支持玩家和怪物
+        /// Phase 3+ / Monster Skill System: Generic skill execution function - supports both players and monsters
         /// </summary>
-        /// <param name="charId">施法者ID / Caster ID</param>
-        /// <param name="character">施法者角色实体 / Caster character entity</param>
+        /// <param name="casterId">施法者ID / Caster ID</param>
         /// <param name="skillId">要执行的技能ID / Skill ID to execute</param>
         /// <param name="sourceTrack">技能来源轨道（用于追踪）/ Source track for tracking</param>
-        /// <param name="eventSource">事件来源类型 / Event source type</param>
+        /// <param name="isCasterPlayer">施法者是否为玩家 / Is caster a player</param>
+        /// <param name="eventSource">事件来源类型（仅玩家使用）/ Event source type (player only)</param>
         private void ExecuteSkill(
-            string charId, 
-            Character character, 
+            string casterId, 
             string skillId, 
             string sourceTrack,
-            EventSource eventSource)
+            bool isCasterPlayer,
+            EventSource eventSource = EventSource.Attack)
         {
-            var member = _playerTeam.GetMember(charId);
-            if (member == null) return;
-
-            // 选择一个默认目标用于上下文（用于CurrentTarget策略）
-            // Select a default target for context (used for CurrentTarget policy)
-            var defaultTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
-            var defaultTarget = defaultTargetId != null ? _enemyTeam.GetMember(defaultTargetId) : null;
-
-            // 创建战斗上下文
-            // Create battle context
-            var ctx = new BattleContext
+            if (isCasterPlayer)
             {
-                Player = character,
-                Enemy = defaultTarget?.Entity,
-                PlayerTeam = _playerTeam,
-                EnemyTeam = _enemyTeam,
-                Rng = _rng,
-                Clock = _clock,
-                PlayerResources = _playerResources.GetValueOrDefault(charId),
-                PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(charId),
-                EnemyBuffOwners = _enemyBuffOwners,
-                CurrentTargetId = defaultTargetId
-            };
+                // 玩家施法逻辑
+                // Player casting logic
+                var member = _playerTeam.GetMember(casterId);
+                if (member == null) return;
+                var character = member.Entity;
 
-            // 使用 SkillResolver 执行技能
-            // Execute skill using SkillResolver
-            var opts = new SkillCastOptions 
-            { 
-                SourceTrack = sourceTrack,
-                CasterId = charId
-            };
-            var result = _skillResolver.Cast(skillId, ctx, opts);
+                // 选择一个默认目标用于上下文（用于CurrentTarget策略）
+                // Select a default target for context (used for CurrentTarget policy)
+                var defaultTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
+                var defaultTarget = defaultTargetId != null ? _enemyTeam.GetMember(defaultTargetId) : null;
 
-            // 解析目标（来自技能的targetPolicy）
-            // Resolve targets (from skill's targetPolicy)
-            List<string> targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
-                (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
-
-            // 应用效果到所有解析的目标
-            // Apply effects to all resolved targets
-            if (targetIds.Count > 0)
-            {
-                bool isAoe = targetIds.Count > 1;
-                int damagePerTarget = isAoe ? (int)(result.DamageDealt * _config.AoeDamageMultiplier) : result.DamageDealt;
-
-                foreach (var targetId in targetIds)
+                // 创建战斗上下文
+                // Create battle context
+                var ctx = new BattleContext
                 {
-                    var target = _enemyTeam.GetMember(targetId);
-                    if (target == null) continue;
+                    Player = character,
+                    Enemy = defaultTarget?.Entity,
+                    PlayerTeam = _playerTeam,
+                    EnemyTeam = _enemyTeam,
+                    Rng = _rng,
+                    Clock = _clock,
+                    PlayerResources = _playerResources.GetValueOrDefault(casterId),
+                    PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(casterId),
+                    EnemyBuffOwners = _enemyBuffOwners,
+                    CurrentTargetId = defaultTargetId
+                };
 
-                    // 只有造成伤害时才记录伤害事件
-                    // Only log damage event if damage is dealt
-                    if (damagePerTarget > 0)
-                    {
-                        ApplyDamageToEnemy(charId, member, targetId, target, damagePerTarget, eventSource, 
-                            isAoe: isAoe, isCrit: result.IsCrit, skillId: skillId, bundleId: result.BundleId);
-                    }
+                // 使用 SkillResolver 执行技能
+                // Execute skill using SkillResolver
+                var opts = new SkillCastOptions 
+                { 
+                    SourceTrack = sourceTrack,
+                    CasterId = casterId
+                };
+                var result = _skillResolver.Cast(skillId, ctx, opts);
 
-                    // 即时治疗每个目标
-                    // Instant heal per target
-                    ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true, skillId: skillId);
-                }
-                
-                // Buff操作和资源变化只应用一次（不是每个目标）
-                // Buff operations and resource changes apply once (not per target)
-                // 使用第一个目标ID作为上下文（buff系统会根据BuffTarget类型正确解析实际目标）
-                // Use first target ID as context (buff system will resolve actual targets based on BuffTarget type)
-                string? primaryTargetId = targetIds.Count > 0 ? targetIds[0] : null;
-                ProcessBuffOperations(result, charId, primaryTargetId, isCasterPlayer: true);
-                ApplyResourceChanges(result, charId, isCasterPlayer: true, skillId: skillId);
-            }
+                // 解析目标（来自技能的targetPolicy）
+                // Resolve targets (from skill's targetPolicy)
+                List<string> targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
+                    (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
 
-            // 向后兼容 - 如果技能没有定义资源获得，使用职业配置作为回退（仅普通攻击）
-            // Backward compatibility - if skill doesn't define resource gains, use profession config as fallback (normal attack only)
-            if (sourceTrack == "attack" && 
-                (result.ResourceChanges == null || result.ResourceChanges.Count == 0) && 
-                _playerResources.TryGetValue(charId, out var resources))
-            {
-                // 获取职业资源配置
-                // Get profession resource config
-                string resourceId = "rage";
-                int gainPerAttack = _resourceConfig.GainPerAttack;
-                int gainPerCritExtra = _resourceConfig.GainPerCritExtra;
-                
-                if (_professionResourceConfigs != null &&
-                    _professionResourceConfigs.TryGetValue(character.ActiveCombatProfessionId, out var profConfig))
+                // 应用效果到所有解析的目标
+                // Apply effects to all resolved targets
+                if (targetIds.Count > 0)
                 {
-                    resourceId = profConfig.Id;
-                    gainPerAttack = profConfig.GainPerAttack;
-                    gainPerCritExtra = profConfig.GainPerCritExtra;
-                }
-                
-                if (resources.HasBucket(resourceId))
-                {
-                    var bucket = resources.GetBucket(resourceId);
-                    
-                    // 命中产生资源
-                    int gained = bucket.Gain(gainPerAttack, "attack_hit");
-                    if (gained > 0)
+                    bool isAoe = targetIds.Count > 1;
+                    int damagePerTarget = isAoe ? (int)(result.DamageDealt * _config.AoeDamageMultiplier) : result.DamageDealt;
+
+                    foreach (var targetId in targetIds)
                     {
-                        RecordResourceGain(charId, resourceId, gained, bucket.Current, "attack_hit", 
-                            skillId: skillId, bundleId: result.BundleId);
-                    }
-                    
-                    // 暴击额外产生资源
-                    if (result.IsCrit)
-                    {
-                        int critGain = bucket.Gain(gainPerCritExtra, "crit_bonus");
-                        if (critGain > 0)
+                        var target = _enemyTeam.GetMember(targetId);
+                        if (target == null) continue;
+
+                        // 只有造成伤害时才记录伤害事件
+                        // Only log damage event if damage is dealt
+                        if (damagePerTarget > 0)
                         {
-                            RecordResourceGain(charId, resourceId, critGain, bucket.Current, "crit_bonus",
+                            ApplyDamageToEnemy(casterId, member, targetId, target, damagePerTarget, eventSource, 
+                                isAoe: isAoe, isCrit: result.IsCrit, skillId: skillId, bundleId: result.BundleId);
+                        }
+
+                        // 即时治疗每个目标
+                        // Instant heal per target
+                        ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: true, skillId: skillId);
+                    }
+                    
+                    // Buff操作和资源变化只应用一次（不是每个目标）
+                    // Buff operations and resource changes apply once (not per target)
+                    // 使用第一个目标ID作为上下文（buff系统会根据BuffTarget类型正确解析实际目标）
+                    // Use first target ID as context (buff system will resolve actual targets based on BuffTarget type)
+                    string? primaryTargetId = targetIds.Count > 0 ? targetIds[0] : null;
+                    ProcessBuffOperations(result, casterId, primaryTargetId, isCasterPlayer: true);
+                    ApplyResourceChanges(result, casterId, isCasterPlayer: true, skillId: skillId);
+                }
+
+                // 向后兼容 - 如果技能没有定义资源获得，使用职业配置作为回退（仅普通攻击）
+                // Backward compatibility - if skill doesn't define resource gains, use profession config as fallback (normal attack only)
+                if (sourceTrack == "attack" && 
+                    (result.ResourceChanges == null || result.ResourceChanges.Count == 0) && 
+                    _playerResources.TryGetValue(casterId, out var resources))
+                {
+                    // 获取职业资源配置
+                    // Get profession resource config
+                    string resourceId = "rage";
+                    int gainPerAttack = _resourceConfig.GainPerAttack;
+                    int gainPerCritExtra = _resourceConfig.GainPerCritExtra;
+                    
+                    if (_professionResourceConfigs != null &&
+                        _professionResourceConfigs.TryGetValue(character.ActiveCombatProfessionId, out var profConfig))
+                    {
+                        resourceId = profConfig.Id;
+                        gainPerAttack = profConfig.GainPerAttack;
+                        gainPerCritExtra = profConfig.GainPerCritExtra;
+                    }
+                    
+                    if (resources.HasBucket(resourceId))
+                    {
+                        var bucket = resources.GetBucket(resourceId);
+                        
+                        // 命中产生资源
+                        int gained = bucket.Gain(gainPerAttack, "attack_hit");
+                        if (gained > 0)
+                        {
+                            RecordResourceGain(casterId, resourceId, gained, bucket.Current, "attack_hit", 
                                 skillId: skillId, bundleId: result.BundleId);
                         }
+                        
+                        // 暴击额外产生资源
+                        if (result.IsCrit)
+                        {
+                            int critGain = bucket.Gain(gainPerCritExtra, "crit_bonus");
+                            if (critGain > 0)
+                            {
+                                RecordResourceGain(casterId, resourceId, critGain, bucket.Current, "crit_bonus",
+                                    skillId: skillId, bundleId: result.BundleId);
+                            }
+                        }
                     }
+                }
+            }
+            else
+            {
+                // Monster Skill System: 怪物施法逻辑
+                // Monster Skill System: Monster casting logic
+                var member = _enemyTeam.GetMember(casterId);
+                if (member == null) return;
+                var enemy = member.Entity;
+
+                // 选择一个默认目标用于上下文
+                // Select a default target for context
+                var defaultTargetId = SelectPlayerTarget(_config.EnemyTargetStrategy);
+                var defaultTarget = defaultTargetId != null ? _playerTeam.GetMember(defaultTargetId) : null;
+
+                // 创建战斗上下文（Enemy 作为施法者）
+                // Create battle context (Enemy as caster)
+                var ctx = new BattleContext
+                {
+                    Enemy = enemy,
+                    Player = defaultTarget?.Entity,
+                    PlayerTeam = _playerTeam,
+                    EnemyTeam = _enemyTeam,
+                    Rng = _rng,
+                    Clock = _clock,
+                    PlayerResources = defaultTargetId != null ? _playerResources.GetValueOrDefault(defaultTargetId) : null,
+                    PlayerBuffOwner = defaultTargetId != null ? _playerBuffOwners.GetValueOrDefault(defaultTargetId) : null,
+                    EnemyBuffOwners = _enemyBuffOwners,
+                    CurrentTargetId = defaultTargetId
+                };
+
+                // 使用 SkillResolver 执行技能
+                // Execute skill using SkillResolver
+                var opts = new SkillCastOptions 
+                { 
+                    SourceTrack = sourceTrack,
+                    CasterId = casterId
+                };
+                var result = _skillResolver.Cast(skillId, ctx, opts);
+
+                // 解析目标（来自技能的targetPolicy）
+                // Resolve targets (from skill's targetPolicy)
+                List<string> targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
+                    (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
+
+                // 应用效果到所有解析的目标
+                // Apply effects to all resolved targets
+                if (targetIds.Count > 0)
+                {
+                    bool isAoe = targetIds.Count > 1;
+                    int damagePerTarget = isAoe ? (int)(result.DamageDealt * _config.AoeDamageMultiplier) : result.DamageDealt;
+
+                    foreach (var targetId in targetIds)
+                    {
+                        var target = _playerTeam.GetMember(targetId);
+                        if (target == null) continue;
+
+                        // 应用伤害（传递技能ID和BundleID）
+                        // Apply damage (pass skill ID and bundle ID)
+                        if (damagePerTarget > 0)
+                        {
+                            ApplyDamageToPlayer(casterId, member, targetId, target, damagePerTarget,
+                                skillId: skillId, bundleId: result.BundleId);
+                        }
+
+                        // 即时治疗每个目标
+                        // Instant heal per target
+                        ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: false, skillId: skillId);
+                    }
+                    
+                    // Buff操作和资源变化只应用一次（不是每个目标）
+                    // Buff operations and resource changes apply once (not per target)
+                    string? primaryTargetId = targetIds.Count > 0 ? targetIds[0] : null;
+                    ProcessBuffOperations(result, casterId, primaryTargetId, isCasterPlayer: false);
+                    ApplyResourceChanges(result, casterId, isCasterPlayer: false, skillId: skillId);
                 }
             }
         }
@@ -610,9 +691,9 @@ namespace BlazorIdle.Game
             // Phase 3+: Get normal attack skill ID from character entity
             string skillId = character.GetNormalAttackSkillId();
             
-            // 调用通用技能执行函数
-            // Call generic skill execution function
-            ExecuteSkill(charId, character, skillId, "attack", EventSource.Attack);
+            // Monster Skill System: 调用统一的通用技能执行函数
+            // Monster Skill System: Call unified generic skill execution function
+            ExecuteSkill(charId, skillId, "attack", isCasterPlayer: true, EventSource.Attack);
         }
 
         /// <summary>
@@ -625,9 +706,9 @@ namespace BlazorIdle.Game
             // Phase 3+: Get special attack skill ID from character entity
             string skillId = character.GetSpecialAttackSkillId();
             
-            // 调用通用技能执行函数
-            // Call generic skill execution function
-            ExecuteSkill(charId, character, skillId, "special", EventSource.Special);
+            // Monster Skill System: 调用统一的通用技能执行函数
+            // Monster Skill System: Call unified generic skill execution function
+            ExecuteSkill(charId, skillId, "special", isCasterPlayer: true, EventSource.Special);
         }
 
         /// <summary>
@@ -726,79 +807,13 @@ namespace BlazorIdle.Game
         /// </summary>
         private void ProcessEnemyAttackViaSkillResolver(string enemyId, Enemy enemy)
         {
-            var member = _enemyTeam.GetMember(enemyId);
-            if (member == null) return;
-
             // Monster Skill System: 从怪物实体获取普通攻击技能ID
             // Monster Skill System: Get normal attack skill ID from enemy entity
             string skillId = enemy.GetNormalAttackSkillId();
             
-            // 选择一个默认目标用于上下文（用于CurrentTarget策略）
-            // Select a default target for context (used for CurrentTarget policy)
-            var defaultTargetId = SelectPlayerTarget(_config.EnemyTargetStrategy);
-            var defaultTarget = defaultTargetId != null ? _playerTeam.GetMember(defaultTargetId) : null;
-
-            // 创建战斗上下文（Enemy 作为施法者）
-            // Create battle context (Enemy as caster)
-            var ctx = new BattleContext
-            {
-                Enemy = enemy,
-                Player = defaultTarget?.Entity,
-                PlayerTeam = _playerTeam,
-                EnemyTeam = _enemyTeam,
-                Rng = _rng,
-                Clock = _clock,
-                PlayerResources = defaultTargetId != null ? _playerResources.GetValueOrDefault(defaultTargetId) : null,
-                PlayerBuffOwner = defaultTargetId != null ? _playerBuffOwners.GetValueOrDefault(defaultTargetId) : null,
-                EnemyBuffOwners = _enemyBuffOwners,
-                CurrentTargetId = defaultTargetId
-            };
-
-            // 使用 SkillResolver 执行技能
-            // Execute skill using SkillResolver
-            var opts = new SkillCastOptions 
-            { 
-                SourceTrack = "enemy_attack",
-                CasterId = enemyId
-            };
-            var result = _skillResolver.Cast(skillId, ctx, opts);
-
-            // 解析目标（来自技能的targetPolicy）
-            // Resolve targets (from skill's targetPolicy)
-            List<string> targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
-                (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
-
-            // 应用效果到所有解析的目标
-            // Apply effects to all resolved targets
-            if (targetIds.Count > 0)
-            {
-                bool isAoe = targetIds.Count > 1;
-                int damagePerTarget = isAoe ? (int)(result.DamageDealt * _config.AoeDamageMultiplier) : result.DamageDealt;
-
-                foreach (var targetId in targetIds)
-                {
-                    var target = _playerTeam.GetMember(targetId);
-                    if (target == null) continue;
-
-                    // 应用伤害（传递技能ID和BundleID）
-                    // Apply damage (pass skill ID and bundle ID)
-                    if (damagePerTarget > 0)
-                    {
-                        ApplyDamageToPlayer(enemyId, member, targetId, target, damagePerTarget,
-                            skillId: skillId, bundleId: result.BundleId);
-                    }
-
-                    // 即时治疗每个目标
-                    // Instant heal per target
-                    ApplyInstantHeal(result, enemyId, targetId, isCasterPlayer: false, skillId: skillId);
-                }
-                
-                // Buff操作和资源变化只应用一次（不是每个目标）
-                // Buff operations and resource changes apply once (not per target)
-                string? primaryTargetId = targetIds.Count > 0 ? targetIds[0] : null;
-                ProcessBuffOperations(result, enemyId, primaryTargetId, isCasterPlayer: false);
-                ApplyResourceChanges(result, enemyId, isCasterPlayer: false, skillId: skillId);
-            }
+            // Monster Skill System: 调用统一的通用技能执行函数
+            // Monster Skill System: Call unified generic skill execution function
+            ExecuteSkill(enemyId, skillId, "enemy_attack", isCasterPlayer: false);
         }
 
         /// <summary>
