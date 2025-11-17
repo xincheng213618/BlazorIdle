@@ -45,5 +45,11 @@ namespace BlazorIdle.Game.Skills
         /// Instant heal amount (if skill provides instant healing)
         /// </summary>
         public int InstantHeal { get; set; }
+
+        /// <summary>
+        /// 目标ID列表（Phase 3+ Integration）
+        /// List of target IDs resolved by target selector
+        /// </summary>
+        public List<string> TargetIds { get; set; } = new();
     }
 }

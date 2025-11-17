@@ -62,16 +62,19 @@ namespace BlazorIdle.Game.Skills
         private void InitializeDefaultSkills()
         {
             // Basic attack - no special effects yet
+            // Phase 3+: Added targetPolicy for target selection integration
             RegisterSkill(new SkillDef
             {
                 Id = SkillIds.AttackBasic,
                 DamageMultiplier = 1.0,
                 CanCrit = true,
-                AlwaysHits = true
+                AlwaysHits = true,
+                TargetPolicy = "CurrentTarget" // Default: single target
             });
 
             // Special pulse - Phase 3: Migrated to use BuffConfigId
             // Tests various buff types: self-buffs, instant heal, DoT, HoT, and debuffs
+            // Phase 3+: Added targetPolicy for target selection integration
             RegisterSkill(new SkillDef
             {
                 Id = SkillIds.SpecialPulse,
@@ -79,6 +82,7 @@ namespace BlazorIdle.Game.Skills
                 CanCrit = true,
                 AlwaysHits = true,
                 IsAoe = true,
+                TargetPolicy = "EnemiesAll", // Default: AoE to all enemies
                 OnCastBuffs = new List<BuffOperation>
                 {
                     // 1. Self-buff: Damage/Haste/Crit boost (warrior power boost)
@@ -104,7 +108,8 @@ namespace BlazorIdle.Game.Skills
                 Id = SkillIds.EnemyAttackBasic,
                 DamageMultiplier = 1.0,
                 CanCrit = false,
-                AlwaysHits = true
+                AlwaysHits = true,
+                TargetPolicy = "CurrentTarget" // Default: single target
             });
         }
 

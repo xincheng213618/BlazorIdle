@@ -45,12 +45,47 @@ namespace BlazorIdle.Game.Skills
                     return false;
             }
 
-            // 验证等级要求
-            // Validate level requirements
-            if (skill.Unlock != null && skill.Unlock.MinLevel > 0)
+            // 验证解锁条件
+            // Validate unlock conditions
+            if (skill.Unlock != null)
             {
-                if (characterLevel < skill.Unlock.MinLevel)
+                // 验证等级要求
+                // Validate level requirements
+                if (skill.Unlock.MinLevel > 0 && characterLevel < skill.Unlock.MinLevel)
                     return false;
+
+                // 验证账号标记要求 (Step 2 Phase 2.5+)
+                // Validate account flags requirements
+                if (skill.Unlock.AccountFlags != null && skill.Unlock.AccountFlags.Count > 0)
+                {
+                    // 检查是否拥有所有必需的账号标记
+                    // Check if character has all required account flags
+                    foreach (var requiredFlag in skill.Unlock.AccountFlags)
+                    {
+                        if (!characterData.AccountFlags.Contains(requiredFlag))
+                            return false;
+                    }
+                }
+
+                // 验证职业等级要求 (Step 2 Phase 2.5+)
+                // Validate profession level requirements
+                if (skill.Unlock.RequiresProfessionLevel != null && skill.Unlock.RequiresProfessionLevel.Count > 0)
+                {
+                    // 检查每个职业的等级要求
+                    // Check level requirement for each profession
+                    foreach (var (professionId, requiredLevel) in skill.Unlock.RequiresProfessionLevel)
+                    {
+                        // 获取角色在该职业的进度
+                        // Get character's progress in that profession
+                        if (!characterData.Professions.TryGetValue(professionId, out var professionProgress))
+                            return false;
+
+                        // 检查职业等级是否满足
+                        // Check if profession level meets requirement
+                        if (professionProgress.Level < requiredLevel)
+                            return false;
+                    }
+                }
             }
 
             return true;

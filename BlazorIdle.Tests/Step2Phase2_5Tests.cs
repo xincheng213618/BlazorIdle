@@ -346,5 +346,284 @@ namespace BlazorIdle.Tests
         }
 
         #endregion
+
+        #region Enhanced Validation Tests (6 tests) - Step 2 Phase 2.5+
+
+        [Fact]
+        public void SkillLearningManager_CanLearnSkill_ReturnsFalse_WhenMissingAccountFlag()
+        {
+            // Arrange
+            var repo = new SkillRepository();
+            var manager = new SkillLearningManager(repo);
+            var characterData = new CharacterData { ProfessionId = "warrior" };
+            
+            // Create a skill with account flag requirement
+            var skill = new SkillDef
+            {
+                Id = "test_skill_with_flag",
+                Name = "Test Skill",
+                Type = "active",
+                SlotType = "active",
+                Fixed = false,
+                ReleaseType = "instant",
+                AllowedProfessions = new System.Collections.Generic.List<string> { "warrior" },
+                Unlock = new UnlockConfig
+                {
+                    MinLevel = 1,
+                    AccountFlags = new System.Collections.Generic.List<string> { "achievement_test" }
+                }
+            };
+            
+            // Add skill to repository
+            var skillsList = new System.Collections.Generic.List<SkillDef>
+            {
+                { skill }
+            };
+            repo.LoadFromJson(JsonSerializer.Serialize(skillsList));
+
+            // Act - Character doesn't have the required account flag
+            var result = manager.CanLearnSkill(characterData, "test_skill_with_flag", characterLevel: 10, "warrior");
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void SkillLearningManager_CanLearnSkill_ReturnsTrue_WhenHasAccountFlag()
+        {
+            // Arrange
+            var repo = new SkillRepository();
+            var manager = new SkillLearningManager(repo);
+            var characterData = new CharacterData { ProfessionId = "warrior" };
+            characterData.AccountFlags.Add("achievement_test");
+            
+            // Create a skill with account flag requirement
+            var skill = new SkillDef
+            {
+                Id = "test_skill_with_flag",
+                Name = "Test Skill",
+                Type = "active",
+                SlotType = "active",
+                Fixed = false,
+                ReleaseType = "instant",
+                AllowedProfessions = new System.Collections.Generic.List<string> { "warrior" },
+                Unlock = new UnlockConfig
+                {
+                    MinLevel = 1,
+                    AccountFlags = new System.Collections.Generic.List<string> { "achievement_test" }
+                }
+            };
+            
+            // Add skill to repository
+            var skillsList = new System.Collections.Generic.List<SkillDef>
+            {
+                { skill }
+            };
+            repo.LoadFromJson(JsonSerializer.Serialize(skillsList));
+
+            // Act - Character has the required account flag
+            var result = manager.CanLearnSkill(characterData, "test_skill_with_flag", characterLevel: 10, "warrior");
+
+            // Assert
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void SkillLearningManager_CanLearnSkill_ReturnsFalse_WhenMissingMultipleAccountFlags()
+        {
+            // Arrange
+            var repo = new SkillRepository();
+            var manager = new SkillLearningManager(repo);
+            var characterData = new CharacterData { ProfessionId = "warrior" };
+            characterData.AccountFlags.Add("achievement_test1"); // Only has one of two required
+            
+            // Create a skill requiring multiple account flags
+            var skill = new SkillDef
+            {
+                Id = "test_skill_multi_flag",
+                Name = "Test Skill Multi",
+                Type = "active",
+                SlotType = "active",
+                Fixed = false,
+                ReleaseType = "instant",
+                AllowedProfessions = new System.Collections.Generic.List<string> { "warrior" },
+                Unlock = new UnlockConfig
+                {
+                    MinLevel = 1,
+                    AccountFlags = new System.Collections.Generic.List<string> { "achievement_test1", "achievement_test2" }
+                }
+            };
+            
+            // Add skill to repository
+            var skillsList = new System.Collections.Generic.List<SkillDef>
+            {
+                { skill }
+            };
+            repo.LoadFromJson(JsonSerializer.Serialize(skillsList));
+
+            // Act - Character only has one of two required flags
+            var result = manager.CanLearnSkill(characterData, "test_skill_multi_flag", characterLevel: 10, "warrior");
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void SkillLearningManager_CanLearnSkill_ReturnsFalse_WhenProfessionLevelTooLow()
+        {
+            // Arrange
+            var repo = new SkillRepository();
+            var manager = new SkillLearningManager(repo);
+            var characterData = new CharacterData { ProfessionId = "warrior" };
+            
+            // Set up profession progress - warrior at level 3, mage at level 1
+            characterData.Professions["warrior"] = new ProfessionProgress { Level = 3 };
+            characterData.Professions["mage"] = new ProfessionProgress { Level = 1 };
+            
+            // Create a skill requiring warrior level 5
+            var skill = new SkillDef
+            {
+                Id = "test_skill_prof_level",
+                Name = "Test Skill Prof",
+                Type = "active",
+                SlotType = "active",
+                Fixed = false,
+                ReleaseType = "instant",
+                AllowedProfessions = new System.Collections.Generic.List<string> { "warrior" },
+                Unlock = new UnlockConfig
+                {
+                    MinLevel = 1,
+                    RequiresProfessionLevel = new System.Collections.Generic.Dictionary<string, int>
+                    {
+                        { "warrior", 5 }
+                    }
+                }
+            };
+            
+            // Add skill to repository
+            var skillsList = new System.Collections.Generic.List<SkillDef>
+            {
+                { skill }
+            };
+            repo.LoadFromJson(JsonSerializer.Serialize(skillsList));
+
+            // Act - Warrior level is too low (3 < 5)
+            var result = manager.CanLearnSkill(characterData, "test_skill_prof_level", characterLevel: 10, "warrior");
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void SkillLearningManager_CanLearnSkill_ReturnsTrue_WhenProfessionLevelMet()
+        {
+            // Arrange
+            var repo = new SkillRepository();
+            var manager = new SkillLearningManager(repo);
+            var characterData = new CharacterData { ProfessionId = "warrior" };
+            
+            // Set up profession progress - warrior at level 5
+            characterData.Professions["warrior"] = new ProfessionProgress { Level = 5 };
+            
+            // Create a skill requiring warrior level 5
+            var skill = new SkillDef
+            {
+                Id = "test_skill_prof_level",
+                Name = "Test Skill Prof",
+                Type = "active",
+                SlotType = "active",
+                Fixed = false,
+                ReleaseType = "instant",
+                AllowedProfessions = new System.Collections.Generic.List<string> { "warrior" },
+                Unlock = new UnlockConfig
+                {
+                    MinLevel = 1,
+                    RequiresProfessionLevel = new System.Collections.Generic.Dictionary<string, int>
+                    {
+                        { "warrior", 5 }
+                    }
+                }
+            };
+            
+            // Add skill to repository
+            var skillsList = new System.Collections.Generic.List<SkillDef>
+            {
+                { skill }
+            };
+            repo.LoadFromJson(JsonSerializer.Serialize(skillsList));
+
+            // Act - Warrior level meets requirement (5 >= 5)
+            var result = manager.CanLearnSkill(characterData, "test_skill_prof_level", characterLevel: 10, "warrior");
+
+            // Assert
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void SkillLearningManager_CanLearnSkill_ReturnsFalse_WhenProfessionNotUnlocked()
+        {
+            // Arrange
+            var repo = new SkillRepository();
+            var manager = new SkillLearningManager(repo);
+            var characterData = new CharacterData { ProfessionId = "warrior" };
+            
+            // Only warrior profession is unlocked, mage is not
+            characterData.Professions["warrior"] = new ProfessionProgress { Level = 5 };
+            // Note: mage is not in Professions dictionary
+            
+            // Create a skill requiring mage level 3
+            var skill = new SkillDef
+            {
+                Id = "test_skill_mage_level",
+                Name = "Test Skill Mage",
+                Type = "active",
+                SlotType = "active",
+                Fixed = false,
+                ReleaseType = "instant",
+                AllowedProfessions = new System.Collections.Generic.List<string> { "warrior" },
+                Unlock = new UnlockConfig
+                {
+                    MinLevel = 1,
+                    RequiresProfessionLevel = new System.Collections.Generic.Dictionary<string, int>
+                    {
+                        { "mage", 3 }
+                    }
+                }
+            };
+            
+            // Add skill to repository
+            var skillsList = new System.Collections.Generic.List<SkillDef>
+            {
+                { skill }
+            };
+            repo.LoadFromJson(JsonSerializer.Serialize(skillsList));
+
+            // Act - Mage profession is not unlocked (not in Professions dictionary)
+            var result = manager.CanLearnSkill(characterData, "test_skill_mage_level", characterLevel: 10, "warrior");
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void CharacterData_Serialization_IncludesAccountFlags()
+        {
+            // Arrange
+            var characterData = new CharacterData { ProfessionId = "warrior" };
+            characterData.AccountFlags.Add("achievement_test1");
+            characterData.AccountFlags.Add("achievement_test2");
+
+            // Act
+            var json = JsonSerializer.Serialize(characterData);
+            var deserialized = JsonSerializer.Deserialize<CharacterData>(json);
+
+            // Assert
+            Assert.NotNull(deserialized);
+            Assert.Equal(2, deserialized!.AccountFlags.Count);
+            Assert.Contains("achievement_test1", deserialized.AccountFlags);
+            Assert.Contains("achievement_test2", deserialized.AccountFlags);
+        }
+
+        #endregion
     }
 }

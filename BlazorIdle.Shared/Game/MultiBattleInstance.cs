@@ -467,48 +467,103 @@ namespace BlazorIdle.Game
         }
 
         /// <summary>
-        /// 通过 SkillResolver 处理角色普通攻击（Phase 7.2）
-        /// Process character normal attack via SkillResolver (Phase 7.2)
+        /// 通过 SkillResolver 处理角色普通攻击（Phase 7.2 + Phase 3+ Target Selection Integration）
+        /// Process character normal attack via SkillResolver (Phase 7.2 + Phase 3+ Target Selection Integration)
         /// </summary>
-        private void ProcessCharacterAttackViaSkillResolver(string charId, Character character)
+        /// <param name="targetPolicyOverride">临时参数：用于测试目标选择功能的策略覆盖 (null = 使用技能默认) / Temporary param: target policy override for testing (null = use skill default)</param>
+        private void ProcessCharacterAttackViaSkillResolver(string charId, Character character, string? targetPolicyOverride = null)
         {
-            var targetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
-            if (targetId == null) return;
-
             var member = _playerTeam.GetMember(charId);
-            var target = _enemyTeam.GetMember(targetId);
-            if (member == null || target == null) return;
+            if (member == null) return;
 
-            // 创建战斗上下文（Phase 2: 添加资源引用，Phase 4: 添加 Buff 所有者）
-            // Create battle context (Phase 2: Add resource reference, Phase 4: Add buff owners)
+            // 选择一个默认目标用于上下文（用于CurrentTarget策略）
+            // Select a default target for context (used for CurrentTarget policy)
+            var defaultTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
+            var defaultTarget = defaultTargetId != null ? _enemyTeam.GetMember(defaultTargetId) : null;
+
+            // 创建战斗上下文（Phase 3+: 添加 CurrentTargetId 和 CasterId）
+            // Create battle context (Phase 3+: Add CurrentTargetId and CasterId)
             var ctx = new BattleContext
             {
                 Player = character,
-                Enemy = target.Entity,
+                Enemy = defaultTarget?.Entity,
                 PlayerTeam = _playerTeam,
                 EnemyTeam = _enemyTeam,
                 Rng = _rng,
                 Clock = _clock,
                 PlayerResources = _playerResources.GetValueOrDefault(charId),
                 PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(charId),
-                EnemyBuffOwners = _enemyBuffOwners
+                EnemyBuffOwners = _enemyBuffOwners,
+                CurrentTargetId = defaultTargetId // Phase 3+: For target selection
             };
 
             // 使用 SkillResolver 计算伤害
             // Use SkillResolver to calculate damage
-            var opts = new SkillCastOptions { SourceTrack = "attack" };
+            var opts = new SkillCastOptions 
+            { 
+                SourceTrack = "attack",
+                CasterId = charId // Phase 3+: For Self policy
+            };
             var result = _skillResolver.Cast(SkillIds.AttackBasic, ctx, opts);
 
-            // 应用伤害（传递暴击信息、技能ID和BundleID）
-            // Apply damage (pass crit information, skill ID and bundle ID)
-            ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Attack, 
-                isAoe: false, isCrit: result.IsCrit, skillId: SkillIds.AttackBasic, bundleId: result.BundleId);
+            // Phase 3+: 解析目标（优先使用SkillResolver的结果，临时参数可覆盖用于测试）
+            // Phase 3+: Resolve targets (prefer SkillResolver results, temp param can override for testing)
+            List<string> targetIds;
+            
+            // 临时测试参数：如果提供了目标策略覆盖，使用TargetSelector手动解析目标
+            // Temporary testing param: If target policy override provided, manually resolve targets using TargetSelector
+            if (!string.IsNullOrEmpty(targetPolicyOverride))
+            {
+                // 使用临时参数覆盖（用于测试目标选择功能）
+                // Use temporary parameter override (for testing target selection)
+                if (System.Enum.TryParse<Skills.TargetPolicy>(targetPolicyOverride, ignoreCase: true, out var policy))
+                {
+                    var targetSelector = new Skills.TargetSelector();
+                    targetIds = targetSelector.ResolveTargets(policy, ctx, charId, defaultTargetId);
+                }
+                else
+                {
+                    // 无效策略，回退到result.TargetIds或默认目标
+                    // Invalid policy, fallback to result.TargetIds or default target
+                    targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
+                        (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
+                }
+            }
+            else
+            {
+                // 使用SkillResolver解析的目标（来自技能的targetPolicy）
+                // Use targets resolved by SkillResolver (from skill's targetPolicy)
+                targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
+                    (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
+            }
 
-            // Phase 6: 处理 Buff 操作、即时治疗和资源变化
-            // Phase 6: Process buff operations, instant heal, and resource changes
-            ProcessBuffOperations(result, charId, targetId, isCasterPlayer: true);
-            ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true, skillId: SkillIds.AttackBasic);
-            ApplyResourceChanges(result, charId, isCasterPlayer: true, skillId: SkillIds.AttackBasic);
+            // Phase 3+: 应用伤害到所有解析的目标
+            // Phase 3+: Apply damage to all resolved targets
+            if (targetIds.Count > 0)
+            {
+                bool isAoe = targetIds.Count > 1;
+                int damagePerTarget = isAoe ? (int)(result.DamageDealt * _config.AoeDamageMultiplier) : result.DamageDealt;
+
+                foreach (var targetId in targetIds)
+                {
+                    var target = _enemyTeam.GetMember(targetId);
+                    if (target == null) continue;
+
+                    // 应用伤害到每个目标
+                    // Apply damage to each target
+                    ApplyDamageToEnemy(charId, member, targetId, target, damagePerTarget, EventSource.Attack, 
+                        isAoe: isAoe, isCrit: result.IsCrit, skillId: SkillIds.AttackBasic, bundleId: result.BundleId);
+
+                    // Phase 6: 处理 Buff 操作、即时治疗和资源变化
+                    // Phase 6: Process buff operations, instant heal, and resource changes
+                    ProcessBuffOperations(result, charId, targetId, isCasterPlayer: true);
+                    ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true, skillId: SkillIds.AttackBasic);
+                }
+                
+                // 资源变化只应用一次（不是每个目标）
+                // Resource changes apply once (not per target)
+                ApplyResourceChanges(result, charId, isCasterPlayer: true, skillId: SkillIds.AttackBasic);
+            }
 
             // Phase 2 & 2.7: 产生资源 / Generate resource
             if (_playerResources.TryGetValue(charId, out var resources))
@@ -554,87 +609,102 @@ namespace BlazorIdle.Game
         }
 
         /// <summary>
-        /// 通过 SkillResolver 处理角色特殊技能（Phase 7.2）
-        /// Process character special skill via SkillResolver (Phase 7.2)
+        /// 通过 SkillResolver 处理角色特殊技能（Phase 7.2 + Phase 3+ Target Selection Integration）
+        /// Process character special skill via SkillResolver (Phase 7.2 + Phase 3+ Target Selection Integration)
         /// </summary>
-        private void ProcessCharacterSpecialViaSkillResolver(string charId, Character character)
+        /// <param name="targetPolicyOverride">临时参数：用于测试目标选择功能的策略覆盖 (null = 使用技能默认) / Temporary param: target policy override for testing (null = use skill default)</param>
+        private void ProcessCharacterSpecialViaSkillResolver(string charId, Character character, string? targetPolicyOverride = null)
         {
             var member = _playerTeam.GetMember(charId);
             if (member == null) return;
 
-            if (_config.SpecialIsAoe)
+            // 选择一个默认目标用于上下文
+            // Select a default target for context
+            var defaultTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
+            var defaultTarget = defaultTargetId != null ? _enemyTeam.GetMember(defaultTargetId) : null;
+
+            // 创建战斗上下文（Phase 3+: 添加 CurrentTargetId 和 CasterId）
+            // Create battle context (Phase 3+: Add CurrentTargetId and CasterId)
+            var ctx = new BattleContext
             {
-                // AOE技能 - 打击所有存活敌人
-                var aliveEnemies = _enemyTeam.GetAliveMemberIds();
+                Player = character,
+                Enemy = defaultTarget?.Entity,
+                PlayerTeam = _playerTeam,
+                EnemyTeam = _enemyTeam,
+                Rng = _rng,
+                Clock = _clock,
+                PlayerResources = _playerResources.GetValueOrDefault(charId),
+                PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(charId),
+                EnemyBuffOwners = _enemyBuffOwners,
+                CurrentTargetId = defaultTargetId
+            };
 
-                foreach (var enemyId in aliveEnemies)
+            // 使用 SkillResolver 计算伤害
+            // Use SkillResolver to calculate damage
+            var opts = new SkillCastOptions 
+            { 
+                SourceTrack = "special",
+                CasterId = charId
+            };
+            var result = _skillResolver.Cast(SkillIds.SpecialPulse, ctx, opts);
+
+            // Phase 3+: 解析目标（优先使用临时参数覆盖，然后向后兼容SpecialIsAoe，最后使用SkillResolver结果）
+            // Phase 3+: Resolve targets (temp param override first, then backward compat SpecialIsAoe, then SkillResolver results)
+            List<string> targetIds;
+            
+            // 临时测试参数：如果提供了目标策略覆盖，使用TargetSelector手动解析目标
+            // Temporary testing param: If target policy override provided, manually resolve targets using TargetSelector
+            if (!string.IsNullOrEmpty(targetPolicyOverride))
+            {
+                // 使用临时参数覆盖（用于测试目标选择功能）
+                // Use temporary parameter override (for testing target selection)
+                if (System.Enum.TryParse<Skills.TargetPolicy>(targetPolicyOverride, ignoreCase: true, out var policy))
                 {
-                    var target = _enemyTeam.GetMember(enemyId);
-                    if (target == null) continue;
-
-                    // 创建战斗上下文（Phase 4: 添加 Buff 所有者）
-                    var ctx = new BattleContext
-                    {
-                        Player = character,
-                        Enemy = target.Entity,
-                        PlayerTeam = _playerTeam,
-                        EnemyTeam = _enemyTeam,
-                        Rng = _rng,
-                        Clock = _clock,
-                        PlayerResources = _playerResources.GetValueOrDefault(charId),
-                        PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(charId),
-                        EnemyBuffOwners = _enemyBuffOwners
-                    };
-
-                    // 使用 SkillResolver 计算伤害（应用 AOE 倍率）
-                    var opts = new SkillCastOptions { SourceTrack = "special" };
-                    var result = _skillResolver.Cast(SkillIds.SpecialPulse, ctx, opts);
-                    int damage = (int)(result.DamageDealt * _config.AoeDamageMultiplier);
-
-                    ApplyDamageToEnemy(charId, member, enemyId, target, damage, EventSource.Special, 
-                        isAoe: true, isCrit: result.IsCrit, skillId: SkillIds.SpecialPulse, bundleId: result.BundleId);
-                    
-                    // Phase 6: 处理 Buff 操作、即时治疗和资源变化（AOE特殊技能）
-                    // Phase 6: Process buff operations, instant heal, and resource changes (AOE special)
-                    ProcessBuffOperations(result, charId, enemyId, isCasterPlayer: true);
-                    ApplyInstantHeal(result, charId, enemyId, isCasterPlayer: true, skillId: SkillIds.SpecialPulse);
-                    ApplyResourceChanges(result, charId, isCasterPlayer: true, skillId: SkillIds.SpecialPulse);
+                    var targetSelector = new Skills.TargetSelector();
+                    targetIds = targetSelector.ResolveTargets(policy, ctx, charId, defaultTargetId);
                 }
+                else
+                {
+                    targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : new List<string>();
+                }
+            }
+            else if (_config.SpecialIsAoe)
+            {
+                // 向后兼容: 使用旧的 SpecialIsAoe 配置
+                // Backward compatibility: use old SpecialIsAoe config
+                targetIds = _enemyTeam.GetAliveMemberIds();
             }
             else
             {
-                // 单体技能
-                var targetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
-                if (targetId == null) return;
+                // 使用SkillResolver解析的目标或默认单体目标
+                // Use targets resolved by SkillResolver or default single target
+                targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
+                    (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
+            }
 
-                var target = _enemyTeam.GetMember(targetId);
-                if (target == null) return;
+            // Phase 3+: 应用效果到所有解析的目标
+            // Phase 3+: Apply effects to all resolved targets
+            if (targetIds.Count > 0)
+            {
+                bool isAoe = targetIds.Count > 1;
+                int damagePerTarget = isAoe ? (int)(result.DamageDealt * _config.AoeDamageMultiplier) : result.DamageDealt;
 
-                // 创建战斗上下文（Phase 4: 添加 Buff 所有者）
-                var ctx = new BattleContext
+                foreach (var targetId in targetIds)
                 {
-                    Player = character,
-                    Enemy = target.Entity,
-                    PlayerTeam = _playerTeam,
-                    EnemyTeam = _enemyTeam,
-                    Rng = _rng,
-                    Clock = _clock,
-                    PlayerResources = _playerResources.GetValueOrDefault(charId),
-                    PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(charId),
-                    EnemyBuffOwners = _enemyBuffOwners
-                };
+                    var target = _enemyTeam.GetMember(targetId);
+                    if (target == null) continue;
 
-                // 使用 SkillResolver 计算伤害
-                var opts = new SkillCastOptions { SourceTrack = "special" };
-                var result = _skillResolver.Cast(SkillIds.SpecialPulse, ctx, opts);
-
-                ApplyDamageToEnemy(charId, member, targetId, target, result.DamageDealt, EventSource.Special, 
-                    isAoe: false, isCrit: result.IsCrit, skillId: SkillIds.SpecialPulse, bundleId: result.BundleId);
+                    ApplyDamageToEnemy(charId, member, targetId, target, damagePerTarget, EventSource.Special, 
+                        isAoe: isAoe, isCrit: result.IsCrit, skillId: SkillIds.SpecialPulse, bundleId: result.BundleId);
+                    
+                    // Phase 6: 处理 Buff 操作、即时治疗
+                    // Phase 6: Process buff operations and instant heal
+                    ProcessBuffOperations(result, charId, targetId, isCasterPlayer: true);
+                    ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true, skillId: SkillIds.SpecialPulse);
+                }
                 
-                // Phase 6: 处理 Buff 操作、即时治疗和资源变化（单体特殊技能）
-                // Phase 6: Process buff operations, instant heal, and resource changes (single target special)
-                ProcessBuffOperations(result, charId, targetId, isCasterPlayer: true);
-                ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true, skillId: SkillIds.SpecialPulse);
+                // 资源变化只应用一次
+                // Resource changes apply once
                 ApplyResourceChanges(result, charId, isCasterPlayer: true, skillId: SkillIds.SpecialPulse);
             }
         }
@@ -2267,8 +2337,8 @@ namespace BlazorIdle.Game
         public TargetStrategy EnemyTargetStrategy { get; set; } = TargetStrategy.Random;
 
         /// <summary>
-        /// 特殊技能是否为AOE
-        /// Whether special skill is AOE
+        /// 特殊技能是否为AOE (已弃用 - 使用 SpecialTargetPolicy 代替)
+        /// Whether special skill is AOE (deprecated - use SpecialTargetPolicy instead)
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("specialIsAoe")]
         public bool SpecialIsAoe { get; set; } = true;
