@@ -115,5 +115,15 @@ namespace BlazorIdle.Shared.Models
         /// </summary>
         [JsonPropertyName("accountFlags")]
         public HashSet<string> AccountFlags { get; set; } = new HashSet<string>();
+
+        /// <summary>
+        /// 固定技能配置 - 每个职业的普通攻击和特殊攻击技能 (Step 2 Phase 3+)
+        /// Fixed skills configuration - normal attack and special attack per profession
+        /// Key: professionId, Value: 固定技能ID配置
+        /// 支持未来的技能升级和个性化功能
+        /// Supports future skill upgrade and personalization features
+        /// </summary>
+        [JsonPropertyName("fixedSkillsByProfession")]
+        public Dictionary<string, ProfessionFixedSkills> FixedSkillsByProfession { get; set; } = new Dictionary<string, ProfessionFixedSkills>();
     }
 }
