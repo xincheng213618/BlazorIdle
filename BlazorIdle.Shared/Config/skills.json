@@ -271,12 +271,12 @@
     "slotType": "passive",
     "fixed": true,
     "releaseType": "instant",
-    "targetPolicy": "self",
+    "targetPolicy": "enemies_all",
     "cooldownSec": 0,
-    "allowedProfessions": ["mage"],
+    "allowedProfessions": [ "mage" ],
     "conditions": {
       "requireResource": {
-        "mana": 5
+        "mana": 6
       }
     },
     "damage": {
@@ -292,7 +292,10 @@
       }
     ],
     "gains": [
-      { "bucketId": "mana", "amount": 2 }
+      {
+        "bucketId": "mana",
+        "amount": 2
+      }
     ]
   },
   {
