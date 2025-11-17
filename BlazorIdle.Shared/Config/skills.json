@@ -33,9 +33,6 @@
     "targetPolicy": "self",
     "cooldownSec": 0,
     "allowedProfessions": ["warrior"],
-    "conditions": {
-      "hpAbovePct": 50.0
-    },
     "onCastBuffs": [
       {
         "op": "Apply",
@@ -271,14 +268,9 @@
     "slotType": "passive",
     "fixed": true,
     "releaseType": "instant",
-    "targetPolicy": "enemies_all",
+    "targetPolicy": "self",
     "cooldownSec": 0,
     "allowedProfessions": [ "mage" ],
-    "conditions": {
-      "requireResource": {
-        "mana": 6
-      }
-    },
     "damage": {
       "coefAtk": 0.5,
       "flat": 3,
