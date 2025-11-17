@@ -3,28 +3,39 @@
 ## 📋 文档概述
 
 **创建日期：** 2025-11-17  
+**更新日期：** 2025-11-17  
 **创建者：** GitHub Copilot  
-**状态：** 待用户确认  
-**目标：** 根据 Step2 补充设计文档和 Phase3 目标选择系统整合方案，制定完整的整合实施计划
+**状态：** 已根据用户反馈更新  
+**目标：** 将 MultiBattleInstance 的临时技能逻辑迁移到正式的技能系统
 
 ---
 
-## 🎯 整合目标
+## 🎯 整合目标（已根据用户反馈调整）
 
-基于对以下文档的深入分析：
-1. **Step2_补充设计文档**（上篇、中篇、下篇）- 技能学习、职业差异化、完整技能库
-2. **Step2_Phase3_目标选择系统整合方案** - 目标选择系统从测试态到生产态
-3. **Step2_实施进度追踪** - 当前实施进度（已完成阶段1-3）
+### 背景说明
 
-我们需要完成以下核心整合任务：
+**当前状态：**
+- `MultiBattleInstance` 中有两个进度条（普通攻击和特殊攻击）
+- 这两个事件使用的是技能系统设计前的**临时技能逻辑**
+- 虽然调用了 `SkillResolver`，但使用的是硬编码的 `SkillIds.AttackBasic` 和 `SkillIds.SpecialPulse`
+- 包含临时测试参数 `targetPolicyOverride`
+
+**目标：**
+将这两个事件正式迁移到 `skills.json` 中定义的技能系统
 
 ### 核心整合内容
 
-#### 1. **Phase3+ 目标选择系统整合（生产就绪）**
-   - 扩展 `professionAttributes.json` 添加 `fixedSkills` 配置
-   - 修改 `MultiBattleInstance` 从职业配置动态加载技能ID
-   - 移除临时测试参数 `targetPolicyOverride`
-   - 确保目标策略完全来自 `skills.json` 的 `targetPolicy` 字段
+#### 1. **Phase3+ 目标选择系统整合（生产就绪）** - 调整后的方案
+
+**关键变更（根据用户反馈）：**
+
+原方案是从 `professionAttributes.json` 实时读取技能ID，现调整为：
+- ✅ 在 `professionAttributes.json` 中配置每个职业的默认固定技能ID
+- ✅ **角色创建时**从配置读取并保存到 `CharacterData` 
+- ✅ 战斗时从 `CharacterData` 读取技能ID（而非每次从配置读取）
+- ✅ 这样可以支持未来的"技能升级"、"技能替换"等功能
+- ✅ 移除临时测试参数 `targetPolicyOverride`
+- ✅ 确保目标策略完全来自 `skills.json` 的 `targetPolicy` 字段
 
 #### 2. **职业固定技能差异化（阶段9.5）**
    - 战士架势系统（Stance System）
@@ -75,46 +86,102 @@
 
 ### 第一部分：Phase3+ 目标选择系统整合（优先级最高）
 
-#### 任务 P3.1：扩展职业配置模型
+**核心设计思路（根据用户反馈调整）：**
+1. ✅ 在 `professionAttributes.json` 中配置默认固定技能ID
+2. ✅ 角色创建时从配置读取并保存到 `CharacterData.FixedSkills`（类似心跳保存机制）
+3. ✅ 战斗时从 `Character` 实体读取技能ID（不再从配置实时读取）
+4. ✅ 支持未来技能升级/替换功能
 
-**目标：** 在 `professionAttributes.json` 中定义每个职业的固定技能
+#### 任务 P3.1：扩展 CharacterData 存储固定技能
+
+**目标：** 在 `CharacterData` 中添加字段存储固定技能ID
+
+**文件修改：**
+1. `BlazorIdle.Shared/Models/CharacterData.cs`
+   ```csharp
+   /// <summary>
+   /// 固定技能配置 - 每个职业的普通攻击和特殊攻击技能
+   /// Fixed skills configuration - normal attack and special attack per profession
+   /// Key: professionId, Value: 固定技能ID配置
+   /// </summary>
+   [JsonPropertyName("fixedSkillsByProfession")]
+   public Dictionary<string, ProfessionFixedSkills> FixedSkillsByProfession { get; set; } = new();
+   ```
+
+2. `BlazorIdle.Shared/Models/ProfessionFixedSkills.cs` (新建文件)
+   ```csharp
+   using System.Text.Json.Serialization;
+   
+   namespace BlazorIdle.Shared.Models
+   {
+       /// <summary>
+       /// 职业固定技能配置 - 存储在角色数据中
+       /// Profession fixed skills - stored in character data
+       /// </summary>
+       public class ProfessionFixedSkills
+       {
+           [JsonPropertyName("normalAttack")]
+           public string NormalAttack { get; set; } = "";
+           
+           [JsonPropertyName("specialAttack")]
+           public string SpecialAttack { get; set; } = "";
+       }
+   }
+   ```
+
+**测试：** 3个单元测试
+- CharacterData 序列化测试
+- FixedSkillsByProfession 默认值测试
+
+**工作量：** 0.5小时
+
+---
+
+#### 任务 P3.2：扩展职业配置添加默认技能
+
+**目标：** 在 `professionAttributes.json` 中定义每个职业的默认固定技能
 
 **文件修改：**
 1. `BlazorIdle.Shared/Models/ProfessionAttributeConfig.cs`
    ```csharp
-   public class ProfessionFixedSkills
+   /// <summary>
+   /// 默认固定技能配置 - 用于角色创建时初始化
+   /// Default fixed skills - used for character creation initialization
+   /// </summary>
+   public class ProfessionDefaultFixedSkills
    {
        public string NormalAttack { get; set; } = "";
        public string SpecialAttack { get; set; } = "";
    }
    
    // 在 ProfessionAttributeConfig 中添加
-   public ProfessionFixedSkills? FixedSkills { get; set; }
+   [JsonPropertyName("defaultFixedSkills")]
+   public ProfessionDefaultFixedSkills? DefaultFixedSkills { get; set; }
    ```
 
 2. `BlazorIdle.Server/Config/professionAttributes.json`
    ```json
    {
      "warrior": {
-       "fixedSkills": {
+       "defaultFixedSkills": {
          "normalAttack": "warrior_attack_basic",
          "specialAttack": "warrior_special_pulse"
        }
      },
      "mage": {
-       "fixedSkills": {
+       "defaultFixedSkills": {
          "normalAttack": "mage_attack_basic",
          "specialAttack": "mage_special_pulse"
        }
      },
      "ranger": {
-       "fixedSkills": {
+       "defaultFixedSkills": {
          "normalAttack": "ranger_attack_basic",
          "specialAttack": "ranger_special_pulse"
        }
      },
      "rogue": {
-       "fixedSkills": {
+       "defaultFixedSkills": {
          "normalAttack": "rogue_attack_basic",
          "specialAttack": "rogue_special_pulse"
        }
@@ -122,117 +189,222 @@
    }
    ```
 
-**测试：** 5个单元测试
+**测试：** 3个单元测试
 - 职业配置加载测试
-- FixedSkills 序列化测试
-- 默认值回退测试
+- DefaultFixedSkills 序列化测试
 
-**工作量：** 1-2小时
+**工作量：** 0.5小时
 
 ---
 
-#### 任务 P3.2：修改 MultiBattleInstance 动态加载技能
+#### 任务 P3.3：角色创建时初始化固定技能
 
-**目标：** 从职业配置读取固定技能ID，替代硬编码
+**目标：** 在角色创建时从职业配置读取默认固定技能并保存到 CharacterData
+
+**文件修改：**
+1. 查找角色创建逻辑位置（可能在 CharacterService 或相关服务中）
+2. 在创建角色时：
+   ```csharp
+   // 伪代码示例
+   var profession = GetProfessionConfig(professionId);
+   if (profession?.DefaultFixedSkills != null)
+   {
+       characterData.FixedSkillsByProfession[professionId] = new ProfessionFixedSkills
+       {
+           NormalAttack = profession.DefaultFixedSkills.NormalAttack,
+           SpecialAttack = profession.DefaultFixedSkills.SpecialAttack
+       };
+   }
+   ```
+
+3. 为所有职业初始化固定技能（因为角色同时拥有所有职业）
+   ```csharp
+   // 为所有职业初始化固定技能
+   foreach (var profession in allProfessions)
+   {
+       if (profession.DefaultFixedSkills != null)
+       {
+           characterData.FixedSkillsByProfession[profession.Id] = new ProfessionFixedSkills
+           {
+               NormalAttack = profession.DefaultFixedSkills.NormalAttack,
+               SpecialAttack = profession.DefaultFixedSkills.SpecialAttack
+           };
+       }
+   }
+   ```
+
+**测试：** 5个单元测试
+- 角色创建时固定技能初始化测试
+- 多职业初始化测试
+- 配置缺失时的回退测试
+
+**工作量：** 1-1.5小时
+
+---
+
+#### 任务 P3.4：修改 Character 实体添加固定技能访问
+
+**目标：** 在 Character 实体中添加方法获取当前职业的固定技能
+
+**文件修改：**
+1. `BlazorIdle.Shared/Game/Character.cs`
+   ```csharp
+   /// <summary>
+   /// 获取当前激活职业的普通攻击技能ID
+   /// </summary>
+   public string GetNormalAttackSkillId()
+   {
+       if (_data.FixedSkillsByProfession.TryGetValue(_data.ActiveCombatProfessionId, out var skills))
+       {
+           return skills.NormalAttack;
+       }
+       return SkillIds.AttackBasic; // 回退到默认
+   }
+   
+   /// <summary>
+   /// 获取当前激活职业的特殊攻击技能ID
+   /// </summary>
+   public string GetSpecialAttackSkillId()
+   {
+       if (_data.FixedSkillsByProfession.TryGetValue(_data.ActiveCombatProfessionId, out var skills))
+       {
+           return skills.SpecialAttack;
+       }
+       return SkillIds.SpecialPulse; // 回退到默认
+   }
+   ```
+
+**测试：** 4个单元测试
+- GetNormalAttackSkillId 正常情况测试
+- GetSpecialAttackSkillId 正常情况测试
+- 职业切换后技能ID变化测试
+- 配置缺失时回退测试
+
+**工作量：** 0.5小时
+
+---
+
+#### 任务 P3.5：修改 MultiBattleInstance 从 Character 读取技能ID
+
+**目标：** 修改战斗逻辑从 Character 实体读取技能ID，移除临时测试参数
 
 **文件修改：**
 1. `BlazorIdle.Shared/Game/MultiBattleInstance.cs`
-   - 添加 `_professionSkills` 缓存
-   - 实现 `LoadProfessionSkills(IGameConfigProvider)` 方法
-   - 修改 `ProcessCharacterAttackViaSkillResolver()` 使用动态技能ID
-   - 修改 `ProcessCharacterSpecialViaSkillResolver()` 使用动态技能ID
-   - **移除** `targetPolicyOverride` 临时参数
+   - 修改 `ProcessCharacterAttackViaSkillResolver()` 
+     * 从 `character.GetNormalAttackSkillId()` 读取技能ID
+     * **移除** `targetPolicyOverride` 临时参数
+   - 修改 `ProcessCharacterSpecialViaSkillResolver()`
+     * 从 `character.GetSpecialAttackSkillId()` 读取技能ID
+     * **移除** `targetPolicyOverride` 临时参数
 
 **核心代码变更：**
 ```csharp
-private readonly Dictionary<string, (string normalAttack, string specialAttack)> _professionSkills = new();
-
-private void LoadProfessionSkills(IGameConfigProvider gameConfig)
-{
-    foreach (var profession in gameConfig.Professions)
-    {
-        if (profession.FixedSkills != null)
-        {
-            _professionSkills[profession.Id] = (
-                profession.FixedSkills.NormalAttack,
-                profession.FixedSkills.SpecialAttack
-            );
-        }
-        else
-        {
-            // 回退到默认技能
-            _professionSkills[profession.Id] = (
-                SkillIds.AttackBasic,
-                SkillIds.SpecialPulse
-            );
-        }
-    }
-}
-
+// 修改前（移除 targetPolicyOverride 参数）
 private void ProcessCharacterAttackViaSkillResolver(string charId, Character character)
 {
     var member = _playerTeam.GetMember(charId);
     if (member == null) return;
 
-    // 获取角色职业的固定技能ID
-    string skillId = SkillIds.AttackBasic; // 默认
-    if (_professionSkills.TryGetValue(member.Entity.ActiveCombatProfessionId, out var skills))
-    {
-        skillId = skills.normalAttack;
-    }
+    // 从角色实体读取技能ID（不再硬编码）
+    string skillId = character.GetNormalAttackSkillId();
 
+    // 创建战斗上下文
+    var ctx = new BattleContext { /* ... */ };
+    var opts = new SkillCastOptions 
+    { 
+        SourceTrack = "attack",
+        CasterId = charId
+    };
+    
+    // 使用角色的固定技能
     var result = _skillResolver.Cast(skillId, ctx, opts);
     
     // 直接使用 result.TargetIds（来自技能的 targetPolicy）
     List<string> targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
         (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
     
-    // ... 应用伤害到所有目标 ...
+    // 应用伤害到所有目标
+    foreach (var targetId in targetIds)
+    {
+        // ... 应用伤害逻辑 ...
+    }
+}
+
+private void ProcessCharacterSpecialViaSkillResolver(string charId, Character character)
+{
+    var member = _playerTeam.GetMember(charId);
+    if (member == null) return;
+
+    // 从角色实体读取技能ID（不再硬编码）
+    string skillId = character.GetSpecialAttackSkillId();
+
+    // ... 类似的处理 ...
 }
 ```
 
-**测试：** 10个单元测试
-- 职业技能映射加载测试（4个）
-- 动态技能ID使用测试（4个）
-- 向后兼容测试（2个）
-
-**工作量：** 2-3小时
-
----
-
-#### 任务 P3.3：验证 skills.json 配置完整性
-
-**目标：** 确保所有职业固定技能都有正确的 `targetPolicy` 配置
-
-**检查清单：**
-- [ ] warrior_attack_basic - targetPolicy: "CurrentTarget"
-- [ ] warrior_special_pulse - targetPolicy: "Self"
-- [ ] mage_attack_basic - targetPolicy: "CurrentTarget"
-- [ ] mage_special_pulse - targetPolicy: "Self"
-- [ ] ranger_attack_basic - targetPolicy: "CurrentTarget"
-- [ ] ranger_special_pulse - targetPolicy: "Self"
-- [ ] rogue_attack_basic - targetPolicy: "CurrentTarget"
-- [ ] rogue_special_pulse - targetPolicy: "Self"
-
-**测试：** 8个集成测试
-- 每个职业的普攻和特殊技能目标选择验证（2个职业 × 4个职业 = 8个）
+**测试：** 8个单元测试
+- 战士普通攻击使用正确技能ID测试
+- 战士特殊攻击使用正确技能ID测试
+- 法师普通攻击使用正确技能ID测试
+- 法师特殊攻击使用正确技能ID测试
+- 目标选择来自 targetPolicy 测试（4个）
 
 **工作量：** 1-2小时
 
 ---
 
-#### 任务 P3.4：清理临时测试代码
+#### 任务 P3.6：验证 skills.json 配置完整性
 
-**目标：** 移除 `targetPolicyOverride` 等临时测试参数
+**目标：** 确保所有职业固定技能都有正确的 `targetPolicy` 配置
 
-**文件修改：**
-- 移除 `ProcessCharacterAttackViaSkillResolver()` 的 `targetPolicyOverride` 参数
-- 移除 `ProcessCharacterSpecialViaSkillResolver()` 的 `targetPolicyOverride` 参数
-- 更新所有调用处
+**检查清单：**
+- [ ] warrior_attack_basic - targetPolicy: "current_target"
+- [ ] warrior_special_pulse - targetPolicy: "self"
+- [ ] mage_attack_basic - targetPolicy: "current_target"
+- [ ] mage_special_pulse - targetPolicy: "self"
+- [ ] ranger_attack_basic - targetPolicy: "current_target"
+- [ ] ranger_special_pulse - targetPolicy: "self"
+- [ ] rogue_attack_basic - targetPolicy: "current_target"
+- [ ] rogue_special_pulse - targetPolicy: "self"
 
-**测试：** 确保所有 439+ 测试继续通过
+**测试：** 8个集成测试
+- 每个职业的普攻和特殊技能目标选择验证（2个 × 4个职业 = 8个）
 
 **工作量：** 1小时
+
+---
+
+#### 任务 P3.7：更新现有存档兼容性
+
+**目标：** 为现有角色数据添加固定技能配置（迁移逻辑）
+
+**文件修改：**
+1. 在角色加载时检查是否有 `FixedSkillsByProfession`
+2. 如果为空，根据当前职业配置初始化
+   ```csharp
+   // 伪代码 - 在加载角色数据后
+   if (characterData.FixedSkillsByProfession.Count == 0)
+   {
+       // 为所有职业初始化固定技能
+       foreach (var profession in allProfessions)
+       {
+           if (profession.DefaultFixedSkills != null)
+           {
+               characterData.FixedSkillsByProfession[profession.Id] = new ProfessionFixedSkills
+               {
+                   NormalAttack = profession.DefaultFixedSkills.NormalAttack,
+                   SpecialAttack = profession.DefaultFixedSkills.SpecialAttack
+               };
+           }
+       }
+   }
+   ```
+
+**测试：** 3个单元测试
+- 旧存档加载时自动初始化测试
+- 新存档正常加载测试
+
+**工作量：** 0.5-1小时
 
 ---
 
@@ -533,15 +705,18 @@ private void ProcessCharacterAttackViaSkillResolver(string charId, Character cha
 
 ---
 
-## 📈 整合进度甘特图
+## 📈 整合进度甘特图（已更新）
 
 ```
 Week 1:
-├─ Phase3+ 目标选择系统整合 (6-9h)
-│  ├─ P3.1: 扩展职业配置模型 (1-2h) ████
-│  ├─ P3.2: 修改MultiBattleInstance (2-3h) ████████
-│  ├─ P3.3: 验证skills.json配置 (1-2h) ████
-│  └─ P3.4: 清理临时测试代码 (1h) ██
+├─ Phase3+ 目标选择系统整合 (5-7h) ⭐ 聚焦核心迁移
+│  ├─ P3.1: 扩展CharacterData存储 (0.5h) ██
+│  ├─ P3.2: 扩展职业配置 (0.5h) ██
+│  ├─ P3.3: 角色创建初始化 (1-1.5h) ████
+│  ├─ P3.4: Character实体访问方法 (0.5h) ██
+│  ├─ P3.5: MultiBattleInstance迁移 (1-2h) ████
+│  ├─ P3.6: 验证skills.json配置 (1h) ██
+│  └─ P3.7: 存档兼容性 (0.5-1h) ██
 
 Week 2:
 ├─ 阶段9.5: 职业固定技能差异化 (4-5h)
@@ -556,19 +731,29 @@ Week 3:
 │  ├─ 10.2: 技能装备界面 (2-3h) ██████
 │  └─ 10.3: 战斗日志记录 (1-2h) ████
 
-Total: 16-22 hours
+Total: 11-17 hours (已优化，聚焦核心迁移)
 ```
+
+**关键差异说明：**
+- ✅ 旧方案：每次战斗从配置读取 → 新方案：从角色数据读取
+- ✅ 优势：支持未来技能升级、角色个性化、更灵活
+- ✅ 类似设计：心跳保存机制的数据持久化模式
 
 ---
 
-## ✅ 验收标准
+## ✅ 验收标准（已更新）
 
 ### Phase3+ 目标选择系统整合
-- [ ] 所有职业都从 `professionAttributes.json` 加载固定技能
-- [ ] 目标选择完全基于 `SkillDef.TargetPolicy`
-- [ ] 移除所有临时测试参数
+- [ ] CharacterData 中添加 `FixedSkillsByProfession` 字段
+- [ ] professionAttributes.json 中配置所有职业的 `defaultFixedSkills`
+- [ ] 角色创建时正确初始化固定技能（保存到 CharacterData）
+- [ ] Character 实体提供 `GetNormalAttackSkillId()` 和 `GetSpecialAttackSkillId()` 方法
+- [ ] MultiBattleInstance 从 Character 读取技能ID（不再硬编码）
+- [ ] 移除所有临时测试参数 `targetPolicyOverride`
+- [ ] 目标选择完全基于 `SkillDef.targetPolicy`
+- [ ] 现有存档兼容性处理正确
 - [ ] 所有 439+ 测试通过
-- [ ] 新增 23+ 测试通过
+- [ ] 新增 34+ 测试通过（7个任务 × 平均5个测试）
 
 ### 职业固定技能差异化
 - [ ] 战士架势系统正确工作（满3层必暴）
@@ -587,13 +772,16 @@ Total: 16-22 hours
 
 ---
 
-## 🎯 实施顺序建议
+## 🎯 实施顺序建议（已更新）
 
-### 阶段1：Phase3+ 整合（Week 1）
+### 第一阶段：Phase3+ 核心迁移（Week 1，5-7小时）
 **优先级：P0 - 最高**
-- 这是从测试态到生产态的关键步骤
-- 为后续所有阶段提供正确的基础架构
-- 必须先完成才能继续其他功能
+- 🎯 核心目标：将硬编码技能迁移到正式技能系统
+- ✅ 数据模型扩展（CharacterData + ProfessionAttributeConfig）
+- ✅ 角色创建时初始化固定技能
+- ✅ 战斗时从角色数据读取技能ID
+- ✅ 移除临时测试代码
+- 📌 **本阶段聚焦：完成旧技能逻辑到新系统的迁移**
 
 ### 阶段2：职业差异化（Week 2）
 **优先级：P0 - 高**
@@ -675,14 +863,36 @@ Total: 16-22 hours
 ## 💡 备注
 
 - 本计划基于充分的文档分析和代码审查
+- **已根据用户反馈调整核心设计思路**
 - 所有任务都有明确的验收标准
 - 保持向后兼容性和测试覆盖率
 - 遵循最小化修改原则
-- 优先完成 Phase3+ 整合，为后续阶段奠定基础
+- 优先完成 Phase3+ 核心迁移，为后续功能奠定基础
+
+## 🔄 关键设计变更总结
+
+### 原方案 vs 新方案
+
+| 方面 | 原方案 | 新方案（用户建议） |
+|------|--------|-------------------|
+| 技能ID存储 | 实时从 professionAttributes.json 读取 | 角色创建时保存到 CharacterData |
+| 战斗时读取 | 从配置缓存读取 | 从 Character 实体读取 |
+| 扩展性 | 有限（依赖配置文件） | 强（支持技能升级、个性化） |
+| 实现复杂度 | 中等（需要缓存管理） | 简单（直接从实体读取） |
+| 数据持久化 | 不需要 | 需要（类似心跳保存） |
+| 未来功能支持 | 不支持技能升级 | ✅ 支持技能升级/替换 |
+
+### 设计优势
+1. ✅ **扩展性强**：支持未来的"普通攻击升级"等功能
+2. ✅ **数据一致性**：技能ID与角色数据一起保存
+3. ✅ **简化战斗逻辑**：直接从 Character 读取，无需配置查询
+4. ✅ **个性化支持**：每个角色可以有不同的固定技能（未来）
+5. ✅ **参考现有模式**：与心跳保存机制一致的设计模式
 
 ---
 
-**文档版本：** 1.0  
-**最后更新：** 2025-11-17  
+**文档版本：** 2.0  
+**创建日期：** 2025-11-17  
+**更新日期：** 2025-11-17  
 **作者：** GitHub Copilot  
-**状态：** ✅ 待用户确认
+**状态：** ✅ 已根据用户反馈更新，待确认开始实施
