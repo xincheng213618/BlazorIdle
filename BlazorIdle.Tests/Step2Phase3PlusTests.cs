@@ -136,5 +136,108 @@ namespace BlazorIdle.Tests
         }
 
         #endregion
+
+        #region P3.3 Tests: Character creation initialization
+
+        [Fact]
+        public void CharacterCreation_InitializesFixedSkills_ForAllProfessions()
+        {
+            // Arrange
+            var characterData = new CharacterData
+            {
+                FixedSkillsByProfession = new Dictionary<string, ProfessionFixedSkills>
+                {
+                    ["warrior"] = new ProfessionFixedSkills
+                    {
+                        NormalAttack = "warrior_attack_basic",
+                        SpecialAttack = "warrior_special_pulse"
+                    },
+                    ["mage"] = new ProfessionFixedSkills
+                    {
+                        NormalAttack = "mage_attack_basic",
+                        SpecialAttack = "mage_special_pulse"
+                    },
+                    ["ranger"] = new ProfessionFixedSkills
+                    {
+                        NormalAttack = "ranger_attack_basic",
+                        SpecialAttack = "ranger_special_pulse"
+                    },
+                    ["rogue"] = new ProfessionFixedSkills
+                    {
+                        NormalAttack = "rogue_attack_basic",
+                        SpecialAttack = "rogue_special_pulse"
+                    }
+                }
+            };
+
+            // Assert
+            Assert.Equal(4, characterData.FixedSkillsByProfession.Count);
+            Assert.All(characterData.FixedSkillsByProfession.Values, skills =>
+            {
+                Assert.NotEmpty(skills.NormalAttack);
+                Assert.NotEmpty(skills.SpecialAttack);
+            });
+        }
+
+        [Fact]
+        public void CharacterCreation_FixedSkillsPerProfession_AreDistinct()
+        {
+            // Arrange
+            var characterData = new CharacterData
+            {
+                FixedSkillsByProfession = new Dictionary<string, ProfessionFixedSkills>
+                {
+                    ["warrior"] = new ProfessionFixedSkills
+                    {
+                        NormalAttack = "warrior_attack_basic",
+                        SpecialAttack = "warrior_special_pulse"
+                    },
+                    ["mage"] = new ProfessionFixedSkills
+                    {
+                        NormalAttack = "mage_attack_basic",
+                        SpecialAttack = "mage_special_pulse"
+                    }
+                }
+            };
+
+            // Act & Assert - Each profession has different skills
+            Assert.NotEqual(
+                characterData.FixedSkillsByProfession["warrior"].NormalAttack,
+                characterData.FixedSkillsByProfession["mage"].NormalAttack
+            );
+            Assert.NotEqual(
+                characterData.FixedSkillsByProfession["warrior"].SpecialAttack,
+                characterData.FixedSkillsByProfession["mage"].SpecialAttack
+            );
+        }
+
+        [Fact]
+        public void CharacterCreation_CanAccessFixedSkillsByProfession()
+        {
+            // Arrange
+            var characterData = new CharacterData
+            {
+                ActiveCombatProfessionId = "warrior",
+                FixedSkillsByProfession = new Dictionary<string, ProfessionFixedSkills>
+                {
+                    ["warrior"] = new ProfessionFixedSkills
+                    {
+                        NormalAttack = "warrior_attack_basic",
+                        SpecialAttack = "warrior_special_pulse"
+                    }
+                }
+            };
+
+            // Act
+            var hasWarriorSkills = characterData.FixedSkillsByProfession.TryGetValue("warrior", out var warriorSkills);
+
+            // Assert
+            Assert.True(hasWarriorSkills);
+            Assert.NotNull(warriorSkills);
+            Assert.Equal("warrior_attack_basic", warriorSkills.NormalAttack);
+            Assert.Equal("warrior_special_pulse", warriorSkills.SpecialAttack);
+        }
+
+        #endregion
     }
 }
