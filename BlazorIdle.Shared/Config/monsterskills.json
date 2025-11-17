@@ -10,6 +10,9 @@
     "targetPolicy": "random_player",
     "cooldownSec": 0,
     "allowedProfessions": [],
+    "conditions": {
+      "hpAbovePct": 30.0
+    },
     "damage": {
       "coefAtk": 1.0,
       "flat": 0,

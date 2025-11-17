@@ -33,6 +33,9 @@
     "targetPolicy": "self",
     "cooldownSec": 0,
     "allowedProfessions": ["warrior"],
+    "conditions": {
+      "hpAbovePct": 50.0
+    },
     "onCastBuffs": [
       {
         "op": "Apply",
@@ -271,6 +274,11 @@
     "targetPolicy": "self",
     "cooldownSec": 0,
     "allowedProfessions": ["mage"],
+    "conditions": {
+      "requireResource": {
+        "mana": 5
+      }
+    },
     "damage": {
       "coefAtk": 0.5,
       "flat": 3,
