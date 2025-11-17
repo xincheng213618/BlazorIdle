@@ -32,6 +32,38 @@
         /// Currently active combat profession ID - used for experience allocation
         /// </summary>
         public string ActiveCombatProfessionId { get; set; } = "warrior";
+
+        // Phase 3+: 固定技能系统 - 存储当前职业的固定技能ID
+        // Phase 3+: Fixed skills system - stores fixed skill IDs for current profession
+        /// <summary>
+        /// 普通攻击技能ID - 从CharacterData的FixedSkillsByProfession初始化
+        /// Normal attack skill ID - initialized from CharacterData.FixedSkillsByProfession
+        /// </summary>
+        public string? NormalAttackSkillId { get; set; }
+
+        /// <summary>
+        /// 特殊攻击技能ID - 从CharacterData的FixedSkillsByProfession初始化
+        /// Special attack skill ID - initialized from CharacterData.FixedSkillsByProfession
+        /// </summary>
+        public string? SpecialAttackSkillId { get; set; }
+
+        /// <summary>
+        /// 获取普通攻击技能ID - 如果未设置则返回默认值
+        /// Get normal attack skill ID - returns default if not set
+        /// </summary>
+        public string GetNormalAttackSkillId()
+        {
+            return NormalAttackSkillId ?? "attack_basic";
+        }
+
+        /// <summary>
+        /// 获取特殊攻击技能ID - 如果未设置则返回默认值
+        /// Get special attack skill ID - returns default if not set
+        /// </summary>
+        public string GetSpecialAttackSkillId()
+        {
+            return SpecialAttackSkillId ?? "special_pulse";
+        }
     }
 
     // 敌人

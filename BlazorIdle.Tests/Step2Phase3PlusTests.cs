@@ -239,5 +239,90 @@ namespace BlazorIdle.Tests
         }
 
         #endregion
+
+        #region P3.4 Tests: Character entity accessor methods
+
+        [Fact]
+        public void Character_GetNormalAttackSkillId_ReturnsConfiguredValue()
+        {
+            // Arrange
+            var character = new BlazorIdle.Game.Character
+            {
+                NormalAttackSkillId = "warrior_attack_basic"
+            };
+
+            // Act
+            var skillId = character.GetNormalAttackSkillId();
+
+            // Assert
+            Assert.Equal("warrior_attack_basic", skillId);
+        }
+
+        [Fact]
+        public void Character_GetNormalAttackSkillId_ReturnsDefaultWhenNull()
+        {
+            // Arrange
+            var character = new BlazorIdle.Game.Character
+            {
+                NormalAttackSkillId = null
+            };
+
+            // Act
+            var skillId = character.GetNormalAttackSkillId();
+
+            // Assert
+            Assert.Equal("attack_basic", skillId);
+        }
+
+        [Fact]
+        public void Character_GetSpecialAttackSkillId_ReturnsConfiguredValue()
+        {
+            // Arrange
+            var character = new BlazorIdle.Game.Character
+            {
+                SpecialAttackSkillId = "warrior_special_pulse"
+            };
+
+            // Act
+            var skillId = character.GetSpecialAttackSkillId();
+
+            // Assert
+            Assert.Equal("warrior_special_pulse", skillId);
+        }
+
+        [Fact]
+        public void Character_GetSpecialAttackSkillId_ReturnsDefaultWhenNull()
+        {
+            // Arrange
+            var character = new BlazorIdle.Game.Character
+            {
+                SpecialAttackSkillId = null
+            };
+
+            // Act
+            var skillId = character.GetSpecialAttackSkillId();
+
+            // Assert
+            Assert.Equal("special_pulse", skillId);
+        }
+
+        [Fact]
+        public void Character_FixedSkillIds_CanBeSetAndRetrieved()
+        {
+            // Arrange
+            var character = new BlazorIdle.Game.Character();
+
+            // Act
+            character.NormalAttackSkillId = "mage_attack_basic";
+            character.SpecialAttackSkillId = "mage_special_pulse";
+
+            // Assert
+            Assert.Equal("mage_attack_basic", character.NormalAttackSkillId);
+            Assert.Equal("mage_special_pulse", character.SpecialAttackSkillId);
+            Assert.Equal("mage_attack_basic", character.GetNormalAttackSkillId());
+            Assert.Equal("mage_special_pulse", character.GetSpecialAttackSkillId());
+        }
+
+        #endregion
     }
 }
