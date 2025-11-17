@@ -269,10 +269,8 @@
   - ✅ AlliesLowestHpPct 使用 HP 百分比排序（利用 BattleTeam.GetLowestHpPercentMemberId）
   - ✅ 优雅处理所有目标缺失场景
 
-- [x] 3.3 集成到 SkillResolver ⚠️ **延后到后续阶段**
-  - ⚠️ 当前实现专注于目标选择逻辑
-  - ⚠️ SkillResolver 集成将在后续阶段完成
-  - ⚠️ 不影响当前验收标准
+- [x] 3.3 集成到 SkillResolver
+  - 已经集成
 
 - [x] 3.4 单元测试（15 个）✅
   - ✅ CurrentTarget 测试（3 个）
