@@ -53,6 +53,11 @@ namespace BlazorIdle.Game.Skills
             if (!CheckResourceCondition(caster, conditions.RequireResource))
                 return false;
 
+            // 检查 Buff 层数条件
+            // Check Buff stack conditions
+            if (!CheckBuffStackCondition(caster, conditions.RequireBuffStacks))
+                return false;
+
             return true;
         }
 
@@ -143,6 +148,38 @@ namespace BlazorIdle.Game.Skills
 
                 if (bucket.Current < minAmount)
                     return false; // 资源不足
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 检查 Buff 层数条件
+        /// Check Buff stack conditions
+        /// </summary>
+        /// <param name="caster">施法者 / Caster</param>
+        /// <param name="requireBuffStacks">Buff层数要求字典 (buffId -> minStacks)（可选）/ Required buff stacks dictionary (optional)</param>
+        /// <returns>是否满足 Buff 层数条件 / Whether Buff stack conditions are met</returns>
+        private bool CheckBuffStackCondition(IBuffOwner caster, Dictionary<string, int>? requireBuffStacks)
+        {
+            // 如果没有 Buff 层数要求，直接通过
+            // If no buff stack requirements, pass directly
+            if (requireBuffStacks == null || requireBuffStacks.Count == 0)
+                return true;
+
+            // 检查每个 Buff 层数要求
+            // Check each buff stack requirement
+            foreach (var (buffId, minStacks) in requireBuffStacks)
+            {
+                // 检查 Buff 是否存在
+                // Check if buff exists
+                if (!caster.Buffs.TryGetValue(buffId, out var buffInstance))
+                    return false; // Buff 不存在
+
+                // 检查层数是否满足要求
+                // Check if stack count meets requirement
+                if (buffInstance.Stacks < minStacks)
+                    return false; // 层数不足
             }
 
             return true;

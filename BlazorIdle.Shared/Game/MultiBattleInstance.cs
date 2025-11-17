@@ -27,6 +27,7 @@ namespace BlazorIdle.Game
         private readonly ISkillResolver _skillResolver;
         private readonly CastingController _castingController;
         private readonly CombatConfig _combatConfig;
+        private readonly SkillRepository _skillRepository;
         
         // Phase 2: 资源系统 / Resource system
         private readonly Dictionary<string, Resources.ResourceBucketCollection> _playerResources = new();
@@ -122,7 +123,8 @@ namespace BlazorIdle.Game
 
             // Phase 7: 初始化新技能系统组件 / Initialize new skill system components
             _combatConfig = new CombatConfig();
-            _skillResolver = new SkillResolver(_combatConfig);
+            _skillRepository = new SkillRepository();
+            _skillResolver = new SkillResolver(_combatConfig, _skillRepository);
             _castingController = new CastingController();
 
             InitializeTracks(preservedResources);
@@ -511,6 +513,20 @@ namespace BlazorIdle.Game
                     CurrentTargetId = defaultTargetId
                 };
 
+                // Phase 4: 检查技能施放条件
+                // Phase 4: Check skill casting conditions
+                var skillDef = _skillRepository.GetSkillById(skillId);
+                if (skillDef?.Conditions != null)
+                {
+                    var conditionChecker = new ConditionChecker();
+                    if (!conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: true))
+                    {
+                        // 条件不满足，跳过技能施放
+                        // Conditions not met, skip skill casting
+                        return;
+                    }
+                }
+
                 // 使用 SkillResolver 执行技能
                 // Execute skill using SkillResolver
                 var opts = new SkillCastOptions 
@@ -632,6 +648,20 @@ namespace BlazorIdle.Game
                     EnemyBuffOwners = _enemyBuffOwners,
                     CurrentTargetId = defaultTargetId
                 };
+
+                // Phase 4: 检查技能施放条件（怪物）
+                // Phase 4: Check skill casting conditions (monster)
+                var skillDef = _skillRepository.GetSkillById(skillId);
+                if (skillDef?.Conditions != null)
+                {
+                    var conditionChecker = new ConditionChecker();
+                    if (!conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: false))
+                    {
+                        // 条件不满足，跳过技能施放
+                        // Conditions not met, skip skill casting
+                        return;
+                    }
+                }
 
                 // 使用 SkillResolver 执行技能
                 // Execute skill using SkillResolver

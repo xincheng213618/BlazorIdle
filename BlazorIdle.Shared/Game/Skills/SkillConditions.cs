@@ -37,5 +37,11 @@ namespace BlazorIdle.Game.Skills
         /// Resource requirements
         /// </summary>
         public Dictionary<string, int>? RequireResource { get; set; }
+
+        /// <summary>
+        /// Buff层数要求 (Key: buffId, Value: minStacks)
+        /// Required buff stack count
+        /// </summary>
+        public Dictionary<string, int>? RequireBuffStacks { get; set; }
     }
 }

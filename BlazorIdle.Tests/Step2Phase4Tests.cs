@@ -464,6 +464,109 @@ namespace BlazorIdle.Tests
 
         #endregion
 
+        #region Buff Stack Condition Tests (4 tests)
+
+        [Fact]
+        public void ConditionChecker_RequireBuffStacks_PassesWhenStacksSufficient()
+        {
+            // Arrange
+            var checker = new ConditionChecker();
+            var player = new Character { MaxHp = 200, Hp = 200 };
+            var buffOwner = CreateBuffOwner(player);
+            
+            // Apply buff with 3 stacks
+            var buff = CreateTestBuff("warrior_stance", buffOwner);
+            buff.Stacks = 3;
+            buffOwner.ApplyBuff(buff);
+            
+            var skill = CreateSkillWithConditions(new SkillConditions
+            {
+                RequireBuffStacks = new Dictionary<string, int> { { "warrior_stance", 3 } }
+            });
+            var context = CreateContext(player, buffOwner);
+
+            // Act
+            var result = checker.CheckConditions(skill, context, isCasterPlayer: true);
+
+            // Assert
+            Assert.True(result); // 3 >= 3, should pass
+        }
+
+        [Fact]
+        public void ConditionChecker_RequireBuffStacks_FailsWhenStacksInsufficient()
+        {
+            // Arrange
+            var checker = new ConditionChecker();
+            var player = new Character { MaxHp = 200, Hp = 200 };
+            var buffOwner = CreateBuffOwner(player);
+            
+            // Apply buff with only 2 stacks
+            var buff = CreateTestBuff("warrior_stance", buffOwner);
+            buff.Stacks = 2;
+            buffOwner.ApplyBuff(buff);
+            
+            var skill = CreateSkillWithConditions(new SkillConditions
+            {
+                RequireBuffStacks = new Dictionary<string, int> { { "warrior_stance", 3 } }
+            });
+            var context = CreateContext(player, buffOwner);
+
+            // Act
+            var result = checker.CheckConditions(skill, context, isCasterPlayer: true);
+
+            // Assert
+            Assert.False(result); // 2 < 3, should fail
+        }
+
+        [Fact]
+        public void ConditionChecker_RequireBuffStacks_FailsWhenBuffNotExists()
+        {
+            // Arrange
+            var checker = new ConditionChecker();
+            var player = new Character { MaxHp = 200, Hp = 200 };
+            var buffOwner = CreateBuffOwner(player);
+            
+            var skill = CreateSkillWithConditions(new SkillConditions
+            {
+                RequireBuffStacks = new Dictionary<string, int> { { "warrior_stance", 3 } }
+            });
+            var context = CreateContext(player, buffOwner);
+
+            // Act
+            var result = checker.CheckConditions(skill, context, isCasterPlayer: true);
+
+            // Assert
+            Assert.False(result); // Buff doesn't exist, should fail
+        }
+
+        [Fact]
+        public void ConditionChecker_RequireBuffStacks_PassesWhenStacksExceedRequirement()
+        {
+            // Arrange
+            var checker = new ConditionChecker();
+            var player = new Character { MaxHp = 200, Hp = 200 };
+            var buffOwner = CreateBuffOwner(player);
+            
+            // Apply buff with 5 stacks (more than required)
+            var buff = CreateTestBuff("warrior_stance", buffOwner);
+            buff.Stacks = 5;
+            buffOwner.ApplyBuff(buff);
+            
+            var skill = CreateSkillWithConditions(new SkillConditions
+            {
+                RequireBuffStacks = new Dictionary<string, int> { { "warrior_stance", 3 } }
+            });
+            var context = CreateContext(player, buffOwner);
+
+            // Act
+            var result = checker.CheckConditions(skill, context, isCasterPlayer: true);
+
+            // Assert
+            Assert.True(result); // 5 >= 3, should pass
+        }
+
+        #endregion
+
         #region No Conditions Test
 
         [Fact]
