@@ -470,7 +470,8 @@ namespace BlazorIdle.Game
         /// 通过 SkillResolver 处理角色普通攻击（Phase 7.2 + Phase 3+ Target Selection Integration）
         /// Process character normal attack via SkillResolver (Phase 7.2 + Phase 3+ Target Selection Integration)
         /// </summary>
-        private void ProcessCharacterAttackViaSkillResolver(string charId, Character character)
+        /// <param name="targetPolicyOverride">临时参数：用于测试目标选择功能的策略覆盖 (null = 使用技能默认) / Temporary param: target policy override for testing (null = use skill default)</param>
+        private void ProcessCharacterAttackViaSkillResolver(string charId, Character character, string? targetPolicyOverride = null)
         {
             var member = _playerTeam.GetMember(charId);
             if (member == null) return;
@@ -505,17 +506,17 @@ namespace BlazorIdle.Game
             };
             var result = _skillResolver.Cast(SkillIds.AttackBasic, ctx, opts);
 
-            // Phase 3+: 解析目标（优先使用SkillResolver的结果，配置覆盖时手动解析）
-            // Phase 3+: Resolve targets (prefer SkillResolver results, manually resolve if config overrides)
+            // Phase 3+: 解析目标（优先使用SkillResolver的结果，临时参数可覆盖用于测试）
+            // Phase 3+: Resolve targets (prefer SkillResolver results, temp param can override for testing)
             List<string> targetIds;
             
-            // 如果配置了目标策略覆盖，使用TargetSelector手动解析目标
-            // If target policy override is configured, manually resolve targets using TargetSelector
-            if (!string.IsNullOrEmpty(_config.AttackTargetPolicy))
+            // 临时测试参数：如果提供了目标策略覆盖，使用TargetSelector手动解析目标
+            // Temporary testing param: If target policy override provided, manually resolve targets using TargetSelector
+            if (!string.IsNullOrEmpty(targetPolicyOverride))
             {
-                // 使用配置的目标策略覆盖
-                // Use configured target policy override
-                if (System.Enum.TryParse<Skills.TargetPolicy>(_config.AttackTargetPolicy, ignoreCase: true, out var policy))
+                // 使用临时参数覆盖（用于测试目标选择功能）
+                // Use temporary parameter override (for testing target selection)
+                if (System.Enum.TryParse<Skills.TargetPolicy>(targetPolicyOverride, ignoreCase: true, out var policy))
                 {
                     var targetSelector = new Skills.TargetSelector();
                     targetIds = targetSelector.ResolveTargets(policy, ctx, charId, defaultTargetId);
@@ -611,7 +612,8 @@ namespace BlazorIdle.Game
         /// 通过 SkillResolver 处理角色特殊技能（Phase 7.2 + Phase 3+ Target Selection Integration）
         /// Process character special skill via SkillResolver (Phase 7.2 + Phase 3+ Target Selection Integration)
         /// </summary>
-        private void ProcessCharacterSpecialViaSkillResolver(string charId, Character character)
+        /// <param name="targetPolicyOverride">临时参数：用于测试目标选择功能的策略覆盖 (null = 使用技能默认) / Temporary param: target policy override for testing (null = use skill default)</param>
+        private void ProcessCharacterSpecialViaSkillResolver(string charId, Character character, string? targetPolicyOverride = null)
         {
             var member = _playerTeam.GetMember(charId);
             if (member == null) return;
@@ -646,17 +648,17 @@ namespace BlazorIdle.Game
             };
             var result = _skillResolver.Cast(SkillIds.SpecialPulse, ctx, opts);
 
-            // Phase 3+: 解析目标（优先使用配置覆盖，然后向后兼容SpecialIsAoe，最后使用SkillResolver结果）
-            // Phase 3+: Resolve targets (config override first, then backward compat SpecialIsAoe, then SkillResolver results)
+            // Phase 3+: 解析目标（优先使用临时参数覆盖，然后向后兼容SpecialIsAoe，最后使用SkillResolver结果）
+            // Phase 3+: Resolve targets (temp param override first, then backward compat SpecialIsAoe, then SkillResolver results)
             List<string> targetIds;
             
-            // 如果配置了目标策略覆盖，使用TargetSelector手动解析目标
-            // If target policy override is configured, manually resolve targets using TargetSelector
-            if (!string.IsNullOrEmpty(_config.SpecialTargetPolicy))
+            // 临时测试参数：如果提供了目标策略覆盖，使用TargetSelector手动解析目标
+            // Temporary testing param: If target policy override provided, manually resolve targets using TargetSelector
+            if (!string.IsNullOrEmpty(targetPolicyOverride))
             {
-                // 使用配置的目标策略覆盖
-                // Use configured target policy override
-                if (System.Enum.TryParse<Skills.TargetPolicy>(_config.SpecialTargetPolicy, ignoreCase: true, out var policy))
+                // 使用临时参数覆盖（用于测试目标选择功能）
+                // Use temporary parameter override (for testing target selection)
+                if (System.Enum.TryParse<Skills.TargetPolicy>(targetPolicyOverride, ignoreCase: true, out var policy))
                 {
                     var targetSelector = new Skills.TargetSelector();
                     targetIds = targetSelector.ResolveTargets(policy, ctx, charId, defaultTargetId);
@@ -2347,24 +2349,6 @@ namespace BlazorIdle.Game
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("aoeDamageMultiplier")]
         public double AoeDamageMultiplier { get; set; } = 0.8;
-
-        /// <summary>
-        /// 普通攻击目标策略 (Phase 3+)
-        /// Attack target policy for testing target selection
-        /// 可选值: "CurrentTarget"(单体), "EnemiesAll"(AOE)
-        /// Options: "CurrentTarget"(single), "EnemiesAll"(AoE)
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("attackTargetPolicy")]
-        public string? AttackTargetPolicy { get; set; } = null; // null = use skill default
-
-        /// <summary>
-        /// 特殊技能目标策略 (Phase 3+)
-        /// Special skill target policy for testing target selection
-        /// 可选值: "CurrentTarget"(单体), "EnemiesAll"(AOE), "Self"(自身), "AlliesAll"(友方AOE)
-        /// Options: "CurrentTarget"(single), "EnemiesAll"(AoE), "Self"(self), "AlliesAll"(allies AoE)
-        /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("specialTargetPolicy")]
-        public string? SpecialTargetPolicy { get; set; } = null; // null = use skill default
 
         /// <summary>
         /// 是否允许玩家复活
