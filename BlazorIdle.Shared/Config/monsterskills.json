@@ -17,3 +17,30 @@
     }
   }
 ]
+
+// ⚠️ 重要：怪物技能命名约定
+// Monster Skill Naming Convention:
+// - 所有怪物技能的 "id" 必须以 "monster_" 或 "enemy_" 开头
+// - All monster skill IDs MUST start with "monster_" or "enemy_" prefix
+// - 这是 SkillResolver 用于识别怪物技能的关键依据
+// - This is how SkillResolver identifies monster skills
+// 
+// 示例：
+// ✅ "monster_attack_basic" - 正确
+// ✅ "monster_fire_breath" - 正确
+// ✅ "enemy_poison_spit" - 正确
+// ❌ "dragon_attack" - 错误！会被识别为玩家技能
+// 
+// 技能系统会根据前缀判断施法者类型：
+// - monster_*/enemy_* → 使用怪物的 DamagePerHit、VariancePct
+// - 其他 → 使用玩家的 DamagePerAttack、VariancePct
+//
+// Examples:
+// ✅ "monster_attack_basic" - Correct
+// ✅ "monster_fire_breath" - Correct  
+// ✅ "enemy_poison_spit" - Correct
+// ❌ "dragon_attack" - Wrong! Will be treated as player skill
+//
+// The skill system uses prefix to determine caster type:
+// - monster_*/enemy_* → Uses monster's DamagePerHit, VariancePct
+// - Others → Uses player's DamagePerAttack, VariancePct
