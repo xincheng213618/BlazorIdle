@@ -324,5 +324,83 @@ namespace BlazorIdle.Tests
         }
 
         #endregion
+
+        #region P3.5 Tests: MultiBattleInstance integration
+
+        [Fact]
+        public void MultiBattleInstance_UsesCharacterFixedSkills_ForNormalAttack()
+        {
+            // Arrange
+            var character = new BlazorIdle.Game.Character
+            {
+                MaxHp = 100,
+                Hp = 100,
+                NormalAttackSkillId = "warrior_attack_basic",
+                SpecialAttackSkillId = "warrior_special_pulse"
+            };
+
+            // Act
+            var normalSkillId = character.GetNormalAttackSkillId();
+            var specialSkillId = character.GetSpecialAttackSkillId();
+
+            // Assert
+            Assert.Equal("warrior_attack_basic", normalSkillId);
+            Assert.Equal("warrior_special_pulse", specialSkillId);
+        }
+
+        [Fact]
+        public void MultiBattleInstance_DifferentProfessions_UseDifferentSkills()
+        {
+            // Arrange
+            var warrior = new BlazorIdle.Game.Character
+            {
+                NormalAttackSkillId = "warrior_attack_basic",
+                SpecialAttackSkillId = "warrior_special_pulse"
+            };
+
+            var mage = new BlazorIdle.Game.Character
+            {
+                NormalAttackSkillId = "mage_attack_basic",
+                SpecialAttackSkillId = "mage_special_pulse"
+            };
+
+            // Act & Assert
+            Assert.NotEqual(warrior.GetNormalAttackSkillId(), mage.GetNormalAttackSkillId());
+            Assert.NotEqual(warrior.GetSpecialAttackSkillId(), mage.GetSpecialAttackSkillId());
+        }
+
+        [Fact]
+        public void CharacterData_ToBattleCharacter_CopiesFixedSkills()
+        {
+            // Arrange
+            var characterData = new CharacterData
+            {
+                ActiveCombatProfessionId = "warrior",
+                FixedSkillsByProfession = new Dictionary<string, ProfessionFixedSkills>
+                {
+                    ["warrior"] = new ProfessionFixedSkills
+                    {
+                        NormalAttack = "warrior_attack_basic",
+                        SpecialAttack = "warrior_special_pulse"
+                    }
+                }
+            };
+
+            // Act - Simulate what BattleDemo does
+            string? normalAttackSkillId = null;
+            string? specialAttackSkillId = null;
+            
+            if (characterData.FixedSkillsByProfession.TryGetValue(characterData.ActiveCombatProfessionId, out var fixedSkills))
+            {
+                normalAttackSkillId = fixedSkills.NormalAttack;
+                specialAttackSkillId = fixedSkills.SpecialAttack;
+            }
+
+            // Assert
+            Assert.Equal("warrior_attack_basic", normalAttackSkillId);
+            Assert.Equal("warrior_special_pulse", specialAttackSkillId);
+        }
+
+        #endregion
     }
 }

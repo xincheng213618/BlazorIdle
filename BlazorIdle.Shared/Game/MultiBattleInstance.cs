@@ -471,7 +471,7 @@ namespace BlazorIdle.Game
         /// Process character normal attack via SkillResolver (Phase 7.2 + Phase 3+ Target Selection Integration)
         /// </summary>
         /// <param name="targetPolicyOverride">临时参数：用于测试目标选择功能的策略覆盖 (null = 使用技能默认) / Temporary param: target policy override for testing (null = use skill default)</param>
-        private void ProcessCharacterAttackViaSkillResolver(string charId, Character character, string? targetPolicyOverride = null)
+        private void ProcessCharacterAttackViaSkillResolver(string charId, Character character)
         {
             var member = _playerTeam.GetMember(charId);
             if (member == null) return;
@@ -497,6 +497,10 @@ namespace BlazorIdle.Game
                 CurrentTargetId = defaultTargetId // Phase 3+: For target selection
             };
 
+            // Phase 3+: 从角色实体获取普通攻击技能ID（不再硬编码）
+            // Phase 3+: Get normal attack skill ID from character entity (no longer hardcoded)
+            string skillId = character.GetNormalAttackSkillId();
+
             // 使用 SkillResolver 计算伤害
             // Use SkillResolver to calculate damage
             var opts = new SkillCastOptions 
@@ -504,38 +508,12 @@ namespace BlazorIdle.Game
                 SourceTrack = "attack",
                 CasterId = charId // Phase 3+: For Self policy
             };
-            var result = _skillResolver.Cast(SkillIds.AttackBasic, ctx, opts);
+            var result = _skillResolver.Cast(skillId, ctx, opts);
 
-            // Phase 3+: 解析目标（优先使用SkillResolver的结果，临时参数可覆盖用于测试）
-            // Phase 3+: Resolve targets (prefer SkillResolver results, temp param can override for testing)
-            List<string> targetIds;
-            
-            // 临时测试参数：如果提供了目标策略覆盖，使用TargetSelector手动解析目标
-            // Temporary testing param: If target policy override provided, manually resolve targets using TargetSelector
-            if (!string.IsNullOrEmpty(targetPolicyOverride))
-            {
-                // 使用临时参数覆盖（用于测试目标选择功能）
-                // Use temporary parameter override (for testing target selection)
-                if (System.Enum.TryParse<Skills.TargetPolicy>(targetPolicyOverride, ignoreCase: true, out var policy))
-                {
-                    var targetSelector = new Skills.TargetSelector();
-                    targetIds = targetSelector.ResolveTargets(policy, ctx, charId, defaultTargetId);
-                }
-                else
-                {
-                    // 无效策略，回退到result.TargetIds或默认目标
-                    // Invalid policy, fallback to result.TargetIds or default target
-                    targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
-                        (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
-                }
-            }
-            else
-            {
-                // 使用SkillResolver解析的目标（来自技能的targetPolicy）
-                // Use targets resolved by SkillResolver (from skill's targetPolicy)
-                targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
-                    (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
-            }
+            // Phase 3+: 直接使用SkillResolver解析的目标（来自技能的targetPolicy）
+            // Phase 3+: Directly use targets resolved by SkillResolver (from skill's targetPolicy)
+            List<string> targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
+                (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
 
             // Phase 3+: 应用伤害到所有解析的目标
             // Phase 3+: Apply damage to all resolved targets
@@ -613,7 +591,7 @@ namespace BlazorIdle.Game
         /// Process character special skill via SkillResolver (Phase 7.2 + Phase 3+ Target Selection Integration)
         /// </summary>
         /// <param name="targetPolicyOverride">临时参数：用于测试目标选择功能的策略覆盖 (null = 使用技能默认) / Temporary param: target policy override for testing (null = use skill default)</param>
-        private void ProcessCharacterSpecialViaSkillResolver(string charId, Character character, string? targetPolicyOverride = null)
+        private void ProcessCharacterSpecialViaSkillResolver(string charId, Character character)
         {
             var member = _playerTeam.GetMember(charId);
             if (member == null) return;
@@ -639,6 +617,10 @@ namespace BlazorIdle.Game
                 CurrentTargetId = defaultTargetId
             };
 
+            // Phase 3+: 从角色实体获取特殊攻击技能ID（不再硬编码）
+            // Phase 3+: Get special attack skill ID from character entity (no longer hardcoded)
+            string skillId = character.GetSpecialAttackSkillId();
+
             // 使用 SkillResolver 计算伤害
             // Use SkillResolver to calculate damage
             var opts = new SkillCastOptions 
@@ -646,29 +628,13 @@ namespace BlazorIdle.Game
                 SourceTrack = "special",
                 CasterId = charId
             };
-            var result = _skillResolver.Cast(SkillIds.SpecialPulse, ctx, opts);
+            var result = _skillResolver.Cast(skillId, ctx, opts);
 
-            // Phase 3+: 解析目标（优先使用临时参数覆盖，然后向后兼容SpecialIsAoe，最后使用SkillResolver结果）
-            // Phase 3+: Resolve targets (temp param override first, then backward compat SpecialIsAoe, then SkillResolver results)
+            // Phase 3+: 解析目标（优先使用SkillResolver结果，向后兼容SpecialIsAoe配置）
+            // Phase 3+: Resolve targets (prefer SkillResolver results, backward compat with SpecialIsAoe)
             List<string> targetIds;
             
-            // 临时测试参数：如果提供了目标策略覆盖，使用TargetSelector手动解析目标
-            // Temporary testing param: If target policy override provided, manually resolve targets using TargetSelector
-            if (!string.IsNullOrEmpty(targetPolicyOverride))
-            {
-                // 使用临时参数覆盖（用于测试目标选择功能）
-                // Use temporary parameter override (for testing target selection)
-                if (System.Enum.TryParse<Skills.TargetPolicy>(targetPolicyOverride, ignoreCase: true, out var policy))
-                {
-                    var targetSelector = new Skills.TargetSelector();
-                    targetIds = targetSelector.ResolveTargets(policy, ctx, charId, defaultTargetId);
-                }
-                else
-                {
-                    targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : new List<string>();
-                }
-            }
-            else if (_config.SpecialIsAoe)
+            if (_config.SpecialIsAoe)
             {
                 // 向后兼容: 使用旧的 SpecialIsAoe 配置
                 // Backward compatibility: use old SpecialIsAoe config
@@ -676,8 +642,8 @@ namespace BlazorIdle.Game
             }
             else
             {
-                // 使用SkillResolver解析的目标或默认单体目标
-                // Use targets resolved by SkillResolver or default single target
+                // 使用SkillResolver解析的目标（来自技能的targetPolicy）或默认单体目标
+                // Use targets resolved by SkillResolver (from skill's targetPolicy) or default single target
                 targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
                     (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
             }
