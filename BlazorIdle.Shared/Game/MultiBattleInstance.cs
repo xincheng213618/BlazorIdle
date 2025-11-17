@@ -467,11 +467,20 @@ namespace BlazorIdle.Game
         }
 
         /// <summary>
-        /// 通过 SkillResolver 处理角色普通攻击（Phase 7.2 + Phase 3+ Target Selection Integration）
-        /// Process character normal attack via SkillResolver (Phase 7.2 + Phase 3+ Target Selection Integration)
+        /// Phase 3+: 通用技能执行函数 - 处理伤害、Buff、治疗、资源变化
+        /// Phase 3+: Generic skill execution function - handles damage, buffs, heals, resource changes
         /// </summary>
-        /// <param name="targetPolicyOverride">临时参数：用于测试目标选择功能的策略覆盖 (null = 使用技能默认) / Temporary param: target policy override for testing (null = use skill default)</param>
-        private void ProcessCharacterAttackViaSkillResolver(string charId, Character character)
+        /// <param name="charId">施法者ID / Caster ID</param>
+        /// <param name="character">施法者角色实体 / Caster character entity</param>
+        /// <param name="skillId">要执行的技能ID / Skill ID to execute</param>
+        /// <param name="sourceTrack">技能来源轨道（用于追踪）/ Source track for tracking</param>
+        /// <param name="eventSource">事件来源类型 / Event source type</param>
+        private void ExecuteSkill(
+            string charId, 
+            Character character, 
+            string skillId, 
+            string sourceTrack,
+            EventSource eventSource)
         {
             var member = _playerTeam.GetMember(charId);
             if (member == null) return;
@@ -481,133 +490,8 @@ namespace BlazorIdle.Game
             var defaultTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
             var defaultTarget = defaultTargetId != null ? _enemyTeam.GetMember(defaultTargetId) : null;
 
-            // 创建战斗上下文（Phase 3+: 添加 CurrentTargetId 和 CasterId）
-            // Create battle context (Phase 3+: Add CurrentTargetId and CasterId)
-            var ctx = new BattleContext
-            {
-                Player = character,
-                Enemy = defaultTarget?.Entity,
-                PlayerTeam = _playerTeam,
-                EnemyTeam = _enemyTeam,
-                Rng = _rng,
-                Clock = _clock,
-                PlayerResources = _playerResources.GetValueOrDefault(charId),
-                PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(charId),
-                EnemyBuffOwners = _enemyBuffOwners,
-                CurrentTargetId = defaultTargetId // Phase 3+: For target selection
-            };
-
-            // Phase 3+: 从角色实体获取普通攻击技能ID（不再硬编码）
-            // Phase 3+: Get normal attack skill ID from character entity (no longer hardcoded)
-            string skillId = character.GetNormalAttackSkillId();
-
-            // 使用 SkillResolver 计算伤害
-            // Use SkillResolver to calculate damage
-            var opts = new SkillCastOptions 
-            { 
-                SourceTrack = "attack",
-                CasterId = charId // Phase 3+: For Self policy
-            };
-            var result = _skillResolver.Cast(skillId, ctx, opts);
-
-            // Phase 3+: 直接使用SkillResolver解析的目标（来自技能的targetPolicy）
-            // Phase 3+: Directly use targets resolved by SkillResolver (from skill's targetPolicy)
-            List<string> targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
-                (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
-
-            // Phase 3+: 应用伤害到所有解析的目标
-            // Phase 3+: Apply damage to all resolved targets
-            if (targetIds.Count > 0)
-            {
-                bool isAoe = targetIds.Count > 1;
-                int damagePerTarget = isAoe ? (int)(result.DamageDealt * _config.AoeDamageMultiplier) : result.DamageDealt;
-
-                foreach (var targetId in targetIds)
-                {
-                    var target = _enemyTeam.GetMember(targetId);
-                    if (target == null) continue;
-
-                    // Phase 3+: 只有造成伤害时才记录伤害事件
-                    // Phase 3+: Only log damage event if damage is dealt
-                    if (damagePerTarget > 0)
-                    {
-                        ApplyDamageToEnemy(charId, member, targetId, target, damagePerTarget, EventSource.Attack, 
-                            isAoe: isAoe, isCrit: result.IsCrit, skillId: skillId, bundleId: result.BundleId);
-                    }
-
-                    // Phase 6: 处理 Buff 操作、即时治疗和资源变化
-                    // Phase 6: Process buff operations, instant heal, and resource changes
-                    ProcessBuffOperations(result, charId, targetId, isCasterPlayer: true);
-                    ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true, skillId: skillId);
-                }
-                
-                // 资源变化只应用一次（不是每个目标）
-                // Resource changes apply once (not per target)
-                ApplyResourceChanges(result, charId, isCasterPlayer: true, skillId: skillId);
-            }
-
-            // Phase 3+: 向后兼容 - 如果技能没有定义资源获得，使用职业配置作为回退
-            // Phase 3+: Backward compatibility - if skill doesn't define resource gains, use profession config as fallback
-            if ((result.ResourceChanges == null || result.ResourceChanges.Count == 0) && 
-                _playerResources.TryGetValue(charId, out var resources))
-            {
-                // Phase 2.7: 获取职业资源配置，决定资源ID和增益量
-                // Phase 2.7: Get profession resource config to determine resource ID and gain amounts
-                string resourceId = "rage"; // 默认
-                int gainPerAttack = _resourceConfig.GainPerAttack; // 默认 1
-                int gainPerCritExtra = _resourceConfig.GainPerCritExtra; // 默认 1
-                
-                if (_professionResourceConfigs != null &&
-                    _professionResourceConfigs.TryGetValue(member.Entity.ActiveCombatProfessionId, out var profConfig))
-                {
-                    resourceId = profConfig.Id;
-                    gainPerAttack = profConfig.GainPerAttack;
-                    gainPerCritExtra = profConfig.GainPerCritExtra;
-                }
-                
-                if (resources.HasBucket(resourceId))
-                {
-                    var bucket = resources.GetBucket(resourceId);
-                    
-                    // 命中产生资源 / Attack hit generates resource
-                    int gained = bucket.Gain(gainPerAttack, "attack_hit");
-                    if (gained > 0)
-                    {
-                        RecordResourceGain(charId, resourceId, gained, bucket.Current, "attack_hit", 
-                            skillId: skillId, bundleId: result.BundleId);
-                    }
-                    
-                    // 暴击额外产生资源 / Crit generates extra resource
-                    if (result.IsCrit)
-                    {
-                        int critGain = bucket.Gain(gainPerCritExtra, "crit_bonus");
-                        if (critGain > 0)
-                        {
-                            RecordResourceGain(charId, resourceId, critGain, bucket.Current, "crit_bonus",
-                                skillId: skillId, bundleId: result.BundleId);
-                        }
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// 通过 SkillResolver 处理角色特殊技能（Phase 7.2 + Phase 3+ Target Selection Integration）
-        /// Process character special skill via SkillResolver (Phase 7.2 + Phase 3+ Target Selection Integration)
-        /// </summary>
-        /// <param name="targetPolicyOverride">临时参数：用于测试目标选择功能的策略覆盖 (null = 使用技能默认) / Temporary param: target policy override for testing (null = use skill default)</param>
-        private void ProcessCharacterSpecialViaSkillResolver(string charId, Character character)
-        {
-            var member = _playerTeam.GetMember(charId);
-            if (member == null) return;
-
-            // 选择一个默认目标用于上下文
-            // Select a default target for context
-            var defaultTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
-            var defaultTarget = defaultTargetId != null ? _enemyTeam.GetMember(defaultTargetId) : null;
-
-            // 创建战斗上下文（Phase 3+: 添加 CurrentTargetId 和 CasterId）
-            // Create battle context (Phase 3+: Add CurrentTargetId and CasterId)
+            // 创建战斗上下文
+            // Create battle context
             var ctx = new BattleContext
             {
                 Player = character,
@@ -622,39 +506,22 @@ namespace BlazorIdle.Game
                 CurrentTargetId = defaultTargetId
             };
 
-            // Phase 3+: 从角色实体获取特殊攻击技能ID（不再硬编码）
-            // Phase 3+: Get special attack skill ID from character entity (no longer hardcoded)
-            string skillId = character.GetSpecialAttackSkillId();
-
-            // 使用 SkillResolver 计算伤害
-            // Use SkillResolver to calculate damage
+            // 使用 SkillResolver 执行技能
+            // Execute skill using SkillResolver
             var opts = new SkillCastOptions 
             { 
-                SourceTrack = "special",
+                SourceTrack = sourceTrack,
                 CasterId = charId
             };
             var result = _skillResolver.Cast(skillId, ctx, opts);
 
-            // Phase 3+: 解析目标（优先使用SkillResolver结果，向后兼容SpecialIsAoe配置）
-            // Phase 3+: Resolve targets (prefer SkillResolver results, backward compat with SpecialIsAoe)
-            List<string> targetIds;
-            
-            if (_config.SpecialIsAoe)
-            {
-                // 向后兼容: 使用旧的 SpecialIsAoe 配置
-                // Backward compatibility: use old SpecialIsAoe config
-                targetIds = _enemyTeam.GetAliveMemberIds();
-            }
-            else
-            {
-                // 使用SkillResolver解析的目标（来自技能的targetPolicy）或默认单体目标
-                // Use targets resolved by SkillResolver (from skill's targetPolicy) or default single target
-                targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
-                    (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
-            }
+            // 解析目标（来自技能的targetPolicy）
+            // Resolve targets (from skill's targetPolicy)
+            List<string> targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
+                (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
 
-            // Phase 3+: 应用效果到所有解析的目标
-            // Phase 3+: Apply effects to all resolved targets
+            // 应用效果到所有解析的目标
+            // Apply effects to all resolved targets
             if (targetIds.Count > 0)
             {
                 bool isAoe = targetIds.Count > 1;
@@ -665,24 +532,102 @@ namespace BlazorIdle.Game
                     var target = _enemyTeam.GetMember(targetId);
                     if (target == null) continue;
 
-                    // Phase 3+: 只有造成伤害时才记录伤害事件
-                    // Phase 3+: Only log damage event if damage is dealt
+                    // 只有造成伤害时才记录伤害事件
+                    // Only log damage event if damage is dealt
                     if (damagePerTarget > 0)
                     {
-                        ApplyDamageToEnemy(charId, member, targetId, target, damagePerTarget, EventSource.Special, 
+                        ApplyDamageToEnemy(charId, member, targetId, target, damagePerTarget, eventSource, 
                             isAoe: isAoe, isCrit: result.IsCrit, skillId: skillId, bundleId: result.BundleId);
                     }
-                    
-                    // Phase 6: 处理 Buff 操作、即时治疗
-                    // Phase 6: Process buff operations and instant heal
-                    ProcessBuffOperations(result, charId, targetId, isCasterPlayer: true);
+
+                    // 即时治疗每个目标
+                    // Instant heal per target
                     ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true, skillId: skillId);
                 }
                 
-                // 资源变化只应用一次
-                // Resource changes apply once
+                // Buff操作和资源变化只应用一次（不是每个目标）
+                // Buff operations and resource changes apply once (not per target)
+                // 使用第一个目标ID作为上下文（buff系统会根据BuffTarget类型正确解析实际目标）
+                // Use first target ID as context (buff system will resolve actual targets based on BuffTarget type)
+                string? primaryTargetId = targetIds.Count > 0 ? targetIds[0] : null;
+                ProcessBuffOperations(result, charId, primaryTargetId, isCasterPlayer: true);
                 ApplyResourceChanges(result, charId, isCasterPlayer: true, skillId: skillId);
             }
+
+            // 向后兼容 - 如果技能没有定义资源获得，使用职业配置作为回退（仅普通攻击）
+            // Backward compatibility - if skill doesn't define resource gains, use profession config as fallback (normal attack only)
+            if (sourceTrack == "attack" && 
+                (result.ResourceChanges == null || result.ResourceChanges.Count == 0) && 
+                _playerResources.TryGetValue(charId, out var resources))
+            {
+                // 获取职业资源配置
+                // Get profession resource config
+                string resourceId = "rage";
+                int gainPerAttack = _resourceConfig.GainPerAttack;
+                int gainPerCritExtra = _resourceConfig.GainPerCritExtra;
+                
+                if (_professionResourceConfigs != null &&
+                    _professionResourceConfigs.TryGetValue(character.ActiveCombatProfessionId, out var profConfig))
+                {
+                    resourceId = profConfig.Id;
+                    gainPerAttack = profConfig.GainPerAttack;
+                    gainPerCritExtra = profConfig.GainPerCritExtra;
+                }
+                
+                if (resources.HasBucket(resourceId))
+                {
+                    var bucket = resources.GetBucket(resourceId);
+                    
+                    // 命中产生资源
+                    int gained = bucket.Gain(gainPerAttack, "attack_hit");
+                    if (gained > 0)
+                    {
+                        RecordResourceGain(charId, resourceId, gained, bucket.Current, "attack_hit", 
+                            skillId: skillId, bundleId: result.BundleId);
+                    }
+                    
+                    // 暴击额外产生资源
+                    if (result.IsCrit)
+                    {
+                        int critGain = bucket.Gain(gainPerCritExtra, "crit_bonus");
+                        if (critGain > 0)
+                        {
+                            RecordResourceGain(charId, resourceId, critGain, bucket.Current, "crit_bonus",
+                                skillId: skillId, bundleId: result.BundleId);
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 通过 SkillResolver 处理角色普通攻击（Phase 7.2 + Phase 3+ Target Selection Integration）
+        /// Process character normal attack via SkillResolver (Phase 7.2 + Phase 3+ Target Selection Integration)
+        /// </summary>
+        private void ProcessCharacterAttackViaSkillResolver(string charId, Character character)
+        {
+            // Phase 3+: 从角色实体获取普通攻击技能ID
+            // Phase 3+: Get normal attack skill ID from character entity
+            string skillId = character.GetNormalAttackSkillId();
+            
+            // 调用通用技能执行函数
+            // Call generic skill execution function
+            ExecuteSkill(charId, character, skillId, "attack", EventSource.Attack);
+        }
+
+        /// <summary>
+        /// 通过 SkillResolver 处理角色特殊技能（Phase 7.2 + Phase 3+ Target Selection Integration）
+        /// Process character special skill via SkillResolver (Phase 7.2 + Phase 3+ Target Selection Integration)
+        /// </summary>
+        private void ProcessCharacterSpecialViaSkillResolver(string charId, Character character)
+        {
+            // Phase 3+: 从角色实体获取特殊攻击技能ID
+            // Phase 3+: Get special attack skill ID from character entity
+            string skillId = character.GetSpecialAttackSkillId();
+            
+            // 调用通用技能执行函数
+            // Call generic skill execution function
+            ExecuteSkill(charId, character, skillId, "special", EventSource.Special);
         }
 
         /// <summary>
