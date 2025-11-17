@@ -495,5 +495,71 @@ namespace BlazorIdle.Tests
         }
 
         #endregion
+
+        #region P3.8 Tests: Target Policy snake_case 转换
+
+        [Theory]
+        [InlineData("current_target", "CurrentTarget")]
+        [InlineData("enemies_all", "EnemiesAll")]
+        [InlineData("self", "Self")]
+        [InlineData("allies_all", "AlliesAll")]
+        [InlineData("allies_lowest_hp_pct", "AlliesLowestHpPct")]
+        public void TargetPolicy_SnakeCaseToPascalCase_Conversion(string snakeCase, string expectedPascalCase)
+        {
+            // Arrange
+            var skillResolver = new BlazorIdle.Game.Skills.SkillResolver();
+
+            // Use reflection to call the private method
+            var method = typeof(BlazorIdle.Game.Skills.SkillResolver).GetMethod(
+                "ConvertSnakeCaseToPascalCase", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            Assert.NotNull(method);
+
+            // Act
+            var result = method.Invoke(skillResolver, new object[] { snakeCase }) as string;
+
+            // Assert
+            Assert.Equal(expectedPascalCase, result);
+        }
+
+        [Fact]
+        public void TargetPolicy_SnakeCaseEnumParsing_WorksCorrectly()
+        {
+            // This test verifies that snake_case target policies can be parsed to the enum
+            // after conversion to PascalCase
+            
+            // Arrange
+            var testCases = new Dictionary<string, BlazorIdle.Game.Skills.TargetPolicy>
+            {
+                ["current_target"] = BlazorIdle.Game.Skills.TargetPolicy.CurrentTarget,
+                ["enemies_all"] = BlazorIdle.Game.Skills.TargetPolicy.EnemiesAll,
+                ["self"] = BlazorIdle.Game.Skills.TargetPolicy.Self,
+                ["allies_all"] = BlazorIdle.Game.Skills.TargetPolicy.AlliesAll,
+                ["allies_lowest_hp_pct"] = BlazorIdle.Game.Skills.TargetPolicy.AlliesLowestHpPct
+            };
+
+            var skillResolver = new BlazorIdle.Game.Skills.SkillResolver();
+
+            var convertMethod = typeof(BlazorIdle.Game.Skills.SkillResolver).GetMethod(
+                "ConvertSnakeCaseToPascalCase", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            Assert.NotNull(convertMethod);
+
+            foreach (var testCase in testCases)
+            {
+                // Act
+                var pascalCase = convertMethod.Invoke(skillResolver, new object[] { testCase.Key }) as string;
+                var parseSuccess = System.Enum.TryParse<BlazorIdle.Game.Skills.TargetPolicy>(
+                    pascalCase, ignoreCase: true, out var parsedPolicy);
+
+                // Assert
+                Assert.True(parseSuccess, $"Failed to parse '{testCase.Key}' -> '{pascalCase}'");
+                Assert.Equal(testCase.Value, parsedPolicy);
+            }
+        }
+
+        #endregion
     }
 }

@@ -208,7 +208,11 @@ namespace BlazorIdle.Game.Skills
             {
                 // 将字符串策略转换为枚举
                 // Convert string policy to enum
-                if (Enum.TryParse<TargetPolicy>(skillDef.TargetPolicy, ignoreCase: true, out var policy))
+                // Phase 3+: Convert snake_case to PascalCase for enum parsing
+                // Phase 3+: 将 snake_case 转换为 PascalCase 以解析枚举
+                string policyString = ConvertSnakeCaseToPascalCase(skillDef.TargetPolicy);
+                
+                if (Enum.TryParse<TargetPolicy>(policyString, ignoreCase: true, out var policy))
                 {
                     // 获取施法者ID（从opts提供）
                     // Get caster ID (provided from opts)
@@ -490,6 +494,37 @@ namespace BlazorIdle.Game.Skills
                 }
             }
             return false;
+        }
+
+        /// <summary>
+        /// Phase 3+: 将 snake_case 字符串转换为 PascalCase
+        /// Phase 3+: Convert snake_case string to PascalCase
+        /// </summary>
+        /// <param name="snakeCase">snake_case 字符串，例如 "enemies_all"</param>
+        /// <returns>PascalCase 字符串，例如 "EnemiesAll"</returns>
+        private string ConvertSnakeCaseToPascalCase(string snakeCase)
+        {
+            if (string.IsNullOrEmpty(snakeCase))
+                return snakeCase;
+
+            var parts = snakeCase.Split('_');
+            var result = new System.Text.StringBuilder();
+            
+            foreach (var part in parts)
+            {
+                if (part.Length > 0)
+                {
+                    // 首字母大写，其余字母小写
+                    // Capitalize first letter, lowercase the rest
+                    result.Append(char.ToUpper(part[0]));
+                    if (part.Length > 1)
+                    {
+                        result.Append(part.Substring(1).ToLower());
+                    }
+                }
+            }
+            
+            return result.ToString();
         }
     }
 }
