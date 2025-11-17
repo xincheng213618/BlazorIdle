@@ -530,21 +530,23 @@ namespace BlazorIdle.Game
                     // 应用伤害到每个目标
                     // Apply damage to each target
                     ApplyDamageToEnemy(charId, member, targetId, target, damagePerTarget, EventSource.Attack, 
-                        isAoe: isAoe, isCrit: result.IsCrit, skillId: SkillIds.AttackBasic, bundleId: result.BundleId);
+                        isAoe: isAoe, isCrit: result.IsCrit, skillId: skillId, bundleId: result.BundleId);
 
                     // Phase 6: 处理 Buff 操作、即时治疗和资源变化
                     // Phase 6: Process buff operations, instant heal, and resource changes
                     ProcessBuffOperations(result, charId, targetId, isCasterPlayer: true);
-                    ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true, skillId: SkillIds.AttackBasic);
+                    ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true, skillId: skillId);
                 }
                 
                 // 资源变化只应用一次（不是每个目标）
                 // Resource changes apply once (not per target)
-                ApplyResourceChanges(result, charId, isCasterPlayer: true, skillId: SkillIds.AttackBasic);
+                ApplyResourceChanges(result, charId, isCasterPlayer: true, skillId: skillId);
             }
 
-            // Phase 2 & 2.7: 产生资源 / Generate resource
-            if (_playerResources.TryGetValue(charId, out var resources))
+            // Phase 3+: 向后兼容 - 如果技能没有定义资源获得，使用职业配置作为回退
+            // Phase 3+: Backward compatibility - if skill doesn't define resource gains, use profession config as fallback
+            if ((result.ResourceChanges == null || result.ResourceChanges.Count == 0) && 
+                _playerResources.TryGetValue(charId, out var resources))
             {
                 // Phase 2.7: 获取职业资源配置，决定资源ID和增益量
                 // Phase 2.7: Get profession resource config to determine resource ID and gain amounts
@@ -569,7 +571,7 @@ namespace BlazorIdle.Game
                     if (gained > 0)
                     {
                         RecordResourceGain(charId, resourceId, gained, bucket.Current, "attack_hit", 
-                            skillId: SkillIds.AttackBasic, bundleId: result.BundleId);
+                            skillId: skillId, bundleId: result.BundleId);
                     }
                     
                     // 暴击额外产生资源 / Crit generates extra resource
@@ -579,7 +581,7 @@ namespace BlazorIdle.Game
                         if (critGain > 0)
                         {
                             RecordResourceGain(charId, resourceId, critGain, bucket.Current, "crit_bonus",
-                                skillId: SkillIds.AttackBasic, bundleId: result.BundleId);
+                                skillId: skillId, bundleId: result.BundleId);
                         }
                     }
                 }
@@ -661,17 +663,17 @@ namespace BlazorIdle.Game
                     if (target == null) continue;
 
                     ApplyDamageToEnemy(charId, member, targetId, target, damagePerTarget, EventSource.Special, 
-                        isAoe: isAoe, isCrit: result.IsCrit, skillId: SkillIds.SpecialPulse, bundleId: result.BundleId);
+                        isAoe: isAoe, isCrit: result.IsCrit, skillId: skillId, bundleId: result.BundleId);
                     
                     // Phase 6: 处理 Buff 操作、即时治疗
                     // Phase 6: Process buff operations and instant heal
                     ProcessBuffOperations(result, charId, targetId, isCasterPlayer: true);
-                    ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true, skillId: SkillIds.SpecialPulse);
+                    ApplyInstantHeal(result, charId, targetId, isCasterPlayer: true, skillId: skillId);
                 }
                 
                 // 资源变化只应用一次
                 // Resource changes apply once
-                ApplyResourceChanges(result, charId, isCasterPlayer: true, skillId: SkillIds.SpecialPulse);
+                ApplyResourceChanges(result, charId, isCasterPlayer: true, skillId: skillId);
             }
         }
 
