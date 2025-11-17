@@ -11,6 +11,7 @@ namespace BlazorIdle.Game.Skills
     {
         private readonly Config.CombatConfig? _config;
         private readonly SkillRepository _skillRepository;
+        private readonly TargetSelector _targetSelector;
         private int _castCounter = 0;
         private int _currentTickCasts = 0;
         private int _lastTickTime = 0;
@@ -25,10 +26,12 @@ namespace BlazorIdle.Game.Skills
         /// </summary>
         /// <param name="config">战斗配置（可选）/ Combat configuration (optional)</param>
         /// <param name="skillRepository">技能配置仓库（可选，Phase 5）/ Skill repository (optional, Phase 5)</param>
-        public SkillResolver(Config.CombatConfig? config = null, SkillRepository? skillRepository = null)
+        /// <param name="targetSelector">目标选择器（可选，Phase 3）/ Target selector (optional, Phase 3)</param>
+        public SkillResolver(Config.CombatConfig? config = null, SkillRepository? skillRepository = null, TargetSelector? targetSelector = null)
         {
             _config = config;
             _skillRepository = skillRepository ?? new SkillRepository();
+            _targetSelector = targetSelector ?? new TargetSelector();
         }
 
         /// <summary>
@@ -169,6 +172,28 @@ namespace BlazorIdle.Game.Skills
                 InstantHeal = skillDef?.InstantHeal ?? 0
             };
 
+            // Phase 3: 解析目标选择策略
+            // Phase 3: Resolve target selection policy
+            if (skillDef != null && !string.IsNullOrEmpty(skillDef.TargetPolicy))
+            {
+                // 将字符串策略转换为枚举
+                // Convert string policy to enum
+                if (Enum.TryParse<TargetPolicy>(skillDef.TargetPolicy, ignoreCase: true, out var policy))
+                {
+                    // 获取施法者ID（从opts提供）
+                    // Get caster ID (provided from opts)
+                    string? casterId = opts.CasterId;
+                    
+                    // 获取当前目标ID
+                    // Get current target ID
+                    string? currentTargetId = ctx.CurrentTargetId;
+                    
+                    // 解析目标
+                    // Resolve targets
+                    result.TargetIds = _targetSelector.ResolveTargets(policy, ctx, casterId, currentTargetId);
+                }
+            }
+
             // Phase 5: 添加 OnCast buff 操作
             // Phase 5: Add OnCast buff operations
             if (skillDef != null)
@@ -294,7 +319,8 @@ namespace BlazorIdle.Game.Skills
                 {
                     ForceCrit = opts.ForceCrit,
                     SourceTrack = opts.SourceTrack,
-                    BundleId = bundleId
+                    BundleId = bundleId,
+                    CasterId = opts.CasterId
                 };
 
                 // 施放技能

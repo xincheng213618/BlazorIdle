@@ -108,5 +108,12 @@ namespace BlazorIdle.Shared.Models
         /// </summary>
         [JsonPropertyName("equippedSkillsByProfession")]
         public Dictionary<string, EquippedSkillsConfig> EquippedSkillsByProfession { get; set; } = new Dictionary<string, EquippedSkillsConfig>();
+
+        /// <summary>
+        /// 账号标记集合 - 用于技能解锁等条件判定 (Step 2 Phase 2.5+)
+        /// Account flags collection - used for skill unlocking and condition checks
+        /// </summary>
+        [JsonPropertyName("accountFlags")]
+        public HashSet<string> AccountFlags { get; set; } = new HashSet<string>();
     }
 }

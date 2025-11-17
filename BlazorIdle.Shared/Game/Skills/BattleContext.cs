@@ -67,6 +67,12 @@ namespace BlazorIdle.Game.Skills
         /// </summary>
         public Dictionary<string, Buffs.EnemyBuffOwner>? EnemyBuffOwners { get; init; }
 
+        /// <summary>
+        /// 当前目标ID（Phase 3+）
+        /// Current target ID (for CurrentTarget policy)
+        /// </summary>
+        public string? CurrentTargetId { get; init; }
+
         // 预留其他上下文字段
         // Reserved for other context fields
     }

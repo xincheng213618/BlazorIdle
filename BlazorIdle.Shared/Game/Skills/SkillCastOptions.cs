@@ -24,5 +24,11 @@ namespace BlazorIdle.Game.Skills
         /// Bundle ID: used to associate multiple skills cast simultaneously
         /// </summary>
         public string? BundleId { get; set; }
+
+        /// <summary>
+        /// 施法者ID：用于目标选择（Phase 3+）
+        /// Caster ID: used for target selection (Phase 3+)
+        /// </summary>
+        public string? CasterId { get; set; }
     }
 }
