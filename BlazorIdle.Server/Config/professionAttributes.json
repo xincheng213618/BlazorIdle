@@ -46,6 +46,10 @@
       "initial": 0,
       "gainPerAttack": 1,
       "gainPerCritExtra": 1
+    },
+    "defaultFixedSkills": {
+      "normalAttack": "warrior_attack_basic",
+      "specialAttack": "warrior_special_pulse"
     }
   },
   "mage": {
@@ -95,6 +99,10 @@
       "initial": 5,
       "gainPerAttack": 1,
       "gainPerCritExtra": 1
+    },
+    "defaultFixedSkills": {
+      "normalAttack": "mage_attack_basic",
+      "specialAttack": "mage_special_pulse"
     }
   },
   "ranger": {
@@ -144,6 +152,10 @@
       "initial": 3,
       "gainPerAttack": 1,
       "gainPerCritExtra": 1
+    },
+    "defaultFixedSkills": {
+      "normalAttack": "ranger_attack_basic",
+      "specialAttack": "ranger_special_pulse"
     }
   },
   "rogue": {
@@ -193,6 +205,10 @@
       "initial": 4,
       "gainPerAttack": 1,
       "gainPerCritExtra": 1
+    },
+    "defaultFixedSkills": {
+      "normalAttack": "rogue_attack_basic",
+      "specialAttack": "rogue_special_pulse"
     }
   }
 }

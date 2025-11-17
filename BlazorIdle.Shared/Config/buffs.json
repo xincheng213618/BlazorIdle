@@ -290,5 +290,34 @@
         "value": 0.20
       }
     ]
+  },
+  {
+    "id": "warrior_stance",
+    "name": "战士架势",
+    "description": "积累架势层数，满3层触发必定暴击",
+    "icon": "🛡️",
+    "kind": "Buff",
+    "durationSec": 30.0,
+    "stackingPolicy": "Stack",
+    "maxStacks": 3,
+    "defaultTarget": "Self",
+    "effects": []
+  },
+  {
+    "id": "warrior_guaranteed_crit",
+    "name": "必定暴击",
+    "description": "下次攻击必定暴击",
+    "icon": "💥",
+    "kind": "Buff",
+    "durationSec": 30.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "ForceCrit",
+        "value": 1
+      }
+    ]
   }
 ]

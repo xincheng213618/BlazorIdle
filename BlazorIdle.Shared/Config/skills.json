@@ -9,14 +9,17 @@
     "releaseType": "instant",
     "targetPolicy": "current_target",
     "cooldownSec": 0,
-    "allowedProfessions": ["warrior"],
+    "allowedProfessions": [ "warrior" ],
     "damage": {
       "coefAtk": 1.0,
       "flat": 0,
       "isAoe": false
     },
     "gains": [
-      { "bucketId": "rage", "amount": 1 }
+      {
+        "bucketId": "rage",
+        "amount": 1
+      }
     ]
   },
   {

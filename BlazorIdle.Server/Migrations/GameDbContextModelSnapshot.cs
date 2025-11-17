@@ -62,6 +62,11 @@ namespace BlazorIdle.Server.Migrations
                         .HasColumnType("TEXT")
                         .HasAnnotation("Relational:JsonPropertyName", "equippedSkillsByProfession");
 
+                    b.Property<string>("FixedSkillsByProfession")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasAnnotation("Relational:JsonPropertyName", "fixedSkillsByProfession");
+
                     b.Property<double>("HastePercent")
                         .HasColumnType("REAL")
                         .HasAnnotation("Relational:JsonPropertyName", "hastePercent");

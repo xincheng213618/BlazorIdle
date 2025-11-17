@@ -43,6 +43,13 @@ namespace BlazorIdle.Shared.Models
         /// </summary>
         [JsonPropertyName("resource")]
         public ProfessionResourceConfig? Resource { get; set; }
+
+        /// <summary>
+        /// Phase 3+: 默认固定技能配置 - 用于角色创建时初始化
+        /// Phase 3+: Default fixed skills - used for character creation initialization
+        /// </summary>
+        [JsonPropertyName("defaultFixedSkills")]
+        public ProfessionDefaultFixedSkills? DefaultFixedSkills { get; set; }
     }
 
     /// <summary>
@@ -161,5 +168,26 @@ namespace BlazorIdle.Shared.Models
         /// </summary>
         [JsonPropertyName("gainPerCritExtra")]
         public int GainPerCritExtra { get; set; } = 1;
+    }
+
+    /// <summary>
+    /// Phase 3+: 默认固定技能配置 - 用于角色创建时初始化
+    /// Phase 3+: Default fixed skills configuration - used for character creation initialization
+    /// </summary>
+    public class ProfessionDefaultFixedSkills
+    {
+        /// <summary>
+        /// 普通攻击技能ID
+        /// Normal attack skill ID
+        /// </summary>
+        [JsonPropertyName("normalAttack")]
+        public string NormalAttack { get; set; } = "";
+        
+        /// <summary>
+        /// 特殊攻击技能ID
+        /// Special attack skill ID
+        /// </summary>
+        [JsonPropertyName("specialAttack")]
+        public string SpecialAttack { get; set; } = "";
     }
 }

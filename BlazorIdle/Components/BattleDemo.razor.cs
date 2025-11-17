@@ -339,7 +339,13 @@ namespace BlazorIdle.Components
                 CritMultiplier = SelectedCharacter.CritMultiplier,
                 VariancePct = SelectedCharacter.VariancePct,
                 ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0),
-                ActiveCombatProfessionId = SelectedCharacter.ActiveCombatProfessionId
+                ActiveCombatProfessionId = SelectedCharacter.ActiveCombatProfessionId,
+                // Phase 3+: 从CharacterData复制固定技能ID
+                // Phase 3+: Copy fixed skill IDs from CharacterData
+                NormalAttackSkillId = SelectedCharacter.FixedSkillsByProfession.TryGetValue(SelectedCharacter.ActiveCombatProfessionId, out var fixedSkills) 
+                    ? fixedSkills.NormalAttack : null,
+                SpecialAttackSkillId = SelectedCharacter.FixedSkillsByProfession.TryGetValue(SelectedCharacter.ActiveCombatProfessionId, out var fixedSkills2) 
+                    ? fixedSkills2.SpecialAttack : null
             };
 
             // 玩家队伍
@@ -493,7 +499,13 @@ namespace BlazorIdle.Components
                 CritMultiplier = SelectedCharacter.CritMultiplier,
                 VariancePct = SelectedCharacter.VariancePct,
                 ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0),
-                ActiveCombatProfessionId = SelectedCharacter.ActiveCombatProfessionId
+                ActiveCombatProfessionId = SelectedCharacter.ActiveCombatProfessionId,
+                // Phase 3+: 从CharacterData复制固定技能ID
+                // Phase 3+: Copy fixed skill IDs from CharacterData
+                NormalAttackSkillId = SelectedCharacter.FixedSkillsByProfession.TryGetValue(SelectedCharacter.ActiveCombatProfessionId, out var fixedSkills) 
+                    ? fixedSkills.NormalAttack : null,
+                SpecialAttackSkillId = SelectedCharacter.FixedSkillsByProfession.TryGetValue(SelectedCharacter.ActiveCombatProfessionId, out var fixedSkills2) 
+                    ? fixedSkills2.SpecialAttack : null
             };
 
             playerTeam = new BattleTeam<Character>("player_team", "玩家队伍", TeamType.Player);

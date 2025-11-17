@@ -247,6 +247,27 @@ public class CharacterController : ControllerBase
             };
         }
 
+        // Phase 3+: 初始化所有职业的固定技能 - 从职业配置读取默认技能
+        // Phase 3+: Initialize fixed skills for all professions - read default skills from profession config
+        character.FixedSkillsByProfession = new Dictionary<string, ProfessionFixedSkills>();
+        
+        foreach (var profAttrEntry in _gameConfig.ProfessionAttributes)
+        {
+            var profId = profAttrEntry.Key;
+            var profAttr = profAttrEntry.Value;
+            
+            // 如果职业配置中定义了默认固定技能，则初始化
+            // If profession config defines default fixed skills, initialize them
+            if (profAttr.DefaultFixedSkills != null)
+            {
+                character.FixedSkillsByProfession[profId] = new ProfessionFixedSkills
+                {
+                    NormalAttack = profAttr.DefaultFixedSkills.NormalAttack,
+                    SpecialAttack = profAttr.DefaultFixedSkills.SpecialAttack
+                };
+            }
+        }
+
         // 保存角色到数据库
         // Save character to database
         _context.Characters.Add(character);

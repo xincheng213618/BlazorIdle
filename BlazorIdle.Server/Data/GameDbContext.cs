@@ -104,6 +104,15 @@ public class GameDbContext : DbContext
                     v => System.Text.Json.JsonSerializer.Deserialize<HashSet<string>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new HashSet<string>()
                 )
                 .HasColumnType("TEXT");
+
+            // 配置固定技能为 JSON 列 (Step 2 Phase 3+)
+            // Configure fixed skills as JSON column - store Dictionary<string, ProfessionFixedSkills>
+            entity.Property(e => e.FixedSkillsByProfession)
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, ProfessionFixedSkills>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<string, ProfessionFixedSkills>()
+                )
+                .HasColumnType("TEXT");
         });
     }
 }
