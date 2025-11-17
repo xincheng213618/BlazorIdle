@@ -475,10 +475,6 @@ namespace BlazorIdle.Game
             var member = _playerTeam.GetMember(charId);
             if (member == null) return;
 
-            // Phase 3+: 根据配置决定使用的目标策略
-            // Phase 3+: Determine target policy based on config (overrides skill default)
-            string effectiveTargetPolicy = _config.AttackTargetPolicy ?? "CurrentTarget";
-            
             // 选择一个默认目标用于上下文（用于CurrentTarget策略）
             // Select a default target for context (used for CurrentTarget policy)
             var defaultTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
@@ -509,14 +505,17 @@ namespace BlazorIdle.Game
             };
             var result = _skillResolver.Cast(SkillIds.AttackBasic, ctx, opts);
 
-            // Phase 3+: 如果配置了目标策略覆盖，使用TargetSelector手动解析目标
-            // Phase 3+: If target policy override is configured, manually resolve targets using TargetSelector
+            // Phase 3+: 解析目标（优先使用SkillResolver的结果，配置覆盖时手动解析）
+            // Phase 3+: Resolve targets (prefer SkillResolver results, manually resolve if config overrides)
             List<string> targetIds;
+            
+            // 如果配置了目标策略覆盖，使用TargetSelector手动解析目标
+            // If target policy override is configured, manually resolve targets using TargetSelector
             if (!string.IsNullOrEmpty(_config.AttackTargetPolicy))
             {
-                // 使用配置的目标策略
-                // Use configured target policy
-                if (System.Enum.TryParse<Skills.TargetPolicy>(effectiveTargetPolicy, ignoreCase: true, out var policy))
+                // 使用配置的目标策略覆盖
+                // Use configured target policy override
+                if (System.Enum.TryParse<Skills.TargetPolicy>(_config.AttackTargetPolicy, ignoreCase: true, out var policy))
                 {
                     var targetSelector = new Skills.TargetSelector();
                     targetIds = targetSelector.ResolveTargets(policy, ctx, charId, defaultTargetId);
@@ -617,10 +616,6 @@ namespace BlazorIdle.Game
             var member = _playerTeam.GetMember(charId);
             if (member == null) return;
 
-            // Phase 3+: 根据配置决定使用的目标策略（支持覆盖）
-            // Phase 3+: Determine target policy based on config (supports override)
-            string effectiveTargetPolicy = _config.SpecialTargetPolicy ?? (_config.SpecialIsAoe ? "EnemiesAll" : "CurrentTarget");
-            
             // 选择一个默认目标用于上下文
             // Select a default target for context
             var defaultTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
@@ -651,14 +646,17 @@ namespace BlazorIdle.Game
             };
             var result = _skillResolver.Cast(SkillIds.SpecialPulse, ctx, opts);
 
-            // Phase 3+: 解析目标（支持配置覆盖）
-            // Phase 3+: Resolve targets (supports config override)
+            // Phase 3+: 解析目标（优先使用配置覆盖，然后向后兼容SpecialIsAoe，最后使用SkillResolver结果）
+            // Phase 3+: Resolve targets (config override first, then backward compat SpecialIsAoe, then SkillResolver results)
             List<string> targetIds;
+            
+            // 如果配置了目标策略覆盖，使用TargetSelector手动解析目标
+            // If target policy override is configured, manually resolve targets using TargetSelector
             if (!string.IsNullOrEmpty(_config.SpecialTargetPolicy))
             {
-                // 使用配置的目标策略
-                // Use configured target policy
-                if (System.Enum.TryParse<Skills.TargetPolicy>(effectiveTargetPolicy, ignoreCase: true, out var policy))
+                // 使用配置的目标策略覆盖
+                // Use configured target policy override
+                if (System.Enum.TryParse<Skills.TargetPolicy>(_config.SpecialTargetPolicy, ignoreCase: true, out var policy))
                 {
                     var targetSelector = new Skills.TargetSelector();
                     targetIds = targetSelector.ResolveTargets(policy, ctx, charId, defaultTargetId);
