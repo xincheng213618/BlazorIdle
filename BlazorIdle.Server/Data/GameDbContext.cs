@@ -95,6 +95,15 @@ public class GameDbContext : DbContext
                     v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, EquippedSkillsConfig>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<string, EquippedSkillsConfig>()
                 )
                 .HasColumnType("TEXT");
+
+            // 配置账号标记为 JSON 列 (Step 2 Phase 2.5+)
+            // Configure account flags as JSON column
+            entity.Property(e => e.AccountFlags)
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => System.Text.Json.JsonSerializer.Deserialize<HashSet<string>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new HashSet<string>()
+                )
+                .HasColumnType("TEXT");
         });
     }
 }
