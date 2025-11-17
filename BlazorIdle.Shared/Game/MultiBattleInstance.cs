@@ -519,7 +519,7 @@ namespace BlazorIdle.Game
                 if (skillDef?.Conditions != null)
                 {
                     var conditionChecker = new ConditionChecker();
-                    if (!conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: true))
+                    if (!conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: true, casterId: casterId))
                     {
                         // 条件不满足，跳过技能施放
                         // Conditions not met, skip skill casting
@@ -655,7 +655,7 @@ namespace BlazorIdle.Game
                 if (skillDef?.Conditions != null)
                 {
                     var conditionChecker = new ConditionChecker();
-                    if (!conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: false))
+                    if (!conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: false, casterId: casterId))
                     {
                         // 条件不满足，跳过技能施放
                         // Conditions not met, skip skill casting

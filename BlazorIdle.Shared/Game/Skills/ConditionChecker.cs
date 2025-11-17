@@ -17,8 +17,9 @@ namespace BlazorIdle.Game.Skills
         /// <param name="skill">技能定义 / Skill definition</param>
         /// <param name="context">战斗上下文 / Battle context</param>
         /// <param name="isCasterPlayer">施法者是否为玩家 / Whether the caster is a player</param>
+        /// <param name="casterId">施法者ID（可选，用于查找 BuffOwner）/ Caster ID (optional, for finding BuffOwner)</param>
         /// <returns>是否满足所有条件 / Whether all conditions are met</returns>
-        public bool CheckConditions(SkillDef skill, BattleContext context, bool isCasterPlayer)
+        public bool CheckConditions(SkillDef skill, BattleContext context, bool isCasterPlayer, string? casterId = null)
         {
             // 如果没有定义条件，默认满足
             // If no conditions are defined, default to satisfied
@@ -27,35 +28,118 @@ namespace BlazorIdle.Game.Skills
 
             var conditions = skill.Conditions;
 
-            // 获取施法者的 BuffOwner
-            // Get caster's BuffOwner
-            IBuffOwner? caster = isCasterPlayer 
-                ? (IBuffOwner?)context.PlayerBuffOwner 
-                : (context.Enemy != null && context.EnemyBuffOwners != null && context.Enemy.MonsterId != null
-                    ? context.EnemyBuffOwners.GetValueOrDefault(context.Enemy.MonsterId)
-                    : null);
-
-            if (caster == null)
-                return false; // 无法获取施法者信息，条件检查失败
-
-            // 检查 HP 条件
-            // Check HP conditions
-            if (!CheckHpCondition(caster, conditions.HpBelowPct, conditions.HpAbovePct))
+            // 检查 HP 条件（可以直接从 Character/Enemy 获取，不需要 BuffOwner）
+            // Check HP conditions (can get directly from Character/Enemy, don't need BuffOwner)
+            if (!CheckHpConditionFromContext(context, isCasterPlayer, conditions.HpBelowPct, conditions.HpAbovePct))
                 return false;
 
-            // 检查 Buff 条件
-            // Check Buff conditions
-            if (!CheckBuffCondition(caster, conditions.RequireBuffId, conditions.ForbidBuffId))
+            // 获取施法者的 BuffOwner（用于 Buff 和资源条件）
+            // Get caster's BuffOwner (for Buff and resource conditions)
+            IBuffOwner? caster = null;
+            if (isCasterPlayer)
+            {
+                caster = context.PlayerBuffOwner;
+            }
+            else
+            {
+                // 对于怪物，优先使用 casterId 查找 BuffOwner
+                // For monsters, prefer using casterId to find BuffOwner
+                if (casterId != null && context.EnemyBuffOwners != null)
+                {
+                    caster = context.EnemyBuffOwners.GetValueOrDefault(casterId);
+                }
+                // 后备：尝试使用 Enemy.MonsterId
+                // Fallback: try using Enemy.MonsterId
+                else if (context.Enemy != null && context.EnemyBuffOwners != null && context.Enemy.MonsterId != null)
+                {
+                    caster = context.EnemyBuffOwners.GetValueOrDefault(context.Enemy.MonsterId);
+                }
+            }
+
+            // 检查 Buff 条件（需要 BuffOwner）
+            // Check Buff conditions (need BuffOwner)
+            if (conditions.RequireBuffId != null || conditions.ForbidBuffId != null)
+            {
+                if (caster == null)
+                    return false; // 需要 BuffOwner 但无法获取
+                
+                if (!CheckBuffCondition(caster, conditions.RequireBuffId, conditions.ForbidBuffId))
+                    return false;
+            }
+
+            // 检查资源条件（需要 BuffOwner）
+            // Check Resource conditions (need BuffOwner)
+            if (conditions.RequireResource != null && conditions.RequireResource.Count > 0)
+            {
+                if (caster == null)
+                    return false; // 需要 BuffOwner 但无法获取
+                
+                if (!CheckResourceCondition(caster, conditions.RequireResource))
+                    return false;
+            }
+
+            // 检查 Buff 层数条件（需要 BuffOwner）
+            // Check Buff stack conditions (need BuffOwner)
+            if (conditions.RequireBuffStacks != null && conditions.RequireBuffStacks.Count > 0)
+            {
+                if (caster == null)
+                    return false; // 需要 BuffOwner 但无法获取
+                
+                if (!CheckBuffStackCondition(caster, conditions.RequireBuffStacks))
+                    return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 从战斗上下文检查 HP 百分比条件
+        /// Check HP percentage conditions from battle context
+        /// </summary>
+        /// <param name="context">战斗上下文 / Battle context</param>
+        /// <param name="isCasterPlayer">施法者是否为玩家 / Whether the caster is a player</param>
+        /// <param name="hpBelowPct">HP 必须低于此百分比（可选）/ HP must be below this percentage (optional)</param>
+        /// <param name="hpAbovePct">HP 必须高于此百分比（可选）/ HP must be above this percentage (optional)</param>
+        /// <returns>是否满足 HP 条件 / Whether HP conditions are met</returns>
+        private bool CheckHpConditionFromContext(BattleContext context, bool isCasterPlayer, double? hpBelowPct, double? hpAbovePct)
+        {
+            // 如果没有 HP 条件，直接通过
+            // If no HP conditions, pass directly
+            if (!hpBelowPct.HasValue && !hpAbovePct.HasValue)
+                return true;
+
+            // 获取施法者的当前 HP 和最大 HP
+            // Get caster's current HP and max HP
+            int currentHp, maxHp;
+            if (isCasterPlayer)
+            {
+                if (context.Player == null)
+                    return false;
+                currentHp = context.Player.Hp;
+                maxHp = context.Player.MaxHp;
+            }
+            else
+            {
+                if (context.Enemy == null)
+                    return false;
+                currentHp = context.Enemy.Hp;
+                maxHp = context.Enemy.MaxHp;
+            }
+
+            // 计算当前 HP 百分比
+            // Calculate current HP percentage
+            double currentHpPct = maxHp > 0 
+                ? (currentHp * 100.0 / maxHp) 
+                : 0.0;
+
+            // 检查 HP 上限条件
+            // Check HP upper bound condition
+            if (hpBelowPct.HasValue && currentHpPct >= hpBelowPct.Value)
                 return false;
 
-            // 检查资源条件
-            // Check Resource conditions
-            if (!CheckResourceCondition(caster, conditions.RequireResource))
-                return false;
-
-            // 检查 Buff 层数条件
-            // Check Buff stack conditions
-            if (!CheckBuffStackCondition(caster, conditions.RequireBuffStacks))
+            // 检查 HP 下限条件
+            // Check HP lower bound condition
+            if (hpAbovePct.HasValue && currentHpPct <= hpAbovePct.Value)
                 return false;
 
             return true;
