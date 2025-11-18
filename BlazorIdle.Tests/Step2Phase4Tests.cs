@@ -652,6 +652,133 @@ namespace BlazorIdle.Tests
 
         #endregion
 
+        #region Boundary Value Tests (6 tests)
+
+        [Fact]
+        public void ConditionChecker_HpBelowPct_HandlesZeroCorrectly()
+        {
+            // Arrange
+            var checker = new ConditionChecker();
+            var player = new Character { MaxHp = 200, Hp = 0 }; // 0% HP
+            var buffOwner = CreateBuffOwner(player);
+            var skill = CreateSkillWithConditions(new SkillConditions { HpBelowPct = 50.0 });
+            var context = CreateContext(player, buffOwner);
+
+            // Act
+            var result = checker.CheckConditions(skill, context, isCasterPlayer: true);
+
+            // Assert
+            Assert.True(result); // 0% < 50%, should pass
+        }
+
+        [Fact]
+        public void ConditionChecker_HpAbovePct_HandlesFullHpCorrectly()
+        {
+            // Arrange
+            var checker = new ConditionChecker();
+            var player = new Character { MaxHp = 200, Hp = 200 }; // 100% HP
+            var buffOwner = CreateBuffOwner(player);
+            var skill = CreateSkillWithConditions(new SkillConditions { HpAbovePct = 50.0 });
+            var context = CreateContext(player, buffOwner);
+
+            // Act
+            var result = checker.CheckConditions(skill, context, isCasterPlayer: true);
+
+            // Assert
+            Assert.True(result); // 100% > 50%, should pass
+        }
+
+        [Fact]
+        public void ConditionChecker_MaxHpZero_DefaultsToZeroPercent()
+        {
+            // Arrange - Edge case: MaxHp = 0 should be handled gracefully
+            var checker = new ConditionChecker();
+            var player = new Character { MaxHp = 0, Hp = 0 };
+            var buffOwner = CreateBuffOwner(player);
+            var skill = CreateSkillWithConditions(new SkillConditions { HpBelowPct = 50.0 });
+            var context = CreateContext(player, buffOwner);
+
+            // Act
+            var result = checker.CheckConditions(skill, context, isCasterPlayer: true);
+
+            // Assert
+            Assert.True(result); // 0% < 50%, should pass (maxHp=0 treated as 0%)
+        }
+
+        [Fact]
+        public void ConditionChecker_RequireResource_HandlesZeroRequirement()
+        {
+            // Arrange - Edge case: requiring 0 resources should always pass if bucket exists
+            var checker = new ConditionChecker();
+            var player = new Character { MaxHp = 200, Hp = 200 };
+            var buffOwner = CreateBuffOwnerWithResources(player);
+            buffOwner.Buckets!.GetBucket("mana")!.ForceConsume(10, "test"); // Drain to 0
+            
+            var skill = CreateSkillWithConditions(new SkillConditions
+            {
+                RequireResource = new Dictionary<string, int> { { "mana", 0 } }
+            });
+            var context = CreateContext(player, buffOwner);
+
+            // Act
+            var result = checker.CheckConditions(skill, context, isCasterPlayer: true);
+
+            // Assert
+            Assert.True(result); // 0 >= 0, should pass
+        }
+
+        [Fact]
+        public void ConditionChecker_RequireBuffStacks_HandlesExactMatch()
+        {
+            // Arrange - Test exact stack count requirement
+            var checker = new ConditionChecker();
+            var player = new Character { MaxHp = 200, Hp = 200 };
+            var buffOwner = CreateBuffOwner(player);
+            
+            var buff = CreateTestBuff("test_buff", buffOwner);
+            buff.Stacks = 3; // Exactly 3 stacks
+            buffOwner.ApplyBuff(buff);
+            
+            var skill = CreateSkillWithConditions(new SkillConditions
+            {
+                RequireBuffStacks = new Dictionary<string, int> { { "test_buff", 3 } }
+            });
+            var context = CreateContext(player, buffOwner);
+
+            // Act
+            var result = checker.CheckConditions(skill, context, isCasterPlayer: true);
+
+            // Assert
+            Assert.True(result); // 3 >= 3, should pass
+        }
+
+        [Fact]
+        public void ConditionChecker_RequireBuffStacks_FailsWithOneStackShort()
+        {
+            // Arrange - Test one stack short of requirement
+            var checker = new ConditionChecker();
+            var player = new Character { MaxHp = 200, Hp = 200 };
+            var buffOwner = CreateBuffOwner(player);
+            
+            var buff = CreateTestBuff("test_buff", buffOwner);
+            buff.Stacks = 2; // One short of requirement
+            buffOwner.ApplyBuff(buff);
+            
+            var skill = CreateSkillWithConditions(new SkillConditions
+            {
+                RequireBuffStacks = new Dictionary<string, int> { { "test_buff", 3 } }
+            });
+            var context = CreateContext(player, buffOwner);
+
+            // Act
+            var result = checker.CheckConditions(skill, context, isCasterPlayer: true);
+
+            // Assert
+            Assert.False(result); // 2 < 3, should fail
+        }
+
+        #endregion
+
         #region Helper Methods
 
         private BattleContext CreateContext(Character player, CharacterBuffOwner buffOwner)
