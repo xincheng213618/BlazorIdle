@@ -44,11 +44,18 @@ namespace BlazorIdle.Game
         private readonly ConditionChecker _conditionChecker = new();
         
         // Phase 5: 冷却和资源管理器 / Cooldown and resource managers
+        // 这些管理器实例被 AutoCastEngine 和 WindowExecutor 共享，确保状态一致性
+        // These manager instances are shared by AutoCastEngine and WindowExecutor to ensure state consistency
         private readonly CooldownManager _cooldownManager = new();
         private readonly ResourceManager _resourceManager = new();
         
         // Phase 9: AutoCastEngine for unified skill scheduling / AutoCastEngine 统一技能调度
         private readonly AutoCastEngine _autoCastEngine;
+        
+        // Phase 6: WindowExecutor for window-based skill execution / WindowExecutor 用于窗口化技能执行
+        // 使用相同的 _cooldownManager 和 _resourceManager 实例以保持状态同步
+        // Uses the same _cooldownManager and _resourceManager instances to maintain state synchronization
+        private readonly WindowExecutor _windowExecutor;
         
         // Phase 9: Character data mapping for skill selection / 角色数据映射用于技能选择
         private readonly Dictionary<string, Shared.Models.CharacterData>? _characterDataMap;
@@ -144,6 +151,9 @@ namespace BlazorIdle.Game
             
             // Phase 9: 初始化 AutoCastEngine / Initialize AutoCastEngine
             _autoCastEngine = new AutoCastEngine(_skillRepository, _conditionChecker, _cooldownManager, _resourceManager);
+            
+            // Phase 6: 初始化 WindowExecutor / Initialize WindowExecutor
+            _windowExecutor = new WindowExecutor(_skillRepository, _conditionChecker, _cooldownManager, _resourceManager);
 
             InitializeTracks(preservedResources);
         }
@@ -548,8 +558,12 @@ namespace BlazorIdle.Game
                     }
                 }
 
-                // Phase 5: 检查冷却时间
-                // Phase 5: Check cooldown
+                // Phase 5 & 6: 二次检查冷却和资源（必要的安全检查）
+                // Phase 5 & 6: Double-check cooldown and resources (necessary safety check)
+                // WindowExecutor 在选择技能时已检查，但在选择和执行之间可能有其他技能消耗资源或启动冷却
+                // WindowExecutor checks during selection, but resources may be consumed or cooldowns started between selection and execution
+                // 这个检查防止在同一窗口内多个技能执行时的竞争条件
+                // This check prevents race conditions when multiple skills execute in the same window
                 if (skillDef != null && !_cooldownManager.IsReady(skillId))
                 {
                     // 技能还在冷却中，跳过施放
@@ -557,8 +571,8 @@ namespace BlazorIdle.Game
                     return;
                 }
 
-                // Phase 5: 检查资源消耗
-                // Phase 5: Check resource cost
+                // Phase 5 & 6: 检查资源消耗（二次验证，见上方注释）
+                // Phase 5 & 6: Check resource cost (double verification, see comment above)
                 if (skillDef != null && !_resourceManager.CheckResourceCost(skillDef, ctx))
                 {
                     // 资源不足，跳过施放
@@ -847,20 +861,40 @@ namespace BlazorIdle.Game
                 CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
             };
 
-            // PreAttack 窗口：检查是否有施法技能要释放
-            // PreAttack window: Check if there's a cast skill to release
-            var castSkill = _autoCastEngine.SelectCastSkill(characterData, character.ActiveCombatProfessionId, context);
+            // Phase 6: PreAttack 窗口：使用 WindowExecutor 检查是否有施法技能要释放
+            // Phase 6: PreAttack window: Use WindowExecutor to check if there's a cast skill to release
+            var castSkills = _windowExecutor.ExecuteWindow(WindowType.PreAttack, characterData, character.ActiveCombatProfessionId, context, gcdAlreadyUsed: false);
+            var castSkill = castSkills.FirstOrDefault();
 
             if (castSkill != null)
             {
+                // === 窗口执行路径：PreAttack → Cast → PostCast ===
+                // === Window execution path: PreAttack → Cast → PostCast ===
+                
                 // 执行施法技能
                 // Execute cast skill
                 ExecuteSkill(charId, castSkill.Id, "preattack", isCasterPlayer: true, EventSource.Cast);
                 // TODO: 实现施法进度条和 AttackTrack 暂停机制
                 // TODO: Implement casting progress bar and AttackTrack pause mechanism
+                
+                // Phase 6: PostCast 窗口：施法完成后执行瞬发技能（AllowCoTriggerAfterCast=true）
+                // Phase 6: PostCast window: Execute instant skills after casting (AllowCoTriggerAfterCast=true)
+                // 注意：按照设计，所有施法技能（ReleaseType=cast）应该都是 GCD
+                // Note: By design, all cast skills (ReleaseType=cast) should be GCD
+                // 但为了代码健壮性，仍然检查 IsGcd 属性而不是硬编码 true
+                // But for code robustness, we still check IsGcd property instead of hardcoding true
+                bool castSkillIsGcd = castSkill.IsGcd;
+                var postCastSkills = _windowExecutor.ExecuteWindow(WindowType.PostCast, characterData, character.ActiveCombatProfessionId, context, castSkillIsGcd);
+                foreach (var skill in postCastSkills)
+                {
+                    ExecuteSkill(charId, skill.Id, "postcast", isCasterPlayer: true, EventSource.PostCast);
+                }
             }
             else
             {
+                // === 窗口执行路径：PreAttack → NormalAttack → PostAttack ===
+                // === Window execution path: PreAttack → NormalAttack → PostAttack ===
+                
                 // 没有施法技能，执行普通攻击
                 // No cast skill, execute normal attack
                 string normalAttackSkillId = character.GetNormalAttackSkillId();
@@ -869,77 +903,13 @@ namespace BlazorIdle.Game
 
                 ExecuteSkill(charId, normalAttackSkillId, "attack", isCasterPlayer: true, EventSource.Attack);
 
-                // PostAttack 窗口：执行瞬发技能
-                // PostAttack window: Execute instant skills
-                var instantSkills = _autoCastEngine.ExecuteWindow(characterData, character.ActiveCombatProfessionId, context, normalAttackIsGcd, "PostAttack");
+                // Phase 6: PostAttack 窗口：使用 WindowExecutor 执行瞬发技能
+                // Phase 6: PostAttack window: Use WindowExecutor to execute instant skills
+                var instantSkills = _windowExecutor.ExecuteWindow(WindowType.PostAttack, characterData, character.ActiveCombatProfessionId, context, normalAttackIsGcd);
                 foreach (var skill in instantSkills)
                 {
                     ExecuteSkill(charId, skill.Id, "postattack", isCasterPlayer: true, EventSource.PostAttack);
                 }
-            }
-        }
-
-        /// <summary>
-        /// 处理角色普通攻击
-        /// Process character normal attack
-        /// </summary>
-        private void ProcessCharacterAttack(string charId, Character character)
-        {
-            var targetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
-            if (targetId == null) return;
-
-            var member = _playerTeam.GetMember(charId);
-            var target = _enemyTeam.GetMember(targetId);
-            if (member == null || target == null) return;
-
-            // 计算伤害
-            int damage = PlayerRollDamage(character.DamagePerAttack, character, true);
-
-            // 应用伤害
-            ApplyDamageToEnemy(charId, member, targetId, target, damage, EventSource.Attack);
-        }
-
-        /// <summary>
-        /// 处理角色特殊技能
-        /// Process character special skill
-        /// </summary>
-        private void ProcessCharacterSpecial(string charId, Character character)
-        {
-            var member = _playerTeam.GetMember(charId);
-            if (member == null) return;
-
-            if (_config.SpecialIsAoe)
-            {
-                // AOE技能 - 打击所有存活敌人
-                var aliveEnemies = _enemyTeam.GetAliveMemberIds();
-                int baseDamage = character.SpecialDamage;
-
-                foreach (var enemyId in aliveEnemies)
-                {
-                    var target = _enemyTeam.GetMember(enemyId);
-                    if (target == null) continue;
-
-                    // AOE伤害可以有衰减
-                    int damage = PlayerRollDamage(
-                        (int)(baseDamage * _config.AoeDamageMultiplier),
-                        character,
-                        true
-                    );
-
-                    ApplyDamageToEnemy(charId, member, enemyId, target, damage, EventSource.Special, true);
-                }
-            }
-            else
-            {
-                // 单体技能
-                var targetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
-                if (targetId == null) return;
-
-                var target = _enemyTeam.GetMember(targetId);
-                if (target == null) return;
-
-                int damage = PlayerRollDamage(character.SpecialDamage, character, true);
-                ApplyDamageToEnemy(charId, member, targetId, target, damage, EventSource.Special);
             }
         }
 

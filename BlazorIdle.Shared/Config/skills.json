@@ -1,3 +1,10 @@
+// 技能配置文件 - Skill Configuration File
+// 
+// 注意 / Note:
+// - AOE 判定由 targetPolicy 属性决定（例如 "enemies_all" 表示 AOE）
+// - AOE is determined by targetPolicy (e.g., "enemies_all" means AOE)
+// - 不再使用 isAoe 属性 / isAoe property is no longer used
+//
 [
   {
     "id": "warrior_attack_basic",
@@ -7,13 +14,15 @@
     "slotType": "passive",
     "fixed": true,
     "releaseType": "instant",
+    "isGcd": false,
     "targetPolicy": "current_target",
     "cooldownSec": 0,
-    "allowedProfessions": [ "warrior" ],
+    "allowedProfessions": [
+      "warrior"
+    ],
     "damage": {
       "coefAtk": 1.0,
-      "flat": 0,
-      "isAoe": false
+      "flat": 0
     },
     "gains": [
       {
@@ -32,7 +41,9 @@
     "releaseType": "instant",
     "targetPolicy": "self",
     "cooldownSec": 0,
-    "allowedProfessions": ["warrior"],
+    "allowedProfessions": [
+      "warrior"
+    ],
     "onCastBuffs": [
       {
         "op": "Apply",
@@ -60,7 +71,9 @@
     "isGcd": false,
     "targetPolicy": "self",
     "cooldownSec": 0,
-    "allowedProfessions": ["warrior"],
+    "allowedProfessions": [
+      "warrior"
+    ],
     "conditions": {
       "requireBuffStacks": {
         "warrior_stance": 3
@@ -89,15 +102,21 @@
     "isGcd": true,
     "targetPolicy": "current_target",
     "cooldownSec": 10.0,
-    "allowedProfessions": ["warrior"],
-    "unlock": { "minLevel": 1 },
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "unlock": {
+      "minLevel": 1
+    },
     "damage": {
       "coefAtk": 1.2,
-      "flat": 20,
-      "isAoe": false
+      "flat": 20
     },
     "gains": [
-      { "bucketId": "rage", "amount": 2 }
+      {
+        "bucketId": "rage",
+        "amount": 2
+      }
     ]
   },
   {
@@ -111,15 +130,21 @@
     "isGcd": true,
     "targetPolicy": "current_target",
     "cooldownSec": 3.0,
-    "allowedProfessions": ["warrior"],
-    "unlock": { "minLevel": 3 },
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "unlock": {
+      "minLevel": 3
+    },
     "costs": [
-      { "bucketId": "rage", "amount": 3 }
+      {
+        "bucketId": "rage",
+        "amount": 3
+      }
     ],
     "damage": {
       "coefAtk": 1.5,
-      "flat": 30,
-      "isAoe": false
+      "flat": 30
     }
   },
   {
@@ -133,15 +158,21 @@
     "isGcd": true,
     "targetPolicy": "current_target",
     "cooldownSec": 10.0,
-    "allowedProfessions": ["warrior"],
-    "unlock": { "minLevel": 5 },
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "unlock": {
+      "minLevel": 5
+    },
     "costs": [
-      { "bucketId": "rage", "amount": 1 }
+      {
+        "bucketId": "rage",
+        "amount": 1
+      }
     ],
     "damage": {
       "coefAtk": 0.3,
-      "flat": 5,
-      "isAoe": false
+      "flat": 5
     },
     "onHitBuffs": [
       {
@@ -162,12 +193,15 @@
     "isGcd": false,
     "targetPolicy": "enemies_all",
     "cooldownSec": 10.0,
-    "allowedProfessions": ["warrior"],
-    "unlock": { "minLevel": 7 },
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "unlock": {
+      "minLevel": 7
+    },
     "damage": {
       "coefAtk": 0.8,
-      "flat": 10,
-      "isAoe": true
+      "flat": 10
     }
   },
   {
@@ -181,8 +215,12 @@
     "isGcd": true,
     "targetPolicy": "self",
     "cooldownSec": 30.0,
-    "allowedProfessions": ["warrior"],
-    "unlock": { "minLevel": 8 },
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "unlock": {
+      "minLevel": 8
+    },
     "onCastBuffs": [
       {
         "op": "Apply",
@@ -202,15 +240,21 @@
     "isGcd": true,
     "targetPolicy": "enemies_all",
     "cooldownSec": 6.0,
-    "allowedProfessions": ["warrior"],
-    "unlock": { "minLevel": 9 },
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "unlock": {
+      "minLevel": 9
+    },
     "costs": [
-      { "bucketId": "rage", "amount": 2 }
+      {
+        "bucketId": "rage",
+        "amount": 2
+      }
     ],
     "damage": {
       "coefAtk": 1.0,
-      "flat": 15,
-      "isAoe": true
+      "flat": 15
     }
   },
   {
@@ -224,18 +268,24 @@
     "isGcd": true,
     "targetPolicy": "current_target",
     "cooldownSec": 15.0,
-    "allowedProfessions": ["warrior"],
-    "unlock": { "minLevel": 10 },
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "unlock": {
+      "minLevel": 10
+    },
     "conditions": {
       "hpBelowPct": 50
     },
     "costs": [
-      { "bucketId": "rage", "amount": 5 }
+      {
+        "bucketId": "rage",
+        "amount": 5
+      }
     ],
     "damage": {
       "coefAtk": 2.5,
-      "flat": 50,
-      "isAoe": false
+      "flat": 50
     },
     "canCrit": true,
     "alwaysHits": true
@@ -250,14 +300,18 @@
     "releaseType": "instant",
     "targetPolicy": "current_target",
     "cooldownSec": 0,
-    "allowedProfessions": ["mage"],
+    "allowedProfessions": [
+      "mage"
+    ],
     "damage": {
       "coefAtk": 0.9,
-      "flat": 5,
-      "isAoe": false
+      "flat": 5
     },
     "gains": [
-      { "bucketId": "mana", "amount": 1 }
+      {
+        "bucketId": "mana",
+        "amount": 1
+      }
     ]
   },
   {
@@ -268,13 +322,14 @@
     "slotType": "passive",
     "fixed": true,
     "releaseType": "instant",
-    "targetPolicy": "self",
+    "targetPolicy": "current_target",
     "cooldownSec": 0,
-    "allowedProfessions": [ "mage" ],
+    "allowedProfessions": [
+      "mage"
+    ],
     "damage": {
       "coefAtk": 0.5,
-      "flat": 3,
-      "isAoe": true
+      "flat": 3
     },
     "onCastBuffs": [
       {
@@ -301,15 +356,21 @@
     "isGcd": true,
     "targetPolicy": "current_target",
     "cooldownSec": 4.0,
-    "allowedProfessions": ["mage"],
-    "unlock": { "minLevel": 1 },
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 1
+    },
     "costs": [
-      { "bucketId": "mana", "amount": 2 }
+      {
+        "bucketId": "mana",
+        "amount": 2
+      }
     ],
     "damage": {
       "coefAtk": 1.1,
-      "flat": 15,
-      "isAoe": false
+      "flat": 15
     },
     "onHitBuffs": [
       {
@@ -330,15 +391,21 @@
     "isGcd": true,
     "targetPolicy": "current_target",
     "cooldownSec": 3.0,
-    "allowedProfessions": ["mage"],
-    "unlock": { "minLevel": 3 },
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 3
+    },
     "costs": [
-      { "bucketId": "mana", "amount": 3 }
+      {
+        "bucketId": "mana",
+        "amount": 3
+      }
     ],
     "damage": {
       "coefAtk": 1.3,
-      "flat": 20,
-      "isAoe": false
+      "flat": 20
     }
   },
   {
@@ -354,15 +421,21 @@
     "allowCoTriggerAfterCast": true,
     "targetPolicy": "current_target",
     "cooldownSec": 8.0,
-    "allowedProfessions": ["mage"],
-    "unlock": { "minLevel": 5 },
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 5
+    },
     "costs": [
-      { "bucketId": "mana", "amount": 4 }
+      {
+        "bucketId": "mana",
+        "amount": 4
+      }
     ],
     "damage": {
       "coefAtk": 2.0,
-      "flat": 50,
-      "isAoe": false
+      "flat": 50
     },
     "onHitBuffs": [
       {
@@ -383,15 +456,21 @@
     "isGcd": true,
     "targetPolicy": "enemies_all",
     "cooldownSec": 12.0,
-    "allowedProfessions": ["mage"],
-    "unlock": { "minLevel": 6 },
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 6
+    },
     "costs": [
-      { "bucketId": "mana", "amount": 5 }
+      {
+        "bucketId": "mana",
+        "amount": 5
+      }
     ],
     "damage": {
       "coefAtk": 0.7,
-      "flat": 10,
-      "isAoe": true
+      "flat": 10
     },
     "onHitBuffs": [
       {
@@ -412,15 +491,21 @@
     "isGcd": false,
     "targetPolicy": "current_target",
     "cooldownSec": 5.0,
-    "allowedProfessions": ["mage"],
-    "unlock": { "minLevel": 7 },
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 7
+    },
     "costs": [
-      { "bucketId": "mana", "amount": 2 }
+      {
+        "bucketId": "mana",
+        "amount": 2
+      }
     ],
     "damage": {
       "coefAtk": 0.9,
-      "flat": 12,
-      "isAoe": false
+      "flat": 12
     }
   },
   {
@@ -434,10 +519,17 @@
     "isGcd": true,
     "targetPolicy": "self",
     "cooldownSec": 20.0,
-    "allowedProfessions": ["mage"],
-    "unlock": { "minLevel": 8 },
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 8
+    },
     "costs": [
-      { "bucketId": "mana", "amount": 3 }
+      {
+        "bucketId": "mana",
+        "amount": 3
+      }
     ],
     "onCastBuffs": [
       {
@@ -458,15 +550,21 @@
     "isGcd": true,
     "targetPolicy": "current_target",
     "cooldownSec": 6.0,
-    "allowedProfessions": ["mage"],
-    "unlock": { "minLevel": 9 },
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 9
+    },
     "costs": [
-      { "bucketId": "mana", "amount": 3 }
+      {
+        "bucketId": "mana",
+        "amount": 3
+      }
     ],
     "damage": {
       "coefAtk": 1.4,
-      "flat": 25,
-      "isAoe": false
+      "flat": 25
     }
   },
   {
@@ -480,10 +578,17 @@
     "isGcd": true,
     "targetPolicy": "self",
     "cooldownSec": 40.0,
-    "allowedProfessions": ["mage"],
-    "unlock": { "minLevel": 10 },
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 10
+    },
     "costs": [
-      { "bucketId": "mana", "amount": 8 }
+      {
+        "bucketId": "mana",
+        "amount": 8
+      }
     ],
     "onCastBuffs": [
       {
@@ -503,14 +608,18 @@
     "releaseType": "instant",
     "targetPolicy": "current_target",
     "cooldownSec": 0,
-    "allowedProfessions": ["rogue"],
+    "allowedProfessions": [
+      "rogue"
+    ],
     "damage": {
       "coefAtk": 0.95,
-      "flat": 0,
-      "isAoe": false
+      "flat": 0
     },
     "gains": [
-      { "bucketId": "energy", "amount": 1 }
+      {
+        "bucketId": "energy",
+        "amount": 1
+      }
     ],
     "triggers": [
       {
@@ -531,11 +640,12 @@
     "releaseType": "instant",
     "targetPolicy": "current_target",
     "cooldownSec": 0,
-    "allowedProfessions": ["rogue"],
+    "allowedProfessions": [
+      "rogue"
+    ],
     "damage": {
       "coefAtk": 0.8,
-      "flat": 5,
-      "isAoe": false
+      "flat": 5
     },
     "onCastBuffs": [
       {
@@ -556,7 +666,9 @@
     "isGcd": false,
     "targetPolicy": "self",
     "cooldownSec": 0,
-    "allowedProfessions": ["rogue"],
+    "allowedProfessions": [
+      "rogue"
+    ],
     "onCastBuffs": [
       {
         "op": "Apply",
@@ -576,15 +688,21 @@
     "isGcd": true,
     "targetPolicy": "current_target",
     "cooldownSec": 5.0,
-    "allowedProfessions": ["rogue"],
-    "unlock": { "minLevel": 1 },
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "unlock": {
+      "minLevel": 1
+    },
     "costs": [
-      { "bucketId": "energy", "amount": 2 }
+      {
+        "bucketId": "energy",
+        "amount": 2
+      }
     ],
     "damage": {
       "coefAtk": 1.3,
-      "flat": 18,
-      "isAoe": false
+      "flat": 18
     },
     "canCrit": true
   },
@@ -599,18 +717,24 @@
     "isGcd": true,
     "targetPolicy": "current_target",
     "cooldownSec": 0.0,
-    "allowedProfessions": ["rogue"],
-    "unlock": { "minLevel": 3 },
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "unlock": {
+      "minLevel": 3
+    },
     "conditions": {
       "requireBuffId": "rogue_combo"
     },
     "costs": [
-      { "bucketId": "energy", "amount": 3 }
+      {
+        "bucketId": "energy",
+        "amount": 3
+      }
     ],
     "damage": {
       "coefAtk": 1.8,
-      "flat": 30,
-      "isAoe": false
+      "flat": 30
     },
     "onCastBuffs": [
       {
@@ -630,15 +754,21 @@
     "isGcd": true,
     "targetPolicy": "current_target",
     "cooldownSec": 8.0,
-    "allowedProfessions": ["rogue"],
-    "unlock": { "minLevel": 5 },
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "unlock": {
+      "minLevel": 5
+    },
     "costs": [
-      { "bucketId": "energy", "amount": 2 }
+      {
+        "bucketId": "energy",
+        "amount": 2
+      }
     ],
     "damage": {
       "coefAtk": 0.8,
-      "flat": 10,
-      "isAoe": false
+      "flat": 10
     },
     "onHitBuffs": [
       {
@@ -659,15 +789,21 @@
     "isGcd": true,
     "targetPolicy": "enemies_all",
     "cooldownSec": 10.0,
-    "allowedProfessions": ["rogue"],
-    "unlock": { "minLevel": 6 },
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "unlock": {
+      "minLevel": 6
+    },
     "costs": [
-      { "bucketId": "energy", "amount": 3 }
+      {
+        "bucketId": "energy",
+        "amount": 3
+      }
     ],
     "damage": {
       "coefAtk": 0.9,
-      "flat": 12,
-      "isAoe": true
+      "flat": 12
     }
   },
   {
@@ -681,8 +817,12 @@
     "isGcd": true,
     "targetPolicy": "self",
     "cooldownSec": 25.0,
-    "allowedProfessions": ["rogue"],
-    "unlock": { "minLevel": 7 },
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "unlock": {
+      "minLevel": 7
+    },
     "onCastBuffs": [
       {
         "op": "Apply",
@@ -702,8 +842,12 @@
     "isGcd": true,
     "targetPolicy": "self",
     "cooldownSec": 30.0,
-    "allowedProfessions": ["rogue"],
-    "unlock": { "minLevel": 8 },
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "unlock": {
+      "minLevel": 8
+    },
     "onCastBuffs": [
       {
         "op": "Apply",
@@ -723,8 +867,12 @@
     "isGcd": false,
     "targetPolicy": "self",
     "cooldownSec": 20.0,
-    "allowedProfessions": ["rogue"],
-    "unlock": { "minLevel": 9 },
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "unlock": {
+      "minLevel": 9
+    },
     "onCastBuffs": [
       {
         "op": "Apply",
@@ -744,10 +892,17 @@
     "isGcd": true,
     "targetPolicy": "self",
     "cooldownSec": 40.0,
-    "allowedProfessions": ["rogue"],
-    "unlock": { "minLevel": 10 },
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "unlock": {
+      "minLevel": 10
+    },
     "costs": [
-      { "bucketId": "energy", "amount": 4 }
+      {
+        "bucketId": "energy",
+        "amount": 4
+      }
     ],
     "onCastBuffs": [
       {
@@ -767,14 +922,18 @@
     "releaseType": "instant",
     "targetPolicy": "current_target",
     "cooldownSec": 0,
-    "allowedProfessions": ["ranger"],
+    "allowedProfessions": [
+      "ranger"
+    ],
     "damage": {
       "coefAtk": 1.0,
-      "flat": 0,
-      "isAoe": false
+      "flat": 0
     },
     "gains": [
-      { "bucketId": "energy", "amount": 1 }
+      {
+        "bucketId": "energy",
+        "amount": 1
+      }
     ]
   },
   {
@@ -787,7 +946,9 @@
     "releaseType": "instant",
     "targetPolicy": "self",
     "cooldownSec": 0,
-    "allowedProfessions": ["ranger"],
+    "allowedProfessions": [
+      "ranger"
+    ],
     "onCastBuffs": [
       {
         "op": "Apply",
@@ -807,15 +968,21 @@
     "isGcd": true,
     "targetPolicy": "current_target",
     "cooldownSec": 4.0,
-    "allowedProfessions": ["ranger"],
-    "unlock": { "minLevel": 1 },
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "unlock": {
+      "minLevel": 1
+    },
     "costs": [
-      { "bucketId": "energy", "amount": 2 }
+      {
+        "bucketId": "energy",
+        "amount": 2
+      }
     ],
     "damage": {
       "coefAtk": 1.2,
-      "flat": 15,
-      "isAoe": false
+      "flat": 15
     }
   },
   {
@@ -829,15 +996,21 @@
     "isGcd": true,
     "targetPolicy": "enemies_all",
     "cooldownSec": 8.0,
-    "allowedProfessions": ["ranger"],
-    "unlock": { "minLevel": 3 },
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "unlock": {
+      "minLevel": 3
+    },
     "costs": [
-      { "bucketId": "energy", "amount": 3 }
+      {
+        "bucketId": "energy",
+        "amount": 3
+      }
     ],
     "damage": {
       "coefAtk": 0.9,
-      "flat": 10,
-      "isAoe": true
+      "flat": 10
     }
   },
   {
@@ -851,8 +1024,12 @@
     "isGcd": true,
     "targetPolicy": "enemies_all",
     "cooldownSec": 15.0,
-    "allowedProfessions": ["ranger"],
-    "unlock": { "minLevel": 5 },
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "unlock": {
+      "minLevel": 5
+    },
     "onHitBuffs": [
       {
         "op": "Apply",
@@ -873,15 +1050,21 @@
     "isGcd": true,
     "targetPolicy": "current_target",
     "cooldownSec": 10.0,
-    "allowedProfessions": ["ranger"],
-    "unlock": { "minLevel": 6 },
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "unlock": {
+      "minLevel": 6
+    },
     "costs": [
-      { "bucketId": "energy", "amount": 3 }
+      {
+        "bucketId": "energy",
+        "amount": 3
+      }
     ],
     "damage": {
       "coefAtk": 2.2,
-      "flat": 40,
-      "isAoe": false
+      "flat": 40
     }
   },
   {
@@ -895,8 +1078,12 @@
     "isGcd": true,
     "targetPolicy": "self",
     "cooldownSec": 30.0,
-    "allowedProfessions": ["ranger"],
-    "unlock": { "minLevel": 7 },
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "unlock": {
+      "minLevel": 7
+    },
     "onCastBuffs": [
       {
         "op": "Apply",
@@ -916,8 +1103,12 @@
     "isGcd": true,
     "targetPolicy": "self",
     "cooldownSec": 25.0,
-    "allowedProfessions": ["ranger"],
-    "unlock": { "minLevel": 8 },
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "unlock": {
+      "minLevel": 8
+    },
     "onCastBuffs": [
       {
         "op": "Apply",
@@ -937,15 +1128,21 @@
     "isGcd": true,
     "targetPolicy": "current_target",
     "cooldownSec": 6.0,
-    "allowedProfessions": ["ranger"],
-    "unlock": { "minLevel": 9 },
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "unlock": {
+      "minLevel": 9
+    },
     "costs": [
-      { "bucketId": "energy", "amount": 3 }
+      {
+        "bucketId": "energy",
+        "amount": 3
+      }
     ],
     "damage": {
       "coefAtk": 1.6,
-      "flat": 28,
-      "isAoe": false
+      "flat": 28
     }
   },
   {
@@ -959,8 +1156,12 @@
     "isGcd": true,
     "targetPolicy": "self",
     "cooldownSec": 45.0,
-    "allowedProfessions": ["ranger"],
-    "unlock": { "minLevel": 10 },
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "unlock": {
+      "minLevel": 10
+    },
     "onCastBuffs": [
       {
         "op": "Apply",

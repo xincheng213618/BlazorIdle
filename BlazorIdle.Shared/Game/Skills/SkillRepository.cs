@@ -85,8 +85,7 @@ namespace BlazorIdle.Game.Skills
                 DamageMultiplier = 1.0,
                 CanCrit = true,
                 AlwaysHits = true,
-                IsAoe = true,
-                TargetPolicy = "EnemiesAll", // Default: AoE to all enemies
+                TargetPolicy = "EnemiesAll", // AOE to all enemies - AOE determined by targetPolicy
                 // Phase 5: InstantHeal as direct skill effect (not buff)
                 InstantHeal = 20,
                 OnCastBuffs = new List<BuffOperation>

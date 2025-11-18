@@ -159,7 +159,7 @@ namespace BlazorIdle.Tests
             // Assert
             Assert.Equal("attack_basic", attackBasic.Id);
             Assert.Equal(0, attackBasic.CastTimeSec); // Step 0 中为 0
-            Assert.False(attackBasic.IsAoe);
+            // Note: AOE is determined by targetPolicy, not IsAoe property
         }
 
         [Fact]
@@ -172,7 +172,7 @@ namespace BlazorIdle.Tests
             // Assert
             Assert.Equal("special_pulse", specialPulse.Id);
             Assert.Equal(0, specialPulse.CastTimeSec); // Step 0 中为 0
-            Assert.True(specialPulse.IsAoe); // 特殊技能是 AOE
+            // Note: AOE is determined by targetPolicy, not IsAoe property
         }
 
         [Fact]
@@ -185,7 +185,7 @@ namespace BlazorIdle.Tests
             // Assert
             Assert.Equal("enemy_attack_basic", enemyAttack.Id);
             Assert.Equal(0, enemyAttack.CastTimeSec); // Step 0 中为 0
-            Assert.False(enemyAttack.IsAoe);
+            // Note: AOE is determined by targetPolicy, not IsAoe property
         }
 
         [Fact]

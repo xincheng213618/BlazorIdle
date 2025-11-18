@@ -111,13 +111,13 @@ namespace BlazorIdle.Tests
             {
                 Id = "fireball",
                 CastTimeSec = 1.5,
-                IsAoe = true
+                TargetPolicy = "enemies_all"  // AOE determined by targetPolicy
             };
 
             // Assert
             Assert.Equal("fireball", skillDef.Id);
             Assert.Equal(1.5, skillDef.CastTimeSec);
-            Assert.True(skillDef.IsAoe);
+            Assert.Equal("enemies_all", skillDef.TargetPolicy);
         }
 
         [Fact]
@@ -129,7 +129,7 @@ namespace BlazorIdle.Tests
             // Assert
             Assert.Equal("", skillDef.Id);
             Assert.Equal(0, skillDef.CastTimeSec);
-            Assert.False(skillDef.IsAoe);
+            Assert.Equal("current_target", skillDef.TargetPolicy);  // Default single target
         }
 
         [Fact]

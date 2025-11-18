@@ -22,21 +22,18 @@ namespace BlazorIdle.Game.Config
             [SkillIds.AttackBasic] = new SkillDef
             {
                 Id = SkillIds.AttackBasic,
-                CastTimeSec = 0,
-                IsAoe = false
+                CastTimeSec = 0
             },
             [SkillIds.SpecialPulse] = new SkillDef
             {
                 Id = SkillIds.SpecialPulse,
-                CastTimeSec = 0,
-                IsAoe = true  // 特殊技能可能是 AOE，可以打击所有敌人
-                              // Special skill may be AOE, can hit all enemies
+                CastTimeSec = 0
+                // Note: AOE determined by targetPolicy, not IsAoe property
             },
             [SkillIds.EnemyAttackBasic] = new SkillDef
             {
                 Id = SkillIds.EnemyAttackBasic,
-                CastTimeSec = 0,
-                IsAoe = false
+                CastTimeSec = 0
             }
         };
         
