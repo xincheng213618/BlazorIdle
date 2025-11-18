@@ -25,20 +25,15 @@
   {
     "id": "warrior_special_pulse",
     "name": "战士战吼",
-    "description": "发出战吼，积累架势。满3层架势时获得必定暴击buff（测试：10秒冷却，消耗3点怒气）",
+    "description": "发出战吼，积累架势并恢复20点生命值。满3层架势时获得必定暴击buff",
     "type": "passive",
     "slotType": "passive",
     "fixed": true,
     "releaseType": "instant",
     "targetPolicy": "self",
-    "cooldownSec": 10,
+    "cooldownSec": 0,
+    "instantHeal": 20,
     "allowedProfessions": ["warrior"],
-    "costs": [
-      {
-        "bucketId": "rage",
-        "amount": 3
-      }
-    ],
     "onCastBuffs": [
       {
         "op": "Apply",
