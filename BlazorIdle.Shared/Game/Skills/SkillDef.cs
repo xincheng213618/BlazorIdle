@@ -71,14 +71,10 @@ namespace BlazorIdle.Game.Skills
         /// <summary>
         /// 目标选择策略
         /// Target selection policy
+        /// 注意：AOE 判定由 targetPolicy 决定，不需要单独的 IsAoe 属性
+        /// Note: AOE is determined by targetPolicy, no separate IsAoe property needed
         /// </summary>
         public string TargetPolicy { get; set; } = "current_target";
-
-        /// <summary>
-        /// 是否为 AOE 技能（预留）
-        /// Whether this is an AOE skill (reserved)
-        /// </summary>
-        public bool IsAoe { get; set; } = false;
 
         /// <summary>
         /// 冷却时间（秒）

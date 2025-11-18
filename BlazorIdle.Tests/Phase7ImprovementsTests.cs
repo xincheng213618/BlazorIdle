@@ -86,8 +86,7 @@ namespace BlazorIdle.Tests
             skillDefs.Skills["invalid_skill"] = new SkillDef
             {
                 Id = "invalid_skill",
-                CastTimeSec = -1,
-                IsAoe = false
+                CastTimeSec = -1
             };
             
             // Act
@@ -105,8 +104,7 @@ namespace BlazorIdle.Tests
             skillDefs.Skills["key_id"] = new SkillDef
             {
                 Id = "different_id",
-                CastTimeSec = 0,
-                IsAoe = false
+                CastTimeSec = 0
             };
             
             // Act

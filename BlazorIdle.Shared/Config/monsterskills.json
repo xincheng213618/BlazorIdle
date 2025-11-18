@@ -1,3 +1,10 @@
+// 怪物技能配置文件 - Monster Skill Configuration File
+// 
+// 注意 / Note:
+// - AOE 判定由 targetPolicy 属性决定（例如 "enemies_all" 表示 AOE）
+// - AOE is determined by targetPolicy (e.g., "enemies_all" means AOE)
+// - 不再使用 isAoe 属性 / isAoe property is no longer used
+//
 [
   {
     "id": "monster_attack_basic",
@@ -12,8 +19,7 @@
     "allowedProfessions": [],
     "damage": {
       "coefAtk": 1.0,
-      "flat": 0,
-      "isAoe": false
+      "flat": 0
     }
   }
 ]

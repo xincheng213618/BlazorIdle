@@ -17,11 +17,5 @@ namespace BlazorIdle.Game.Skills
         /// Flat damage
         /// </summary>
         public int Flat { get; set; }
-
-        /// <summary>
-        /// 是否为AoE伤害
-        /// Whether this is AoE damage
-        /// </summary>
-        public bool IsAoe { get; set; }
     }
 }

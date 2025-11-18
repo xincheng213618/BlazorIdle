@@ -48,8 +48,7 @@ namespace BlazorIdle.Tests
                 Damage = new DamageDef
                 {
                     CoefAtk = 1.2,
-                    Flat = 20,
-                    IsAoe = false
+                    Flat = 20
                 },
                 Costs = new System.Collections.Generic.List<ResourceCost>
                 {
@@ -65,7 +64,6 @@ namespace BlazorIdle.Tests
             Assert.NotNull(skill.Damage);
             Assert.Equal(1.2, skill.Damage.CoefAtk);
             Assert.Equal(20, skill.Damage.Flat);
-            Assert.False(skill.Damage.IsAoe);
             Assert.NotNull(skill.Costs);
             Assert.Single(skill.Costs);
             Assert.Equal("rage", skill.Costs[0].BucketId);
@@ -200,14 +198,13 @@ namespace BlazorIdle.Tests
             var damage = new DamageDef
             {
                 CoefAtk = 1.5,
-                Flat = 30,
-                IsAoe = true
+                Flat = 30
             };
 
             // Assert
             Assert.Equal(1.5, damage.CoefAtk);
             Assert.Equal(30, damage.Flat);
-            Assert.True(damage.IsAoe);
+            // Note: AOE is determined by targetPolicy in SkillDef, not in DamageDef
         }
 
         #endregion
@@ -336,7 +333,7 @@ namespace BlazorIdle.Tests
             Assert.NotNull(slam.Damage);
             Assert.Equal(1.2, slam.Damage.CoefAtk);
             Assert.Equal(20, slam.Damage.Flat);
-            Assert.False(slam.Damage.IsAoe);
+            // Note: AOE is determined by targetPolicy in SkillDef, not in DamageDef
         }
 
         [Fact]
