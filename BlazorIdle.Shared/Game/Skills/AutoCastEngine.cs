@@ -50,14 +50,15 @@ namespace BlazorIdle.Game.Skills
         }
 
         /// <summary>
-        /// 主循环 - 每帧调用，负责技能选择和调度
-        /// Main loop - called each frame, handles skill selection and scheduling
+        /// 主循环 - 每帧调用，负责技能选择和调度（已弃用，使用 SelectCastSkill 和 ExecuteWindow 代替）
+        /// Main loop - called each frame, handles skill selection and scheduling (Deprecated, use SelectCastSkill and ExecuteWindow instead)
         /// </summary>
         /// <param name="deltaTime">距离上一帧的时间间隔（秒）</param>
         /// <param name="characterData">角色数据</param>
         /// <param name="professionId">当前职业ID</param>
         /// <param name="context">战斗上下文</param>
         /// <returns>选中要释放的技能ID，如果没有可用技能返回 null</returns>
+        [Obsolete("Use SelectCastSkill for PreAttack window and ExecuteWindow for PostAttack/PostCast windows")]
         public string? Tick(double deltaTime, CharacterData characterData, string professionId, BattleContext context)
         {
             if (characterData == null || context == null)
@@ -103,6 +104,126 @@ namespace BlazorIdle.Game.Skills
 
             // 没有可用技能
             return null;
+        }
+
+        /// <summary>
+        /// PreAttack 窗口：选择施法技能
+        /// PreAttack window: Select cast skill
+        /// </summary>
+        /// <param name="characterData">角色数据</param>
+        /// <param name="professionId">当前职业ID</param>
+        /// <param name="context">战斗上下文</param>
+        /// <returns>选中的施法技能，如果没有返回 null</returns>
+        public SkillDef? SelectCastSkill(CharacterData characterData, string professionId, BattleContext context)
+        {
+            if (characterData == null || context == null)
+                return null;
+
+            // 获取角色的技能槽位
+            var equippedSkills = GetEquippedSkills(characterData, professionId);
+            if (equippedSkills.Count == 0)
+                return null;
+
+            // 只选择施法技能
+            var castSkills = equippedSkills.Where(s => s.ReleaseType == "cast").ToList();
+
+            foreach (var skill in castSkills)
+            {
+                if (IsSkillAvailable(skill, context))
+                {
+                    RecordSkillSelection(skill.Id, "PreAttack-Cast");
+                    RecordSkillCastAttempt(skill.Id);
+                    return skill;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// PostAttack/PostCast 窗口：执行瞬发技能（支持 Window-GCD 互斥）
+        /// PostAttack/PostCast window: Execute instant skills (supports Window-GCD exclusion)
+        /// </summary>
+        /// <param name="characterData">角色数据</param>
+        /// <param name="professionId">当前职业ID</param>
+        /// <param name="context">战斗上下文</param>
+        /// <param name="gcdAlreadyUsed">GCD 槽位是否已被占用（例如普通攻击或施法技能占用）</param>
+        /// <param name="windowName">窗口名称（用于日志）</param>
+        /// <returns>可以释放的技能列表</returns>
+        public List<SkillDef> ExecuteWindow(CharacterData characterData, string professionId, BattleContext context, bool gcdAlreadyUsed, string windowName = "PostAttack")
+        {
+            var results = new List<SkillDef>();
+
+            if (characterData == null || context == null)
+                return results;
+
+            // 获取角色的技能槽位
+            var equippedSkills = GetEquippedSkills(characterData, professionId);
+            if (equippedSkills.Count == 0)
+                return results;
+
+            // 只选择瞬发技能
+            var instantSkills = equippedSkills.Where(s => s.ReleaseType == "instant").ToList();
+
+            foreach (var skill in instantSkills)
+            {
+                if (!IsSkillAvailable(skill, context))
+                    continue;
+
+                if (skill.IsGcd)
+                {
+                    // GCD 技能：只有当 GCD 槽位未被占用时才能释放
+                    if (gcdAlreadyUsed)
+                    {
+                        RecordSkillFailure(skill.Id, "GCD", $"GCD slot already used in {windowName} window");
+                        continue;
+                    }
+
+                    results.Add(skill);
+                    RecordSkillSelection(skill.Id, $"{windowName}-GCD");
+                    RecordSkillCastAttempt(skill.Id);
+                    gcdAlreadyUsed = true; // 占用 GCD 槽位
+                }
+                else
+                {
+                    // 非 GCD 技能：可以多个同时释放
+                    results.Add(skill);
+                    RecordSkillSelection(skill.Id, $"{windowName}-NonGCD");
+                    RecordSkillCastAttempt(skill.Id);
+                }
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// 检查技能是否可用（冷却、条件、资源）
+        /// Check if skill is available (cooldown, conditions, resources)
+        /// </summary>
+        private bool IsSkillAvailable(SkillDef skill, BattleContext context)
+        {
+            // 检查冷却
+            if (!_cooldownManager.IsReady(skill.Id))
+            {
+                RecordSkillFailure(skill.Id, "Cooldown", $"Remaining: {_cooldownManager.GetRemainingCooldown(skill.Id):F1}s");
+                return false;
+            }
+
+            // 检查条件
+            if (skill.Conditions != null && !_conditionChecker.CheckConditions(skill, context, isCasterPlayer: true))
+            {
+                RecordSkillFailure(skill.Id, "Condition", "Skill conditions not met");
+                return false;
+            }
+
+            // 检查资源
+            if (!_resourceManager.CheckResourceCost(skill, context))
+            {
+                RecordSkillFailure(skill.Id, "Resource", "Insufficient resources");
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>
