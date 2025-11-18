@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BlazorIdle.Game;
 using BlazorIdle.Game.Config;
+using BlazorIdle.Game.Skills;
 using BlazorIdle.Shared.Models;
 using Microsoft.AspNetCore.Components;
 
@@ -12,6 +13,8 @@ namespace BlazorIdle.Components
 {
     public partial class BattleDemo
     {
+        // Phase 9: SkillRepository for skill name lookup
+        private readonly SkillRepository _skillRepository = new SkillRepository();
         // ===== 可配置常量 - Configurable Constants =====
 
         // 战斗循环间隔（毫秒）- 控制游戏更新频率
@@ -709,14 +712,15 @@ namespace BlazorIdle.Components
                 _ => "未知"
             };
 
-            // Phase 9: 如果有技能ID，显示技能ID（技能名需要从 SkillRepository 获取，暂时显示ID）
-            // Phase 9: If skill ID exists, display skill ID (skill name needs SkillRepository, showing ID for now)
+            // Phase 9: 如果有技能ID，获取技能名称
+            // Phase 9: If skill ID exists, get skill name from repository
             string? skillName = null;
             if (!string.IsNullOrEmpty(ev.SkillId))
             {
-                // 简化显示：直接使用技能ID
-                // Simplified display: use skill ID directly
-                skillName = ev.SkillId;
+                var skillDef = _skillRepository.GetSkill(ev.SkillId);
+                // 使用技能名称，如果没有名称则fallback到ID
+                // Use skill name, fallback to ID if name is not available
+                skillName = !string.IsNullOrEmpty(skillDef?.Name) ? skillDef.Name : ev.SkillId;
             }
 
             var attackerName = ev.Attacker == ActorType.Player
