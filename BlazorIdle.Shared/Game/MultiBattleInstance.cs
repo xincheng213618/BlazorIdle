@@ -40,6 +40,9 @@ namespace BlazorIdle.Game
         private readonly Dictionary<string, Buffs.CharacterBuffOwner> _playerBuffOwners = new();
         private readonly Dictionary<string, Buffs.EnemyBuffOwner> _enemyBuffOwners = new();
         
+        // Phase 4: 条件检查器（单例复用）/ Condition checker (singleton reuse)
+        private readonly ConditionChecker _conditionChecker = new();
+        
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
         // Current implementation directly uses TrackState + SkillResolver for better clarity.
@@ -518,8 +521,7 @@ namespace BlazorIdle.Game
                 var skillDef = _skillRepository.GetSkillById(skillId);
                 if (skillDef?.Conditions != null)
                 {
-                    var conditionChecker = new ConditionChecker();
-                    if (!conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: true, casterId: casterId))
+                    if (!_conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: true, casterId: casterId))
                     {
                         // 条件不满足，跳过技能施放
                         // Conditions not met, skip skill casting
@@ -654,8 +656,7 @@ namespace BlazorIdle.Game
                 var skillDef = _skillRepository.GetSkillById(skillId);
                 if (skillDef?.Conditions != null)
                 {
-                    var conditionChecker = new ConditionChecker();
-                    if (!conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: false, casterId: casterId))
+                    if (!_conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: false, casterId: casterId))
                     {
                         // 条件不满足，跳过技能施放
                         // Conditions not met, skip skill casting
