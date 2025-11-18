@@ -221,23 +221,6 @@
     ]
   },
   {
-    "id": "instant_heal",
-    "name": "瞬间治疗",
-    "description": "立即恢复生命值",
-    "icon": "💚",
-    "kind": "Buff",
-    "durationSec": 0.1,
-    "stackingPolicy": "Refresh",
-    "maxStacks": 1,
-    "defaultTarget": "Self",
-    "effects": [
-      {
-        "type": "InstantHeal",
-        "amountPerTick": 20
-      }
-    ]
-  },
-  {
     "id": "regeneration_hot",
     "name": "持续恢复",
     "description": "持续恢复生命值（可叠加）",

@@ -20,7 +20,8 @@ namespace BlazorIdle.Tests
 
             // Act & Assert - Verify all Phase 3 migrated buffs exist
             Assert.True(repo.HasBuff("warrior_power_boost"));
-            Assert.True(repo.HasBuff("instant_heal"));
+            // Phase 5: instant_heal removed - now handled as skill direct effect
+            // Assert.True(repo.HasBuff("instant_heal"));
             Assert.True(repo.HasBuff("regeneration_hot"));
             Assert.True(repo.HasBuff("burning"));
             Assert.True(repo.HasBuff("weakened"));
@@ -51,12 +52,13 @@ namespace BlazorIdle.Tests
             Assert.Equal(BuffStackingPolicy.Refresh, warriorPowerBoost.StackingPolicy);
             Assert.Equal(3, warriorPowerBoost.Effects.Count);
 
-            // Assert - Verify instant_heal
-            Assert.NotNull(instantHeal);
-            Assert.Equal(BuffKind.Buff, instantHeal.Kind);
-            Assert.Equal(0.1, instantHeal.DurationSec);
-            Assert.Single(instantHeal.Effects);
-            Assert.Equal(BuffEffectType.InstantHeal, instantHeal.Effects[0].Type);
+            // Phase 5: InstantHeal removed from BuffEffect - now handled as skill direct effect
+            // Assert - Verify instant_heal (commented out - InstantHeal no longer in Buff system)
+            // Assert.NotNull(instantHeal);
+            // Assert.Equal(BuffKind.Buff, instantHeal.Kind);
+            // Assert.Equal(0.1, instantHeal.DurationSec);
+            // Assert.Single(instantHeal.Effects);
+            // Assert.Equal(BuffEffectType.InstantHeal, instantHeal.Effects[0].Type);
 
             // Assert - Verify regeneration_hot
             Assert.NotNull(regenHot);
@@ -97,7 +99,8 @@ namespace BlazorIdle.Tests
             // Assert
             Assert.NotNull(specialPulse);
             Assert.NotNull(specialPulse.OnCastBuffs);
-            Assert.Equal(5, specialPulse.OnCastBuffs.Count);
+            // Phase 5: instant_heal removed - now handled as skill direct effect (InstantHeal property)
+            Assert.Equal(4, specialPulse.OnCastBuffs.Count);
 
             // Verify all buff operations use BuffConfigId (not inline BuffTemplate)
             foreach (var buffOp in specialPulse.OnCastBuffs)
@@ -108,10 +111,14 @@ namespace BlazorIdle.Tests
 
             // Verify specific buff IDs
             Assert.Contains(specialPulse.OnCastBuffs, op => op.BuffConfigId == "warrior_power_boost");
-            Assert.Contains(specialPulse.OnCastBuffs, op => op.BuffConfigId == "instant_heal");
+            // Phase 5: instant_heal removed - now handled as skill direct effect
+            // Assert.Contains(specialPulse.OnCastBuffs, op => op.BuffConfigId == "instant_heal");
             Assert.Contains(specialPulse.OnCastBuffs, op => op.BuffConfigId == "regeneration_hot");
             Assert.Contains(specialPulse.OnCastBuffs, op => op.BuffConfigId == "burning");
             Assert.Contains(specialPulse.OnCastBuffs, op => op.BuffConfigId == "weakened");
+            
+            // Phase 5: Verify InstantHeal is now a direct skill property
+            Assert.Equal(20, specialPulse.InstantHeal);
         }
 
         [Fact]

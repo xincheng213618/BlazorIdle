@@ -487,48 +487,61 @@
 
 ### 阶段 5：资源消耗与冷却（P0 - 必须）
 
-**状态：** ⬜ 未开始
+**状态：** ✅ 已完成
 
 **目标：** 实现技能资源消耗和冷却时间管理，包括 InstantHeal 修复。
 
 **任务清单：**
 
-- [ ] 5.1 实现 CooldownManager 类
-  - 管理所有技能的冷却状态
-  - IsReady(skillId) 方法
-  - StartCooldown(skillId, duration) 方法
-  - TickCooldowns(deltaTime) 方法
+- [x] 5.1 实现 CooldownManager 类 ✅
+  - ✅ 管理所有技能的冷却状态
+  - ✅ IsReady(skillId) 方法
+  - ✅ StartCooldown(skillId, duration) 方法
+  - ✅ TickCooldowns(deltaTime) 方法
+  - ✅ GetRemainingCooldown(skillId) 方法
+  - ✅ ResetCooldown(skillId) / ResetAll() 方法
 
-- [ ] 5.2 资源消耗验证
-  - CheckResourceCost(skill, context) 方法
-  - 支持多个资源消耗（costs 数组）
-  - 瞬发技能：施放时消耗资源
-  - 施法技能：施法开始时消耗资源
+- [x] 5.2 资源消耗验证 ✅
+  - ✅ CheckResourceCost(skill, context) 方法
+  - ✅ 支持多个资源消耗（costs 数组）
+  - ✅ 支持旧格式（ResourceCosts 字典）
+  - ✅ 通过 PlayerBuffOwner.Buckets 访问资源系统
+  - ✅ 瞬发技能：施放时消耗资源
+  - ✅ 施法技能：施法开始时消耗资源
 
-- [ ] 5.3 资源获得处理
-  - ApplyResourceGains(skill, context) 方法
-  - 支持多个资源获得（gains 数组）
-  - 技能命中后获得资源
+- [x] 5.3 资源获得处理 ✅
+  - ✅ ApplyResourceGains(skill, context) 方法
+  - ✅ 支持多个资源获得（gains 数组）
+  - ✅ 支持旧格式（ResourceGains 字典）
+  - ✅ 技能命中后获得资源
+  - ✅ 资源获得自动 clamp 到上限
 
-- [ ] 5.4 **InstantHeal 修复**
-  - 移除 BuffEffectType.InstantHeal 枚举值
-  - 移除 BuffEffect.InstantHeal() 工厂方法
-  - 移除 BuffInstance.HasInstantHeal() 方法
-  - 移除 BuffInstance.GetInstantHealAmount() 方法
-  - 确认 SkillDef.InstantHeal 字段保留（作为技能直接效果）
-  - 确认 ApplyInstantHeal() 方法正确（直接治疗，不创建buff）
-  - 更新相关单元测试
+- [x] 5.4 **InstantHeal 修复** ✅
+  - ✅ 移除 BuffEffectType.InstantHeal 枚举值
+  - ✅ 移除 BuffEffect.InstantHeal() 工厂方法
+  - ✅ 移除 BuffInstance.HasInstantHeal() 方法
+  - ✅ 移除 BuffInstance.GetInstantHealAmount() 方法
+  - ✅ 确认 SkillDef.InstantHeal 字段保留（作为技能直接效果）
+  - ✅ 确认 ApplyInstantHeal() 方法正确（直接治疗，不创建buff）
+  - ✅ 更新相关单元测试（注释掉 3 个旧测试）
+  - ✅ 更新 BuffIcon.razor UI 组件
 
-- [ ] 5.5 集成到技能系统
-  - 技能施放前检查资源和冷却
-  - 技能施放后扣除资源、启动冷却
-  - 技能命中后应用资源获得
+- [x] 5.5 集成到技能系统 ✅
+  - ✅ 技能施放前检查资源和冷却（已在 MultiBattleInstance.ExecuteSkill 中集成）
+  - ✅ 技能施放后扣除资源、启动冷却（已在 MultiBattleInstance.ExecuteSkill 中集成）
+  - ✅ 技能命中后应用资源获得（通过 ApplyResourceChanges，已验证）
+  - ✅ 冷却时间在 AdvanceTick 中每帧更新（通过 TickCooldowns）
+  - ✅ 修复资源重复消耗问题（移除重复调用）
+  - ✅ **InstantHeal 支持目标选择**（支持治疗队友、AoE 治疗）
+  - ✅ Buff 操作已正确支持目标选择（通过 BuffTarget 类型）
+  - ✅ 资源操作正确应用到施法者（设计如此）
 
-- [ ] 5.6 单元测试（15 个）
-  - CooldownManager 测试（4 个）
-  - 资源消耗测试（4 个）
-  - 资源获得测试（3 个）
-  - InstantHeal 修复测试（4 个）
+- [x] 5.6 单元测试（15 个）✅
+  - ✅ CooldownManager 测试（4 个）
+  - ✅ 资源消耗测试（4 个）
+  - ✅ 资源获得测试（3 个）
+  - ✅ InstantHeal 修复测试（4 个）
+  - ✅ **测试结果：15/15 全部通过**
 
 **验收标准：**
 - ✅ 冷却时间正确管理
@@ -537,9 +550,110 @@
 - ✅ InstantHeal 作为技能直接效果，不创建buff
 - ✅ HoT 继续作为buff效果正确工作
 - ✅ 15 个单元测试全部通过
+- ✅ 所有原有测试继续通过（504 → 516 个测试，15 个新增全部通过）
+- ✅ **InstantHeal 支持目标选择**（自我、队友、AoE）
+- ✅ **Buff 操作正确支持目标选择**（通过 BuffTarget）
+- ✅ **资源操作正确应用到施法者**
+
+**实际工作量：** 4-5 小时（包含 InstantHeal 修复 1-2h）
+
+**实施说明：**
+- CooldownManager 和 ResourceManager 已实现并测试完成
+- InstantHeal 已从 Buff 系统移除，作为技能直接效果保留
+- 与现有资源系统完美集成（通过 BattleContext.PlayerBuffOwner.Buckets）
+- 保持向后兼容性（支持新旧格式）
+- ✅ CooldownManager 和 ResourceManager 已集成到 MultiBattleInstance.ExecuteSkill
+- ✅ 修复了资源重复消耗问题
+- ✅ InstantHeal 现在正确支持目标选择（可治疗队友、自我、AoE）
+- ✅ Buff 操作已验证正确支持目标选择
+- ✅ 资源操作已验证正确应用到施法者
+
+**完成日期：** 2025-11-18
+
+**关键修复：**
+1. 移除 buffs.json 中的 instant_heal buff（JSON 加载错误）
+2. 修复资源重复消耗（移除 ExecuteSkill 中的重复调用）
+3. 修复 InstantHeal 不生效（移出敌人目标循环）
+4. 修复 InstantHeal 硬编码目标（支持治疗队友）
+
+---
+
+## ⚠️ 实施顺序调整说明
+
+**调整日期：** 2025-11-18
+
+**原因：** 当前技能只能通过普攻（attack）和 special 触发，无法实现多技能自动释放逻辑。为了更好地测试 Window-GCD（阶段 6）和触发系统（阶段 7），需要先实现 AutoCastEngine 作为统一的技能调度框架。
+
+**新的实施顺序：**
+- ✅ 阶段 5：资源消耗与冷却
+- **→ 阶段 9（先行）：AutoCastEngine 核心框架**
+- → 阶段 6：Window-GCD 机制（集成到 AutoCastEngine）
+- → 阶段 7：触发类技能系统（集成到 AutoCastEngine）
+- → 阶段 8：施法技能集成
+- → 阶段 9.5：职业固定技能差异化
+- → 后续阶段...
+
+**优势：**
+- AutoCastEngine 提供统一的技能调度和协调框架
+- Window-GCD 和触发系统可以直接集成到 AutoCastEngine
+- 测试更容易（可以自动触发多个技能）
+- 避免在阶段 6、7 中编写临时测试代码
+
+---
+
+### 阶段 9（先行实施）：AutoCastEngine 核心框架（P0 - 必须）
+
+**状态：** ⬜ 未开始（**下一阶段**）
+
+**目标：** 实现 AutoCastEngine 核心框架，为后续 Window-GCD 和触发系统提供统一的技能调度基础。
+
+**实施说明：** 本阶段先行实施 AutoCastEngine 的核心功能，为阶段 6 和 7 提供测试基础。完整的优化和性能调优将在原阶段 9 完成。
+
+**任务清单：**
+
+- [ ] 9.1 实现 AutoCastEngine 核心类
+  - Tick(deltaTime) 主循环
+  - 基础技能选择策略
+  - 协调 CooldownManager
+  - 协调现有技能执行流程
+
+- [ ] 9.2 技能槽位管理
+  - 获取角色技能槽位列表
+  - 按槽位优先级排序
+  - 检查技能条件、资源、冷却
+
+- [ ] 9.3 基础执行流程
+  - 选择第一个可用技能
+  - 调用 ExecuteSkill 执行
+  - 处理执行结果
+
+- [ ] 9.4 事件记录
+  - 记录技能选择决策
+  - 记录技能施放事件
+  - 记录失败原因（条件/资源/冷却）
+
+- [ ] 9.5 集成到 MultiBattleInstance
+  - 替换现有的技能触发逻辑
+  - 保持向后兼容
+  - 支持多技能自动释放
+
+- [ ] 9.6 单元测试（15 个）
+  - 技能选择测试（5 个）
+  - 执行流程测试（5 个）
+  - 事件记录测试（3 个）
+  - 集成测试（2 个）
+
+**验收标准：**
+- ✅ AutoCastEngine 核心功能正常工作
+- ✅ 可以自动选择和释放多个技能
+- ✅ 技能选择策略正确
+- ✅ 与现有系统正确集成
+- ✅ 15 个单元测试全部通过
 - ✅ 所有原有测试继续通过
 
-**预计工作量：** 4-5 小时（包含 InstantHeal 修复 1-2h）
+**预计工作量：** 4-5 小时（核心框架，不含完整优化）
+
+**延迟实施：** Window 协调、性能优化、缓存策略等将在原阶段 9 完成
 
 ---
 
@@ -547,7 +661,9 @@
 
 **状态：** ⬜ 未开始
 
-**目标：** 实现 Window-GCD 窗口互斥机制，支持 3 个触发窗口。
+**目标：** 实现 Window-GCD 窗口互斥机制，支持 3 个触发窗口，并集成到 AutoCastEngine。
+
+**前置条件：** 需要阶段 9（AutoCastEngine 核心框架）完成
 
 **任务清单：**
 
@@ -573,8 +689,9 @@
   - 施法完成后允许触发瞬发技能
   - PostCast 窗口特殊处理
 
-- [ ] 6.5 集成到战斗循环
-  - Tick() 方法调用窗口执行
+- [ ] 6.5 集成到 AutoCastEngine
+  - AutoCastEngine.Tick() 调用窗口执行
+  - 协调 WindowExecutor 和 CooldownManager
   - 记录窗口执行事件
   - 处理窗口执行失败
 
@@ -601,7 +718,9 @@
 
 **状态：** ⬜ 未开始
 
-**目标：** 实现被动技能的概率触发机制（玩家和怪物通用）。
+**目标：** 实现被动技能的概率触发机制（玩家和怪物通用），并集成到 AutoCastEngine。
+
+**前置条件：** 需要阶段 9（AutoCastEngine 核心框架）和阶段 6（Window-GCD）完成
 
 **任务清单：**
 
@@ -628,9 +747,10 @@
   - 触发器可以覆盖技能条件
   - 支持强制触发（忽略冷却/资源）
 
-- [ ] 7.5 集成到战斗循环
+- [ ] 7.5 集成到 AutoCastEngine
   - 各触发时机正确调用
-  - 触发器与窗口系统协同工作
+  - 触发器与 WindowExecutor 协同工作
+  - 协调 TriggerProcessor 和其他组件
   - **怪物触发技能集成**（与玩家使用同一套触发系统）
 
 - [ ] 7.6 单元测试（22 个）
@@ -713,58 +833,59 @@
 
 ---
 
-### 阶段 9：AutoCastEngine（P0 - 必须）
+### 阶段 9：AutoCastEngine 完整实现（P0 - 必须）
 
 **状态：** ⬜ 未开始
 
-**目标：** 实现自动施放引擎，协调所有技能系统组件。
+**目标：** 完善 AutoCastEngine，实现高级协调和优化功能。
+
+**前置条件：** 阶段 9（核心框架）、6、7、8 已完成
+
+**说明：** AutoCastEngine 核心框架已在阶段 5 之后先行实施。本阶段完善高级功能和优化。
 
 **任务清单：**
 
-- [ ] 9.1 实现 AutoCastEngine 类
-  - Tick(deltaTime) 主循环
-  - 协调 CastingController
-  - 协调 WindowExecutor
-  - 协调 TriggerProcessor
-  - 协调 CooldownManager
+- [ ] 9.1 完善组件协调
+  - 协调 CastingController（阶段 8）
+  - 协调 WindowExecutor（阶段 6）
+  - 协调 TriggerProcessor（阶段 7）
+  - 完善与 CooldownManager 的集成
 
-- [ ] 9.2 技能选择策略
-  - 按槽位优先级选择
-  - 检查条件、资源、冷却
-  - 选择第一个可用技能
+- [ ] 9.2 高级技能选择策略
+  - 优化选择算法
+  - 智能优先级调整
+  - 条件复杂性处理
 
-- [ ] 9.3 执行流程
-  - PreAttack 窗口 → 选择施法技能
-  - 如果无施法技能 → 执行普攻
-  - PostAttack 窗口 → 执行瞬发技能
-  - PostCast 窗口 → 追加瞬发技能
+- [ ] 9.3 完整执行流程集成
+  - PreAttack 窗口完整流程
+  - PostAttack 窗口完整流程
+  - PostCast 窗口完整流程
+  - 施法技能特殊处理
 
-- [ ] 9.4 事件记录
-  - 记录技能选择决策
-  - 记录技能施放事件
-  - 记录失败原因（条件/资源/冷却）
-
-- [ ] 9.5 性能优化
+- [ ] 9.4 性能优化
   - 缓存技能列表
   - 避免重复查询
   - 最小化对象创建
+  - 批处理优化
 
-- [ ] 9.6 单元测试（20 个）
-  - 技能选择测试（6 个）
-  - 窗口协调测试（6 个）
-  - 执行流程测试（4 个）
-  - 事件记录测试（2 个）
+- [ ] 9.5 诊断和调试支持
+  - 详细的决策日志
+  - 性能分析支持
+  - 调试模式
+
+- [ ] 9.6 单元测试（5 个额外）
+  - 高级协调测试（2 个）
   - 性能测试（2 个）
+  - 边缘情况测试（1 个）
 
 **验收标准：**
-- ✅ 自动施放正确工作
-- ✅ 所有组件正确协同
-- ✅ 技能选择策略正确
-- ✅ 执行流程符合设计
-- ✅ 20 个单元测试全部通过
+- ✅ 所有组件完美协同
+- ✅ 性能优化达标
+- ✅ 高级功能正确工作
+- ✅ 5 个额外测试全部通过
 - ✅ 所有原有测试继续通过
 
-**预计工作量：** 5-6 小时
+**预计工作量：** 2-3 小时（仅完善和优化）
 
 ---
 
@@ -997,28 +1118,55 @@
 | 阶段 3 - 目标选择系统 | ✅ 已完成 | 2-3h | +15 |
 | **阶段 3+ - 怪物技能系统基础整合** | ✅ 已完成 | 2-3h | 0 (复用现有) |
 | **阶段 4 - 技能条件判定** | ✅ 已完成 | 3h | +21 |
-| 阶段 5 - 资源消耗与冷却（含 InstantHeal 修复） | ⬜ 未开始 | 4-5h | +15 |
+| **阶段 5 - 资源消耗与冷却（含 InstantHeal 修复）** | ✅ 已完成 | 4-5h | +15 |
+| **🔄 阶段 9（先行）- AutoCastEngine 核心框架** | ⬜ 未开始 | 4-5h | +15 |
 | 阶段 6 - Window-GCD 机制 | ⬜ 未开始 | 5-6h | +20 |
 | 阶段 7 - 触发类技能系统（玩家+怪物） | ⬜ 未开始 | 5-6h | +22 |
 | 阶段 8 - 施法技能集成 | ⬜ 未开始 | 4-5h | +15 |
-| 阶段 9 - AutoCastEngine | ⬜ 未开始 | 5-6h | +20 |
+| 阶段 9 - AutoCastEngine 完善 | ⬜ 未开始 | 2-3h | +5 |
 | **阶段 9.5 - 职业固定技能差异化** | ⬜ 未开始 | 4-5h | +20 |
 | 阶段 10 - UI 技能显示（扩展） | ⬜ 未开始 | 6-8h | - |
 | 阶段 11 - 集成测试验收 | ⬜ 未开始 | 6-8h | +30 |
 | 阶段 12 - 文档与交付 | ⬜ 未开始 | 4-5h | - |
 
-**总体进度：** 6/15 (40%) ✅✅✅✅✅✅⬜⬜⬜⬜⬜⬜⬜⬜⬜  
+**总体进度：** 7/15 (47%) ✅✅✅✅✅✅✅⬜⬜⬜⬜⬜⬜⬜⬜  
 **预计总工时：** 59-75 小时  
 **预计新增测试：** ~223 个（+3 超额完成）  
-**当前测试基线：** 494 个（阶段 4 完成后）  
-**完成后预计总测试：** ~696 个
+**当前测试基线：** 516 个（阶段 5 完成后）  
+**完成后预计总测试：** ~718 个
 
-**已完成工时：** ~15-20 小时  
-**剩余工时：** ~44-55 小时
+**已完成工时：** ~19-25 小时  
+**剩余工时：** ~40-50 小时
 
 ---
 
 ## 📝 更新日志
+
+### 2025-11-18 v5.1
+- 🔄 **实施顺序调整：** 阶段 9（AutoCastEngine 核心框架）提前到阶段 6 之前实施
+  - 原因：当前技能只能通过 attack 和 special 触发，无法测试多技能自动释放
+  - 方案：先实施 AutoCastEngine 核心框架，提供统一的技能调度基础
+  - 优势：Window-GCD 和触发系统可直接集成到 AutoCastEngine，测试更容易
+  - 新顺序：阶段 5 → **阶段 9（先行）** → 阶段 6 → 阶段 7 → 阶段 8 → 阶段 9（完善）
+- 📝 更新文档以反映新的实施顺序
+
+### 2025-11-18 v5.0
+- ✅ 完成阶段 5：资源消耗与冷却系统（4-5h，+15 测试）
+- ✅ CooldownManager 类实现完成（冷却管理）
+- ✅ ResourceManager 类实现完成（资源消耗和获得）
+- ✅ **InstantHeal 修复完成：** 从 Buff 系统移除，作为技能直接效果
+  - 移除 BuffEffectType.InstantHeal 枚举
+  - 移除 BuffEffect.InstantHeal() 工厂方法
+  - 移除 BuffInstance.HasInstantHeal() 和 GetInstantHealAmount() 方法
+  - 保留 SkillDef.InstantHeal 作为技能直接效果
+  - 更新 BuffIcon.razor UI 组件
+  - 注释掉 3 个旧测试
+- ✅ 15个单元测试全部通过（4 CooldownManager + 4 资源消耗 + 3 资源获得 + 4 InstantHeal 验证）
+- ✅ 516 个测试（504 原有 + 15 新增，其中 15 个新增全部通过）
+- ✅ 更新总体进度：7/15 (47%)
+- ✅ 更新当前测试基线：516 个（阶段 5 完成后）
+- ✅ 完成后预计总测试：~718 个
+- ⚠️ **待完成：** 需要将 CooldownManager 和 ResourceManager 集成到 MultiBattleInstance.ExecuteSkill
 
 ### 2025-11-17 v4.0
 - ✅ 完成阶段 4：技能条件判定系统（3h，+21 测试）

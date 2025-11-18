@@ -58,14 +58,14 @@ namespace BlazorIdle.Tests
             Assert.Equal(5, effect.AmountPerTick);
         }
 
-        [Fact]
-        public void BuffEffect_InstantHeal_CreatesCorrectly()
-        {
-            var effect = BuffEffect.InstantHeal(50);
-
-            Assert.Equal(BuffEffectType.InstantHeal, effect.Type);
-            Assert.Equal(50, effect.Value);
-        }
+        // Phase 5: InstantHeal removed from BuffEffect - now handled as skill direct effect
+        // [Fact]
+        // public void BuffEffect_InstantHeal_CreatesCorrectly()
+        // {
+        //     var effect = BuffEffect.InstantHeal(50);
+        //     Assert.Equal(BuffEffectType.InstantHeal, effect.Type);
+        //     Assert.Equal(50, effect.Value);
+        // }
 
         [Fact]
         public void BuffEffect_StatReduction_CreatesCorrectly()
@@ -482,21 +482,21 @@ namespace BlazorIdle.Tests
             Assert.True(buff.HasHealOverTime());
         }
 
-        [Fact]
-        public void BuffInstance_HasInstantHeal_ReturnsTrueWhenPresent()
-        {
-            var buff = new BuffInstance(
-                "test_heal",
-                "player1",
-                BuffKind.Buff,
-                new List<BuffEffect>
-                {
-                    BuffEffect.InstantHeal(50)
-                }
-            );
-
-            Assert.True(buff.HasInstantHeal());
-        }
+        // Phase 5: InstantHeal removed from BuffInstance - now handled as skill direct effect
+        // [Fact]
+        // public void BuffInstance_HasInstantHeal_ReturnsTrueWhenPresent()
+        // {
+        //     var buff = new BuffInstance(
+        //         "test_heal",
+        //         "player1",
+        //         BuffKind.Buff,
+        //         new List<BuffEffect>
+        //         {
+        //             BuffEffect.InstantHeal(50)
+        //         }
+        //     );
+        //     Assert.True(buff.HasInstantHeal());
+        // }
 
         [Fact]
         public void BuffInstance_GetDamagePerTick_SumsAllDoTEffects()
@@ -576,22 +576,22 @@ namespace BlazorIdle.Tests
             Assert.Equal(10, buff.GetHealPerTick()); // 5 * 2
         }
 
-        [Fact]
-        public void BuffInstance_GetInstantHealAmount_SumsAllInstantHeals()
-        {
-            var buff = new BuffInstance(
-                "test_heal",
-                "player1",
-                BuffKind.Buff,
-                new List<BuffEffect>
-                {
-                    BuffEffect.InstantHeal(50),
-                    BuffEffect.InstantHeal(25)
-                }
-            );
-
-            Assert.Equal(75, buff.GetInstantHealAmount());
-        }
+        // Phase 5: InstantHeal removed from BuffInstance - now handled as skill direct effect
+        // [Fact]
+        // public void BuffInstance_GetInstantHealAmount_SumsAllInstantHeals()
+        // {
+        //     var buff = new BuffInstance(
+        //         "test_heal",
+        //         "player1",
+        //         BuffKind.Buff,
+        //         new List<BuffEffect>
+        //         {
+        //             BuffEffect.InstantHeal(50),
+        //             BuffEffect.InstantHeal(25)
+        //         }
+        //     );
+        //     Assert.Equal(75, buff.GetInstantHealAmount());
+        // }
 
         #endregion
 

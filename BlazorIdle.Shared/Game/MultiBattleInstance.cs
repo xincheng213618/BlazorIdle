@@ -43,6 +43,10 @@ namespace BlazorIdle.Game
         // Phase 4: 条件检查器（单例复用）/ Condition checker (singleton reuse)
         private readonly ConditionChecker _conditionChecker = new();
         
+        // Phase 5: 冷却和资源管理器 / Cooldown and resource managers
+        private readonly CooldownManager _cooldownManager = new();
+        private readonly ResourceManager _resourceManager = new();
+        
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
         // Current implementation directly uses TrackState + SkillResolver for better clarity.
@@ -356,6 +360,10 @@ namespace BlazorIdle.Game
                 if (deltaTimeSec > 0)
                 {
                     ProcessBuffTicks(deltaTimeSec);
+                    
+                    // Phase 5: 更新技能冷却时间
+                    // Phase 5: Update skill cooldowns
+                    _cooldownManager.TickCooldowns(deltaTimeSec);
                 }
                 
                 // 处理角色行动
@@ -529,6 +537,27 @@ namespace BlazorIdle.Game
                     }
                 }
 
+                // Phase 5: 检查冷却时间
+                // Phase 5: Check cooldown
+                if (skillDef != null && !_cooldownManager.IsReady(skillId))
+                {
+                    // 技能还在冷却中，跳过施放
+                    // Skill is still on cooldown, skip casting
+                    return;
+                }
+
+                // Phase 5: 检查资源消耗
+                // Phase 5: Check resource cost
+                if (skillDef != null && !_resourceManager.CheckResourceCost(skillDef, ctx))
+                {
+                    // 资源不足，跳过施放
+                    // Insufficient resources, skip casting
+                    return;
+                }
+
+                // Note: 资源消耗由 SkillResolver 处理并通过 ApplyResourceChanges 应用
+                // Note: Resource consumption is handled by SkillResolver and applied via ApplyResourceChanges
+
                 // 使用 SkillResolver 执行技能
                 // Execute skill using SkillResolver
                 var opts = new SkillCastOptions 
@@ -552,19 +581,17 @@ namespace BlazorIdle.Game
 
                     foreach (var targetId in targetIds)
                     {
-                        var target = _enemyTeam.GetMember(targetId);
-                        if (target == null) continue;
-
-                        // 只有造成伤害时才记录伤害事件
-                        // Only log damage event if damage is dealt
-                        if (damagePerTarget > 0)
+                        // 处理伤害（针对敌人目标）
+                        // Process damage (for enemy targets)
+                        var enemyTarget = _enemyTeam.GetMember(targetId);
+                        if (enemyTarget != null && damagePerTarget > 0)
                         {
-                            ApplyDamageToEnemy(casterId, member, targetId, target, damagePerTarget, eventSource, 
+                            ApplyDamageToEnemy(casterId, member, targetId, enemyTarget, damagePerTarget, eventSource, 
                                 isAoe: isAoe, isCrit: result.IsCrit, skillId: skillId, bundleId: result.BundleId);
                         }
-
-                        // 即时治疗每个目标
-                        // Instant heal per target
+                        
+                        // Phase 5: 即时治疗应用到每个目标（支持治疗队友）
+                        // Phase 5: Instant heal applies to each target (supports healing allies)
                         ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: true, skillId: skillId);
                     }
                     
@@ -620,6 +647,13 @@ namespace BlazorIdle.Game
                             }
                         }
                     }
+                }
+
+                // Phase 5: 启动冷却
+                // Phase 5: Start cooldown
+                if (skillDef != null && skillDef.CooldownSec > 0)
+                {
+                    _cooldownManager.StartCooldown(skillId, skillDef.CooldownSec);
                 }
             }
             else
@@ -687,19 +721,17 @@ namespace BlazorIdle.Game
 
                     foreach (var targetId in targetIds)
                     {
-                        var target = _playerTeam.GetMember(targetId);
-                        if (target == null) continue;
-
-                        // 应用伤害（传递技能ID和BundleID）
-                        // Apply damage (pass skill ID and bundle ID)
-                        if (damagePerTarget > 0)
+                        // 处理伤害（针对玩家目标）
+                        // Process damage (for player targets)
+                        var playerTarget = _playerTeam.GetMember(targetId);
+                        if (playerTarget != null && damagePerTarget > 0)
                         {
-                            ApplyDamageToPlayer(casterId, member, targetId, target, damagePerTarget,
+                            ApplyDamageToPlayer(casterId, member, targetId, playerTarget, damagePerTarget,
                                 skillId: skillId, bundleId: result.BundleId);
                         }
-
-                        // 即时治疗每个目标
-                        // Instant heal per target
+                        
+                        // Phase 5: 即时治疗应用到每个目标（支持治疗队友）
+                        // Phase 5: Instant heal applies to each target (supports healing allies)
                         ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: false, skillId: skillId);
                     }
                     
@@ -1748,18 +1780,23 @@ namespace BlazorIdle.Game
             if (result.InstantHeal <= 0)
                 return;
 
-            // 即时治疗通常施加在施法者自己身上
-            // Instant heal is usually applied to the caster
+            // Phase 5: 即时治疗应用到指定目标（如果没有指定目标，则应用到施法者）
+            // Phase 5: Instant heal applies to specified target (if no target specified, applies to caster)
             Buffs.IBuffOwner? target = null;
+            string actualTargetId = targetId ?? casterId;
 
             if (isCasterPlayer)
             {
-                if (_playerBuffOwners.TryGetValue(casterId, out var playerOwner))
+                // 玩家技能：目标应该在玩家队伍中（治疗队友或自己）
+                // Player skill: target should be in player team (heal allies or self)
+                if (_playerBuffOwners.TryGetValue(actualTargetId, out var playerOwner))
                     target = playerOwner;
             }
             else
             {
-                if (_enemyBuffOwners.TryGetValue(casterId, out var enemyOwner))
+                // 怪物技能：目标应该在怪物队伍中（治疗怪物队友或自己）
+                // Monster skill: target should be in monster team (heal monster allies or self)
+                if (_enemyBuffOwners.TryGetValue(actualTargetId, out var enemyOwner))
                     target = enemyOwner;
             }
 

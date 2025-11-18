@@ -20,7 +20,6 @@ namespace BlazorIdle.Game.Buffs
         /// For StatMultiplier: multiplier value (e.g., 0.15 for +15%)
         /// For StatAdditive: additive value (e.g., 0.05 for +5%)
         /// For DoT/HoT: amount per tick
-        /// For InstantHeal: heal amount
         /// For StatReduction: reduction value
         /// </summary>
         public double Value { get; set; }
@@ -80,14 +79,6 @@ namespace BlazorIdle.Game.Buffs
         public static BuffEffect HealOverTime(int amountPerTick)
         {
             return new BuffEffect(BuffEffectType.HealOverTime, amountPerTick: amountPerTick);
-        }
-
-        /// <summary>
-        /// Creates an instant heal effect.
-        /// </summary>
-        public static BuffEffect InstantHeal(int amount)
-        {
-            return new BuffEffect(BuffEffectType.InstantHeal, value: amount);
         }
 
         /// <summary>

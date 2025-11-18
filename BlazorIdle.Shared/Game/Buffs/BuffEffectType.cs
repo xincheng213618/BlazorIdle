@@ -31,11 +31,6 @@ namespace BlazorIdle.Game.Buffs
         HealOverTime,
 
         /// <summary>
-        /// Instant heal effect (applied once when buff is applied).
-        /// </summary>
-        InstantHeal,
-
-        /// <summary>
         /// Reduction effect on stats (debuff, e.g., -10% attack speed).
         /// </summary>
         StatReduction

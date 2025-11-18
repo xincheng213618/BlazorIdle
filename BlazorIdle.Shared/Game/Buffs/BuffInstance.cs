@@ -199,14 +199,6 @@ namespace BlazorIdle.Game.Buffs
         }
 
         /// <summary>
-        /// Checks if this buff has any instant heal effects.
-        /// </summary>
-        public bool HasInstantHeal()
-        {
-            return Effects.Exists(e => e.Type == BuffEffectType.InstantHeal);
-        }
-
-        /// <summary>
         /// Gets the total DoT damage per tick (sum of all DoT effects).
         /// </summary>
         public int GetDamagePerTick()
@@ -236,22 +228,6 @@ namespace BlazorIdle.Game.Buffs
                 }
             }
             return total * Stacks; // Multiply by stacks
-        }
-
-        /// <summary>
-        /// Gets the total instant heal amount (sum of all InstantHeal effects).
-        /// </summary>
-        public int GetInstantHealAmount()
-        {
-            int total = 0;
-            foreach (var effect in Effects)
-            {
-                if (effect.Type == BuffEffectType.InstantHeal)
-                {
-                    total += (int)effect.Value;
-                }
-            }
-            return total;
         }
     }
 }
