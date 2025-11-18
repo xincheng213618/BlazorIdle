@@ -322,7 +322,7 @@
     "slotType": "passive",
     "fixed": true,
     "releaseType": "instant",
-    "targetPolicy": "current_target",
+    "targetPolicy": "self",
     "cooldownSec": 0,
     "allowedProfessions": [
       "mage"
