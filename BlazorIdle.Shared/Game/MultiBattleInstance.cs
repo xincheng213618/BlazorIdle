@@ -555,12 +555,8 @@ namespace BlazorIdle.Game
                     return;
                 }
 
-                // Phase 5: 消耗资源（瞬发技能在施放时消耗）
-                // Phase 5: Consume resources (instant skills consume on cast)
-                if (skillDef != null && skillDef.ReleaseType == "instant")
-                {
-                    _resourceManager.ConsumeResourceCost(skillDef, ctx);
-                }
+                // Note: 资源消耗由 SkillResolver 处理并通过 ApplyResourceChanges 应用
+                // Note: Resource consumption is handled by SkillResolver and applied via ApplyResourceChanges
 
                 // 使用 SkillResolver 执行技能
                 // Execute skill using SkillResolver
