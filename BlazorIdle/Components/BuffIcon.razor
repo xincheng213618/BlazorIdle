@@ -171,7 +171,8 @@
             BuffEffectType.StatReduction => $"{effect.Target}: -{effect.Value * 100:F0}%",
             BuffEffectType.DamageOverTime => $"持续伤害: {effect.AmountPerTick}/次",
             BuffEffectType.HealOverTime => $"持续治疗: {effect.AmountPerTick}/次",
-            BuffEffectType.InstantHeal => $"立即治疗: {effect.AmountPerTick}",
+            // Phase 5: InstantHeal removed - now handled as skill direct effect
+            // BuffEffectType.InstantHeal => $"立即治疗: {effect.AmountPerTick}",
             BuffEffectType.ForceCrit => "强制暴击",
             _ => effect.Type.ToString()
         };

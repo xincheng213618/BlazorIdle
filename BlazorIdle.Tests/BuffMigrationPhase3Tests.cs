@@ -51,12 +51,13 @@ namespace BlazorIdle.Tests
             Assert.Equal(BuffStackingPolicy.Refresh, warriorPowerBoost.StackingPolicy);
             Assert.Equal(3, warriorPowerBoost.Effects.Count);
 
-            // Assert - Verify instant_heal
-            Assert.NotNull(instantHeal);
-            Assert.Equal(BuffKind.Buff, instantHeal.Kind);
-            Assert.Equal(0.1, instantHeal.DurationSec);
-            Assert.Single(instantHeal.Effects);
-            Assert.Equal(BuffEffectType.InstantHeal, instantHeal.Effects[0].Type);
+            // Phase 5: InstantHeal removed from BuffEffect - now handled as skill direct effect
+            // Assert - Verify instant_heal (commented out - InstantHeal no longer in Buff system)
+            // Assert.NotNull(instantHeal);
+            // Assert.Equal(BuffKind.Buff, instantHeal.Kind);
+            // Assert.Equal(0.1, instantHeal.DurationSec);
+            // Assert.Single(instantHeal.Effects);
+            // Assert.Equal(BuffEffectType.InstantHeal, instantHeal.Effects[0].Type);
 
             // Assert - Verify regeneration_hot
             Assert.NotNull(regenHot);
