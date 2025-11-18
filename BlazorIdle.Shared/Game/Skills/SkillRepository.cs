@@ -87,21 +87,20 @@ namespace BlazorIdle.Game.Skills
                 AlwaysHits = true,
                 IsAoe = true,
                 TargetPolicy = "EnemiesAll", // Default: AoE to all enemies
+                // Phase 5: InstantHeal as direct skill effect (not buff)
+                InstantHeal = 20,
                 OnCastBuffs = new List<BuffOperation>
                 {
                     // 1. Self-buff: Damage/Haste/Crit boost (warrior power boost)
                     BuffOperation.ApplyByConfigId("warrior_power_boost"),
                     
-                    // 2. Instant Heal: Heal self immediately
-                    BuffOperation.ApplyByConfigId("instant_heal"),
-                    
-                    // 3. HoT (Heal over Time): Regeneration buff on self
+                    // 2. HoT (Heal over Time): Regeneration buff on self
                     BuffOperation.ApplyByConfigId("regeneration_hot"),
                     
-                    // 4. DoT (Damage over Time): Burn debuff on enemies
+                    // 3. DoT (Damage over Time): Burn debuff on enemies
                     BuffOperation.ApplyByConfigId("burning"),
                     
-                    // 5. Stat Reduction Debuff: Weaken enemy damage
+                    // 4. Stat Reduction Debuff: Weaken enemy damage
                     BuffOperation.ApplyByConfigId("weakened")
                 }
             });
