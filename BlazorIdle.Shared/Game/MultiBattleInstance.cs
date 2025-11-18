@@ -827,7 +827,7 @@ namespace BlazorIdle.Game
             {
                 // 执行施法技能
                 // Execute cast skill
-                ExecuteSkill(charId, castSkill.Id, "preattack", isCasterPlayer: true, EventSource.Special);
+                ExecuteSkill(charId, castSkill.Id, "preattack", isCasterPlayer: true, EventSource.Cast);
                 // TODO: 实现施法进度条和 AttackTrack 暂停机制
                 // TODO: Implement casting progress bar and AttackTrack pause mechanism
             }
@@ -846,7 +846,7 @@ namespace BlazorIdle.Game
                 var instantSkills = _autoCastEngine.ExecuteWindow(characterData, character.ActiveCombatProfessionId, context, normalAttackIsGcd, "PostAttack");
                 foreach (var skill in instantSkills)
                 {
-                    ExecuteSkill(charId, skill.Id, "postattack", isCasterPlayer: true, EventSource.Special);
+                    ExecuteSkill(charId, skill.Id, "postattack", isCasterPlayer: true, EventSource.PostAttack);
                 }
             }
         }
