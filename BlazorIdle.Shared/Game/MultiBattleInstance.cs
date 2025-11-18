@@ -591,10 +591,6 @@ namespace BlazorIdle.Game
                             ApplyDamageToEnemy(casterId, member, targetId, target, damagePerTarget, eventSource, 
                                 isAoe: isAoe, isCrit: result.IsCrit, skillId: skillId, bundleId: result.BundleId);
                         }
-
-                        // 即时治疗每个目标
-                        // Instant heal per target
-                        ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: true, skillId: skillId);
                     }
                     
                     // Buff操作和资源变化只应用一次（不是每个目标）
@@ -605,6 +601,10 @@ namespace BlazorIdle.Game
                     ProcessBuffOperations(result, casterId, primaryTargetId, isCasterPlayer: true);
                     ApplyResourceChanges(result, casterId, isCasterPlayer: true, skillId: skillId);
                 }
+                
+                // Phase 5: 即时治疗总是应用到施法者（无论目标是谁）
+                // Phase 5: Instant heal always applies to caster (regardless of target)
+                ApplyInstantHeal(result, casterId, null, isCasterPlayer: true, skillId: skillId);
 
                 // 向后兼容 - 如果技能没有定义资源获得，使用职业配置作为回退（仅普通攻击）
                 // Backward compatibility - if skill doesn't define resource gains, use profession config as fallback (normal attack only)
@@ -733,10 +733,6 @@ namespace BlazorIdle.Game
                             ApplyDamageToPlayer(casterId, member, targetId, target, damagePerTarget,
                                 skillId: skillId, bundleId: result.BundleId);
                         }
-
-                        // 即时治疗每个目标
-                        // Instant heal per target
-                        ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: false, skillId: skillId);
                     }
                     
                     // Buff操作和资源变化只应用一次（不是每个目标）
@@ -745,6 +741,10 @@ namespace BlazorIdle.Game
                     ProcessBuffOperations(result, casterId, primaryTargetId, isCasterPlayer: false);
                     ApplyResourceChanges(result, casterId, isCasterPlayer: false, skillId: skillId);
                 }
+                
+                // Phase 5: 即时治疗总是应用到施法者（无论目标是谁）
+                // Phase 5: Instant heal always applies to caster (regardless of target)
+                ApplyInstantHeal(result, casterId, null, isCasterPlayer: false, skillId: skillId);
             }
         }
 
