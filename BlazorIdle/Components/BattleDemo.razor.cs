@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BlazorIdle.Game;
 using BlazorIdle.Game.Config;
+using BlazorIdle.Game.Skills;
 using BlazorIdle.Shared.Models;
 using Microsoft.AspNetCore.Components;
 
@@ -12,6 +13,8 @@ namespace BlazorIdle.Components
 {
     public partial class BattleDemo
     {
+        // Phase 9: SkillRepository for skill name lookup
+        private readonly SkillRepository _skillRepository = new SkillRepository();
         // ===== 可配置常量 - Configurable Constants =====
 
         // 战斗循环间隔（毫秒）- 控制游戏更新频率
@@ -694,13 +697,31 @@ namespace BlazorIdle.Components
         {
             var sec = ev.TimeMs / 1000.0;
 
+            // Phase 9: 更新 EventSource 显示，支持新的事件类型
+            // Phase 9: Update EventSource display to support new event types
             var src = ev.Source switch
             {
                 EventSource.Attack => "普攻",
                 EventSource.Special => "技能",
                 EventSource.EnemyAttack => "攻击",
+                EventSource.Cast => "施法",
+                EventSource.Skill => "技能",
+                EventSource.Trigger => "触发",
+                EventSource.PostAttack => "技能",  // PostAttack 窗口触发的技能
+                EventSource.PostCast => "技能",    // PostCast 窗口触发的技能
                 _ => "未知"
             };
+
+            // Phase 9: 如果有技能ID，获取技能名称
+            // Phase 9: If skill ID exists, get skill name from repository
+            string? skillName = null;
+            if (!string.IsNullOrEmpty(ev.SkillId))
+            {
+                var skillDef = _skillRepository.GetSkill(ev.SkillId);
+                // 使用技能名称，如果没有名称则fallback到ID
+                // Use skill name, fallback to ID if name is not available
+                skillName = !string.IsNullOrEmpty(skillDef?.Name) ? skillDef.Name : ev.SkillId;
+            }
 
             var attackerName = ev.Attacker == ActorType.Player
                 ? (SelectedCharacter?.Name ?? ev.AttackerName ?? ev.AttackerId)
@@ -710,8 +731,12 @@ namespace BlazorIdle.Components
                 ? (SelectedCharacter?.Name ?? ev.DefenderName ?? ev.DefenderId)
                 : (GetEnemyDisplayName(ev.DefenderId) ?? ev.DefenderName ?? ev.DefenderId);
 
+            // Phase 9: 如果有技能名称，显示 "技能名 (技能)" 格式，否则只显示事件源
+            // Phase 9: If skill name exists, display "SkillName (Source)" format, otherwise just show event source
+            var actionDesc = skillName != null ? $"{skillName} ({src})" : src;
+            
             var line =
-                $"[{sec:0.00}s] {attackerName} {src} 对 {defenderName} 造成 {ev.Damage} 伤害，{defenderName} HP：{ev.DefenderHpAfter}";
+                $"[{sec:0.00}s] {attackerName} {actionDesc} 对 {defenderName} 造成 {ev.Damage} 伤害，{defenderName} HP：{ev.DefenderHpAfter}";
 
             // Phase 9: 显示暴击标记
             // Phase 9: Show crit indicator

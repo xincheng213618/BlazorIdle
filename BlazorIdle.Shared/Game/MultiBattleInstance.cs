@@ -47,6 +47,12 @@ namespace BlazorIdle.Game
         private readonly CooldownManager _cooldownManager = new();
         private readonly ResourceManager _resourceManager = new();
         
+        // Phase 9: AutoCastEngine for unified skill scheduling / AutoCastEngine 统一技能调度
+        private readonly AutoCastEngine _autoCastEngine;
+        
+        // Phase 9: Character data mapping for skill selection / 角色数据映射用于技能选择
+        private readonly Dictionary<string, Shared.Models.CharacterData>? _characterDataMap;
+        
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
         // Current implementation directly uses TrackState + SkillResolver for better clarity.
@@ -112,7 +118,8 @@ namespace BlazorIdle.Game
             BattleTeam<Enemy> enemyTeam,
             MultiBattleConfig? config = null,
             Dictionary<string, Resources.ResourceBucketCollection>? preservedResources = null,
-            Dictionary<string, Shared.Models.ProfessionResourceConfig>? professionResourceConfigs = null)
+            Dictionary<string, Shared.Models.ProfessionResourceConfig>? professionResourceConfigs = null,
+            Dictionary<string, Shared.Models.CharacterData>? characterDataMap = null)
         {
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _rng = rng ?? throw new ArgumentNullException(nameof(rng));
@@ -120,6 +127,7 @@ namespace BlazorIdle.Game
             _enemyTeam = enemyTeam ?? throw new ArgumentNullException(nameof(enemyTeam));
             _config = config ?? new MultiBattleConfig();
             _professionResourceConfigs = professionResourceConfigs;
+            _characterDataMap = characterDataMap;
 
             _rngSeed = rng.Seed;
             _aggregator = new SegmentAggregator(new SegmentAggregatorOptions
@@ -133,6 +141,9 @@ namespace BlazorIdle.Game
             _skillRepository = new SkillRepository();
             _skillResolver = new SkillResolver(_combatConfig, _skillRepository);
             _castingController = new CastingController();
+            
+            // Phase 9: 初始化 AutoCastEngine / Initialize AutoCastEngine
+            _autoCastEngine = new AutoCastEngine(_skillRepository, _conditionChecker, _cooldownManager, _resourceManager);
 
             InitializeTracks(preservedResources);
         }
@@ -409,16 +420,16 @@ namespace BlazorIdle.Game
                 // Phase 9: Update haste bonus (based on current buffs)
                 UpdateCharacterHaste(charId, character, tracks);
 
-                // 处理普通攻击 - Phase 7.2: 使用 SkillResolver
-                // Process normal attacks - Phase 7.2: Using SkillResolver
+                // Phase 9: Window-GCD 集成 - Attack Track 处理
+                // Phase 9: Window-GCD Integration - Attack Track processing
                 var atkCount = tracks.AttackTrack.CollectTriggers(now);
                 for (int i = 0; i < atkCount; i++)
                 {
-                    ProcessCharacterAttackViaSkillResolver(charId, character);
+                    ProcessAttackDecisionPoint(charId, character, now);
                 }
 
-                // 处理特殊技能 - Phase 7.2: 使用 SkillResolver
-                // Process special skills - Phase 7.2: Using SkillResolver
+                // Special 轨道暂时保留（可能在未来移除）
+                // Keep Special track for now (may be removed in future)
                 var spCount = tracks.SpecialTrack.CollectTriggers(now);
                 for (int i = 0; i < spCount; i++)
                 {
@@ -772,6 +783,100 @@ namespace BlazorIdle.Game
             // Monster Skill System: 调用统一的通用技能执行函数
             // Monster Skill System: Call unified generic skill execution function
             ExecuteSkill(charId, skillId, "special", isCasterPlayer: true, EventSource.Special);
+        }
+
+        /// <summary>
+        /// Phase 9: 处理攻击决策点（t=0）- Window-GCD 集成
+        /// Phase 9: Process attack decision point (t=0) - Window-GCD Integration
+        /// </summary>
+        private void ProcessAttackDecisionPoint(string charId, Character character, int now)
+        {
+            // 获取 CharacterData（如果可用）
+            // Get CharacterData (if available)
+            Shared.Models.CharacterData? characterData = null;
+            if (_characterDataMap != null && _characterDataMap.TryGetValue(charId, out var data))
+            {
+                characterData = data;
+            }
+            
+            // Phase 9 临时测试：如果没有 CharacterData，创建一个临时的用于测试 AutoCastEngine
+            // Phase 9 Temporary Test: If no CharacterData, create a temporary one to test AutoCastEngine
+            // TODO: 后续使用角色真实装备的技能，删除这段临时代码
+            // TODO: Later use real equipped skills from character, remove this temporary code
+            if (characterData == null && character.ActiveCombatProfessionId == "warrior")
+            {
+                characterData = new Shared.Models.CharacterData
+                {
+                    Id = charId,
+                    ProfessionId = character.ActiveCombatProfessionId,
+                    ActiveCombatProfessionId = character.ActiveCombatProfessionId
+                };
+                
+                // 临时装备一些战士技能用于测试
+                // Temporarily equip some warrior skills for testing
+                characterData.EquippedSkillsByProfession[character.ActiveCombatProfessionId] = 
+                    new Shared.Models.EquippedSkillsConfig
+                    {
+                        ProfessionId = character.ActiveCombatProfessionId,
+                        ActiveSlots = new Dictionary<string, string>
+                        {
+                            { "active_1", "warrior_mortal_strike" },  // GCD 技能，消耗 3 怒气，cd=3s
+                            { "active_2", "warrior_thunderclap" },    // 非 GCD 技能，无消耗，cd=10s
+                            { "active_3", "warrior_slam" }             // GCD 技能，无消耗，cd=10s
+                        }
+                    };
+            }
+
+            // 如果还是没有 CharacterData，回退到旧的逻辑
+            // If still no CharacterData, fallback to old logic
+            if (characterData == null)
+            {
+                ProcessCharacterAttackViaSkillResolver(charId, character);
+                return;
+            }
+
+            // 构建战斗上下文
+            // Build battle context
+            var context = new BattleContext
+            {
+                Player = character,
+                PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(charId),
+                PlayerResources = _playerResources.GetValueOrDefault(charId),
+                Rng = _rng,
+                Clock = _clock,
+                CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
+            };
+
+            // PreAttack 窗口：检查是否有施法技能要释放
+            // PreAttack window: Check if there's a cast skill to release
+            var castSkill = _autoCastEngine.SelectCastSkill(characterData, character.ActiveCombatProfessionId, context);
+
+            if (castSkill != null)
+            {
+                // 执行施法技能
+                // Execute cast skill
+                ExecuteSkill(charId, castSkill.Id, "preattack", isCasterPlayer: true, EventSource.Cast);
+                // TODO: 实现施法进度条和 AttackTrack 暂停机制
+                // TODO: Implement casting progress bar and AttackTrack pause mechanism
+            }
+            else
+            {
+                // 没有施法技能，执行普通攻击
+                // No cast skill, execute normal attack
+                string normalAttackSkillId = character.GetNormalAttackSkillId();
+                var normalAttackSkill = _skillRepository.GetSkill(normalAttackSkillId);
+                bool normalAttackIsGcd = normalAttackSkill?.IsGcd ?? true;
+
+                ExecuteSkill(charId, normalAttackSkillId, "attack", isCasterPlayer: true, EventSource.Attack);
+
+                // PostAttack 窗口：执行瞬发技能
+                // PostAttack window: Execute instant skills
+                var instantSkills = _autoCastEngine.ExecuteWindow(characterData, character.ActiveCombatProfessionId, context, normalAttackIsGcd, "PostAttack");
+                foreach (var skill in instantSkills)
+                {
+                    ExecuteSkill(charId, skill.Id, "postattack", isCasterPlayer: true, EventSource.PostAttack);
+                }
+            }
         }
 
         /// <summary>

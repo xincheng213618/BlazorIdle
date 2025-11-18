@@ -12,7 +12,12 @@ namespace BlazorIdle.Game
     {
         Attack = 1,
         Special = 2,
-        EnemyAttack = 3
+        EnemyAttack = 3,
+        Cast = 4,           // 施法技能 / Cast skill
+        Skill = 5,          // 通用技能 / Generic skill
+        Trigger = 6,        // 触发技能 / Triggered skill
+        PostAttack = 7,     // PostAttack 窗口技能 / PostAttack window skill
+        PostCast = 8        // PostCast 窗口技能 / PostCast window skill
     }
 
     public class CombatEvent
