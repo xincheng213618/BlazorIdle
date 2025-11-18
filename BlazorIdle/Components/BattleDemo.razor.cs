@@ -694,13 +694,30 @@ namespace BlazorIdle.Components
         {
             var sec = ev.TimeMs / 1000.0;
 
+            // Phase 9: 更新 EventSource 显示，支持新的事件类型
+            // Phase 9: Update EventSource display to support new event types
             var src = ev.Source switch
             {
                 EventSource.Attack => "普攻",
                 EventSource.Special => "技能",
                 EventSource.EnemyAttack => "攻击",
+                EventSource.Cast => "施法",
+                EventSource.Skill => "技能",
+                EventSource.Trigger => "触发",
+                EventSource.PostAttack => "技能",  // PostAttack 窗口触发的技能
+                EventSource.PostCast => "技能",    // PostCast 窗口触发的技能
                 _ => "未知"
             };
+
+            // Phase 9: 如果有技能ID，显示技能ID（技能名需要从 SkillRepository 获取，暂时显示ID）
+            // Phase 9: If skill ID exists, display skill ID (skill name needs SkillRepository, showing ID for now)
+            string? skillName = null;
+            if (!string.IsNullOrEmpty(ev.SkillId))
+            {
+                // 简化显示：直接使用技能ID
+                // Simplified display: use skill ID directly
+                skillName = ev.SkillId;
+            }
 
             var attackerName = ev.Attacker == ActorType.Player
                 ? (SelectedCharacter?.Name ?? ev.AttackerName ?? ev.AttackerId)
@@ -710,8 +727,12 @@ namespace BlazorIdle.Components
                 ? (SelectedCharacter?.Name ?? ev.DefenderName ?? ev.DefenderId)
                 : (GetEnemyDisplayName(ev.DefenderId) ?? ev.DefenderName ?? ev.DefenderId);
 
+            // Phase 9: 如果有技能名称，显示 "技能名 (技能)" 格式，否则只显示事件源
+            // Phase 9: If skill name exists, display "SkillName (Source)" format, otherwise just show event source
+            var actionDesc = skillName != null ? $"{skillName} ({src})" : src;
+            
             var line =
-                $"[{sec:0.00}s] {attackerName} {src} 对 {defenderName} 造成 {ev.Damage} 伤害，{defenderName} HP：{ev.DefenderHpAfter}";
+                $"[{sec:0.00}s] {attackerName} {actionDesc} 对 {defenderName} 造成 {ev.Damage} 伤害，{defenderName} HP：{ev.DefenderHpAfter}";
 
             // Phase 9: 显示暴击标记
             // Phase 9: Show crit indicator
