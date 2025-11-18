@@ -62,7 +62,9 @@
     "cooldownSec": 0,
     "allowedProfessions": ["warrior"],
     "conditions": {
-      "requireBuffId": "warrior_stance"
+      "requireBuffStacks": {
+        "warrior_stance": 3
+      }
     },
     "onCastBuffs": [
       {
@@ -268,7 +270,7 @@
     "releaseType": "instant",
     "targetPolicy": "self",
     "cooldownSec": 0,
-    "allowedProfessions": ["mage"],
+    "allowedProfessions": [ "mage" ],
     "damage": {
       "coefAtk": 0.5,
       "flat": 3,
@@ -282,7 +284,10 @@
       }
     ],
     "gains": [
-      { "bucketId": "mana", "amount": 2 }
+      {
+        "bucketId": "mana",
+        "amount": 2
+      }
     ]
   },
   {

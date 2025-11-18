@@ -319,5 +319,318 @@
         "value": 1
       }
     ]
+  },
+  {
+    "id": "mage_arcane_power",
+    "name": "奥术充能",
+    "description": "法术伤害提升",
+    "icon": "🔮",
+    "kind": "Buff",
+    "durationSec": 8.0,
+    "stackingPolicy": "Stack",
+    "maxStacks": 5,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatMultiplier",
+        "target": "DamagePerAttack",
+        "value": 0.08
+      },
+      {
+        "type": "StatMultiplier",
+        "target": "SpecialDamage",
+        "value": 0.12
+      }
+    ]
+  },
+  {
+    "id": "ranger_focus",
+    "name": "集中",
+    "description": "提升暴击率和急速",
+    "icon": "🎯",
+    "kind": "Buff",
+    "durationSec": 6.0,
+    "stackingPolicy": "Stack",
+    "maxStacks": 3,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatAdditive",
+        "target": "CritChancePercent",
+        "value": 5.0
+      },
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": 3.0
+      }
+    ]
+  },
+  {
+    "id": "rogue_combo",
+    "name": "连击点",
+    "description": "积累连击点数，用于释放终结技",
+    "icon": "🗡️",
+    "kind": "Buff",
+    "durationSec": 15.0,
+    "stackingPolicy": "Stack",
+    "maxStacks": 5,
+    "defaultTarget": "Self",
+    "effects": []
+  },
+  {
+    "id": "warrior_rend_dot",
+    "name": "撕裂",
+    "description": "持续造成流血伤害",
+    "icon": "🩸",
+    "kind": "Debuff",
+    "durationSec": 9.0,
+    "tickIntervalSec": 3.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Target",
+    "effects": [
+      {
+        "type": "DamageOverTime",
+        "amountPerTick": 15
+      }
+    ]
+  },
+  {
+    "id": "mage_blizzard_dot",
+    "name": "暴风雪",
+    "description": "持续造成冰霜伤害",
+    "icon": "❄️",
+    "kind": "Debuff",
+    "durationSec": 8.0,
+    "tickIntervalSec": 2.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "AllEnemies",
+    "effects": [
+      {
+        "type": "DamageOverTime",
+        "amountPerTick": 12
+      }
+    ]
+  },
+  {
+    "id": "mage_frost_slow",
+    "name": "冰霜减速",
+    "description": "降低目标攻击速度",
+    "icon": "🧊",
+    "kind": "Debuff",
+    "durationSec": 6.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Target",
+    "effects": [
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": -20.0
+      }
+    ]
+  },
+  {
+    "id": "mage_haste_buff",
+    "name": "急速施法",
+    "description": "提升施法速度",
+    "icon": "⚡",
+    "kind": "Buff",
+    "durationSec": 10.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": 30.0
+      }
+    ]
+  },
+  {
+    "id": "mage_shield",
+    "name": "法术护盾",
+    "description": "吸收伤害的护盾",
+    "icon": "🛡️",
+    "kind": "Buff",
+    "durationSec": 15.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": []
+  },
+  {
+    "id": "ranger_berserk_buff",
+    "name": "狂暴射击",
+    "description": "大幅提升攻击速度和伤害",
+    "icon": "🏹",
+    "kind": "Buff",
+    "durationSec": 8.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatMultiplier",
+        "target": "DamagePerAttack",
+        "value": 0.40
+      },
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": 40.0
+      }
+    ]
+  },
+  {
+    "id": "ranger_haste_buff",
+    "name": "快速射击",
+    "description": "提升攻击速度",
+    "icon": "💨",
+    "kind": "Buff",
+    "durationSec": 6.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": 25.0
+      }
+    ]
+  },
+  {
+    "id": "ranger_heal_over_time",
+    "name": "自然恢复",
+    "description": "持续恢复生命值",
+    "icon": "🌿",
+    "kind": "Buff",
+    "durationSec": 12.0,
+    "tickIntervalSec": 3.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "HealOverTime",
+        "amountPerTick": 20
+      }
+    ]
+  },
+  {
+    "id": "ranger_poison_dot",
+    "name": "毒箭",
+    "description": "持续造成毒素伤害",
+    "icon": "☠️",
+    "kind": "Debuff",
+    "durationSec": 10.0,
+    "tickIntervalSec": 2.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Target",
+    "effects": [
+      {
+        "type": "DamageOverTime",
+        "amountPerTick": 10
+      }
+    ]
+  },
+  {
+    "id": "rogue_deadly_poison_buff",
+    "name": "致命毒药",
+    "description": "武器附加致命毒素",
+    "icon": "🧪",
+    "kind": "Buff",
+    "durationSec": 20.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatMultiplier",
+        "target": "DamagePerAttack",
+        "value": 0.15
+      }
+    ]
+  },
+  {
+    "id": "rogue_poison_dot",
+    "name": "剧毒",
+    "description": "持续造成毒素伤害",
+    "icon": "🦠",
+    "kind": "Debuff",
+    "durationSec": 12.0,
+    "tickIntervalSec": 2.0,
+    "stackingPolicy": "Stack",
+    "maxStacks": 3,
+    "defaultTarget": "Target",
+    "effects": [
+      {
+        "type": "DamageOverTime",
+        "amountPerTick": 8
+      }
+    ]
+  },
+  {
+    "id": "rogue_shadow_dance_buff",
+    "name": "影舞",
+    "description": "大幅提升暴击率",
+    "icon": "🌙",
+    "kind": "Buff",
+    "durationSec": 8.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatAdditive",
+        "target": "CritChancePercent",
+        "value": 30.0
+      }
+    ]
+  },
+  {
+    "id": "rogue_sprint_buff",
+    "name": "疾跑",
+    "description": "提升攻击速度",
+    "icon": "💨",
+    "kind": "Buff",
+    "durationSec": 6.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": 50.0
+      }
+    ]
+  },
+  {
+    "id": "rogue_stealth_crit",
+    "name": "潜行暴击",
+    "description": "下次攻击必定暴击且伤害提升",
+    "icon": "🎯",
+    "kind": "Buff",
+    "durationSec": 10.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "ForceCrit",
+        "value": 1
+      },
+      {
+        "type": "StatMultiplier",
+        "target": "DamagePerAttack",
+        "value": 0.50
+      }
+    ]
   }
 ]
