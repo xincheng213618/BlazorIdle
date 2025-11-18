@@ -44,6 +44,8 @@ namespace BlazorIdle.Game
         private readonly ConditionChecker _conditionChecker = new();
         
         // Phase 5: 冷却和资源管理器 / Cooldown and resource managers
+        // 这些管理器实例被 AutoCastEngine 和 WindowExecutor 共享，确保状态一致性
+        // These manager instances are shared by AutoCastEngine and WindowExecutor to ensure state consistency
         private readonly CooldownManager _cooldownManager = new();
         private readonly ResourceManager _resourceManager = new();
         
@@ -51,6 +53,8 @@ namespace BlazorIdle.Game
         private readonly AutoCastEngine _autoCastEngine;
         
         // Phase 6: WindowExecutor for window-based skill execution / WindowExecutor 用于窗口化技能执行
+        // 使用相同的 _cooldownManager 和 _resourceManager 实例以保持状态同步
+        // Uses the same _cooldownManager and _resourceManager instances to maintain state synchronization
         private readonly WindowExecutor _windowExecutor;
         
         // Phase 9: Character data mapping for skill selection / 角色数据映射用于技能选择
@@ -554,8 +558,12 @@ namespace BlazorIdle.Game
                     }
                 }
 
-                // Phase 5: 检查冷却时间
-                // Phase 5: Check cooldown
+                // Phase 5 & 6: 二次检查冷却和资源（必要的安全检查）
+                // Phase 5 & 6: Double-check cooldown and resources (necessary safety check)
+                // WindowExecutor 在选择技能时已检查，但在选择和执行之间可能有其他技能消耗资源或启动冷却
+                // WindowExecutor checks during selection, but resources may be consumed or cooldowns started between selection and execution
+                // 这个检查防止在同一窗口内多个技能执行时的竞争条件
+                // This check prevents race conditions when multiple skills execute in the same window
                 if (skillDef != null && !_cooldownManager.IsReady(skillId))
                 {
                     // 技能还在冷却中，跳过施放
@@ -563,8 +571,8 @@ namespace BlazorIdle.Game
                     return;
                 }
 
-                // Phase 5: 检查资源消耗
-                // Phase 5: Check resource cost
+                // Phase 5 & 6: 检查资源消耗（二次验证，见上方注释）
+                // Phase 5 & 6: Check resource cost (double verification, see comment above)
                 if (skillDef != null && !_resourceManager.CheckResourceCost(skillDef, ctx))
                 {
                     // 资源不足，跳过施放
@@ -860,6 +868,9 @@ namespace BlazorIdle.Game
 
             if (castSkill != null)
             {
+                // === 窗口执行路径：PreAttack → Cast → PostCast ===
+                // === Window execution path: PreAttack → Cast → PostCast ===
+                
                 // 执行施法技能
                 // Execute cast skill
                 ExecuteSkill(charId, castSkill.Id, "preattack", isCasterPlayer: true, EventSource.Cast);
@@ -868,8 +879,10 @@ namespace BlazorIdle.Game
                 
                 // Phase 6: PostCast 窗口：施法完成后执行瞬发技能（AllowCoTriggerAfterCast=true）
                 // Phase 6: PostCast window: Execute instant skills after casting (AllowCoTriggerAfterCast=true)
-                // 施法技能固定为 GCD，所以 gcdAlreadyUsed=true
-                // Cast skills are always GCD, so gcdAlreadyUsed=true
+                // 注意：按照设计，所有施法技能（ReleaseType=cast）应该都是 GCD
+                // Note: By design, all cast skills (ReleaseType=cast) should be GCD
+                // 但为了代码健壮性，仍然检查 IsGcd 属性而不是硬编码 true
+                // But for code robustness, we still check IsGcd property instead of hardcoding true
                 bool castSkillIsGcd = castSkill.IsGcd;
                 var postCastSkills = _windowExecutor.ExecuteWindow(WindowType.PostCast, characterData, character.ActiveCombatProfessionId, context, castSkillIsGcd);
                 foreach (var skill in postCastSkills)
@@ -879,6 +892,9 @@ namespace BlazorIdle.Game
             }
             else
             {
+                // === 窗口执行路径：PreAttack → NormalAttack → PostAttack ===
+                // === Window execution path: PreAttack → NormalAttack → PostAttack ===
+                
                 // 没有施法技能，执行普通攻击
                 // No cast skill, execute normal attack
                 string normalAttackSkillId = character.GetNormalAttackSkillId();

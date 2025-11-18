@@ -141,15 +141,22 @@ namespace BlazorIdle.Game.Skills
             {
                 case WindowType.PreAttack:
                     // PreAttack 窗口：只选择施法技能
+                    // PreAttack window: Select only cast skills
                     skills = GetEquippedSkills(config).Where(s => s.ReleaseType == "cast").ToList();
                     break;
 
                 case WindowType.PostAttack:
                 case WindowType.PostCast:
                     // PostAttack/PostCast 窗口：只选择瞬发技能
-                    skills = GetEquippedSkills(config).Where(s => s.ReleaseType == "instant").ToList();
+                    // PostAttack/PostCast window: Select only instant skills
+                    // 排除职业固定的被动技能（Type=passive，如 attack_basic/special_pulse）
+                    // Exclude profession-fixed passive skills (Type=passive, like attack_basic/special_pulse)
+                    skills = GetEquippedSkills(config)
+                        .Where(s => s.ReleaseType == "instant" && s.Type != "passive")
+                        .ToList();
                     
                     // PostCast 窗口额外检查 allowCoTriggerAfterCast
+                    // PostCast window additionally checks allowCoTriggerAfterCast
                     if (window == WindowType.PostCast)
                     {
                         skills = skills.Where(s => s.AllowCoTriggerAfterCast).ToList();
@@ -169,6 +176,7 @@ namespace BlazorIdle.Game.Skills
             var skills = new List<SkillDef>();
 
             // 获取主动技能（按槽位顺序：active_1 → active_2 → active_3）
+            // Get active skills (in slot order: active_1 → active_2 → active_3)
             for (int i = 1; i <= 3; i++)
             {
                 var slotId = $"active_{i}";
@@ -180,7 +188,12 @@ namespace BlazorIdle.Game.Skills
                 }
             }
 
-            // 获取被动技能
+            // 获取被动技能槽位（passive_1）
+            // Get passive skill slot (passive_1)
+            // 注意：被动技能槽位通常用于装备主动触发的技能（如 active 类型）
+            // Note: Passive skill slot is typically used for actively triggered skills (type=active)
+            // 如果是职业固定技能（type=passive，如 attack_basic），应该由 GetWindowSkills 的 ReleaseType 过滤掉
+            // If it's a profession-fixed skill (type=passive, like attack_basic), it should be filtered by ReleaseType in GetWindowSkills
             if (!string.IsNullOrEmpty(config.PassiveSlot))
             {
                 var skill = _skillRepository.GetSkill(config.PassiveSlot);

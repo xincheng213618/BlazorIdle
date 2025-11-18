@@ -571,7 +571,7 @@ namespace BlazorIdle.Tests
             var skill3 = new SkillDef
             {
                 Id = "test_nongcd_c",
-                Type = "passive",
+                Type = "active",  // 主动技能，即使在 passive_1 槽位也可以触发
                 ReleaseType = "instant",
                 IsGcd = false
             };
