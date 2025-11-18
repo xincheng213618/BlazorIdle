@@ -526,10 +526,15 @@
   - ✅ 更新相关单元测试（注释掉 3 个旧测试）
   - ✅ 更新 BuffIcon.razor UI 组件
 
-- [x] 5.5 集成到技能系统 ⚠️ **待完成**
-  - ⚠️ 技能施放前检查资源和冷却（需要在 MultiBattleInstance 中集成）
-  - ⚠️ 技能施放后扣除资源、启动冷却（需要在 MultiBattleInstance 中集成）
-  - ⚠️ 技能命中后应用资源获得（已有 ApplyResourceChanges，需验证）
+- [x] 5.5 集成到技能系统 ✅
+  - ✅ 技能施放前检查资源和冷却（已在 MultiBattleInstance.ExecuteSkill 中集成）
+  - ✅ 技能施放后扣除资源、启动冷却（已在 MultiBattleInstance.ExecuteSkill 中集成）
+  - ✅ 技能命中后应用资源获得（通过 ApplyResourceChanges，已验证）
+  - ✅ 冷却时间在 AdvanceTick 中每帧更新（通过 TickCooldowns）
+  - ✅ 修复资源重复消耗问题（移除重复调用）
+  - ✅ **InstantHeal 支持目标选择**（支持治疗队友、AoE 治疗）
+  - ✅ Buff 操作已正确支持目标选择（通过 BuffTarget 类型）
+  - ✅ 资源操作正确应用到施法者（设计如此）
 
 - [x] 5.6 单元测试（15 个）✅
   - ✅ CooldownManager 测试（4 个）
@@ -545,7 +550,10 @@
 - ✅ InstantHeal 作为技能直接效果，不创建buff
 - ✅ HoT 继续作为buff效果正确工作
 - ✅ 15 个单元测试全部通过
-- ⚠️ 所有原有测试继续通过（504 → 516 个测试，15 个新增全部通过）
+- ✅ 所有原有测试继续通过（504 → 516 个测试，15 个新增全部通过）
+- ✅ **InstantHeal 支持目标选择**（自我、队友、AoE）
+- ✅ **Buff 操作正确支持目标选择**（通过 BuffTarget）
+- ✅ **资源操作正确应用到施法者**
 
 **实际工作量：** 4-5 小时（包含 InstantHeal 修复 1-2h）
 
@@ -554,9 +562,19 @@
 - InstantHeal 已从 Buff 系统移除，作为技能直接效果保留
 - 与现有资源系统完美集成（通过 BattleContext.PlayerBuffOwner.Buckets）
 - 保持向后兼容性（支持新旧格式）
-- **下一步：** 需要将 CooldownManager 和 ResourceManager 集成到 MultiBattleInstance.ExecuteSkill 中
+- ✅ CooldownManager 和 ResourceManager 已集成到 MultiBattleInstance.ExecuteSkill
+- ✅ 修复了资源重复消耗问题
+- ✅ InstantHeal 现在正确支持目标选择（可治疗队友、自我、AoE）
+- ✅ Buff 操作已验证正确支持目标选择
+- ✅ 资源操作已验证正确应用到施法者
 
 **完成日期：** 2025-11-18
+
+**关键修复：**
+1. 移除 buffs.json 中的 instant_heal buff（JSON 加载错误）
+2. 修复资源重复消耗（移除 ExecuteSkill 中的重复调用）
+3. 修复 InstantHeal 不生效（移出敌人目标循环）
+4. 修复 InstantHeal 硬编码目标（支持治疗队友）
 
 ---
 
