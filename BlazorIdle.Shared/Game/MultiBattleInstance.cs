@@ -50,6 +50,9 @@ namespace BlazorIdle.Game
         // Phase 9: AutoCastEngine for unified skill scheduling / AutoCastEngine 统一技能调度
         private readonly AutoCastEngine _autoCastEngine;
         
+        // Phase 6: WindowExecutor for window-based skill execution / WindowExecutor 用于窗口化技能执行
+        private readonly WindowExecutor _windowExecutor;
+        
         // Phase 9: Character data mapping for skill selection / 角色数据映射用于技能选择
         private readonly Dictionary<string, Shared.Models.CharacterData>? _characterDataMap;
         
@@ -144,6 +147,9 @@ namespace BlazorIdle.Game
             
             // Phase 9: 初始化 AutoCastEngine / Initialize AutoCastEngine
             _autoCastEngine = new AutoCastEngine(_skillRepository, _conditionChecker, _cooldownManager, _resourceManager);
+            
+            // Phase 6: 初始化 WindowExecutor / Initialize WindowExecutor
+            _windowExecutor = new WindowExecutor(_skillRepository, _conditionChecker, _cooldownManager, _resourceManager);
 
             InitializeTracks(preservedResources);
         }
@@ -847,9 +853,10 @@ namespace BlazorIdle.Game
                 CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
             };
 
-            // PreAttack 窗口：检查是否有施法技能要释放
-            // PreAttack window: Check if there's a cast skill to release
-            var castSkill = _autoCastEngine.SelectCastSkill(characterData, character.ActiveCombatProfessionId, context);
+            // Phase 6: PreAttack 窗口：使用 WindowExecutor 检查是否有施法技能要释放
+            // Phase 6: PreAttack window: Use WindowExecutor to check if there's a cast skill to release
+            var castSkills = _windowExecutor.ExecuteWindow(WindowType.PreAttack, characterData, character.ActiveCombatProfessionId, context, gcdAlreadyUsed: false);
+            var castSkill = castSkills.FirstOrDefault();
 
             if (castSkill != null)
             {
@@ -869,9 +876,9 @@ namespace BlazorIdle.Game
 
                 ExecuteSkill(charId, normalAttackSkillId, "attack", isCasterPlayer: true, EventSource.Attack);
 
-                // PostAttack 窗口：执行瞬发技能
-                // PostAttack window: Execute instant skills
-                var instantSkills = _autoCastEngine.ExecuteWindow(characterData, character.ActiveCombatProfessionId, context, normalAttackIsGcd, "PostAttack");
+                // Phase 6: PostAttack 窗口：使用 WindowExecutor 执行瞬发技能
+                // Phase 6: PostAttack window: Use WindowExecutor to execute instant skills
+                var instantSkills = _windowExecutor.ExecuteWindow(WindowType.PostAttack, characterData, character.ActiveCombatProfessionId, context, normalAttackIsGcd);
                 foreach (var skill in instantSkills)
                 {
                     ExecuteSkill(charId, skill.Id, "postattack", isCasterPlayer: true, EventSource.PostAttack);

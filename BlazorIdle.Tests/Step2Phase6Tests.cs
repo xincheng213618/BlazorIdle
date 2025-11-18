@@ -645,5 +645,106 @@ namespace BlazorIdle.Tests
         }
 
         #endregion
+
+        #region GCD Slot Selection Priority Tests (2 tests)
+
+        [Fact]
+        public void GcdSlotSelection_FirstGcdUnavailable_SelectsSecondGcd()
+        {
+            // Arrange - 测试用户提出的场景：slot 1 GCD 不可用，slot 2 GCD 可用
+            var repo = new SkillRepository();
+            var executor = CreateExecutor(repo);
+            var character = CreateTestCharacter();
+            var cooldownManager = new CooldownManager();
+            var resourceManager = new ResourceManager();
+            var conditionChecker = new ConditionChecker();
+            var buckets = new ResourceBucketCollection("rage", 10, 0); // 0 怒气
+            var context = CreateTestContext(character, buckets);
+
+            // 创建两个 GCD 技能：slot 1 需要资源（不可用），slot 2 不需要资源（可用）
+            var gcdSkill1 = new SkillDef
+            {
+                Id = "test_gcd_1_needs_resource",
+                ReleaseType = "instant",
+                IsGcd = true,
+                Costs = new List<ResourceCost>
+                {
+                    new ResourceCost { BucketId = "rage", Amount = 5 } // 需要5怒气
+                }
+            };
+            var gcdSkill2 = new SkillDef
+            {
+                Id = "test_gcd_2_no_cost",
+                ReleaseType = "instant",
+                IsGcd = true
+                // 不需要资源
+            };
+
+            repo.RegisterSkill(gcdSkill1);
+            repo.RegisterSkill(gcdSkill2);
+
+            // 装备顺序：slot 1 (不可用), slot 2 (可用)
+            EquipSkill(character, "warrior", "active_1", "test_gcd_1_needs_resource");
+            EquipSkill(character, "warrior", "active_2", "test_gcd_2_no_cost");
+
+            // 创建新的 executor 使用实际的 managers
+            var testExecutor = new WindowExecutor(repo, conditionChecker, cooldownManager, resourceManager);
+
+            // Act
+            var results = testExecutor.ExecuteWindow(WindowType.PostAttack, character, "warrior", context, gcdAlreadyUsed: false);
+
+            // Assert - 应该选择 slot 2 的 GCD 技能（slot 1 因资源不足被跳过）
+            Assert.Single(results);
+            Assert.Equal("test_gcd_2_no_cost", results[0].Id);
+        }
+
+        [Fact]
+        public void GcdSlotSelection_FirstGcdOnCooldown_SelectsSecondGcd()
+        {
+            // Arrange - 测试 slot 1 GCD 冷却中，slot 2 GCD 可用
+            var repo = new SkillRepository();
+            var cooldownManager = new CooldownManager();
+            var resourceManager = new ResourceManager();
+            var conditionChecker = new ConditionChecker();
+            var character = CreateTestCharacter();
+            var context = CreateTestContext(character);
+
+            // 创建两个 GCD 技能
+            var gcdSkill1 = new SkillDef
+            {
+                Id = "test_gcd_1_on_cd",
+                ReleaseType = "instant",
+                IsGcd = true,
+                CooldownSec = 10.0
+            };
+            var gcdSkill2 = new SkillDef
+            {
+                Id = "test_gcd_2_ready",
+                ReleaseType = "instant",
+                IsGcd = true
+            };
+
+            repo.RegisterSkill(gcdSkill1);
+            repo.RegisterSkill(gcdSkill2);
+
+            // 装备两个技能
+            EquipSkill(character, "warrior", "active_1", "test_gcd_1_on_cd");
+            EquipSkill(character, "warrior", "active_2", "test_gcd_2_ready");
+
+            // 让 slot 1 进入冷却
+            cooldownManager.StartCooldown("test_gcd_1_on_cd", 10.0);
+
+            // 创建 executor
+            var testExecutor = new WindowExecutor(repo, conditionChecker, cooldownManager, resourceManager);
+
+            // Act
+            var results = testExecutor.ExecuteWindow(WindowType.PostAttack, character, "warrior", context, gcdAlreadyUsed: false);
+
+            // Assert - 应该选择 slot 2 的 GCD 技能（slot 1 在冷却中被跳过）
+            Assert.Single(results);
+            Assert.Equal("test_gcd_2_ready", results[0].Id);
+        }
+
+        #endregion
     }
 }
