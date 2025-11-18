@@ -388,7 +388,7 @@
     "tickIntervalSec": 3.0,
     "stackingPolicy": "Refresh",
     "maxStacks": 1,
-    "defaultTarget": "CurrentTarget",
+    "defaultTarget": "Target",
     "effects": [
       {
         "type": "DamageOverTime",
@@ -423,7 +423,7 @@
     "durationSec": 6.0,
     "stackingPolicy": "Refresh",
     "maxStacks": 1,
-    "defaultTarget": "CurrentTarget",
+    "defaultTarget": "Target",
     "effects": [
       {
         "type": "StatAdditive",
@@ -531,7 +531,7 @@
     "tickIntervalSec": 2.0,
     "stackingPolicy": "Refresh",
     "maxStacks": 1,
-    "defaultTarget": "CurrentTarget",
+    "defaultTarget": "Target",
     "effects": [
       {
         "type": "DamageOverTime",
@@ -567,7 +567,7 @@
     "tickIntervalSec": 2.0,
     "stackingPolicy": "Stack",
     "maxStacks": 3,
-    "defaultTarget": "CurrentTarget",
+    "defaultTarget": "Target",
     "effects": [
       {
         "type": "DamageOverTime",
