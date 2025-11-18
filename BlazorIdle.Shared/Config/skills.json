@@ -7,6 +7,7 @@
     "slotType": "passive",
     "fixed": true,
     "releaseType": "instant",
+    "isGcd": false,
     "targetPolicy": "current_target",
     "cooldownSec": 0,
     "allowedProfessions": [ "warrior" ],
@@ -268,7 +269,7 @@
     "slotType": "passive",
     "fixed": true,
     "releaseType": "instant",
-    "targetPolicy": "self",
+    "targetPolicy": "current_target",
     "cooldownSec": 0,
     "allowedProfessions": [ "mage" ],
     "damage": {
