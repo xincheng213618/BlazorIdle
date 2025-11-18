@@ -865,6 +865,17 @@ namespace BlazorIdle.Game
                 ExecuteSkill(charId, castSkill.Id, "preattack", isCasterPlayer: true, EventSource.Cast);
                 // TODO: 实现施法进度条和 AttackTrack 暂停机制
                 // TODO: Implement casting progress bar and AttackTrack pause mechanism
+                
+                // Phase 6: PostCast 窗口：施法完成后执行瞬发技能（AllowCoTriggerAfterCast=true）
+                // Phase 6: PostCast window: Execute instant skills after casting (AllowCoTriggerAfterCast=true)
+                // 施法技能固定为 GCD，所以 gcdAlreadyUsed=true
+                // Cast skills are always GCD, so gcdAlreadyUsed=true
+                bool castSkillIsGcd = castSkill.IsGcd;
+                var postCastSkills = _windowExecutor.ExecuteWindow(WindowType.PostCast, characterData, character.ActiveCombatProfessionId, context, castSkillIsGcd);
+                foreach (var skill in postCastSkills)
+                {
+                    ExecuteSkill(charId, skill.Id, "postcast", isCasterPlayer: true, EventSource.PostCast);
+                }
             }
             else
             {

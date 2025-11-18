@@ -746,5 +746,49 @@ namespace BlazorIdle.Tests
         }
 
         #endregion
+
+        #region PostCast Window Integration Test (1 test)
+
+        [Fact]
+        public void PostCastWindow_TriggersAfterCastSkill_WithAllowCoTriggerAfterCast()
+        {
+            // Arrange - 测试施法技能后触发 PostCast 窗口
+            var repo = new SkillRepository();
+            var executor = CreateExecutor(repo);
+            var character = CreateTestCharacter();
+            var buckets = new ResourceBucketCollection("mana", 10, 10);
+            var context = CreateTestContext(character, buckets);
+
+            // 创建施法技能和 PostCast 瞬发技能
+            var castSkill = new SkillDef
+            {
+                Id = "test_cast_skill",
+                ReleaseType = "cast",
+                IsGcd = true  // 施法技能通常是 GCD
+            };
+            var postCastSkill = new SkillDef
+            {
+                Id = "test_postcast_instant",
+                ReleaseType = "instant",
+                IsGcd = false,
+                AllowCoTriggerAfterCast = true  // 允许在施法后触发
+            };
+
+            repo.RegisterSkill(castSkill);
+            repo.RegisterSkill(postCastSkill);
+
+            EquipSkill(character, "warrior", "active_1", "test_cast_skill");
+            EquipSkill(character, "warrior", "active_2", "test_postcast_instant");
+
+            // Act - 模拟施法后的 PostCast 窗口
+            // 施法技能是 GCD，所以 gcdAlreadyUsed=true
+            var results = executor.ExecuteWindow(WindowType.PostCast, character, "warrior", context, gcdAlreadyUsed: true);
+
+            // Assert - PostCast 窗口应该触发 AllowCoTriggerAfterCast=true 的技能
+            Assert.Single(results);
+            Assert.Equal("test_postcast_instant", results[0].Id);
+        }
+
+        #endregion
     }
 }
