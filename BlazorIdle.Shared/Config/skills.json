@@ -25,14 +25,20 @@
   {
     "id": "warrior_special_pulse",
     "name": "战士战吼",
-    "description": "发出战吼，积累架势。满3层架势时获得必定暴击buff",
+    "description": "发出战吼，积累架势。满3层架势时获得必定暴击buff（测试：5秒冷却，消耗3点怒气）",
     "type": "passive",
     "slotType": "passive",
     "fixed": true,
     "releaseType": "instant",
     "targetPolicy": "self",
-    "cooldownSec": 0,
+    "cooldownSec": 5,
     "allowedProfessions": ["warrior"],
+    "costs": [
+      {
+        "bucketId": "rage",
+        "amount": 3
+      }
+    ],
     "onCastBuffs": [
       {
         "op": "Apply",

@@ -43,6 +43,10 @@ namespace BlazorIdle.Game
         // Phase 4: 条件检查器（单例复用）/ Condition checker (singleton reuse)
         private readonly ConditionChecker _conditionChecker = new();
         
+        // Phase 5: 冷却和资源管理器 / Cooldown and resource managers
+        private readonly CooldownManager _cooldownManager = new();
+        private readonly ResourceManager _resourceManager = new();
+        
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
         // Current implementation directly uses TrackState + SkillResolver for better clarity.
@@ -356,6 +360,10 @@ namespace BlazorIdle.Game
                 if (deltaTimeSec > 0)
                 {
                     ProcessBuffTicks(deltaTimeSec);
+                    
+                    // Phase 5: 更新技能冷却时间
+                    // Phase 5: Update skill cooldowns
+                    _cooldownManager.TickCooldowns(deltaTimeSec);
                 }
                 
                 // 处理角色行动
@@ -529,6 +537,31 @@ namespace BlazorIdle.Game
                     }
                 }
 
+                // Phase 5: 检查冷却时间
+                // Phase 5: Check cooldown
+                if (skillDef != null && !_cooldownManager.IsReady(skillId))
+                {
+                    // 技能还在冷却中，跳过施放
+                    // Skill is still on cooldown, skip casting
+                    return;
+                }
+
+                // Phase 5: 检查资源消耗
+                // Phase 5: Check resource cost
+                if (skillDef != null && !_resourceManager.CheckResourceCost(skillDef, ctx))
+                {
+                    // 资源不足，跳过施放
+                    // Insufficient resources, skip casting
+                    return;
+                }
+
+                // Phase 5: 消耗资源（瞬发技能在施放时消耗）
+                // Phase 5: Consume resources (instant skills consume on cast)
+                if (skillDef != null && skillDef.ReleaseType == "instant")
+                {
+                    _resourceManager.ConsumeResourceCost(skillDef, ctx);
+                }
+
                 // 使用 SkillResolver 执行技能
                 // Execute skill using SkillResolver
                 var opts = new SkillCastOptions 
@@ -620,6 +653,13 @@ namespace BlazorIdle.Game
                             }
                         }
                     }
+                }
+
+                // Phase 5: 启动冷却
+                // Phase 5: Start cooldown
+                if (skillDef != null && skillDef.CooldownSec > 0)
+                {
+                    _cooldownManager.StartCooldown(skillId, skillDef.CooldownSec);
                 }
             }
             else
