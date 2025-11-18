@@ -15,9 +15,8 @@ namespace BlazorIdle.Tests
             // Arrange & Act
             var controller = new CastingController();
 
-            // Assert
-            Assert.False(controller.IsCasting);
-            Assert.Null(controller.ActiveCast);
+            // Assert - Phase 9: IsCasting now takes a casterId parameter
+            Assert.False(controller.IsCasting("char1"));
         }
 
         [Fact]
@@ -31,9 +30,8 @@ namespace BlazorIdle.Tests
             controller.Tick(0.5);
             controller.Tick(1.0);
 
-            // Assert - 状态应该保持不变
-            Assert.False(controller.IsCasting);
-            Assert.Null(controller.ActiveCast);
+            // Assert - Phase 9: IsCasting now takes a casterId parameter
+            Assert.False(controller.IsCasting("char1"));
         }
 
         [Fact]

@@ -398,11 +398,19 @@ namespace BlazorIdle.Game
         /// </summary>
         private void ProcessCharacterActions(int now)
         {
-            // 调用 CastingController（占位实现，预留给后续施法系统）
-            // Call CastingController (placeholder implementation, reserved for future casting system)
+            // 调用 CastingController 并处理完成的施法
+            // Call CastingController and process completed casts
             double dt = _lastTickTime > 0 ? (now - _lastTickTime) / 1000.0 : 0;
             _castingController.Tick(dt);
             _lastTickTime = now;
+            
+            // Phase 9: 处理施法完成事件 - PostCast 窗口
+            // Phase 9: Process cast completion events - PostCast window
+            var completedCasts = _castingController.CollectCompletedCasts();
+            foreach (var castEvent in completedCasts)
+            {
+                ProcessCastCompletion(castEvent.CasterId, castEvent.SkillId, now);
+            }
             
             var aliveCharIds = _playerTeam.GetAliveMemberIds();
 
@@ -827,9 +835,16 @@ namespace BlazorIdle.Game
             {
                 // 执行施法技能
                 // Execute cast skill
-                ExecuteSkill(charId, castSkill.Id, "preattack", isCasterPlayer: true, EventSource.Special);
-                // TODO: 实现施法进度条和 AttackTrack 暂停机制
-                // TODO: Implement casting progress bar and AttackTrack pause mechanism
+                ExecuteSkill(charId, castSkill.Id, "preattack", isCasterPlayer: true, EventSource.Cast);
+                
+                // 启动施法进度条（如果施法时间 > 0）
+                // Start casting progress bar (if cast time > 0)
+                if (castSkill.CastTimeSec > 0)
+                {
+                    _castingController.StartCast(charId, castSkill.Id, castSkill.CastTimeSec * 1000.0);
+                }
+                // TODO: 实现 AttackTrack 暂停机制
+                // TODO: Implement AttackTrack pause mechanism
             }
             else
             {
@@ -846,9 +861,62 @@ namespace BlazorIdle.Game
                 var instantSkills = _autoCastEngine.ExecuteWindow(characterData, character.ActiveCombatProfessionId, context, normalAttackIsGcd, "PostAttack");
                 foreach (var skill in instantSkills)
                 {
-                    ExecuteSkill(charId, skill.Id, "postattack", isCasterPlayer: true, EventSource.Special);
+                    ExecuteSkill(charId, skill.Id, "postattack", isCasterPlayer: true, EventSource.PostAttack);
                 }
             }
+        }
+
+        /// <summary>
+        /// Phase 9: 处理施法完成 - PostCast 窗口
+        /// Phase 9: Process cast completion - PostCast window
+        /// </summary>
+        private void ProcessCastCompletion(string charId, string castSkillId, int now)
+        {
+            if (!_characterTracks.TryGetValue(charId, out var tracks))
+                return;
+
+            var character = tracks.Character;
+
+            // 获取 CharacterData（如果可用）
+            // Get CharacterData (if available)
+            Shared.Models.CharacterData? characterData = null;
+            if (_characterDataMap != null && _characterDataMap.TryGetValue(charId, out var data))
+            {
+                characterData = data;
+            }
+
+            // 如果没有 CharacterData，直接返回
+            // If no CharacterData, return
+            if (characterData == null)
+                return;
+
+            // 构建战斗上下文
+            // Build battle context
+            var context = new BattleContext
+            {
+                Player = character,
+                PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(charId),
+                PlayerResources = _playerResources.GetValueOrDefault(charId),
+                Rng = _rng,
+                Clock = _clock,
+                CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
+            };
+
+            // 获取施法技能，检查是否占用 GCD
+            // Get cast skill to check if it uses GCD
+            var castSkill = _skillRepository.GetSkill(castSkillId);
+            bool castSkillIsGcd = castSkill?.IsGcd ?? true;
+
+            // PostCast 窗口：执行瞬发技能
+            // PostCast window: Execute instant skills
+            var instantSkills = _autoCastEngine.ExecuteWindow(characterData, character.ActiveCombatProfessionId, context, castSkillIsGcd, "PostCast");
+            foreach (var skill in instantSkills)
+            {
+                ExecuteSkill(charId, skill.Id, "postcast", isCasterPlayer: true, EventSource.PostCast);
+            }
+
+            // TODO: 恢复 AttackTrack（如果之前暂停了）
+            // TODO: Resume AttackTrack (if it was paused)
         }
 
         /// <summary>

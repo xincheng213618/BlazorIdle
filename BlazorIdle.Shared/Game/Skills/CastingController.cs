@@ -3,39 +3,82 @@ using System.Collections.Generic;
 namespace BlazorIdle.Game.Skills
 {
     /// <summary>
-    /// 施法控制器（占位实现）
-    /// Casting controller (placeholder implementation)
-    /// Step 0 中不启用施法功能，所有施法时间为 0
-    /// Casting functionality is not enabled in Step 0, all cast times are 0
+    /// 施法控制器 - Phase 9: 支持施法完成通知
+    /// Casting controller - Phase 9: Support cast completion notification
     /// </summary>
     public sealed class CastingController
     {
-        /// <summary>
-        /// 是否正在施法
-        /// Whether currently casting
-        /// </summary>
-        public bool IsCasting { get; private set; } = false;
+        private readonly Dictionary<string, CastState> _activeCasts = new();
+        private readonly List<CastCompletionEvent> _completedCasts = new();
 
         /// <summary>
-        /// 当前活跃的施法（如果有）
-        /// Currently active cast (if any)
+        /// 开始施法
+        /// Start casting
         /// </summary>
-        public ActiveCast? ActiveCast { get; private set; }
+        public void StartCast(string casterId, string skillId, double castTimeMs)
+        {
+            _activeCasts[casterId] = new CastState
+            {
+                CasterId = casterId,
+                SkillId = skillId,
+                RemainingMs = castTimeMs,
+                TotalMs = castTimeMs
+            };
+        }
 
         /// <summary>
-        /// 推进施法控制器时间（占位实现）
-        /// Advance casting controller time (placeholder implementation)
+        /// 推进施法控制器时间
+        /// Advance casting controller time
         /// </summary>
         /// <param name="dt">时间增量（秒）</param>
         public void Tick(double dt)
         {
-            // 占位：空实现
-            // Placeholder: empty implementation
-            // 后续阶段会实现施法逻辑
-            // Casting logic will be implemented in future phases
-            
-            // Step 0 中所有技能的施法时间都为 0，因此不需要实际的施法逻辑
-            // In Step 0, all skills have 0 cast time, so no actual casting logic is needed
+            _completedCasts.Clear();
+            double dtMs = dt * 1000.0;
+
+            var castersToRemove = new List<string>();
+
+            foreach (var kvp in _activeCasts)
+            {
+                var state = kvp.Value;
+                state.RemainingMs -= dtMs;
+
+                if (state.RemainingMs <= 0)
+                {
+                    // 施法完成
+                    _completedCasts.Add(new CastCompletionEvent
+                    {
+                        CasterId = state.CasterId,
+                        SkillId = state.SkillId
+                    });
+                    castersToRemove.Add(kvp.Key);
+                }
+            }
+
+            foreach (var casterId in castersToRemove)
+            {
+                _activeCasts.Remove(casterId);
+            }
+        }
+
+        /// <summary>
+        /// 获取并清空本帧完成的施法列表
+        /// Get and clear completed casts for this frame
+        /// </summary>
+        public List<CastCompletionEvent> CollectCompletedCasts()
+        {
+            var result = new List<CastCompletionEvent>(_completedCasts);
+            _completedCasts.Clear();
+            return result;
+        }
+
+        /// <summary>
+        /// 检查指定角色是否正在施法
+        /// Check if specified character is casting
+        /// </summary>
+        public bool IsCasting(string casterId)
+        {
+            return _activeCasts.ContainsKey(casterId);
         }
 
         /// <summary>
@@ -47,9 +90,27 @@ namespace BlazorIdle.Game.Skills
         {
             // 占位：始终返回空列表
             // Placeholder: always return empty list
-            // Step 0 中不会有施法，因此不会暂停任何轨道
-            // In Step 0, there is no casting, so no tracks are paused
+            // 后续阶段会实现轨道暂停逻辑
+            // Track pausing logic will be implemented in future phases
             return new List<string>();
         }
+
+        private class CastState
+        {
+            public string CasterId { get; set; } = "";
+            public string SkillId { get; set; } = "";
+            public double RemainingMs { get; set; }
+            public double TotalMs { get; set; }
+        }
+    }
+
+    /// <summary>
+    /// 施法完成事件
+    /// Cast completion event
+    /// </summary>
+    public class CastCompletionEvent
+    {
+        public string CasterId { get; set; } = "";
+        public string SkillId { get; set; } = "";
     }
 }
