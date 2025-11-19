@@ -53,7 +53,7 @@
     ],
     "triggers": [
       {
-        "when": "OnPostCastWindow",
+        "when": "OnPostAttackWindow",
         "procChance": 1.0,
         "fireSkillId": "warrior_check_stance",
         "priority": 1

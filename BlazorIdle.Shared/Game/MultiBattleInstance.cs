@@ -805,6 +805,12 @@ namespace BlazorIdle.Game
             // Monster Skill System: 调用统一的通用技能执行函数
             // Monster Skill System: Call unified generic skill execution function
             ExecuteSkill(charId, skillId, "special", isCasterPlayer: true, EventSource.Special);
+            
+            // Phase 7: Special 技能执行后处理窗口触发器
+            // Phase 7: Process window triggers after special skill execution
+            // Special 技能通常是瞬发技能，使用 OnPostAttackWindow 触发时机
+            // Special skills are usually instant, use OnPostAttackWindow trigger timing
+            ProcessWindowTriggers(charId, "OnPostAttackWindow", skillId, isCasterPlayer: true);
         }
 
         /// <summary>
