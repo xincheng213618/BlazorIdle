@@ -23,6 +23,12 @@ namespace BlazorIdle.Game
         /// </summary>
         public bool IsPaused { get; private set; } = false;
 
+        /// <summary>
+        /// 暂停时的时间戳 - Phase 8: 用于恢复时调整 NextTriggerAtMs
+        /// Timestamp when paused - Phase 8: Used to adjust NextTriggerAtMs on resume
+        /// </summary>
+        private double _pausedAtMs = 0;
+
         public TrackState(TrackType type, double baseIntervalMs)
         {
             Type = type;
@@ -38,24 +44,40 @@ namespace BlazorIdle.Game
         {
             NextTriggerAtMs = startMs + EffectiveIntervalMs;
             IsPaused = false; // Reset also unpauses
+            _pausedAtMs = 0;
         }
 
         /// <summary>
         /// 暂停轨道 - Phase 8
         /// Pause track - Phase 8
         /// </summary>
-        public void Pause()
+        /// <param name="nowMs">当前时间（毫秒）/ Current time in milliseconds</param>
+        public void Pause(double nowMs)
         {
-            IsPaused = true;
+            if (!IsPaused)
+            {
+                IsPaused = true;
+                _pausedAtMs = nowMs;
+            }
         }
 
         /// <summary>
         /// 恢复轨道 - Phase 8
         /// Resume track - Phase 8
         /// </summary>
-        public void Resume()
+        /// <param name="nowMs">当前时间（毫秒）/ Current time in milliseconds</param>
+        public void Resume(double nowMs)
         {
-            IsPaused = false;
+            if (IsPaused)
+            {
+                // 调整下次触发时间：加上暂停的时长
+                // Adjust next trigger time: add the paused duration
+                double pausedDuration = nowMs - _pausedAtMs;
+                NextTriggerAtMs += pausedDuration;
+                
+                IsPaused = false;
+                _pausedAtMs = 0;
+            }
         }
 
         // 单次尝试触发（保留供简单使用）

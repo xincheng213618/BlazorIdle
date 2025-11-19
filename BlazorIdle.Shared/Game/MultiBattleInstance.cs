@@ -923,7 +923,7 @@ namespace BlazorIdle.Game
                         // 暂停攻击轨道 / Pause attack track
                         if (_characterTracks.TryGetValue(charId, out var tracks))
                         {
-                            tracks.PauseAttackTrack();
+                            tracks.PauseAttackTrack(now);
                         }
 
                         // 记录施法开始事件 / Record cast start event
@@ -2850,7 +2850,7 @@ namespace BlazorIdle.Game
                 if (castStarted)
                 {
                     // 暂停攻击轨道 / Pause attack track
-                    tracks.PauseAttackTrack();
+                    tracks.PauseAttackTrack(now);
 
                     // 记录施法开始事件 / Record cast start event
                     var actualCastTime = castSkill.CastTimeSec / (1.0 + hastePercent / 100.0);
@@ -2943,7 +2943,7 @@ namespace BlazorIdle.Game
             {
                 if (_characterTracks.TryGetValue(casterId, out var tracks))
                 {
-                    tracks.ResumeAttackTrack();
+                    tracks.ResumeAttackTrack(now);
                 }
             }
         }
@@ -2959,7 +2959,7 @@ namespace BlazorIdle.Game
             // 恢复攻击轨道 / Resume attack track
             if (_characterTracks.TryGetValue(casterId, out var tracks))
             {
-                tracks.ResumeAttackTrack();
+                tracks.ResumeAttackTrack(now);
             }
 
             // 记录施法中断事件 / Record cast interrupt event

@@ -322,7 +322,7 @@ namespace BlazorIdle.Tests
             track.Reset(0);
 
             // Act
-            track.Pause();
+            track.Pause(500); // Pause at t=500ms
             bool triggered = track.TryTrigger(1100); // 应该触发，但被暂停
 
             // Assert
@@ -331,20 +331,26 @@ namespace BlazorIdle.Tests
         }
 
         [Fact]
-        public void TrackState_ResumeAfterPause_ShouldAllowTriggers()
+        public void TrackState_ResumeAfterPause_ShouldAdjustTriggerTime()
         {
             // Arrange
             var track = new TrackState(TrackType.Attack, 1000);
-            track.Reset(0);
-            track.Pause();
+            track.Reset(0); // NextTriggerAt = 1000ms
+            track.Pause(500); // Pause at t=500ms
 
             // Act
-            track.Resume();
-            bool triggered = track.TryTrigger(1100);
-
+            track.Resume(1000); // Resume at t=1000ms (paused for 500ms)
+            
             // Assert
             Assert.False(track.IsPaused);
-            Assert.True(triggered);
+            // NextTriggerAt should be adjusted: 1000 + 500 = 1500ms
+            // So at t=1100ms, it should NOT trigger yet
+            bool triggeredAt1100 = track.TryTrigger(1100);
+            Assert.False(triggeredAt1100);
+            
+            // But at t=1500ms, it should trigger
+            bool triggeredAt1500 = track.TryTrigger(1500);
+            Assert.True(triggeredAt1500);
         }
 
         #endregion
