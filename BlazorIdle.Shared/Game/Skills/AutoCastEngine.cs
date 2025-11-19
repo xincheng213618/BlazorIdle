@@ -11,6 +11,11 @@ namespace BlazorIdle.Game.Skills
     /// 
     /// 提供统一的技能调度和协调框架，为后续 Window-GCD 和触发系统提供基础
     /// Provides unified skill scheduling and coordination framework for future Window-GCD and trigger systems
+    /// 
+    /// Phase 9 优化 (Optimizations):
+    /// - 技能列表缓存 / Skill list caching
+    /// - LINQ 优化 / LINQ optimization
+    /// - 移除过时代码 / Obsolete code removed
     /// </summary>
     public sealed class AutoCastEngine
     {
@@ -18,6 +23,9 @@ namespace BlazorIdle.Game.Skills
         private readonly ConditionChecker _conditionChecker;
         private readonly CooldownManager _cooldownManager;
         private readonly ResourceManager _resourceManager;
+
+        // Phase 9: 技能列表缓存 / Skill list cache
+        private readonly Dictionary<string, SkillCacheEntry> _skillCache = new Dictionary<string, SkillCacheEntry>();
 
         /// <summary>
         /// 技能选择决策事件
@@ -50,61 +58,24 @@ namespace BlazorIdle.Game.Skills
         }
 
         /// <summary>
-        /// 主循环 - 每帧调用，负责技能选择和调度（已弃用，使用 SelectCastSkill 和 ExecuteWindow 代替）
-        /// Main loop - called each frame, handles skill selection and scheduling (Deprecated, use SelectCastSkill and ExecuteWindow instead)
+        /// Phase 9: 使缓存失效 / Invalidate cache
+        /// 当角色装备技能变更时调用 / Call when character's equipped skills change
         /// </summary>
-        /// <param name="deltaTime">距离上一帧的时间间隔（秒）</param>
-        /// <param name="characterData">角色数据</param>
-        /// <param name="professionId">当前职业ID</param>
-        /// <param name="context">战斗上下文</param>
-        /// <returns>选中要释放的技能ID，如果没有可用技能返回 null</returns>
-        [Obsolete("Use SelectCastSkill for PreAttack window and ExecuteWindow for PostAttack/PostCast windows")]
-        public string? Tick(double deltaTime, CharacterData characterData, string professionId, BattleContext context)
+        /// <param name="professionId">职业ID / Profession ID</param>
+        public void InvalidateCache(string professionId)
         {
-            if (characterData == null || context == null)
-                return null;
-
-            // 获取角色的技能槽位
-            var equippedSkills = GetEquippedSkills(characterData, professionId);
-            if (equippedSkills.Count == 0)
-                return null;
-
-            // 按优先级排序（槽位顺序）
-            var sortedSkills = SortByPriority(equippedSkills);
-
-            // 选择第一个可用的技能
-            foreach (var skill in sortedSkills)
-            {
-                // 检查冷却
-                if (!_cooldownManager.IsReady(skill.Id))
-                {
-                    RecordSkillFailure(skill.Id, "Cooldown", $"Remaining: {_cooldownManager.GetRemainingCooldown(skill.Id):F1}s");
-                    continue;
-                }
-
-                // 检查条件
-                if (skill.Conditions != null && !_conditionChecker.CheckConditions(skill, context, isCasterPlayer: true))
-                {
-                    RecordSkillFailure(skill.Id, "Condition", "Skill conditions not met");
-                    continue;
-                }
-
-                // 检查资源
-                if (!_resourceManager.CheckResourceCost(skill, context))
-                {
-                    RecordSkillFailure(skill.Id, "Resource", "Insufficient resources");
-                    continue;
-                }
-
-                // 找到第一个可用技能
-                RecordSkillSelection(skill.Id, "Available");
-                RecordSkillCastAttempt(skill.Id);
-                return skill.Id;
-            }
-
-            // 没有可用技能
-            return null;
+            _skillCache.Remove(professionId);
         }
+
+        /// <summary>
+        /// Phase 9: 清空所有缓存 / Clear all cache
+        /// </summary>
+        public void ClearCache()
+        {
+            _skillCache.Clear();
+        }
+
+
 
         /// <summary>
         /// PreAttack 窗口：选择施法技能
@@ -119,16 +90,15 @@ namespace BlazorIdle.Game.Skills
             if (characterData == null || context == null)
                 return null;
 
-            // 获取角色的技能槽位
-            var equippedSkills = GetEquippedSkills(characterData, professionId);
-            if (equippedSkills.Count == 0)
+            // Phase 9: 使用缓存获取技能列表 / Use cache to get skill list
+            var cacheEntry = GetOrCreateCacheEntry(characterData, professionId);
+            if (cacheEntry.CastSkills.Count == 0)
                 return null;
 
-            // 只选择施法技能
-            var castSkills = equippedSkills.Where(s => s.ReleaseType == "cast").ToList();
-
-            foreach (var skill in castSkills)
+            // Phase 9: 优化 - 直接遍历，避免 LINQ / Optimized - direct iteration, avoid LINQ
+            for (int i = 0; i < cacheEntry.CastSkills.Count; i++)
             {
+                var skill = cacheEntry.CastSkills[i];
                 if (IsSkillAvailable(skill, context))
                 {
                     RecordSkillSelection(skill.Id, "PreAttack-Cast");
@@ -157,16 +127,15 @@ namespace BlazorIdle.Game.Skills
             if (characterData == null || context == null)
                 return results;
 
-            // 获取角色的技能槽位
-            var equippedSkills = GetEquippedSkills(characterData, professionId);
-            if (equippedSkills.Count == 0)
+            // Phase 9: 使用缓存获取技能列表 / Use cache to get skill list
+            var cacheEntry = GetOrCreateCacheEntry(characterData, professionId);
+            if (cacheEntry.InstantSkills.Count == 0)
                 return results;
 
-            // 只选择瞬发技能
-            var instantSkills = equippedSkills.Where(s => s.ReleaseType == "instant").ToList();
-
-            foreach (var skill in instantSkills)
+            // Phase 9: 优化 - 直接遍历，避免 LINQ / Optimized - direct iteration, avoid LINQ
+            for (int i = 0; i < cacheEntry.InstantSkills.Count; i++)
             {
+                var skill = cacheEntry.InstantSkills[i];
                 if (!IsSkillAvailable(skill, context))
                     continue;
 
@@ -194,6 +163,37 @@ namespace BlazorIdle.Game.Skills
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// Phase 9: 获取或创建缓存条目 / Get or create cache entry
+        /// </summary>
+        private SkillCacheEntry GetOrCreateCacheEntry(CharacterData characterData, string professionId)
+        {
+            if (_skillCache.TryGetValue(professionId, out var cached))
+                return cached;
+
+            // 创建新的缓存条目 / Create new cache entry
+            var allSkills = GetEquippedSkills(characterData, professionId);
+            var entry = new SkillCacheEntry
+            {
+                AllSkills = allSkills,
+                CastSkills = new List<SkillDef>(),
+                InstantSkills = new List<SkillDef>()
+            };
+
+            // 分类技能以优化后续查询 / Categorize skills for optimized queries
+            for (int i = 0; i < allSkills.Count; i++)
+            {
+                var skill = allSkills[i];
+                if (skill.ReleaseType == "cast")
+                    entry.CastSkills.Add(skill);
+                else if (skill.ReleaseType == "instant")
+                    entry.InstantSkills.Add(skill);
+            }
+
+            _skillCache[professionId] = entry;
+            return entry;
         }
 
         /// <summary>
@@ -260,18 +260,7 @@ namespace BlazorIdle.Game.Skills
             return skills;
         }
 
-        /// <summary>
-        /// 按优先级排序技能（槽位顺序）
-        /// Sort skills by priority (slot order)
-        /// </summary>
-        private List<SkillDef> SortByPriority(List<SkillDef> skills)
-        {
-            // 当前简单实现：保持槽位顺序（已经是正确的优先级）
-            // Current simple implementation: keep slot order (already correct priority)
-            // 未来可以根据技能类型、条件等进行更复杂的排序
-            // Future: can add more complex sorting based on skill type, conditions, etc.
-            return skills;
-        }
+
 
         /// <summary>
         /// 记录技能选择决策
@@ -347,5 +336,28 @@ namespace BlazorIdle.Game.Skills
         public string Reason { get; set; } = "";
         public string Details { get; set; } = "";
         public DateTime Timestamp { get; set; }
+    }
+
+    /// <summary>
+    /// Phase 9: 技能缓存条目 / Skill cache entry
+    /// 缓存角色已装备的技能列表，按类型分类以提高查询性能
+    /// Cache equipped skills, categorized by type for improved query performance
+    /// </summary>
+    internal class SkillCacheEntry
+    {
+        /// <summary>
+        /// 所有已装备技能 / All equipped skills
+        /// </summary>
+        public List<SkillDef> AllSkills { get; set; } = new List<SkillDef>();
+
+        /// <summary>
+        /// 施法技能列表 / Cast skills list
+        /// </summary>
+        public List<SkillDef> CastSkills { get; set; } = new List<SkillDef>();
+
+        /// <summary>
+        /// 瞬发技能列表 / Instant skills list
+        /// </summary>
+        public List<SkillDef> InstantSkills { get; set; } = new List<SkillDef>();
     }
 }
