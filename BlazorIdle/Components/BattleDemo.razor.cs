@@ -1128,7 +1128,11 @@ namespace BlazorIdle.Components
             var kindText = ev.Kind == BlazorIdle.Game.Buffs.BuffKind.Buff ? "增益" : "减益";
             var durationText = ev.DurationSec.HasValue ? $"{ev.DurationSec.Value:F1}秒" : "永久";
             
-            var line = $"[{sec:0.00}s] {ownerName} 获得 {kindText} [{ev.BuffId}]，持续 {durationText}";
+            // Look up buff name from repository for better readability
+            var buffConfig = BlazorIdle.Game.Buffs.BuffRepository.Instance.GetBuffById(ev.BuffId);
+            var buffName = buffConfig?.Name ?? ev.BuffId;
+            
+            var line = $"[{sec:0.00}s] {ownerName} 获得 {kindText} [{buffName}]，持续 {durationText}";
             if (ev.Stacks > 1) line += $"，层数：{ev.Stacks}";
             
             logs.Add(line);
@@ -1150,10 +1154,16 @@ namespace BlazorIdle.Components
                 "expired" => "过期",
                 "dispelled" => "被驱散",
                 "manual" => "手动移除",
+                "skill_effect" => "技能效果",
                 _ => ev.Reason
             };
             
-            var line = $"[{sec:0.00}s] {ownerName} 的 [{ev.BuffId}] {reasonText}";
+            // Look up buff name from repository for better readability
+            var buffConfig = BlazorIdle.Game.Buffs.BuffRepository.Instance.GetBuffById(ev.BuffId);
+            var buffName = buffConfig?.Name ?? ev.BuffId;
+            var kindText = buffConfig?.Kind == BlazorIdle.Game.Buffs.BuffKind.Buff ? "增益" : "减益";
+            
+            var line = $"[{sec:0.00}s] {ownerName} 失去 {kindText} [{buffName}]，原因：{reasonText}";
             
             logs.Add(line);
             if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
