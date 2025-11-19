@@ -846,12 +846,12 @@ namespace BlazorIdle.Game
                     new Shared.Models.EquippedSkillsConfig
                     {
                         ProfessionId = character.ActiveCombatProfessionId,
-                        ActiveSlots = new Dictionary<string, string?>
-                        {
-                            { "active_1", "warrior_mortal_strike" },  // GCD 技能，消耗 3 怒气，cd=3s
-                            { "active_2", "warrior_thunderclap" },    // 非 GCD 技能，无消耗，cd=10s
-                            { "active_3", "warrior_slam" }             // GCD 技能，无消耗，cd=10s
-                        },
+                        //ActiveSlots = new Dictionary<string, string?>
+                        //{
+                        //    { "active_1", "warrior_mortal_strike" },  // GCD 技能，消耗 3 怒气，cd=3s
+                        //    { "active_2", "warrior_thunderclap" },    // 非 GCD 技能，无消耗，cd=10s
+                        //    { "active_3", "warrior_slam" }             // GCD 技能，无消耗，cd=10s
+                        //},
                         PassiveSlot = "warrior_bloodlust"  // Phase 7: 测试被动触发技能 - 20%概率造成10额外伤害
                     };
             }

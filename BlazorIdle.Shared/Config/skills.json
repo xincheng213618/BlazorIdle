@@ -312,7 +312,7 @@
     "triggers": [
       {
         "when": "OnAttackHit",
-        "procChance": 0.2,
+        "procChance": 1,
         "fireSkillId": "warrior_bloodlust_proc",
         "priority": 5,
         "ignoreRequirements": true
