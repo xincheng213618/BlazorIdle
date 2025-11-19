@@ -546,8 +546,7 @@ namespace BlazorIdle.Game
             string skillId, 
             string sourceTrack,
             bool isCasterPlayer,
-            EventSource eventSource = EventSource.Attack,
-            bool skipResourcesAndCooldown = false)
+            EventSource eventSource = EventSource.Attack)
         {
             if (isCasterPlayer)
             {
@@ -659,13 +658,7 @@ namespace BlazorIdle.Game
                     // Use first target ID as context (buff system will resolve actual targets based on BuffTarget type)
                     string? primaryTargetId = targetIds.Count > 0 ? targetIds[0] : null;
                     ProcessBuffOperations(result, casterId, primaryTargetId, isCasterPlayer: true);
-                    
-                    // Phase 8 Fix: 如果 skipResourcesAndCooldown=true，跳过资源和冷却处理（已在施法开始时处理）
-                    // Phase 8 Fix: If skipResourcesAndCooldown=true, skip resources and cooldown (already handled at cast start)
-                    if (!skipResourcesAndCooldown)
-                    {
-                        ApplyResourceChanges(result, casterId, isCasterPlayer: true, skillId: skillId);
-                    }
+                    ApplyResourceChanges(result, casterId, isCasterPlayer: true, skillId: skillId);
                 }
 
                 // 向后兼容 - 如果技能没有定义资源获得，使用职业配置作为回退（仅普通攻击）
@@ -927,11 +920,6 @@ namespace BlazorIdle.Game
                     
                     if (castStarted)
                     {
-                        // Phase 8 Fix: 施法开始时消耗资源和启动冷却
-                        // Phase 8 Fix: Consume resources and start cooldown when cast starts
-                        _resourceManager.ConsumeResourceCost(castSkill, context);
-                        _cooldownManager.StartCooldown(castSkill.Id, castSkill.CooldownSec);
-
                         // 暂停攻击轨道 / Pause attack track
                         if (_characterTracks.TryGetValue(charId, out var tracks))
                         {
@@ -2861,11 +2849,6 @@ namespace BlazorIdle.Game
                 
                 if (castStarted)
                 {
-                    // Phase 8 Fix: 施法开始时消耗资源和启动冷却
-                    // Phase 8 Fix: Consume resources and start cooldown when cast starts
-                    _resourceManager.ConsumeResourceCost(castSkill, context);
-                    _cooldownManager.StartCooldown(castSkill.Id, castSkill.CooldownSec);
-
                     // 暂停攻击轨道 / Pause attack track
                     tracks.PauseAttackTrack(now);
 
@@ -2905,9 +2888,7 @@ namespace BlazorIdle.Game
             var character = member.Entity;
 
             // 执行施法技能效果 / Execute cast skill effects
-            // Phase 8 Fix: skipResourcesAndCooldown=true 因为已在施法开始时消耗
-            // Phase 8 Fix: skipResourcesAndCooldown=true because already consumed at cast start
-            ExecuteSkill(casterId, skillId, "cast", isCasterPlayer: true, EventSource.Cast, skipResourcesAndCooldown: true);
+            ExecuteSkill(casterId, skillId, "cast", isCasterPlayer: true, EventSource.Cast);
 
             // 获取 CharacterData / Get CharacterData
             Shared.Models.CharacterData? characterData = null;
