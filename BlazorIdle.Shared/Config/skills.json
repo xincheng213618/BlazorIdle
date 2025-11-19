@@ -87,7 +87,8 @@
       },
       {
         "op": "Remove",
-        "buffIdToRemove": "warrior_stance"
+        "buffIdToRemove": "warrior_stance",
+        "stacksToRemove": 3
       }
     ]
   },

@@ -58,6 +58,16 @@ namespace BlazorIdle.Game.Buffs
         bool RemoveBuff(string buffId, string reason);
 
         /// <summary>
+        /// Phase 7: Reduces the stack count of a buff by the specified amount.
+        /// If the stack count reaches 0 or below, the buff is completely removed.
+        /// </summary>
+        /// <param name="buffId">ID of the buff to reduce stacks from.</param>
+        /// <param name="stacksToRemove">Number of stacks to remove.</param>
+        /// <param name="reason">Reason for removal (e.g., "consumed", "skill_effect").</param>
+        /// <returns>True if stacks were reduced or buff was removed, false if buff didn't exist.</returns>
+        bool ReduceBuffStacks(string buffId, int stacksToRemove, string reason);
+
+        /// <summary>
         /// Applies damage to this entity.
         /// </summary>
         /// <param name="amount">Amount of damage.</param>

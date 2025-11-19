@@ -91,6 +91,26 @@ namespace BlazorIdle.Game.Buffs
             return _buffs.Remove(buffId);
         }
 
+        public bool ReduceBuffStacks(string buffId, int stacksToRemove, string reason)
+        {
+            if (!_buffs.TryGetValue(buffId, out var buff))
+                return false;
+
+            if (stacksToRemove <= 0)
+                return false;
+
+            // Reduce stacks
+            buff.Stacks = Math.Max(0, buff.Stacks - stacksToRemove);
+
+            // If stacks reach 0 or below, remove the buff entirely
+            if (buff.Stacks <= 0)
+            {
+                _buffs.Remove(buffId);
+            }
+
+            return true;
+        }
+
         public void ReceiveDamage(int amount, DamageMeta meta)
         {
             if (amount < 0) throw new ArgumentException("Damage amount cannot be negative", nameof(amount));

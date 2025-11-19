@@ -1628,7 +1628,18 @@ namespace BlazorIdle.Game
             foreach (var target in targets)
             {
                 string reason = operation.Reason ?? "skill_effect";
-                target.RemoveBuff(operation.BuffIdToRemove, reason);
+                
+                // Phase 7: Support stack reduction
+                // If StacksToRemove is specified and > 0, reduce stacks instead of removing entirely
+                if (operation.StacksToRemove.HasValue && operation.StacksToRemove.Value > 0)
+                {
+                    target.ReduceBuffStacks(operation.BuffIdToRemove, operation.StacksToRemove.Value, reason);
+                }
+                else
+                {
+                    // Remove entire buff (all stacks)
+                    target.RemoveBuff(operation.BuffIdToRemove, reason);
+                }
 
                 // Phase 7: 记录 BuffRemoveEvent
                 // Phase 7: Record BuffRemoveEvent

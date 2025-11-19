@@ -45,6 +45,13 @@ namespace BlazorIdle.Game.Skills
         public string? BuffIdToRemove { get; set; }
 
         /// <summary>
+        /// Phase 7: Number of stacks to remove (for Remove operations on stackable buffs).
+        /// If null or 0, removes all stacks (entire buff).
+        /// If > 0, reduces stack count by this amount.
+        /// </summary>
+        public int? StacksToRemove { get; set; }
+
+        /// <summary>
         /// Reason for the operation (for logging/debugging).
         /// </summary>
         public string? Reason { get; set; }
