@@ -157,18 +157,22 @@ namespace BlazorIdle.Game.Skills
         {
             var triggers = new List<TriggerDef>();
 
-            // 如果是玩家，从装备技能中收集触发器
-            if (isCasterPlayer && casterCharacterData != null && !string.IsNullOrEmpty(casterProfessionId))
-            {
-                triggers.AddRange(GetPlayerEquippedTriggers(casterCharacterData, casterProfessionId, when));
-            }
-            // 如果是怪物，从源技能中收集触发器
-            else if (!isCasterPlayer && sourceSkill != null)
+            // 首先从源技能中收集触发器（无论玩家还是怪物）
+            // First collect triggers from the source skill (for both player and monster)
+            if (sourceSkill != null)
             {
                 triggers.AddRange(GetSkillTriggers(sourceSkill, when));
             }
 
+            // 如果是玩家，还要从装备技能中收集触发器
+            // If player, also collect triggers from equipped skills
+            if (isCasterPlayer && casterCharacterData != null && !string.IsNullOrEmpty(casterProfessionId))
+            {
+                triggers.AddRange(GetPlayerEquippedTriggers(casterCharacterData, casterProfessionId, when));
+            }
+
             // 特殊处理：OnAttackCrit 只有在实际暴击时才触发
+            // Special handling: OnAttackCrit only triggers when actually crit
             if (when == "OnAttackCrit" && !wasCrit)
             {
                 return new List<TriggerDef>();
