@@ -760,7 +760,7 @@ namespace BlazorIdle.Game
                         if (playerTarget != null && damagePerTarget > 0)
                         {
                             ApplyDamageToPlayer(casterId, member, targetId, playerTarget, damagePerTarget,
-                                skillId: skillId, bundleId: result.BundleId);
+                                source: eventSource, skillId: skillId, bundleId: result.BundleId);
                         }
                         
                         // Phase 5: 即时治疗应用到每个目标（支持治疗队友）
@@ -1035,7 +1035,12 @@ namespace BlazorIdle.Game
             CombatEventFired?.Invoke(ev);
 
             // Phase 7: 处理攻击触发器 / Process attack triggers
-            ProcessAttackTriggers(attackerId, skillId, isCrit, isCasterPlayer: true);
+            // 只在非触发技能造成伤害时才处理触发器，避免无限递归
+            // Only process triggers for non-trigger skills to avoid infinite recursion
+            if (source != EventSource.Trigger)
+            {
+                ProcessAttackTriggers(attackerId, skillId, isCrit, isCasterPlayer: true);
+            }
 
             // 如果击杀，处理掉落物和经验
             if (isKill)
@@ -1055,6 +1060,7 @@ namespace BlazorIdle.Game
             string defenderId,
             BattleMember<Character> defender,
             int damage,
+            EventSource source = EventSource.EnemyAttack,
             string? skillId = null,
             string? bundleId = null)
         {
@@ -1081,7 +1087,7 @@ namespace BlazorIdle.Game
                 AttackerName = GetEnemyName(attackerId),
                 DefenderId = defenderId,
                 DefenderName = GetCharacterName(defenderId),
-                Source = EventSource.EnemyAttack,
+                Source = source,
                 TimeMs = _clock.NowMs,
                 Damage = actualDamage,
                 Crit = false,
@@ -1101,7 +1107,12 @@ namespace BlazorIdle.Game
             CombatEventFired?.Invoke(ev);
 
             // Phase 7: 处理怪物攻击触发器 / Process monster attack triggers
-            ProcessAttackTriggers(attackerId, skillId, isCrit: false, isCasterPlayer: false);
+            // 只在非触发技能造成伤害时才处理触发器，避免无限递归
+            // Only process triggers for non-trigger skills to avoid infinite recursion
+            if (source != EventSource.Trigger)
+            {
+                ProcessAttackTriggers(attackerId, skillId, isCrit: false, isCasterPlayer: false);
+            }
         }
 
         /// <summary>
