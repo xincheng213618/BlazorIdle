@@ -21,6 +21,70 @@
       "coefAtk": 1.0,
       "flat": 0
     }
+  },
+  {
+    "id": "monster_attack_ogre",
+    "name": "食人魔重击",
+    "description": "食人魔的攻击，25%概率触发野蛮打击造成额外伤害",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "targetPolicy": "random_player",
+    "cooldownSec": 0,
+    "allowedProfessions": [],
+    "damage": {
+      "coefAtk": 1.0,
+      "flat": 0
+    },
+    "triggers": [
+      {
+        "when": "OnAttackHit",
+        "procChance": 1,
+        "fireSkillId": "monster_savage_strike_proc",
+        "priority": 5,
+        "ignoreRequirements": true
+      }
+    ]
+  },
+  {
+    "id": "monster_savage_strike",
+    "name": "野蛮打击",
+    "description": "被动技能：攻击命中时有25%概率触发，造成5点额外伤害",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": false,
+    "releaseType": "instant",
+    "targetPolicy": "random_player",
+    "cooldownSec": 0,
+    "allowedProfessions": [],
+    "triggers": [
+      {
+        "when": "OnAttackHit",
+        "procChance": 0.25,
+        "fireSkillId": "monster_savage_strike_proc",
+        "priority": 5,
+        "ignoreRequirements": true
+      }
+    ]
+  },
+  {
+    "id": "monster_savage_strike_proc",
+    "name": "野蛮打击触发",
+    "description": "野蛮打击触发效果，造成额外伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "targetPolicy": "random_player",
+    "cooldownSec": 0,
+    "allowedProfessions": [],
+    "damage": {
+      "coefAtk": 0.0,
+      "flat": 5
+    },
+    "canCrit": false,
+    "alwaysHits": true
   }
 ]
 

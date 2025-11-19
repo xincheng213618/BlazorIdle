@@ -12,6 +12,7 @@ namespace BlazorIdle.Game.Skills
         /// <summary>
         /// Type of operation (Apply or Remove).
         /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("op")]
         public BuffOperationType Type { get; set; }
 
         /// <summary>
@@ -43,6 +44,13 @@ namespace BlazorIdle.Game.Skills
         /// Buff ID to remove (for Remove operations).
         /// </summary>
         public string? BuffIdToRemove { get; set; }
+
+        /// <summary>
+        /// Phase 7: Number of stacks to remove (for Remove operations on stackable buffs).
+        /// If null or 0, removes all stacks (entire buff).
+        /// If > 0, reduces stack count by this amount.
+        /// </summary>
+        public int? StacksToRemove { get; set; }
 
         /// <summary>
         /// Reason for the operation (for logging/debugging).

@@ -48,6 +48,16 @@ namespace BlazorIdle.Tests
                 return _buffs.Remove(buffId);
             }
             
+            public bool ReduceBuffStacks(string buffId, int stacksToRemove, string reason)
+            {
+                if (!_buffs.TryGetValue(buffId, out var buff))
+                    return false;
+                buff.Stacks = System.Math.Max(0, buff.Stacks - stacksToRemove);
+                if (buff.Stacks <= 0)
+                    _buffs.Remove(buffId);
+                return true;
+            }
+            
             public void ReceiveDamage(int amount, DamageMeta meta) { }
             public void ReceiveHeal(int amount, HealMeta meta) { }
         }

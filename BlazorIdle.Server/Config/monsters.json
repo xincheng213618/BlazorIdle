@@ -44,7 +44,7 @@
   {
     "id": "ogre",
     "name": "Ogre Brute",
-    "desc": "血厚伤重的食人魔",
+    "desc": "血厚伤重的食人魔，攻击时有概率触发野蛮打击",
     "level": 12,
     "maxHp": 520,
     "attackIntervalSec": 2.2,
@@ -52,7 +52,7 @@
     "variancePct": 0.05,
     "respawnSec": 4.0,
     "baseExperience": 10,
-    "normalAttackSkillId": "monster_attack_basic",
+    "normalAttackSkillId": "monster_attack_ogre",
     "lootDrops": [
       {
         "itemId": "gold_coin",

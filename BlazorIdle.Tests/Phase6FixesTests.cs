@@ -198,6 +198,15 @@ namespace BlazorIdle.Tests
 
             public void ApplyBuff(BuffInstance buff) => _buffs[buff.Id] = buff;
             public bool RemoveBuff(string buffId, string reason) => _buffs.Remove(buffId);
+            public bool ReduceBuffStacks(string buffId, int stacksToRemove, string reason)
+            {
+                if (!_buffs.TryGetValue(buffId, out var buff))
+                    return false;
+                buff.Stacks = System.Math.Max(0, buff.Stacks - stacksToRemove);
+                if (buff.Stacks <= 0)
+                    _buffs.Remove(buffId);
+                return true;
+            }
             public void ReceiveDamage(int amount, DamageMeta meta) => CurrentHp = System.Math.Max(0, CurrentHp - amount);
             public void ReceiveHeal(int amount, HealMeta meta) => CurrentHp = System.Math.Min(MaxHp, CurrentHp + amount);
         }

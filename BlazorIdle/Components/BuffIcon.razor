@@ -45,6 +45,7 @@
     private bool _showTooltip = false;
     private string? _cachedIconDisplay = null;
     private string? _cachedBuffName = null;
+    private string? _lastBuffId = null;
     private int _lastStacks = -1;
     private double? _lastDuration = null;
 
@@ -56,12 +57,14 @@
     {
         get
         {
-            if (_cachedIconDisplay == null)
+            // Invalidate cache if buff ID changed
+            if (_cachedIconDisplay == null || _lastBuffId != Buff.Id)
             {
                 // Look up BuffConfig from repository to get the icon
                 var buffConfig = BlazorIdle.Game.Buffs.BuffRepository.Instance.GetBuffById(Buff.Id);
                 _cachedIconDisplay = buffConfig?.Icon ?? "";
                 _cachedBuffName = buffConfig?.Name;
+                _lastBuffId = Buff.Id;
             }
             return _cachedIconDisplay;
         }

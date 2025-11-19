@@ -383,7 +383,8 @@ namespace BlazorIdle.Components
                         RespawnMs = (int)Math.Round(Math.Max(0, monsterDef.RespawnSec) * 1000.0),
                         LootDrops = monsterGroup.SpecialDrops?.ToList() ?? monsterDef.LootDrops?.ToList() ?? new List<Game.Config.LootDrop>(),
                         BaseExperience = monsterDef.BaseExperience,
-                        MonsterId = monsterDef.Id
+                        MonsterId = monsterDef.Id,
+                        NormalAttackSkillId = monsterDef.NormalAttackSkillId  // Phase 7: 设置怪物攻击技能ID
                     };
 
                     string enemyId = $"{monsterGroup.MonsterId}_{enemyIndex}";
@@ -449,8 +450,34 @@ namespace BlazorIdle.Components
             // Phase 2.7: Get profession resource configurations
             var professionResourceConfigs = BuildProfessionResourceConfigs();
 
+            // Phase 7: 创建 CharacterData 映射用于触发器系统
+            // Phase 7: Create CharacterData map for trigger system
+            var characterDataMap = new Dictionary<string, Shared.Models.CharacterData>();
+            if (SelectedCharacter != null)
+            {
+                // Phase 7: 临时测试 - 确保角色有装备技能配置用于触发器测试
+                // Phase 7: Temporary test - ensure character has equipped skills for trigger testing
+                if (!SelectedCharacter.EquippedSkillsByProfession.ContainsKey(SelectedCharacter.ActiveCombatProfessionId))
+                {
+                    SelectedCharacter.EquippedSkillsByProfession[SelectedCharacter.ActiveCombatProfessionId] = 
+                        new Shared.Models.EquippedSkillsConfig
+                        {
+                            ProfessionId = SelectedCharacter.ActiveCombatProfessionId,
+                            ActiveSlots = new Dictionary<string, string?>
+                            {
+                                { "active_1", "warrior_mortal_strike" },
+                                { "active_2", "warrior_thunderclap" },
+                                { "active_3", "warrior_slam" }
+                            },
+                            PassiveSlot = "warrior_bloodlust"  // Phase 7: 测试被动触发技能
+                        };
+                }
+                
+                characterDataMap[SelectedCharacter.Id] = SelectedCharacter;
+            }
+
             // 创建战斗实例并订阅事件
-            battle = new MultiBattleInstance(clock, rng, playerTeam, enemyTeam, config, null, professionResourceConfigs);
+            battle = new MultiBattleInstance(clock, rng, playerTeam, enemyTeam, config, null, professionResourceConfigs, characterDataMap);
             battle.CombatEventFired += OnCombatEvent;
             battle.LootDropped += OnLootDropped;
             battle.ExperienceGained += OnExperienceGained;
@@ -1128,7 +1155,11 @@ namespace BlazorIdle.Components
             var kindText = ev.Kind == BlazorIdle.Game.Buffs.BuffKind.Buff ? "增益" : "减益";
             var durationText = ev.DurationSec.HasValue ? $"{ev.DurationSec.Value:F1}秒" : "永久";
             
-            var line = $"[{sec:0.00}s] {ownerName} 获得 {kindText} [{ev.BuffId}]，持续 {durationText}";
+            // Look up buff name from repository for better readability
+            var buffConfig = BlazorIdle.Game.Buffs.BuffRepository.Instance.GetBuffById(ev.BuffId);
+            var buffName = buffConfig?.Name ?? ev.BuffId;
+            
+            var line = $"[{sec:0.00}s] {ownerName} 获得 {kindText} [{buffName}]，持续 {durationText}";
             if (ev.Stacks > 1) line += $"，层数：{ev.Stacks}";
             
             logs.Add(line);
@@ -1150,10 +1181,16 @@ namespace BlazorIdle.Components
                 "expired" => "过期",
                 "dispelled" => "被驱散",
                 "manual" => "手动移除",
+                "skill_effect" => "技能效果",
                 _ => ev.Reason
             };
             
-            var line = $"[{sec:0.00}s] {ownerName} 的 [{ev.BuffId}] {reasonText}";
+            // Look up buff name from repository for better readability
+            var buffConfig = BlazorIdle.Game.Buffs.BuffRepository.Instance.GetBuffById(ev.BuffId);
+            var buffName = buffConfig?.Name ?? ev.BuffId;
+            var kindText = buffConfig?.Kind == BlazorIdle.Game.Buffs.BuffKind.Buff ? "增益" : "减益";
+            
+            var line = $"[{sec:0.00}s] {ownerName} 失去 {kindText} [{buffName}]，原因：{reasonText}";
             
             logs.Add(line);
             if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
