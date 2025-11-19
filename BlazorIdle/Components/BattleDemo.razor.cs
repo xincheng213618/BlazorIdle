@@ -383,7 +383,8 @@ namespace BlazorIdle.Components
                         RespawnMs = (int)Math.Round(Math.Max(0, monsterDef.RespawnSec) * 1000.0),
                         LootDrops = monsterGroup.SpecialDrops?.ToList() ?? monsterDef.LootDrops?.ToList() ?? new List<Game.Config.LootDrop>(),
                         BaseExperience = monsterDef.BaseExperience,
-                        MonsterId = monsterDef.Id
+                        MonsterId = monsterDef.Id,
+                        NormalAttackSkillId = monsterDef.NormalAttackSkillId  // Phase 7: 设置怪物攻击技能ID
                     };
 
                     string enemyId = $"{monsterGroup.MonsterId}_{enemyIndex}";

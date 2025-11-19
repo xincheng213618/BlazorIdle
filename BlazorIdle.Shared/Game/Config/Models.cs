@@ -67,5 +67,11 @@ namespace BlazorIdle.Game.Config
         /// Base experience - experience gained after defeating monster
         /// </summary>
         [JsonPropertyName("baseExperience")] public long BaseExperience { get; set; } = 50;
+
+        /// <summary>
+        /// 普通攻击技能ID - Phase 7: 怪物技能系统
+        /// Normal attack skill ID - Phase 7: Monster skill system
+        /// </summary>
+        [JsonPropertyName("normalAttackSkillId")] public string? NormalAttackSkillId { get; set; }
     }
 }
