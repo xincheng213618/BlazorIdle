@@ -445,7 +445,11 @@ namespace BlazorIdle.Game
                         RespawnMs = 0, // 副本中不复活
                         LootDrops = monsterGroup.SpecialDrops ?? monsterDef.LootDrops,
                         BaseExperience = monsterDef.BaseExperience,
-                        MonsterId = monsterDef.Id
+                        MonsterId = monsterDef.Id,
+                        NormalAttackSkillId = monsterDef.NormalAttackSkillId,
+                        // Phase 9: Copy skill lists from monster definition
+                        CastSkillIds = monsterDef.CastSkillIds,
+                        InstantSkillIds = monsterDef.InstantSkillIds
                     };
 
                     // 生成敌人ID - 使用更有意义的名称

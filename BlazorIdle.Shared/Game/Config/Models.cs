@@ -73,5 +73,17 @@ namespace BlazorIdle.Game.Config
         /// Normal attack skill ID - Phase 7: Monster skill system
         /// </summary>
         [JsonPropertyName("normalAttackSkillId")] public string? NormalAttackSkillId { get; set; }
+
+        /// <summary>
+        /// Phase 9: 施法技能ID列表 - 怪物可释放的施法技能
+        /// Phase 9: Cast skill IDs list - Cast skills that monster can release
+        /// </summary>
+        [JsonPropertyName("castSkillIds")] public List<string>? CastSkillIds { get; set; }
+
+        /// <summary>
+        /// Phase 9: 瞬发技能ID列表 - 怪物可释放的瞬发技能
+        /// Phase 9: Instant skill IDs list - Instant skills that monster can release
+        /// </summary>
+        [JsonPropertyName("instantSkillIds")] public List<string>? InstantSkillIds { get; set; }
     }
 }

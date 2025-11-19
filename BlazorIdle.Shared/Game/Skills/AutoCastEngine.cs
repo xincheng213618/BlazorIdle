@@ -166,6 +166,90 @@ namespace BlazorIdle.Game.Skills
         }
 
         /// <summary>
+        /// Phase 9 Monster Skills: PreAttack 窗口：为怪物选择施法技能
+        /// Phase 9 Monster Skills: PreAttack window: Select cast skill for monster
+        /// </summary>
+        /// <param name="enemy">怪物实体 / Monster entity</param>
+        /// <param name="monsterId">怪物ID / Monster ID</param>
+        /// <param name="context">战斗上下文 / Battle context</param>
+        /// <returns>选中的施法技能，如果没有返回 null / Selected cast skill, or null if none</returns>
+        public SkillDef? SelectMonsterCastSkill(Enemy enemy, string monsterId, BattleContext context)
+        {
+            if (enemy == null || context == null || enemy.CastSkillIds == null || enemy.CastSkillIds.Count == 0)
+                return null;
+
+            // 遍历怪物的施法技能列表 / Iterate through monster's cast skill list
+            for (int i = 0; i < enemy.CastSkillIds.Count; i++)
+            {
+                var skillId = enemy.CastSkillIds[i];
+                var skill = _skillRepository.GetSkill(skillId);
+                if (skill == null) continue;
+
+                if (IsSkillAvailable(skill, context))
+                {
+                    RecordSkillSelection(skill.Id, $"Monster-{monsterId}-PreAttack-Cast");
+                    RecordSkillCastAttempt(skill.Id);
+                    return skill;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Phase 9 Monster Skills: PostAttack/PostCast 窗口：为怪物执行瞬发技能
+        /// Phase 9 Monster Skills: PostAttack/PostCast window: Execute instant skills for monster
+        /// </summary>
+        /// <param name="enemy">怪物实体 / Monster entity</param>
+        /// <param name="monsterId">怪物ID / Monster ID</param>
+        /// <param name="context">战斗上下文 / Battle context</param>
+        /// <param name="gcdAlreadyUsed">GCD 槽位是否已被占用 / Whether GCD slot is already used</param>
+        /// <param name="windowName">窗口名称（用于日志）/ Window name (for logging)</param>
+        /// <returns>可以释放的技能列表 / List of skills that can be released</returns>
+        public List<SkillDef> ExecuteMonsterWindow(Enemy enemy, string monsterId, BattleContext context, bool gcdAlreadyUsed, string windowName = "PostAttack")
+        {
+            var results = new List<SkillDef>();
+
+            if (enemy == null || context == null || enemy.InstantSkillIds == null || enemy.InstantSkillIds.Count == 0)
+                return results;
+
+            // 遍历怪物的瞬发技能列表 / Iterate through monster's instant skill list
+            for (int i = 0; i < enemy.InstantSkillIds.Count; i++)
+            {
+                var skillId = enemy.InstantSkillIds[i];
+                var skill = _skillRepository.GetSkill(skillId);
+                if (skill == null) continue;
+
+                if (!IsSkillAvailable(skill, context))
+                    continue;
+
+                if (skill.IsGcd)
+                {
+                    // GCD 技能：只有当 GCD 槽位未被占用时才能释放
+                    if (gcdAlreadyUsed)
+                    {
+                        RecordSkillFailure(skill.Id, "GCD", $"GCD slot already used in {windowName} window");
+                        continue;
+                    }
+
+                    results.Add(skill);
+                    RecordSkillSelection(skill.Id, $"Monster-{monsterId}-{windowName}-GCD");
+                    RecordSkillCastAttempt(skill.Id);
+                    gcdAlreadyUsed = true; // 占用 GCD 槽位
+                }
+                else
+                {
+                    // 非 GCD 技能：可以多个同时释放
+                    results.Add(skill);
+                    RecordSkillSelection(skill.Id, $"Monster-{monsterId}-{windowName}-NonGCD");
+                    RecordSkillCastAttempt(skill.Id);
+                }
+            }
+
+            return results;
+        }
+
+        /// <summary>
         /// Phase 9: 获取或创建缓存条目 / Get or create cache entry
         /// </summary>
         private SkillCacheEntry GetOrCreateCacheEntry(CharacterData characterData, string professionId)
