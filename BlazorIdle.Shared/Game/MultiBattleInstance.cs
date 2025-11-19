@@ -2516,6 +2516,57 @@ namespace BlazorIdle.Game
         }
 
         /// <summary>
+        /// Phase 8: 检查指定角色是否正在施法
+        /// Phase 8: Check if specified character is casting
+        /// </summary>
+        /// <returns>如果正在施法返回true，否则返回false / Returns true if casting, false otherwise</returns>
+        public bool IsCastingForCharacter(string characterId)
+        {
+            return _castingController.IsCastingForCaster(characterId);
+        }
+
+        /// <summary>
+        /// Phase 8: 获取指定角色的施法进度（0-1范围）
+        /// Phase 8: Get casting progress for specified character (0-1 range)
+        /// </summary>
+        /// <returns>返回0.0-1.0之间的进度值 / Returns progress value between 0.0-1.0</returns>
+        public double GetCastingProgress(string characterId)
+        {
+            return _castingController.GetCastProgress(characterId);
+        }
+
+        /// <summary>
+        /// Phase 8: 获取指定角色的施法剩余时间（毫秒）
+        /// Phase 8: Get casting time remaining for specified character (milliseconds)
+        /// </summary>
+        /// <returns>返回剩余时间（毫秒）/ Returns remaining time in milliseconds</returns>
+        public double GetCastingTimeRemaining(string characterId)
+        {
+            return _castingController.GetRemainingCastTime(characterId) * 1000.0; // Convert seconds to milliseconds
+        }
+
+        /// <summary>
+        /// Phase 8: 获取指定角色正在施法的技能ID
+        /// Phase 8: Get skill ID being cast by specified character
+        /// </summary>
+        /// <returns>技能ID，如果未施法返回null / Skill ID, or null if not casting</returns>
+        public string? GetCastingSkillId(string characterId)
+        {
+            var activeCast = _castingController.GetActiveCast(characterId);
+            return activeCast?.SkillId;
+        }
+
+        /// <summary>
+        /// Phase 8: 获取技能仓库（用于UI获取技能信息）
+        /// Phase 8: Get skill repository (for UI to get skill information)
+        /// </summary>
+        /// <returns>技能仓库 / Skill repository</returns>
+        public SkillRepository? GetSkillRepository()
+        {
+            return _skillRepository;
+        }
+
+        /// <summary>
         /// Phase 7: 处理攻击触发器
         /// Phase 7: Process attack triggers
         /// </summary>
@@ -2788,28 +2839,38 @@ namespace BlazorIdle.Game
         }
 
         /// <summary>
-        /// Phase 8: 检查并中断施法（目标死亡）
-        /// Phase 8: Check and interrupt casting (target died)
+        /// Phase 8: 检查并中断施法（所有敌人死亡时）
+        /// Phase 8: Check and interrupt casting (when all enemies are dead)
         /// </summary>
         private void CheckAndInterruptCasting(string targetId, bool isTargetPlayer)
         {
-            // 如果死亡的是敌人，检查所有正在对其施法的玩家
-            // If target is an enemy, check all players casting on it
+            // 如果死亡的是敌人，检查是否所有敌人都死了
+            // If target is an enemy, check if all enemies are dead
             if (!isTargetPlayer)
             {
-                var pausedTracks = _castingController.GetPausedTracks();
-                foreach (var casterId in pausedTracks)
+                // 只有当所有敌人都死亡时才中断施法
+                // Only interrupt casting when ALL enemies are dead
+                var aliveEnemies = _enemyTeam.GetAliveMemberIds();
+                if (aliveEnemies.Count == 0)
                 {
-                    if (_castingController.IsCastingForCaster(casterId))
+                    // 所有敌人死亡，中断所有正在施法的玩家
+                    // All enemies dead, interrupt all casting players
+                    var pausedTracks = _castingController.GetPausedTracks();
+                    foreach (var casterId in pausedTracks)
                     {
-                        var activeCast = _castingController.GetActiveCast(casterId);
-                        if (activeCast != null)
+                        if (_castingController.IsCastingForCaster(casterId))
                         {
-                            _castingController.CancelCast(casterId, "target_died");
-                            // HandleCastInterrupt will be called by the event handler
+                            var activeCast = _castingController.GetActiveCast(casterId);
+                            if (activeCast != null)
+                            {
+                                _castingController.CancelCast(casterId, "all_enemies_dead");
+                                // HandleCastInterrupt will be called by the event handler
+                            }
                         }
                     }
                 }
+                // 否则不中断，HandleCastComplete 会自动重新选择目标
+                // Otherwise don't interrupt, HandleCastComplete will auto-retarget
             }
         }
     }
