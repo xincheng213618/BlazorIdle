@@ -17,6 +17,12 @@ namespace BlazorIdle.Game
         public double HasteFactor { get; private set; } = 1.0; // 1.0=无急速
         public double NextTriggerAtMs { get; private set; }
 
+        /// <summary>
+        /// 是否暂停 - Phase 8: 施法时暂停攻击轨道
+        /// Whether paused - Phase 8: Pause attack track during casting
+        /// </summary>
+        public bool IsPaused { get; private set; } = false;
+
         public TrackState(TrackType type, double baseIntervalMs)
         {
             Type = type;
@@ -31,11 +37,33 @@ namespace BlazorIdle.Game
         public void Reset(double startMs = 0)
         {
             NextTriggerAtMs = startMs + EffectiveIntervalMs;
+            IsPaused = false; // Reset also unpauses
+        }
+
+        /// <summary>
+        /// 暂停轨道 - Phase 8
+        /// Pause track - Phase 8
+        /// </summary>
+        public void Pause()
+        {
+            IsPaused = true;
+        }
+
+        /// <summary>
+        /// 恢复轨道 - Phase 8
+        /// Resume track - Phase 8
+        /// </summary>
+        public void Resume()
+        {
+            IsPaused = false;
         }
 
         // 单次尝试触发（保留供简单使用）
+        // Phase 8: 如果轨道被暂停，则不触发
         public bool TryTrigger(int nowMs)
         {
+            if (IsPaused) return false; // Phase 8: Don't trigger when paused
+            
             if (nowMs + 0.0001 >= NextTriggerAtMs)
             {
                 NextTriggerAtMs += EffectiveIntervalMs;
@@ -45,8 +73,11 @@ namespace BlazorIdle.Game
         }
 
         // 收集本 Tick 截止可能的多次触发（避免 Tick>间隔 时漏触发）
+        // Phase 8: 如果轨道被暂停，则不触发
         public int CollectTriggers(int nowMs, int maxTriggers = 8)
         {
+            if (IsPaused) return 0; // Phase 8: Don't trigger when paused
+            
             int count = 0;
             while (nowMs + 0.0001 >= NextTriggerAtMs && count < maxTriggers)
             {
