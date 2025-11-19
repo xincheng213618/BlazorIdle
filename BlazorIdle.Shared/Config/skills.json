@@ -587,7 +587,7 @@
     "costs": [
       {
         "bucketId": "mana",
-        "amount": 2
+        "amount": 1
       }
     ],
     "damage": {
