@@ -94,6 +94,111 @@ namespace BlazorIdle.Game
         public string? MonsterId { get; init; }
     }
 
+    /// <summary>
+    /// 施法开始事件 - Phase 8
+    /// Cast start event - Phase 8
+    /// </summary>
+    public sealed class CastStartEvent
+    {
+        /// <summary>
+        /// 事件发生时间（毫秒）
+        /// Event time in milliseconds
+        /// </summary>
+        public int TimeMs { get; init; }
+
+        /// <summary>
+        /// 施法者ID
+        /// Caster ID
+        /// </summary>
+        public string CasterId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 技能ID
+        /// Skill ID
+        /// </summary>
+        public string SkillId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 施法时间（秒）
+        /// Cast time in seconds
+        /// </summary>
+        public double CastTimeSec { get; init; }
+
+        /// <summary>
+        /// 是否暂停攻击轨道
+        /// Whether attack track is paused
+        /// </summary>
+        public bool PauseAttackTrack { get; init; }
+    }
+
+    /// <summary>
+    /// 施法完成事件 - Phase 8
+    /// Cast complete event - Phase 8
+    /// </summary>
+    public sealed class CastCompleteEvent
+    {
+        /// <summary>
+        /// 事件发生时间（毫秒）
+        /// Event time in milliseconds
+        /// </summary>
+        public int TimeMs { get; init; }
+
+        /// <summary>
+        /// 施法者ID
+        /// Caster ID
+        /// </summary>
+        public string CasterId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 技能ID
+        /// Skill ID
+        /// </summary>
+        public string SkillId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 实际施法时间（秒）
+        /// Actual cast time in seconds
+        /// </summary>
+        public double ActualCastTimeSec { get; init; }
+    }
+
+    /// <summary>
+    /// 施法中断事件 - Phase 8
+    /// Cast interrupt event - Phase 8
+    /// </summary>
+    public sealed class CastInterruptEvent
+    {
+        /// <summary>
+        /// 事件发生时间（毫秒）
+        /// Event time in milliseconds
+        /// </summary>
+        public int TimeMs { get; init; }
+
+        /// <summary>
+        /// 施法者ID
+        /// Caster ID
+        /// </summary>
+        public string CasterId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 技能ID
+        /// Skill ID
+        /// </summary>
+        public string SkillId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 中断原因
+        /// Interrupt reason
+        /// </summary>
+        public string Reason { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 已施法时间（秒）
+        /// Elapsed cast time in seconds
+        /// </summary>
+        public double ElapsedSec { get; init; }
+    }
+
     public sealed class CombatSegment
     {
         public int StartMs { get; init; }

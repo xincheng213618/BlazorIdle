@@ -465,9 +465,11 @@
     "type": "active",
     "slotType": "active",
     "fixed": false,
+    "_comment_releaseType": "Phase 8: 'cast' 表示施法技能，需要 castTimeSec。在 PreAttack 窗口选择，施法期间暂停攻击轨道。",
     "releaseType": "cast",
     "castTimeSec": 2.5,
     "isGcd": true,
+    "_comment_allowCoTriggerAfterCast": "Phase 8: 施法技能也可以有此标志。完成后可以触发 PostCast 窗口的其他瞬发技能。",
     "allowCoTriggerAfterCast": true,
     "targetPolicy": "current_target",
     "cooldownSec": 8.0,
@@ -491,6 +493,44 @@
       {
         "op": "Apply",
         "buffConfigId": "burning",
+        "targetOverride": "Target"
+      }
+    ]
+  },
+  {
+    "id": "mage_frostbolt_cast",
+    "name": "冰霜箭",
+    "description": "施法1.8秒，射出强力冰霜箭减速并造成伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "_comment_releaseType": "Phase 8: 'cast' 施法技能。施法时间受急速加成影响: actualTime = castTimeSec / (1 + hastePercent)。",
+    "releaseType": "cast",
+    "castTimeSec": 1.8,
+    "isGcd": true,
+    "allowCoTriggerAfterCast": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 6.0,
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 3
+    },
+    "costs": [
+      {
+        "bucketId": "mana",
+        "amount": 3
+      }
+    ],
+    "damage": {
+      "coefAtk": 1.6,
+      "flat": 30
+    },
+    "onHitBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "mage_frost_slow",
         "targetOverride": "Target"
       }
     ]
@@ -539,6 +579,8 @@
     "fixed": false,
     "releaseType": "instant",
     "isGcd": false,
+    "_comment_allowCoTriggerAfterCast": "Phase 8: 必须设置为 true 才能在 PostCast 窗口触发。施法技能完成后，WindowExecutor 会过滤只有此标志的瞬发技能。",
+    "allowCoTriggerAfterCast": true,
     "targetPolicy": "current_target",
     "cooldownSec": 5.0,
     "allowedProfessions": [
@@ -550,7 +592,7 @@
     "costs": [
       {
         "bucketId": "mana",
-        "amount": 2
+        "amount": 1
       }
     ],
     "damage": {

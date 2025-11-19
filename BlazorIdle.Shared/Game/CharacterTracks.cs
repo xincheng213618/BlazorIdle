@@ -89,6 +89,35 @@ namespace BlazorIdle.Game
         }
 
         /// <summary>
+        /// 暂停攻击轨道 - Phase 8: 施法时使用
+        /// Pause attack track - Phase 8: Used during casting
+        /// </summary>
+        /// <param name="nowMs">当前时间（毫秒）/ Current time in milliseconds</param>
+        public void PauseAttackTrack(int nowMs)
+        {
+            AttackTrack.Pause(nowMs);
+        }
+
+        /// <summary>
+        /// 恢复攻击轨道 - Phase 8: 施法完成/中断时使用
+        /// Resume attack track - Phase 8: Used when cast completes/interrupts
+        /// </summary>
+        /// <param name="nowMs">当前时间（毫秒）/ Current time in milliseconds</param>
+        public void ResumeAttackTrack(int nowMs)
+        {
+            AttackTrack.Resume(nowMs);
+        }
+
+        /// <summary>
+        /// 检查攻击轨道是否被暂停 - Phase 8
+        /// Check if attack track is paused - Phase 8
+        /// </summary>
+        public bool IsAttackTrackPaused()
+        {
+            return AttackTrack.IsPaused;
+        }
+
+        /// <summary>
         /// 更新急速值
         /// Update haste value
         /// </summary>

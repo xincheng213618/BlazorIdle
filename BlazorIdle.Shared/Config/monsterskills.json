@@ -40,7 +40,7 @@
     "triggers": [
       {
         "when": "OnAttackHit",
-        "procChance": 1,
+        "procChance": 0.25,
         "fireSkillId": "monster_savage_strike_proc",
         "priority": 5,
         "ignoreRequirements": true
