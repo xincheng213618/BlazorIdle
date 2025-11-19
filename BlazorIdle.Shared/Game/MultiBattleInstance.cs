@@ -317,6 +317,13 @@ namespace BlazorIdle.Game
                 track.Reset(now);
             }
 
+            // Phase 8: 战斗开始时，检查每个角色是否应该立即开始施法
+            // Phase 8: At battle start, check if each character should start casting immediately
+            foreach (var charId in _playerTeam.GetAliveMemberIds())
+            {
+                TryStartCasting(charId, now);
+            }
+
             // 重置统计
             foreach (var key in _damageDealtByCharacter.Keys.ToList())
             {
@@ -446,8 +453,17 @@ namespace BlazorIdle.Game
                 // Phase 9: Update haste bonus (based on current buffs)
                 UpdateCharacterHaste(charId, character, tracks);
 
-                // Phase 9: Window-GCD 集成 - Attack Track 处理
-                // Phase 9: Window-GCD Integration - Attack Track processing
+                // Phase 8: 如果角色正在施法，跳过轨道检查
+                // Phase 8: If character is casting, skip track checks
+                if (_castingController.IsCastingForCaster(charId))
+                {
+                    continue;
+                }
+
+                // Phase 8/9: Window-GCD 集成 - Attack Track 处理
+                // Phase 8/9: Window-GCD Integration - Attack Track processing
+                // 如果 Attack Track 准备好了，检查是否应该施法或普攻
+                // If Attack Track is ready, check if should cast or normal attack
                 var atkCount = tracks.AttackTrack.CollectTriggers(now);
                 for (int i = 0; i < atkCount; i++)
                 {
@@ -2743,18 +2759,124 @@ namespace BlazorIdle.Game
         }
 
         /// <summary>
+        /// Phase 8: 检查并尝试开始施法
+        /// Phase 8: Check and try to start casting
+        /// </summary>
+        /// <param name="charId">角色ID / Character ID</param>
+        /// <param name="now">当前时间 / Current time</param>
+        /// <returns>是否开始了施法 / Whether casting was started</returns>
+        private bool TryStartCasting(string charId, int now)
+        {
+            // 如果已经在施法，返回 false
+            // If already casting, return false
+            if (_castingController.IsCastingForCaster(charId))
+            {
+                return false;
+            }
+
+            // 获取角色和轨道
+            // Get character and tracks
+            var member = _playerTeam.GetMember(charId);
+            if (member == null) return false;
+            var character = member.Entity;
+
+            if (!_characterTracks.TryGetValue(charId, out var tracks))
+                return false;
+
+            // 获取 CharacterData
+            // Get CharacterData
+            Shared.Models.CharacterData? characterData = null;
+            if (_characterDataMap != null && _characterDataMap.TryGetValue(charId, out var data))
+            {
+                characterData = data;
+            }
+
+            if (characterData == null)
+                return false;
+
+            // 构建战斗上下文
+            // Build battle context
+            var context = new BattleContext
+            {
+                Player = character,
+                PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(charId),
+                PlayerResources = _playerResources.GetValueOrDefault(charId),
+                Rng = _rng,
+                Clock = _clock,
+                CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
+            };
+
+            // 检查是否有施法技能可用
+            // Check if there's a cast skill available
+            var castSkills = _windowExecutor.ExecuteWindow(WindowType.PreAttack, characterData, character.ActiveCombatProfessionId, context, gcdAlreadyUsed: false);
+            var castSkill = castSkills.FirstOrDefault();
+
+            if (castSkill != null && castSkill.CastTimeSec > 0)
+            {
+                // 获取急速加成 / Get haste bonus
+                double hastePercent = character.HastePercent;
+                if (_playerBuffOwners.TryGetValue(charId, out var buffOwner))
+                {
+                    // 应用 Buff 效果到急速 / Apply buff effects to haste
+                    var sortedBuffs = buffOwner.Buffs.Values
+                        .OrderBy(b => b.AppliedAtMs)
+                        .ToList();
+                    
+                    foreach (var buff in sortedBuffs)
+                    {
+                        foreach (var effect in buff.Effects)
+                        {
+                            if (effect.Target != "HastePercent") continue;
+                            
+                            switch (effect.Type)
+                            {
+                                case Buffs.BuffEffectType.StatMultiplier:
+                                    hastePercent *= (1.0 + effect.Value);
+                                    break;
+                                case Buffs.BuffEffectType.StatAdditive:
+                                    hastePercent += effect.Value;
+                                    break;
+                                case Buffs.BuffEffectType.StatReduction:
+                                    hastePercent *= (1.0 - effect.Value);
+                                    break;
+                            }
+                        }
+                    }
+                }
+
+                // 开始施法 / Start casting
+                bool castStarted = _castingController.StartCast(charId, castSkill.Id, castSkill.CastTimeSec, hastePercent, pauseAttackTrack: true);
+                
+                if (castStarted)
+                {
+                    // 暂停攻击轨道 / Pause attack track
+                    tracks.PauseAttackTrack();
+
+                    // 记录施法开始事件 / Record cast start event
+                    var actualCastTime = castSkill.CastTimeSec / (1.0 + hastePercent / 100.0);
+                    CastStarted?.Invoke(new CastStartEvent
+                    {
+                        TimeMs = now,
+                        CasterId = charId,
+                        SkillId = castSkill.Id,
+                        CastTimeSec = actualCastTime,
+                        PauseAttackTrack = true
+                    });
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Phase 8: 处理施法完成事件
         /// Phase 8: Handle cast complete event
         /// </summary>
         private void HandleCastComplete(string casterId, string skillId)
         {
             int now = _clock.NowMs;
-
-            // 恢复攻击轨道 / Resume attack track
-            if (_characterTracks.TryGetValue(casterId, out var tracks))
-            {
-                tracks.ResumeAttackTrack();
-            }
 
             // 获取施法的技能定义 / Get cast skill definition
             var skillDef = _skillRepository.GetSkill(skillId);
@@ -2810,6 +2932,20 @@ namespace BlazorIdle.Game
                 SkillId = skillId,
                 ActualCastTimeSec = activeCast?.ElapsedSec ?? 0
             });
+
+            // Phase 8: 施法完成后，立即检查是否应该开始下一个施法
+            // Phase 8: After cast completes, immediately check if should start next cast
+            bool startedNewCast = TryStartCasting(casterId, now);
+            
+            // 如果没有开始新的施法，恢复攻击轨道
+            // If didn't start new cast, resume attack track
+            if (!startedNewCast)
+            {
+                if (_characterTracks.TryGetValue(casterId, out var tracks))
+                {
+                    tracks.ResumeAttackTrack();
+                }
+            }
         }
 
         /// <summary>
