@@ -576,6 +576,7 @@
     "fixed": false,
     "releaseType": "instant",
     "isGcd": false,
+    "allowCoTriggerAfterCast": true,
     "targetPolicy": "current_target",
     "cooldownSec": 5.0,
     "allowedProfessions": [
