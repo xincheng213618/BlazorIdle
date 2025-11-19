@@ -60,6 +60,11 @@ namespace BlazorIdle.Game
         // Phase 9: Character data mapping for skill selection / 角色数据映射用于技能选择
         private readonly Dictionary<string, Shared.Models.CharacterData>? _characterDataMap;
         
+        // Phase 7: TriggerProcessor for skill triggers / TriggerProcessor 用于技能触发
+        // 使用相同的管理器实例以保持状态同步
+        // Uses the same manager instances to maintain state synchronization
+        private readonly TriggerProcessor _triggerProcessor;
+        
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
         // Current implementation directly uses TrackState + SkillResolver for better clarity.
@@ -154,6 +159,9 @@ namespace BlazorIdle.Game
             
             // Phase 6: 初始化 WindowExecutor / Initialize WindowExecutor
             _windowExecutor = new WindowExecutor(_skillRepository, _conditionChecker, _cooldownManager, _resourceManager);
+            
+            // Phase 7: 初始化 TriggerProcessor / Initialize TriggerProcessor
+            _triggerProcessor = new TriggerProcessor(_skillRepository, _conditionChecker, _cooldownManager, _resourceManager);
 
             InitializeTracks(preservedResources);
         }
@@ -889,6 +897,10 @@ namespace BlazorIdle.Game
                 {
                     ExecuteSkill(charId, skill.Id, "postcast", isCasterPlayer: true, EventSource.PostCast);
                 }
+                
+                // Phase 7: PostCast 窗口触发器
+                // Phase 7: PostCast window triggers
+                ProcessWindowTriggers(charId, "OnPostCastWindow", castSkill.Id, isCasterPlayer: true);
             }
             else
             {
@@ -910,6 +922,10 @@ namespace BlazorIdle.Game
                 {
                     ExecuteSkill(charId, skill.Id, "postattack", isCasterPlayer: true, EventSource.PostAttack);
                 }
+                
+                // Phase 7: PostAttack 窗口触发器
+                // Phase 7: PostAttack window triggers
+                ProcessWindowTriggers(charId, "OnPostAttackWindow", normalAttackSkillId, isCasterPlayer: true);
             }
         }
 
@@ -1011,6 +1027,9 @@ namespace BlazorIdle.Game
             // 触发事件
             CombatEventFired?.Invoke(ev);
 
+            // Phase 7: 处理攻击触发器 / Process attack triggers
+            ProcessAttackTriggers(attackerId, skillId, isCrit, isCasterPlayer: true);
+
             // 如果击杀，处理掉落物和经验
             if (isKill)
             {
@@ -1073,6 +1092,9 @@ namespace BlazorIdle.Game
 
             // 触发事件
             CombatEventFired?.Invoke(ev);
+
+            // Phase 7: 处理怪物攻击触发器 / Process monster attack triggers
+            ProcessAttackTriggers(attackerId, skillId, isCrit: false, isCasterPlayer: false);
         }
 
         /// <summary>
@@ -2428,6 +2450,182 @@ namespace BlazorIdle.Game
                 return 0.0;
 
             return track!.AttackTrack.TimeToNextMs(_clock.NowMs);
+        }
+
+        /// <summary>
+        /// Phase 7: 处理攻击触发器
+        /// Phase 7: Process attack triggers
+        /// </summary>
+        private void ProcessAttackTriggers(string casterId, string? skillId, bool isCrit, bool isCasterPlayer)
+        {
+            // 获取源技能定义（如果有）
+            // Get source skill definition (if any)
+            SkillDef? sourceSkill = skillId != null ? _skillRepository.GetSkill(skillId) : null;
+            
+            // 创建战斗上下文用于触发检查
+            // Create battle context for trigger checking
+            BattleContext context;
+            Shared.Models.CharacterData? characterData = null;
+            string? professionId = null;
+            
+            if (isCasterPlayer)
+            {
+                var member = _playerTeam.GetMember(casterId);
+                if (member == null) return;
+                
+                var defaultTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
+                var defaultTarget = defaultTargetId != null ? _enemyTeam.GetMember(defaultTargetId) : null;
+                
+                context = new BattleContext
+                {
+                    Player = member.Entity,
+                    Enemy = defaultTarget?.Entity,
+                    PlayerTeam = _playerTeam,
+                    EnemyTeam = _enemyTeam,
+                    Rng = _rng,
+                    Clock = _clock,
+                    PlayerResources = _playerResources.GetValueOrDefault(casterId),
+                    PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(casterId),
+                    EnemyBuffOwners = _enemyBuffOwners,
+                    CurrentTargetId = defaultTargetId
+                };
+                
+                // 获取角色数据用于装备技能触发
+                // Get character data for equipped skill triggers
+                if (_characterDataMap != null)
+                {
+                    _characterDataMap.TryGetValue(casterId, out characterData);
+                    professionId = member.Entity.ActiveCombatProfessionId;
+                }
+            }
+            else
+            {
+                // 怪物攻击
+                // Monster attack
+                var member = _enemyTeam.GetMember(casterId);
+                if (member == null) return;
+                
+                var defaultTargetId = SelectPlayerTarget(_config.EnemyTargetStrategy);
+                var defaultTarget = defaultTargetId != null ? _playerTeam.GetMember(defaultTargetId) : null;
+                
+                context = new BattleContext
+                {
+                    Player = defaultTarget?.Entity,
+                    Enemy = member.Entity,
+                    PlayerTeam = _playerTeam,
+                    EnemyTeam = _enemyTeam,
+                    Rng = _rng,
+                    Clock = _clock,
+                    PlayerResources = defaultTargetId != null ? _playerResources.GetValueOrDefault(defaultTargetId) : null,
+                    PlayerBuffOwner = defaultTargetId != null ? _playerBuffOwners.GetValueOrDefault(defaultTargetId) : null,
+                    EnemyBuffOwners = _enemyBuffOwners,
+                    CurrentTargetId = defaultTargetId
+                };
+            }
+            
+            // 处理 OnAttackHit 触发
+            // Process OnAttackHit triggers
+            var hitTriggers = _triggerProcessor.ProcessTriggers(
+                "OnAttackHit",
+                sourceSkill,
+                context,
+                isCasterPlayer,
+                characterData,
+                professionId,
+                wasCrit: isCrit);
+            
+            // 如果是暴击，处理 OnAttackCrit 触发
+            // If crit, process OnAttackCrit triggers
+            List<SkillDef> critTriggers = new List<SkillDef>();
+            if (isCrit)
+            {
+                critTriggers = _triggerProcessor.ProcessTriggers(
+                    "OnAttackCrit",
+                    sourceSkill,
+                    context,
+                    isCasterPlayer,
+                    characterData,
+                    professionId,
+                    wasCrit: true);
+            }
+            
+            // 执行所有触发的技能
+            // Execute all triggered skills
+            foreach (var triggeredSkill in hitTriggers.Concat(critTriggers))
+            {
+                ExecuteSkill(casterId, triggeredSkill.Id, "trigger", isCasterPlayer, EventSource.Trigger);
+            }
+        }
+
+        /// <summary>
+        /// Phase 7: 处理窗口触发器
+        /// Phase 7: Process window triggers
+        /// </summary>
+        private void ProcessWindowTriggers(string casterId, string windowType, string? sourceSkillId, bool isCasterPlayer)
+        {
+            // 获取源技能定义（如果有）
+            // Get source skill definition (if any)
+            SkillDef? sourceSkill = sourceSkillId != null ? _skillRepository.GetSkill(sourceSkillId) : null;
+            
+            // 创建战斗上下文
+            // Create battle context
+            BattleContext context;
+            Shared.Models.CharacterData? characterData = null;
+            string? professionId = null;
+            
+            if (isCasterPlayer)
+            {
+                var member = _playerTeam.GetMember(casterId);
+                if (member == null) return;
+                
+                var defaultTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
+                var defaultTarget = defaultTargetId != null ? _enemyTeam.GetMember(defaultTargetId) : null;
+                
+                context = new BattleContext
+                {
+                    Player = member.Entity,
+                    Enemy = defaultTarget?.Entity,
+                    PlayerTeam = _playerTeam,
+                    EnemyTeam = _enemyTeam,
+                    Rng = _rng,
+                    Clock = _clock,
+                    PlayerResources = _playerResources.GetValueOrDefault(casterId),
+                    PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(casterId),
+                    EnemyBuffOwners = _enemyBuffOwners,
+                    CurrentTargetId = defaultTargetId
+                };
+                
+                if (_characterDataMap != null)
+                {
+                    _characterDataMap.TryGetValue(casterId, out characterData);
+                    professionId = member.Entity.ActiveCombatProfessionId;
+                }
+            }
+            else
+            {
+                // 怪物目前不使用窗口触发，但保持接口一致性
+                // Monsters don't currently use window triggers, but keep interface consistent
+                return;
+            }
+            
+            // 处理窗口触发
+            // Process window triggers
+            var triggers = _triggerProcessor.ProcessTriggers(
+                windowType,
+                sourceSkill,
+                context,
+                isCasterPlayer,
+                characterData,
+                professionId,
+                wasCrit: false);
+            
+            // 执行所有触发的技能
+            // Execute all triggered skills
+            foreach (var triggeredSkill in triggers)
+            {
+                EventSource eventSource = windowType == "OnPostAttackWindow" ? EventSource.PostAttack : EventSource.PostCast;
+                ExecuteSkill(casterId, triggeredSkill.Id, "windowtrigger", isCasterPlayer, eventSource);
+            }
         }
     }
 
