@@ -454,6 +454,24 @@ namespace BlazorIdle.Components
             var characterDataMap = new Dictionary<string, Shared.Models.CharacterData>();
             if (SelectedCharacter != null)
             {
+                // Phase 7: 临时测试 - 确保角色有装备技能配置用于触发器测试
+                // Phase 7: Temporary test - ensure character has equipped skills for trigger testing
+                if (!SelectedCharacter.EquippedSkillsByProfession.ContainsKey(SelectedCharacter.ActiveCombatProfessionId))
+                {
+                    SelectedCharacter.EquippedSkillsByProfession[SelectedCharacter.ActiveCombatProfessionId] = 
+                        new Shared.Models.EquippedSkillsConfig
+                        {
+                            ProfessionId = SelectedCharacter.ActiveCombatProfessionId,
+                            ActiveSlots = new Dictionary<string, string?>
+                            {
+                                { "active_1", "warrior_mortal_strike" },
+                                { "active_2", "warrior_thunderclap" },
+                                { "active_3", "warrior_slam" }
+                            },
+                            PassiveSlot = "warrior_bloodlust"  // Phase 7: 测试被动触发技能
+                        };
+                }
+                
                 characterDataMap[SelectedCharacter.Id] = SelectedCharacter;
             }
 
