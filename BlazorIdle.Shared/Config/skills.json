@@ -293,6 +293,54 @@
     "alwaysHits": true
   },
   {
+    "id": "warrior_bloodlust",
+    "name": "嗜血",
+    "description": "被动技能：攻击命中时有20%概率触发，造成10点额外伤害",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "current_target",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "unlock": {
+      "minLevel": 1
+    },
+    "triggers": [
+      {
+        "when": "OnAttackHit",
+        "procChance": 0.2,
+        "fireSkillId": "warrior_bloodlust_proc",
+        "priority": 5,
+        "ignoreRequirements": true
+      }
+    ]
+  },
+  {
+    "id": "warrior_bloodlust_proc",
+    "name": "嗜血触发",
+    "description": "嗜血触发效果，造成额外伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "current_target",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "damage": {
+      "coefAtk": 0.0,
+      "flat": 10
+    },
+    "canCrit": false,
+    "alwaysHits": true
+  },
+  {
     "id": "mage_attack_basic",
     "name": "火球术",
     "description": "法师的基础攻击，消耗少量法力",
