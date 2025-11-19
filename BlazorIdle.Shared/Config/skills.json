@@ -496,6 +496,43 @@
     ]
   },
   {
+    "id": "mage_frostbolt_cast",
+    "name": "冰霜箭",
+    "description": "施法1.8秒，射出强力冰霜箭减速并造成伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "cast",
+    "castTimeSec": 1.8,
+    "isGcd": true,
+    "allowCoTriggerAfterCast": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 6.0,
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 3
+    },
+    "costs": [
+      {
+        "bucketId": "mana",
+        "amount": 3
+      }
+    ],
+    "damage": {
+      "coefAtk": 1.6,
+      "flat": 30
+    },
+    "onHitBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "mage_frost_slow",
+        "targetOverride": "Target"
+      }
+    ]
+  },
+  {
     "id": "mage_blizzard",
     "name": "暴风雪",
     "description": "召唤暴风雪，对所有敌人造成持续伤害",

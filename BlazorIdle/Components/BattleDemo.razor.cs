@@ -499,22 +499,46 @@ namespace BlazorIdle.Components
             var characterDataMap = new Dictionary<string, Shared.Models.CharacterData>();
             if (SelectedCharacter != null)
             {
-                // Phase 7: 临时测试 - 确保角色有装备技能配置用于触发器测试
-                // Phase 7: Temporary test - ensure character has equipped skills for trigger testing
+                // Phase 7/8: 临时测试 - 确保角色有装备技能配置
+                // Phase 7/8: Temporary test - ensure character has equipped skills
                 if (!SelectedCharacter.EquippedSkillsByProfession.ContainsKey(SelectedCharacter.ActiveCombatProfessionId))
                 {
-                    SelectedCharacter.EquippedSkillsByProfession[SelectedCharacter.ActiveCombatProfessionId] = 
-                        new Shared.Models.EquippedSkillsConfig
-                        {
-                            ProfessionId = SelectedCharacter.ActiveCombatProfessionId,
-                            ActiveSlots = new Dictionary<string, string?>
+                    // Phase 8: 根据职业设置临时测试技能
+                    // Phase 8: Set temporary test skills based on profession
+                    if (SelectedCharacter.ActiveCombatProfessionId == "mage")
+                    {
+                        // Phase 8: 法师临时技能 - 2个施法技能 + 1个瞬发非GCD技能
+                        // Phase 8: Mage temporary skills - 2 cast skills + 1 instant non-GCD skill
+                        SelectedCharacter.EquippedSkillsByProfession[SelectedCharacter.ActiveCombatProfessionId] = 
+                            new Shared.Models.EquippedSkillsConfig
                             {
-                                { "active_1", "warrior_mortal_strike" },
-                                { "active_2", "warrior_thunderclap" },
-                                { "active_3", "warrior_slam" }
-                            },
-                            PassiveSlot = "warrior_bloodlust"  // Phase 7: 测试被动触发技能
-                        };
+                                ProfessionId = SelectedCharacter.ActiveCombatProfessionId,
+                                ActiveSlots = new Dictionary<string, string?>
+                                {
+                                    { "active_1", "mage_pyroblast" },      // 施法技能: 2.5s cast
+                                    { "active_2", "mage_frostbolt_cast" }, // 施法技能: 1.8s cast
+                                    { "active_3", "mage_arcane_blast" }    // 瞬发非GCD技能
+                                },
+                                PassiveSlot = null
+                            };
+                    }
+                    else
+                    {
+                        // 其他职业使用战士技能（向后兼容）
+                        // Other professions use warrior skills (backward compatible)
+                        SelectedCharacter.EquippedSkillsByProfession[SelectedCharacter.ActiveCombatProfessionId] = 
+                            new Shared.Models.EquippedSkillsConfig
+                            {
+                                ProfessionId = SelectedCharacter.ActiveCombatProfessionId,
+                                ActiveSlots = new Dictionary<string, string?>
+                                {
+                                    { "active_1", "warrior_mortal_strike" },
+                                    { "active_2", "warrior_thunderclap" },
+                                    { "active_3", "warrior_slam" }
+                                },
+                                PassiveSlot = "warrior_bloodlust"  // Phase 7: 测试被动触发技能
+                            };
+                    }
                 }
                 
                 characterDataMap[SelectedCharacter.Id] = SelectedCharacter;
