@@ -826,35 +826,6 @@ namespace BlazorIdle.Game
             {
                 characterData = data;
             }
-            
-            // Phase 9 临时测试：如果没有 CharacterData，创建一个临时的用于测试 AutoCastEngine
-            // Phase 9 Temporary Test: If no CharacterData, create a temporary one to test AutoCastEngine
-            // TODO: 后续使用角色真实装备的技能，删除这段临时代码
-            // TODO: Later use real equipped skills from character, remove this temporary code
-            if (characterData == null && character.ActiveCombatProfessionId == "warrior")
-            {
-                characterData = new Shared.Models.CharacterData
-                {
-                    Id = charId,
-                    ProfessionId = character.ActiveCombatProfessionId,
-                    ActiveCombatProfessionId = character.ActiveCombatProfessionId
-                };
-                
-                // 临时装备一些战士技能用于测试触发系统
-                // Temporarily equip some warrior skills for testing trigger system
-                characterData.EquippedSkillsByProfession[character.ActiveCombatProfessionId] = 
-                    new Shared.Models.EquippedSkillsConfig
-                    {
-                        ProfessionId = character.ActiveCombatProfessionId,
-                        ActiveSlots = new Dictionary<string, string?>
-                        {
-                            { "active_1", "warrior_mortal_strike" },  // GCD 技能，消耗 3 怒气，cd=3s
-                            { "active_2", "warrior_thunderclap" },    // 非 GCD 技能，无消耗，cd=10s
-                            { "active_3", "warrior_slam" }             // GCD 技能，无消耗，cd=10s
-                        },
-                        PassiveSlot = "warrior_bloodlust"  // Phase 7: 测试被动触发技能 - 100%概率造成10额外伤害
-                    };
-            }
 
             // 如果还是没有 CharacterData，回退到旧的逻辑
             // If still no CharacterData, fallback to old logic
