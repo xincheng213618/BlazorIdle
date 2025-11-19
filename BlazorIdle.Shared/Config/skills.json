@@ -87,8 +87,9 @@
       },
       {
         "op": "Remove",
+        "target": "Self",
         "buffIdToRemove": "warrior_stance",
-        "stacksToRemove": 3
+        "StacksToRemove": 3
       }
     ]
   },
