@@ -12,6 +12,7 @@ namespace BlazorIdle.Game.Skills
         /// <summary>
         /// Type of operation (Apply or Remove).
         /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("op")]
         public BuffOperationType Type { get; set; }
 
         /// <summary>
