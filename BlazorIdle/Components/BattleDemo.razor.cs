@@ -449,8 +449,16 @@ namespace BlazorIdle.Components
             // Phase 2.7: Get profession resource configurations
             var professionResourceConfigs = BuildProfessionResourceConfigs();
 
+            // Phase 7: 创建 CharacterData 映射用于触发器系统
+            // Phase 7: Create CharacterData map for trigger system
+            var characterDataMap = new Dictionary<string, Shared.Models.CharacterData>();
+            if (SelectedCharacter != null)
+            {
+                characterDataMap[SelectedCharacter.Id] = SelectedCharacter;
+            }
+
             // 创建战斗实例并订阅事件
-            battle = new MultiBattleInstance(clock, rng, playerTeam, enemyTeam, config, null, professionResourceConfigs);
+            battle = new MultiBattleInstance(clock, rng, playerTeam, enemyTeam, config, null, professionResourceConfigs, characterDataMap);
             battle.CombatEventFired += OnCombatEvent;
             battle.LootDropped += OnLootDropped;
             battle.ExperienceGained += OnExperienceGained;
