@@ -453,6 +453,10 @@
     
     // CancellationToken for cleanup
     private CancellationTokenSource? _cancellationTokenSource;
+    
+    // Cache for character data to avoid redundant refreshes
+    private CharacterData? _previousCharacter;
+    private int _previousCharacterLevel = -1;
 
     // 列表分类过滤
     private enum SkillListFilter { Learnable, Learned, Locked }
@@ -478,8 +482,13 @@
 
     protected override void OnParametersSet()
     {
+        var professionChanged = _previousProfessionId != ProfessionId;
+        var characterChanged = _previousCharacter != Character;
+        var currentLevel = GetCharacterLevel();
+        var levelChanged = _previousCharacterLevel != currentLevel;
+        
         // 检测职业是否切换
-        if (_previousProfessionId != ProfessionId)
+        if (professionChanged)
         {
 #if DEBUG
             Console.WriteLine($"[SkillLearningPanel] Profession changed from {_previousProfessionId} to {ProfessionId}");
@@ -493,7 +502,14 @@
             currentFilter = SkillListFilter.Learnable;
         }
 
-        RefreshSkillLists();
+        // Only refresh if data actually changed
+        if (professionChanged || characterChanged || levelChanged)
+        {
+            RefreshSkillLists();
+            _previousCharacter = Character;
+            _previousCharacterLevel = currentLevel;
+        }
+        
         EnsureSelection();
         EnsureSelectionForFilter();
     }
