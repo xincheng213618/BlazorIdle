@@ -1,5 +1,6 @@
 @using BlazorIdle.Shared.Models
 @using BlazorIdle.Game.Skills
+@implements IDisposable
 
 <div class="skill-learning-card">
     <div class="sl-header d-flex align-items-center justify-content-between"
@@ -449,6 +450,9 @@
 
     // 跟踪上一次的职业ID，用于检测职业切换
     private string _previousProfessionId = "";
+    
+    // CancellationToken for cleanup
+    private CancellationTokenSource? _cancellationTokenSource;
 
     // 列表分类过滤
     private enum SkillListFilter { Learnable, Learned, Locked }
@@ -469,6 +473,7 @@
         isCollapsed = StartCollapsed;
         _learningManager = new SkillLearningManager(_skillRepository);
         _previousProfessionId = ProfessionId;
+        _cancellationTokenSource = new CancellationTokenSource();
     }
 
     protected override void OnParametersSet()
@@ -476,7 +481,9 @@
         // 检测职业是否切换
         if (_previousProfessionId != ProfessionId)
         {
+#if DEBUG
             Console.WriteLine($"[SkillLearningPanel] Profession changed from {_previousProfessionId} to {ProfessionId}");
+#endif
             _previousProfessionId = ProfessionId;
 
             // 切换职业时清除消息与当前选中
@@ -554,9 +561,11 @@
                 var skill = _skillRepository.GetSkill(skillId);
                 successMessage = $"成功学习技能: {skill?.Name ?? skillId}";
 
+#if DEBUG
                 Console.WriteLine($"[SkillLearningPanel] Skill learned: {skillId}");
                 Console.WriteLine($"[SkillLearningPanel] Total learned skills: {Character.LearnedSkills.Count}");
                 Console.WriteLine($"[SkillLearningPanel] Learned skills: {string.Join(", ", Character.LearnedSkills)}");
+#endif
 
                 RefreshSkillLists();
 
@@ -566,17 +575,25 @@
 
                 if (OnSkillLearned.HasDelegate)
                 {
+#if DEBUG
                     Console.WriteLine($"[SkillLearningPanel] Invoking OnSkillLearned callback...");
+#endif
                     await OnSkillLearned.InvokeAsync();
+#if DEBUG
                     Console.WriteLine($"[SkillLearningPanel] OnSkillLearned callback completed");
+#endif
                 }
 
-                // 2秒后清除成功消息
-                _ = Task.Delay(2000).ContinueWith(_ =>
-                {
-                    successMessage = string.Empty;
-                    InvokeAsync(StateHasChanged);
-                });
+                // 2秒后清除成功消息，使用CancellationToken避免内存泄漏
+                _ = Task.Delay(2000, _cancellationTokenSource?.Token ?? CancellationToken.None)
+                    .ContinueWith(async _ =>
+                    {
+                        if (!(_cancellationTokenSource?.IsCancellationRequested ?? true))
+                        {
+                            successMessage = string.Empty;
+                            await InvokeAsync(StateHasChanged);
+                        }
+                    }, TaskScheduler.Default);
             }
             else
             {
@@ -846,6 +863,18 @@
         
         // 否则保留1位小数
         return $"{percentage:F1}%";
+    }
+
+    /// <summary>
+    /// Dispose pattern implementation to prevent memory leaks
+    /// 实现Dispose模式以防止内存泄漏
+    /// </summary>
+    public void Dispose()
+    {
+        // Cancel any pending tasks
+        _cancellationTokenSource?.Cancel();
+        _cancellationTokenSource?.Dispose();
+        _cancellationTokenSource = null;
     }
 }
 
