@@ -319,7 +319,11 @@ namespace BlazorIdle.Services
                     // 职业数据
                     // Profession data
                     Professions = character.Professions,
-                    ActiveCombatProfessionId = character.ActiveCombatProfessionId
+                    ActiveCombatProfessionId = character.ActiveCombatProfessionId,
+                    // 技能数据 (Step 2 Phase 2.5)
+                    // Skill data
+                    LearnedSkills = character.LearnedSkills,
+                    EquippedSkillsByProfession = character.EquippedSkillsByProfession
                 };
 
                 var response = await _httpClient.PutAsJsonAsync(

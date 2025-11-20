@@ -422,6 +422,18 @@ public class CharacterController : ControllerBase
             character.ActiveCombatProfessionId = request.ActiveCombatProfessionId;
         }
 
+        // 更新技能数据 (Step 2 Phase 2.5)
+        // Update skill data
+        if (request.LearnedSkills != null)
+        {
+            character.LearnedSkills = request.LearnedSkills;
+        }
+
+        if (request.EquippedSkillsByProfession != null)
+        {
+            character.EquippedSkillsByProfession = request.EquippedSkillsByProfession;
+        }
+
         try
         {
             // 保存更改到数据库
