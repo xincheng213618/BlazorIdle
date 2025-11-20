@@ -180,9 +180,25 @@
     {
         if (selectedCharacter != null)
         {
+            // 调试日志：保存前的技能列表
+            // Debug log: skill list before save
+            Console.WriteLine($"[Home] Saving character with {selectedCharacter.LearnedSkills.Count} learned skills");
+            Console.WriteLine($"[Home] Learned skills: {string.Join(", ", selectedCharacter.LearnedSkills)}");
+            
             // 保存角色数据到服务器
             // Save character data to server
-            await CharacterService.UpdateCharacterAsync(selectedCharacter.Id, selectedCharacter);
+            var response = await CharacterService.UpdateCharacterAsync(selectedCharacter.Id, selectedCharacter);
+            
+            // 调试日志：保存结果
+            // Debug log: save result
+            if (response != null && response.Success)
+            {
+                Console.WriteLine($"[Home] Character saved successfully");
+            }
+            else
+            {
+                Console.WriteLine($"[Home] Character save failed: {response?.Message ?? "Unknown error"}");
+            }
             
             // 触发重新渲染
             // Trigger re-render

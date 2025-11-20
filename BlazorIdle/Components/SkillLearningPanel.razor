@@ -326,11 +326,20 @@
             {
                 var skill = _skillRepository.GetSkill(skillId);
                 successMessage = $"成功学习技能: {skill?.Name ?? skillId}";
+                
+                // 调试日志：输出已学习技能列表
+                // Debug log: output learned skills list
+                Console.WriteLine($"[SkillLearningPanel] Skill learned: {skillId}");
+                Console.WriteLine($"[SkillLearningPanel] Total learned skills: {Character.LearnedSkills.Count}");
+                Console.WriteLine($"[SkillLearningPanel] Learned skills: {string.Join(", ", Character.LearnedSkills)}");
+                
                 RefreshSkillLists();
 
                 if (OnSkillLearned.HasDelegate)
                 {
+                    Console.WriteLine($"[SkillLearningPanel] Invoking OnSkillLearned callback...");
                     await OnSkillLearned.InvokeAsync();
+                    Console.WriteLine($"[SkillLearningPanel] OnSkillLearned callback completed");
                 }
 
                 // 2秒后清除成功消息
