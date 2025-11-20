@@ -262,6 +262,68 @@ namespace BlazorIdle.Components
             }
         }
 
+        // Phase 10.3: 获取玩家装备的技能列表
+        // Phase 10.3: Get player equipped skills list
+        private List<CharacterPanel.EquippedSkillData>? playerEquippedSkills
+        {
+            get
+            {
+                if (battle == null || SelectedCharacter == null) return null;
+                
+                var professionId = SelectedCharacter.ActiveCombatProfessionId ?? SelectedCharacter.ProfessionId;
+                if (!SelectedCharacter.EquippedSkillsByProfession.TryGetValue(professionId, out var equipConfig))
+                    return null;
+                
+                var skillRepo = battle.GetSkillRepository();
+                if (skillRepo == null)
+                    return null;
+                
+                var result = new List<CharacterPanel.EquippedSkillData>();
+                
+                // 主动技能槽位 / Active skill slots
+                foreach (var kvp in equipConfig.ActiveSlots.OrderBy(x => x.Key))
+                {
+                    var skillId = kvp.Value;
+                    if (!string.IsNullOrEmpty(skillId))
+                    {
+                        var skill = skillRepo.GetSkill(skillId);
+                        if (skill != null)
+                        {
+                            result.Add(new CharacterPanel.EquippedSkillData
+                            {
+                                Skill = skill,
+                                SlotId = kvp.Key,
+                                RemainingCooldown = battle.GetSkillRemainingCooldown(skillId),
+                                IsResourceInsufficient = false, // TODO: 实际检查资源 / Actually check resources
+                                IsConditionNotMet = false, // TODO: 实际检查条件 / Actually check conditions
+                                JustTriggered = false
+                            });
+                        }
+                    }
+                }
+                
+                // 被动技能槽位 / Passive skill slot
+                if (!string.IsNullOrEmpty(equipConfig.PassiveSlot))
+                {
+                    var skill = skillRepo.GetSkill(equipConfig.PassiveSlot);
+                    if (skill != null)
+                    {
+                        result.Add(new CharacterPanel.EquippedSkillData
+                        {
+                            Skill = skill,
+                            SlotId = "passive_1",
+                            RemainingCooldown = battle.GetSkillRemainingCooldown(equipConfig.PassiveSlot),
+                            IsResourceInsufficient = false,
+                            IsConditionNotMet = false,
+                            JustTriggered = false
+                        });
+                    }
+                }
+                
+                return result.Count > 0 ? result : null;
+            }
+        }
+
         // 日志列表 - 存储战斗日志
         // Log list - stores battle logs
         private readonly List<string> logs = new();

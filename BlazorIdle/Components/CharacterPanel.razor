@@ -61,6 +61,24 @@
         </div>
     }
 
+    <!-- Phase 10.3: 战斗技能图标 / Battle skill icons -->
+    @if (EquippedSkills != null && EquippedSkills.Count > 0)
+    {
+        <div class="mb-2">
+            <div class="skill-container">
+                @foreach (var skillData in EquippedSkills)
+                {
+                    <SkillIcon Skill="@skillData.Skill"
+                               SlotId="@skillData.SlotId"
+                               RemainingCooldown="@skillData.RemainingCooldown"
+                               IsResourceInsufficient="@skillData.IsResourceInsufficient"
+                               IsConditionNotMet="@skillData.IsConditionNotMet"
+                               JustTriggered="@skillData.JustTriggered" />
+                }
+            </div>
+        </div>
+    }
+
     <!-- Phase 8: Attack 进度 / 施法进度 -->
     <div class="mb-2">
         @if (IsCasting)
@@ -128,6 +146,9 @@
     // Phase 9: Buff/Debuff 列表（用于显示状态效果）/ Buff/Debuff list (for displaying status effects)
     [Parameter] public List<BlazorIdle.Game.Buffs.BuffInstance>? Buffs { get; set; }
 
+    // Phase 10.3: 装备的技能列表（用于显示技能图标）/ Equipped skills list (for displaying skill icons)
+    [Parameter] public List<EquippedSkillData>? EquippedSkills { get; set; }
+
     // Phase 8: 施法状态 / Casting state
     [Parameter] public bool IsCasting { get; set; }
     [Parameter] public double CastingProgress01 { get; set; }
@@ -155,6 +176,20 @@
         _lastAttackProgress = AttackProgress01;
         _lastSpecialProgress = SpecialProgress01;
     }
+    
+    /// <summary>
+    /// Phase 10.3: 装备技能数据结构（用于传递技能显示信息）
+    /// Phase 10.3: Equipped skill data structure (for passing skill display information)
+    /// </summary>
+    public class EquippedSkillData
+    {
+        public BlazorIdle.Game.Skills.SkillDef? Skill { get; set; }
+        public string SlotId { get; set; } = "";
+        public double RemainingCooldown { get; set; }
+        public bool IsResourceInsufficient { get; set; }
+        public bool IsConditionNotMet { get; set; }
+        public bool JustTriggered { get; set; }
+    }
 }
 
 <style>
@@ -179,6 +214,18 @@
         gap: 2px;
         min-height: 36px;
         align-items: flex-start;
+    }
+
+    /* Phase 10.3: Skill 容器样式 / Skill container styles */
+    .character-panel .skill-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        min-height: 44px;
+        align-items: flex-start;
+        padding: 4px;
+        background-color: rgba(0, 0, 0, 0.1);
+        border-radius: 6px;
     }
 
     /* Phase 8: 施法条样式 / Casting bar styles */

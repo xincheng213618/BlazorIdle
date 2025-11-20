@@ -1,0 +1,479 @@
+@using BlazorIdle.Game.Skills
+@using BlazorIdle.Shared.Models
+@namespace BlazorIdle.Components
+
+@* Phase 10.3: 战斗技能图标组件 / Battle skill icon component *@
+<div class="skill-icon @SlotTypeClass @DisabledClass @TriggerClass" 
+     @onmouseenter="ShowTooltip" 
+     @onmouseleave="HideTooltip">
+    
+    @* 槽位编号背景 / Slot number background *@
+    <div class="skill-slot-number">@SlotNumber</div>
+    
+    @* 技能图标内容 / Skill icon content *@
+    <div class="skill-icon-content">
+        @if (!string.IsNullOrEmpty(Skill?.Id))
+        {
+            @* 显示技能首字母或emoji / Display first letter or emoji *@
+            <span class="skill-icon-display">@IconDisplay</span>
+        }
+        else
+        {
+            @* 空槽位 / Empty slot *@
+            <span class="skill-empty">-</span>
+        }
+    </div>
+    
+    @* 冷却覆盖层 / Cooldown overlay *@
+    @if (IsOnCooldown)
+    {
+        <div class="skill-cooldown-overlay" style="height: @($"{CooldownPercent}%")"></div>
+        <span class="skill-cooldown-text">@CooldownText</span>
+    }
+    
+    @* 资源不足标识 / Insufficient resource indicator *@
+    @if (IsResourceInsufficient)
+    {
+        <div class="skill-resource-indicator">!</div>
+    }
+    
+    @* Tooltip *@
+    @if (_showTooltip && Skill != null)
+    {
+        <div class="skill-tooltip">@((MarkupString)TooltipHtml)</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public SkillDef? Skill { get; set; }
+    
+    [Parameter]
+    public string SlotId { get; set; } = "";
+    
+    [Parameter]
+    public double RemainingCooldown { get; set; } = 0;
+    
+    [Parameter]
+    public bool IsResourceInsufficient { get; set; } = false;
+    
+    [Parameter]
+    public bool IsConditionNotMet { get; set; } = false;
+    
+    [Parameter]
+    public bool JustTriggered { get; set; } = false;
+    
+    private bool _showTooltip = false;
+    private string? _cachedSkillName = null;
+    private string? _lastSkillId = null;
+    private double _lastCooldown = -1;
+    
+    private string SlotNumber
+    {
+        get
+        {
+            if (SlotId.StartsWith("active_"))
+                return SlotId.Replace("active_", "");
+            if (SlotId.StartsWith("passive_"))
+                return "P";
+            return "?";
+        }
+    }
+    
+    private string SlotTypeClass => SlotId.StartsWith("passive") ? "passive" : "active";
+    
+    private string DisabledClass => (IsResourceInsufficient || IsConditionNotMet || IsOnCooldown) ? "disabled" : "";
+    
+    private string TriggerClass => JustTriggered ? "triggered" : "";
+    
+    private bool IsOnCooldown => RemainingCooldown > 0.01;
+    
+    private double CooldownPercent => IsOnCooldown && Skill?.CooldownSec > 0 
+        ? Math.Clamp((RemainingCooldown / Skill.CooldownSec) * 100, 0, 100) 
+        : 0;
+    
+    private string CooldownText
+    {
+        get
+        {
+            if (!IsOnCooldown)
+                return "";
+            
+            var seconds = Math.Ceiling(RemainingCooldown);
+            return seconds >= 10 ? $"{seconds:F0}" : $"{RemainingCooldown:F1}";
+        }
+    }
+    
+    private string IconDisplay
+    {
+        get
+        {
+            if (Skill == null || string.IsNullOrEmpty(Skill.Id))
+                return "?";
+            
+            // Cache skill name lookup
+            if (_cachedSkillName == null || _lastSkillId != Skill.Id)
+            {
+                _cachedSkillName = Skill.Name;
+                _lastSkillId = Skill.Id;
+            }
+            
+            // Use first letter of skill name
+            return string.IsNullOrEmpty(_cachedSkillName) 
+                ? Skill.Id[0].ToString().ToUpper() 
+                : _cachedSkillName[0].ToString().ToUpper();
+        }
+    }
+    
+    private string SkillName => Skill?.Name ?? Skill?.Id ?? "未知技能";
+    
+    private void ShowTooltip()
+    {
+        _showTooltip = true;
+        StateHasChanged();
+    }
+    
+    private void HideTooltip()
+    {
+        _showTooltip = false;
+        StateHasChanged();
+    }
+    
+    protected override bool ShouldRender()
+    {
+        // Only re-render if meaningful properties have changed
+        bool shouldRender = _lastCooldown != RemainingCooldown;
+        
+        // Check cooldown change (only care about 0.1s level changes)
+        if (IsOnCooldown && _lastCooldown > 0)
+        {
+            var currentDecisecond = (int)(RemainingCooldown * 10);
+            var lastDecisecond = (int)(_lastCooldown * 10);
+            shouldRender = shouldRender || (currentDecisecond != lastDecisecond);
+        }
+        
+        _lastCooldown = RemainingCooldown;
+        
+        return shouldRender || _showTooltip || JustTriggered;
+    }
+    
+    private string TooltipHtml
+    {
+        get
+        {
+            if (Skill == null)
+                return "<div class='tooltip-content'>空槽位</div>";
+            
+            var html = new System.Text.StringBuilder();
+            
+            html.Append("<div class='tooltip-content'>");
+            
+            // 技能名称 / Skill name
+            html.Append($"<div class='tooltip-title'>{SkillName}</div>");
+            
+            // 技能类型 / Skill type
+            var typeText = Skill.Type == "active" ? "主动技能" : "被动技能";
+            var releaseTypeText = Skill.ReleaseType == "cast" ? " · 施法" : " · 瞬发";
+            html.Append($"<div class='tooltip-kind'>{typeText}{releaseTypeText}</div>");
+            
+            // 施法时间 / Cast time
+            if (Skill.ReleaseType == "cast" && Skill.CastTimeSec > 0)
+            {
+                html.Append($"<div class='tooltip-info'>施法时间: <strong>{Skill.CastTimeSec:F1}秒</strong></div>");
+            }
+            
+            // 冷却时间 / Cooldown
+            if (Skill.CooldownSec > 0)
+            {
+                html.Append($"<div class='tooltip-info'>冷却: <strong>{Skill.CooldownSec}秒</strong>");
+                if (IsOnCooldown)
+                {
+                    html.Append($" (剩余 {RemainingCooldown:F1}s)");
+                }
+                html.Append("</div>");
+            }
+            
+            // 资源消耗 / Resource costs
+            if (Skill.Costs != null && Skill.Costs.Count > 0)
+            {
+                html.Append("<div class='tooltip-costs'>");
+                foreach (var cost in Skill.Costs)
+                {
+                    var resourceName = GetResourceName(cost.BucketId);
+                    html.Append($"<div class='tooltip-cost'>消耗: <strong style='color:#dc3545'>{cost.Amount} {resourceName}</strong></div>");
+                }
+                html.Append("</div>");
+            }
+            
+            // 伤害 / Damage
+            if (Skill.Damage != null)
+            {
+                html.Append("<div class='tooltip-effects'>");
+                var dmgText = $"伤害: <strong>{Skill.Damage.CoefAtk * 100:F0}% 攻击力";
+                if (Skill.Damage.Flat > 0)
+                    dmgText += $" + {Skill.Damage.Flat}";
+                dmgText += "</strong>";
+                // Note: IsAoe was removed in Phase 6.4, AOE is determined by targetPolicy
+                html.Append($"<div class='tooltip-effect'>• {dmgText}</div>");
+                html.Append("</div>");
+            }
+            
+            // 治疗 / Heal
+            if (Skill.InstantHeal > 0)
+            {
+                html.Append("<div class='tooltip-effects'>");
+                html.Append($"<div class='tooltip-effect'>• 治疗: <strong style='color:#28a745'>{Skill.InstantHeal}</strong></div>");
+                html.Append("</div>");
+            }
+            
+            // 状态提示 / Status hints
+            if (IsResourceInsufficient)
+            {
+                html.Append("<div class='tooltip-warning'>⚠️ 资源不足</div>");
+            }
+            if (IsConditionNotMet)
+            {
+                html.Append("<div class='tooltip-warning'>⚠️ 条件不满足</div>");
+            }
+            
+            html.Append("</div>");
+            
+            return html.ToString();
+        }
+    }
+    
+    private string GetResourceName(string bucketId)
+    {
+        return bucketId switch
+        {
+            "rage" => "怒气",
+            "mana" => "法力",
+            "energy" => "能量",
+            _ => bucketId
+        };
+    }
+}
+
+<style>
+    .skill-icon {
+        position: relative;
+        width: 40px;
+        height: 40px;
+        border-radius: 6px;
+        border: 2px solid #444;
+        display: inline-block;
+        margin: 2px;
+        cursor: help;
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        overflow: hidden;
+        transition: all 0.2s ease;
+    }
+    
+    .skill-icon:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .skill-icon.active {
+        border-color: #3498db;
+    }
+    
+    .skill-icon.passive {
+        border-color: #9b59b6;
+    }
+    
+    .skill-icon.disabled {
+        opacity: 0.5;
+        filter: grayscale(70%);
+        cursor: not-allowed;
+    }
+    
+    .skill-icon.triggered {
+        animation: trigger-flash 0.5s ease;
+        box-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
+    }
+    
+    @@keyframes trigger-flash {
+        0%, 100% {
+            box-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
+            transform: scale(1);
+        }
+        50% {
+            box-shadow: 0 0 20px rgba(255, 215, 0, 1);
+            transform: scale(1.1);
+        }
+    }
+    
+    .skill-slot-number {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 14px;
+        height: 14px;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        font-size: 9px;
+        font-weight: bold;
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2;
+    }
+    
+    .skill-icon-content {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .skill-icon-display {
+        font-size: 24px;
+        font-weight: bold;
+        color: white;
+        line-height: 1;
+        user-select: none;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    }
+    
+    .skill-empty {
+        font-size: 20px;
+        color: #7f8c8d;
+    }
+    
+    .skill-cooldown-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: rgba(0, 0, 0, 0.7);
+        transition: height 0.1s linear;
+        z-index: 1;
+    }
+    
+    .skill-cooldown-text {
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        font-size: 11px;
+        font-weight: bold;
+        color: white;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        z-index: 3;
+    }
+    
+    .skill-resource-indicator {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        width: 14px;
+        height: 14px;
+        background-color: #e74c3c;
+        color: white;
+        font-size: 10px;
+        font-weight: bold;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2;
+        animation: pulse 1s infinite;
+    }
+    
+    @@keyframes pulse {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+    }
+    
+    /* Custom tooltip styling */
+    .skill-tooltip {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        margin-bottom: 8px;
+        background-color: rgba(0, 0, 0, 0.95);
+        color: white;
+        padding: 10px 14px;
+        border-radius: 6px;
+        white-space: nowrap;
+        z-index: 1000;
+        pointer-events: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        font-size: 12px;
+        min-width: 180px;
+        max-width: 300px;
+    }
+    
+    .skill-tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 6px solid transparent;
+        border-top-color: rgba(0, 0, 0, 0.95);
+    }
+    
+    .tooltip-content {
+        text-align: left;
+        white-space: normal;
+    }
+    
+    .tooltip-title {
+        font-weight: bold;
+        font-size: 14px;
+        margin-bottom: 4px;
+        color: #ffd700;
+    }
+    
+    .tooltip-kind {
+        font-size: 11px;
+        color: #aaa;
+        margin-bottom: 6px;
+    }
+    
+    .tooltip-info {
+        margin: 3px 0;
+        font-size: 11px;
+    }
+    
+    .tooltip-costs {
+        margin-top: 4px;
+        padding-top: 4px;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .tooltip-cost {
+        margin: 2px 0;
+        font-size: 11px;
+    }
+    
+    .tooltip-effects {
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .tooltip-effect {
+        margin: 2px 0;
+        font-size: 11px;
+        color: #ddd;
+    }
+    
+    .tooltip-warning {
+        margin-top: 6px;
+        padding: 4px 8px;
+        background-color: rgba(231, 76, 60, 0.3);
+        border-radius: 3px;
+        font-size: 11px;
+        font-weight: bold;
+        color: #e74c3c;
+    }
+</style>

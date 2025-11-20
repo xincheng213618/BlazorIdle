@@ -1,4 +1,5 @@
 ﻿@using BlazorIdle.Game
+@using BlazorIdle.Game.Skills
 @inherits ComponentBase
 
 <div class="team-panel enemy-team">
@@ -35,6 +36,23 @@
                                 @foreach (var buff in enemyBuffs)
                                 {
                                     <BuffIcon Buff="@buff" />
+                                }
+                            </div>
+                        }
+                        
+                        @* Phase 10.3: 怪物技能图标 (仅在展开时显示) / Monster skill icons (only show when expanded) *@
+                        var enemySkills = GetEnemySkills(m.Id);
+                        @if (enemySkills != null && enemySkills.Count > 0)
+                        {
+                            <div class="skill-container-enemy mb-1">
+                                @foreach (var skillData in enemySkills)
+                                {
+                                    <SkillIcon Skill="@skillData.Skill"
+                                               SlotId="@skillData.SlotId"
+                                               RemainingCooldown="@skillData.RemainingCooldown"
+                                               IsResourceInsufficient="@skillData.IsResourceInsufficient"
+                                               IsConditionNotMet="@skillData.IsConditionNotMet"
+                                               JustTriggered="@skillData.JustTriggered" />
                                 }
                             </div>
                         }
@@ -225,5 +243,70 @@
         var skillRepo = Battle?.GetSkillRepository();
         var skill = skillRepo?.GetSkill(skillId);
         return skill?.Name ?? skillId;
+    }
+    
+    // Phase 10.3: 获取怪物技能信息 / Get monster skill information
+    private List<CharacterPanel.EquippedSkillData>? GetEnemySkills(string enemyId)
+    {
+        if (Battle == null || Team == null)
+            return null;
+            
+        var enemy = Team.GetMember(enemyId);
+        if (enemy == null || enemy.IsDead)
+            return null;
+            
+        var skillRepo = Battle.GetSkillRepository();
+        if (skillRepo == null)
+            return null;
+            
+        var result = new List<CharacterPanel.EquippedSkillData>();
+        
+        // 收集施法技能 / Collect cast skills
+        if (enemy.Entity?.CastSkillIds != null)
+        {
+            int slotIndex = 1;
+            foreach (var skillId in enemy.Entity.CastSkillIds)
+            {
+                var skill = skillRepo.GetSkill(skillId);
+                if (skill != null)
+                {
+                    result.Add(new CharacterPanel.EquippedSkillData
+                    {
+                        Skill = skill,
+                        SlotId = $"cast_{slotIndex}",
+                        RemainingCooldown = Battle.GetSkillRemainingCooldown(skillId),
+                        IsResourceInsufficient = false, // 怪物通常不缺资源 / Monsters usually don't lack resources
+                        IsConditionNotMet = false,
+                        JustTriggered = false
+                    });
+                    slotIndex++;
+                }
+            }
+        }
+        
+        // 收集瞬发技能 / Collect instant skills
+        if (enemy.Entity?.InstantSkillIds != null)
+        {
+            int slotIndex = 1;
+            foreach (var skillId in enemy.Entity.InstantSkillIds)
+            {
+                var skill = skillRepo.GetSkill(skillId);
+                if (skill != null)
+                {
+                    result.Add(new CharacterPanel.EquippedSkillData
+                    {
+                        Skill = skill,
+                        SlotId = $"instant_{slotIndex}",
+                        RemainingCooldown = Battle.GetSkillRemainingCooldown(skillId),
+                        IsResourceInsufficient = false,
+                        IsConditionNotMet = false,
+                        JustTriggered = false
+                    });
+                    slotIndex++;
+                }
+            }
+        }
+        
+        return result.Count > 0 ? result : null;
     }
 }
