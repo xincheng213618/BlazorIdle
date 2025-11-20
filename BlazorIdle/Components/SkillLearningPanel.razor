@@ -279,8 +279,13 @@
 
         // 获取固定技能（职业自带技能）
         // Get fixed skills (profession's built-in skills)
+        // 排除怪物技能（allowedProfessions为空或null的技能）
+        // Exclude monster skills (skills with null or empty allowedProfessions)
         var fixedSkills = _skillRepository.GetSkillsByProfession(ProfessionId)
-            .Where(s => s.Fixed)
+            .Where(s => s.Fixed && 
+                        s.AllowedProfessions != null && 
+                        s.AllowedProfessions.Count > 0 &&
+                        s.AllowedProfessions.Contains(ProfessionId))
             .ToList();
 
         // 分类技能
