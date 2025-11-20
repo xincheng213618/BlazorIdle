@@ -242,6 +242,10 @@
     private List<SkillDef> learnableSkills = new();
     private List<SkillDef> learnedSkills = new();
     private List<SkillDef> lockedSkills = new();
+    
+    // 跟踪上一次的职业ID，用于检测职业切换
+    // Track previous profession ID to detect profession changes
+    private string _previousProfessionId = "";
 
     private int learnableCount => learnableSkills.Count;
     private int learnedCount => learnedSkills.Count;
@@ -253,10 +257,24 @@
     {
         isCollapsed = StartCollapsed;
         _learningManager = new SkillLearningManager(_skillRepository);
+        _previousProfessionId = ProfessionId;
     }
 
     protected override void OnParametersSet()
     {
+        // 检测职业是否切换
+        // Detect profession change
+        if (_previousProfessionId != ProfessionId)
+        {
+            Console.WriteLine($"[SkillLearningPanel] Profession changed from {_previousProfessionId} to {ProfessionId}");
+            _previousProfessionId = ProfessionId;
+            
+            // 清除消息
+            // Clear messages
+            errorMessage = string.Empty;
+            successMessage = string.Empty;
+        }
+        
         RefreshSkillLists();
     }
 
