@@ -271,7 +271,11 @@
         }
 
         var characterLevel = GetCharacterLevel();
-        var allSkills = _skillRepository.GetSkillsByProfession(ProfessionId).Where(s => !s.Fixed).ToList();
+        // 只显示有unlock属性的技能（可学习技能），排除固定技能和触发技能
+        // Only show skills with unlock property (learnable skills), exclude fixed skills and trigger skills
+        var allSkills = _skillRepository.GetSkillsByProfession(ProfessionId)
+            .Where(s => !s.Fixed && s.Unlock != null)
+            .ToList();
 
         // 分类技能
         learnableSkills = allSkills
