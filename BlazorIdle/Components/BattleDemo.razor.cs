@@ -262,6 +262,106 @@ namespace BlazorIdle.Components
             }
         }
 
+        // Phase 10.3: 获取玩家装备的技能列表（带缓存优化）
+        // Phase 10.3: Get player equipped skills list (with caching optimization)
+        private List<CharacterPanel.EquippedSkillData>? playerEquippedSkills
+        {
+            get
+            {
+                if (battle == null || SelectedCharacter == null)
+                {
+                    _cachedPlayerSkills = null;
+                    _lastSkillConfigKey = null;
+                    return null;
+                }
+                
+                var professionId = SelectedCharacter.ActiveCombatProfessionId ?? SelectedCharacter.ProfessionId;
+                if (!SelectedCharacter.EquippedSkillsByProfession.TryGetValue(professionId, out var equipConfig))
+                {
+                    _cachedPlayerSkills = null;
+                    _lastSkillConfigKey = null;
+                    return null;
+                }
+                
+                // 生成配置键用于检测变化 / Generate config key to detect changes
+                var activeSkills = string.Join(",", equipConfig.ActiveSlots.OrderBy(x => x.Key).Select(x => $"{x.Key}:{x.Value}"));
+                var configKey = $"{professionId}|{activeSkills}|{equipConfig.PassiveSlot}";
+                
+                // 如果配置未变化且缓存存在，更新冷却时间后返回缓存 / If config unchanged and cache exists, update cooldowns and return cache
+                if (_lastSkillConfigKey == configKey && _cachedPlayerSkills != null)
+                {
+                    // 只更新冷却时间（性能优化）/ Only update cooldowns (performance optimization)
+                    foreach (var skillData in _cachedPlayerSkills)
+                    {
+                        if (skillData.Skill != null)
+                        {
+                            skillData.RemainingCooldown = battle.GetSkillRemainingCooldown(skillData.Skill.Id);
+                        }
+                    }
+                    return _cachedPlayerSkills;
+                }
+                
+                // 配置已变化，重建列表 / Config changed, rebuild list
+                var skillRepo = battle.GetSkillRepository();
+                if (skillRepo == null)
+                {
+                    _cachedPlayerSkills = null;
+                    _lastSkillConfigKey = null;
+                    return null;
+                }
+                
+                var result = new List<CharacterPanel.EquippedSkillData>();
+                
+                // 主动技能槽位 / Active skill slots
+                foreach (var kvp in equipConfig.ActiveSlots.OrderBy(x => x.Key))
+                {
+                    var skillId = kvp.Value;
+                    if (!string.IsNullOrEmpty(skillId))
+                    {
+                        var skill = skillRepo.GetSkill(skillId);
+                        if (skill != null)
+                        {
+                            result.Add(new CharacterPanel.EquippedSkillData
+                            {
+                                Skill = skill,
+                                SlotId = kvp.Key,
+                                RemainingCooldown = battle.GetSkillRemainingCooldown(skillId),
+                                IsResourceInsufficient = false, // TODO: 实际检查资源 / Actually check resources
+                                IsConditionNotMet = false, // TODO: 实际检查条件 / Actually check conditions
+                                JustTriggered = false
+                            });
+                        }
+                    }
+                }
+                
+                // 被动技能槽位 / Passive skill slot
+                if (!string.IsNullOrEmpty(equipConfig.PassiveSlot))
+                {
+                    var skill = skillRepo.GetSkill(equipConfig.PassiveSlot);
+                    if (skill != null)
+                    {
+                        result.Add(new CharacterPanel.EquippedSkillData
+                        {
+                            Skill = skill,
+                            SlotId = "passive_1",
+                            RemainingCooldown = battle.GetSkillRemainingCooldown(equipConfig.PassiveSlot),
+                            IsResourceInsufficient = false,
+                            IsConditionNotMet = false,
+                            JustTriggered = false
+                        });
+                    }
+                }
+                
+                _cachedPlayerSkills = result.Count > 0 ? result : null;
+                _lastSkillConfigKey = configKey;
+                return _cachedPlayerSkills;
+            }
+        }
+
+        // 缓存玩家装备技能列表 - Cache player equipped skills list
+        private List<CharacterPanel.EquippedSkillData>? _cachedPlayerSkills = null;
+        private string? _lastSkillConfigKey = null; // 用于检测技能配置变化 / Used to detect skill config changes
+        
         // 日志列表 - 存储战斗日志
         // Log list - stores battle logs
         private readonly List<string> logs = new();

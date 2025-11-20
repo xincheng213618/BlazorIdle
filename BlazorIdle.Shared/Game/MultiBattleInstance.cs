@@ -2651,6 +2651,28 @@ namespace BlazorIdle.Game
         }
 
         /// <summary>
+        /// Phase 10.3: 获取技能剩余冷却时间
+        /// Phase 10.3: Get remaining cooldown time for a skill
+        /// </summary>
+        /// <param name="skillId">技能ID / Skill ID</param>
+        /// <returns>剩余冷却时间（秒）/ Remaining cooldown time in seconds</returns>
+        public double GetSkillRemainingCooldown(string skillId)
+        {
+            return _cooldownManager.GetRemainingCooldown(skillId);
+        }
+
+        /// <summary>
+        /// Phase 10.3: 检查技能是否准备就绪（不在冷却中）
+        /// Phase 10.3: Check if a skill is ready (not on cooldown)
+        /// </summary>
+        /// <param name="skillId">技能ID / Skill ID</param>
+        /// <returns>如果技能可用返回 true / True if skill is ready</returns>
+        public bool IsSkillReady(string skillId)
+        {
+            return _cooldownManager.IsReady(skillId);
+        }
+
+        /// <summary>
         /// Phase 7: 处理攻击触发器
         /// Phase 7: Process attack triggers
         /// </summary>

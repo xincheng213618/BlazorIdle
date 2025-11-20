@@ -27,6 +27,12 @@ namespace BlazorIdle.Game.Skills
         public string Description { get; set; } = "";
 
         /// <summary>
+        /// 技能图标（emoji 或文字）- Phase 10.3: 预留接口用于未来图标支持
+        /// Skill icon (emoji or text) - Phase 10.3: Reserved interface for future icon support
+        /// </summary>
+        public string? Icon { get; set; }
+
+        /// <summary>
         /// 技能类型：active（主动）或 passive（被动）
         /// Skill type: active or passive
         /// </summary>

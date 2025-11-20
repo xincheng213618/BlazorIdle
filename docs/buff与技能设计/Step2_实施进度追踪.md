@@ -1354,7 +1354,7 @@
 
 ### 阶段 10：UI 技能显示（P0 - 必须）
 
-**状态：** 🟡 进行中（Phase 1 完成）
+**状态：** 🟡 进行中（Phase 1 完成，Phase 2 已跳过，Phase 3 实施中）
 
 **目标：** 实现技能学习、装备和战斗显示的 UI 组件。
 
@@ -1372,20 +1372,26 @@
   - ✅ 数值格式化（消除浮点精度问题）
   - ✅ 高质量代码（IDisposable、内存泄漏修复、性能优化）
 
-- [ ] 10.2 技能装备界面（SkillEquipmentPanel）
+- [ ] ~~10.2 技能装备界面（SkillEquipmentPanel）~~ ⚠️ **已跳过（用户指示）**
   - 4个槽位显示（3主动 + 1被动）
   - 槽位选择和技能装备
   - 已装备技能显示
   - 可装备技能列表（已学习的技能）
   - 卸载技能功能
   - 技能详情和消耗显示
+  - **注：此阶段将在后续独立 PR 中实施**
 
-- [ ] 10.3 战斗中技能图标
-  - 技能图标显示（4个槽位）
-  - 冷却时间倒计时
-  - 资源不足提示
-  - 条件不满足提示（灰度显示）
-  - 技能触发动画
+- [x] **10.3 战斗中技能图标** ✅ 已完成
+  - ✅ 技能图标显示（4个槽位）
+  - ✅ 冷却时间倒计时
+  - ✅ 资源不足提示（红色感叹号）
+  - ✅ 条件不满足提示（灰度显示）
+  - ✅ 技能触发动画（预留）
+  - ✅ 技能 Tooltip（完整信息）
+  - ✅ 集成到 CharacterPanel 和 EnemyTeamPanel
+  - ⚠️ **已知问题 1**：切换角色职业后，资源类型未同步更新（显示旧职业资源）
+  - ⚠️ **已知问题 2**：技能冷却时间使用全局 CooldownManager，多角色战斗会混淆冷却状态
+  - **注：这两个问题需要在独立 PR 中修复（涉及角色面板刷新机制重构和冷却管理器架构调整）**
 
 - [ ] 10.4 施法条组件
   - 显示施法进度条
@@ -1591,6 +1597,105 @@
 
 ---
 
+## ⚠️ 已知问题（待后续 PR 修复）
+
+### 问题 1：职业切换后资源类型未同步更新
+
+**问题描述：**
+- 当玩家在战斗中切换角色职业时，UI 上的资源检查仍然使用旧职业的资源类型
+- 例如：战士（使用怒气）切换到法师（使用法力），技能资源检查仍然检查怒气而不是法力
+- 导致：技能显示资源不足（红色感叹号），但实际上是检查了错误的资源类型
+
+**根本原因：**
+- 角色面板（CharacterPanel）不会在职业切换后自动刷新
+- `playerEquippedSkills` 属性在 BattleDemo 中只在初始化时计算一次
+- 资源检查使用的是战斗开始时的 BuffOwner，未同步职业切换
+
+**影响范围：**
+- 阶段 10.3 技能图标的资源不足检测
+- 需要全局的角色面板刷新机制
+
+**修复方案：**
+- 实现角色面板的响应式更新机制
+- 在职业切换时触发 `CharacterData` 变更事件
+- 重新初始化 BuffOwner 和资源桶
+- 需要在独立 PR 中实施（涉及多个组件的协调）
+
+**优先级：** 中优先级（影响用户体验但不阻塞核心功能）
+
+---
+
+### 问题 2：全局冷却管理器导致多角色冷却混淆
+
+**问题描述：**
+- 当前使用单一的全局 `CooldownManager`
+- 多角色战斗时，角色 A 使用技能会导致角色 B 的相同技能也进入冷却
+- 例如：角色 A 使用"致死打击"，角色 B 的"致死打击"也会显示冷却中
+
+**根本原因：**
+- MultiBattleInstance 只有一个 `_cooldownManager` 实例
+- `GetSkillRemainingCooldown(skillId)` 方法不区分角色
+- 所有角色共享同一个技能冷却池
+
+**影响范围：**
+- 阶段 10.3 技能图标的冷却时间显示
+- 多角色战斗的技能使用逻辑
+
+**修复方案：**
+有两种可能的架构调整方案：
+
+**方案 A：Per-Character 冷却管理**
+```csharp
+// 每个角色独立的冷却管理器
+private Dictionary<string, CooldownManager> _characterCooldowns = new();
+
+public double GetSkillRemainingCooldown(string characterId, string skillId)
+{
+    if (!_characterCooldowns.TryGetValue(characterId, out var cooldownMgr))
+        return 0.0;
+    return cooldownMgr.GetRemainingCooldown(skillId);
+}
+```
+
+**方案 B：复合键冷却管理**
+```csharp
+// 使用 (characterId, skillId) 复合键
+private CooldownManager _cooldownManager = new();
+
+public double GetSkillRemainingCooldown(string characterId, string skillId)
+{
+    string key = $"{characterId}:{skillId}";
+    return _cooldownManager.GetRemainingCooldown(key);
+}
+```
+
+**推荐方案：** 方案 A（更清晰的职责分离）
+
+**修复工作量：** 4-6 小时
+- 修改 MultiBattleInstance API 签名
+- 更新所有冷却管理调用点（~10+ 处）
+- 更新 BattleDemo 和 UI 组件
+- 添加单元测试验证多角色场景
+
+**优先级：** 中优先级（多角色战斗场景才会出现）
+
+---
+
+### 问题 3：技能触发状态未实现
+
+**问题描述：**
+- `JustTriggered` 状态硬编码为 `false`
+- 技能触发动画（trigger-flash）永远不会显示
+
+**修复方案：**
+- 实现技能触发事件的订阅机制
+- 在技能执行时标记 JustTriggered 状态
+- 添加短暂的高亮动画（0.5秒）
+
+**优先级：** 低优先级（纯视觉效果）
+
+---
+
 ## 📊 进度总览
 
 | 阶段 | 状态 | 预计工时 | 测试增量 |
@@ -1611,11 +1716,13 @@
 | **阶段 9+ - 怪物技能系统完整实施** | ✅ 已完成 | 8-10h | +19 |
 | **阶段 10 - UI 技能显示** | 🟡 进行中 | 6-8h | 0 (UI) |
 |   └─ Phase 1: SkillLearningPanel | ✅ 已完成 | ~4h | - |
-|   └─ Phase 2: SkillEquipmentPanel | ⬜ 待实施 | ~2-4h | - |
+|   └─ Phase 2: SkillEquipmentPanel | ⏭️ 已跳过 | N/A | - |
+|   └─ Phase 3: 战斗技能图标 | ✅ 已完成 | ~4h | - |
 | 阶段 11 - 集成测试验收 | ⬜ 未开始 | 6-8h | +30 |
 | 阶段 12 - 文档与交付 | ⬜ 未开始 | 4-5h | - |
 
-**总体进度：** 13.5/16 (84%) ✅✅✅✅✅✅✅✅✅✅✅✅✅🟡⬜⬜  
+**总体进度：** 13.5/16 (84%) ✅✅✅✅✅✅✅✅✅✅✅✅✅✅⬜⬜  
+**Phase 10.3 完成，但有 2 个已知问题需要后续 PR 修复（职业切换资源同步 + 多角色冷却混淆）**  
 **预计总工时：** 75-96 小时（含 Phase 9+ 和 Phase 10.1）  
 **预计新增测试：** ~244 个（已完成 191 个 + UI Phase 不需要新测试）  
 **当前测试基线：** 632 个（阶段 9+ 完成后）  
@@ -2114,6 +2221,66 @@
 
 ### 2025-11-14 v1.0
 - 初始版本，12 个阶段
+
+### 2025-11-20 v10.3 - Phase 10.3 战斗技能图标显示完成 🎨
+- ✅ **Phase 10.3 SkillIcon 组件完整实施**（~6h，跳过 Phase 10.2）
+  - ✅ 40×40px 技能图标组件（槽位编号：玩家1-3/P，怪物执行顺序）
+  - ✅ 冷却时间可视化（覆盖层 + 百分比 + 倒计时）
+  - ✅ 资源不足状态显示（红色感叹号，有已知问题）
+  - ✅ 条件不满足灰化效果
+  - ✅ 技能触发动画预留（trigger-flash）
+  - ✅ 详细 Tooltip（14+ 属性字段）
+  - ✅ 智能 Tooltip 管理（用户修复：StateHasChanged()）
+  - ✅ 自定义图标支持（SkillDef.Icon 属性，备用首字母）
+- ✅ **面板集成**
+  - ✅ CharacterPanel：4 技能槽位（3 主动 + 1 被动）
+  - ✅ EnemyTeamPanel：怪物技能显示（带执行顺序编号）
+  - ✅ BattleDemo：数据流水线（技能配置 → 冷却状态 → UI）
+- ✅ **MultiBattleInstance API 扩展**
+  - ✅ GetSkillRemainingCooldown(skillId)：查询冷却剩余时间
+  - ✅ IsSkillReady(skillId)：检查技能是否就绪
+  - ⚠️ 已知问题：不区分角色 ID（多角色冷却混淆）
+- ✅ **性能优化（3 项完成）**
+  - ✅ 玩家技能列表缓存（问题 #2）：配置键跟踪 + 快速路径
+  - ✅ 怪物技能列表缓存（问题 #14）：按敌人 ID 独立缓存
+  - ⚠️ Tooltip HTML 缓存（问题 #10）：已回退（导致冷却显示异常）
+- ✅ **Tooltip 系统改进历程**
+  - ✅ 初始实现（TooltipManager 单例）
+  - ✅ 修复可见性问题（DOM 重构：skill-icon-inner）
+  - ✅ 修复残留问题（用户诊断并修复：StateHasChanged()）
+  - ✅ 最终方案：移除 TooltipManager，强制刷新解决
+- ✅ **测试结果**
+  - ✅ 所有 632 个测试通过
+  - ✅ 零破坏性变更
+  - ✅ 编译成功（0 errors）
+- ✅ **代码变更**
+  - ✅ SkillIcon.razor: +575 行（新建）
+  - ✅ MultiBattleInstance.cs: +24 行（API 扩展）
+  - ✅ CharacterPanel/EnemyTeamPanel/BattleDemo: +185 行（集成）
+  - ✅ BuffIcon/SkillIcon: +48 行（Tooltip 修复）
+  - ✅ SkillDef.cs: +6 行（Icon 属性）
+  - ✅ 性能优化: +71 行（2 项缓存）
+  - ✅ 净增加：+909 行（不含已回退的 Tooltip HTML 缓存）
+- ⚠️ **已知问题（需独立 PR 修复）**
+  - ⚠️ 问题 1：职业切换后资源类型未同步更新
+    - 影响：技能资源不足检测不准确
+    - 原因：角色面板不会自动刷新，BuffOwner 未同步职业
+    - 优先级：中
+  - ⚠️ 问题 2：全局冷却管理器导致多角色冷却混淆
+    - 影响：多角色战斗时冷却显示错误
+    - 原因：MultiBattleInstance 只有一个 CooldownManager
+    - 方案：Per-Character 冷却管理架构
+    - 优先级：中
+  - ⚠️ 问题 3：技能触发状态未实现
+    - 影响：trigger-flash 动画不显示
+    - 原因：JustTriggered 硬编码为 false
+    - 优先级：低（纯视觉效果）
+- 📝 **实施说明**
+  - Phase 10.2（SkillEquipmentPanel）按用户指示跳过，下个 PR 实施
+  - Tooltip HTML 缓存优化因导致冷却显示异常已回退
+  - 性能优化保持 2 项（玩家/怪物技能列表缓存）
+  - 详细问题分析已记录在"已知问题"章节
+- 🎯 **下一阶段：** Phase 10.2 - SkillEquipmentPanel UI（下个 PR）
 
 ### 2025-11-20 v10.1 - Phase 10.1 技能学习 UI 完成 🎨
 - ✅ **Phase 10.1 SkillLearningPanel 完整实施**（~4h）

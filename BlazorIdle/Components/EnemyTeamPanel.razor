@@ -1,4 +1,5 @@
 ﻿@using BlazorIdle.Game
+@using BlazorIdle.Game.Skills
 @inherits ComponentBase
 
 <div class="team-panel enemy-team">
@@ -35,6 +36,23 @@
                                 @foreach (var buff in enemyBuffs)
                                 {
                                     <BuffIcon Buff="@buff" />
+                                }
+                            </div>
+                        }
+                        
+                        @* Phase 10.3: 怪物技能图标 (仅在展开时显示) / Monster skill icons (only show when expanded) *@
+                        var enemySkills = GetEnemySkills(m.Id);
+                        @if (enemySkills != null && enemySkills.Count > 0)
+                        {
+                            <div class="skill-container-enemy mb-1">
+                                @foreach (var skillData in enemySkills)
+                                {
+                                    <SkillIcon Skill="@skillData.Skill"
+                                               SlotId="@skillData.SlotId"
+                                               RemainingCooldown="@skillData.RemainingCooldown"
+                                               IsResourceInsufficient="@skillData.IsResourceInsufficient"
+                                               IsConditionNotMet="@skillData.IsConditionNotMet"
+                                               JustTriggered="@skillData.JustTriggered" />
                                 }
                             </div>
                         }
@@ -122,6 +140,10 @@
 
     // 当前战斗状态（用于冷却/阵亡时禁用过渡）
     private MultiBattleState _battleState = MultiBattleState.NotStarted;
+    
+    // 缓存怪物技能列表 / Cache enemy skills list
+    private readonly Dictionary<string, List<CharacterPanel.EquippedSkillData>> _cachedEnemySkills = new();
+    private readonly Dictionary<string, string> _lastEnemySkillConfigKey = new();
 
     protected override void OnParametersSet()
     {
@@ -225,5 +247,93 @@
         var skillRepo = Battle?.GetSkillRepository();
         var skill = skillRepo?.GetSkill(skillId);
         return skill?.Name ?? skillId;
+    }
+    
+    // Phase 10.3: 获取怪物技能信息（带缓存优化）/ Get monster skill information (with caching optimization)
+    private List<CharacterPanel.EquippedSkillData>? GetEnemySkills(string enemyId)
+    {
+        if (Battle == null || Team == null)
+            return null;
+            
+        var enemy = Team.GetMember(enemyId);
+        if (enemy == null || enemy.IsDead)
+            return null;
+        
+        // 生成配置键用于检测变化 / Generate config key to detect changes
+        var castSkills = enemy.Entity?.CastSkillIds != null ? string.Join(",", enemy.Entity.CastSkillIds) : "";
+        var instantSkills = enemy.Entity?.InstantSkillIds != null ? string.Join(",", enemy.Entity.InstantSkillIds) : "";
+        var configKey = $"{castSkills}|{instantSkills}";
+        
+        // 如果配置未变化且缓存存在，更新冷却时间后返回缓存 / If config unchanged and cache exists, update cooldowns and return cache
+        if (_lastEnemySkillConfigKey.TryGetValue(enemyId, out var lastKey) && lastKey == configKey && 
+            _cachedEnemySkills.TryGetValue(enemyId, out var cached))
+        {
+            // 只更新冷却时间（性能优化）/ Only update cooldowns (performance optimization)
+            foreach (var skillData in cached)
+            {
+                if (skillData.Skill != null)
+                {
+                    skillData.RemainingCooldown = Battle.GetSkillRemainingCooldown(skillData.Skill.Id);
+                }
+            }
+            return cached;
+        }
+        
+        // 配置已变化，重建列表 / Config changed, rebuild list
+        var skillRepo = Battle.GetSkillRepository();
+        if (skillRepo == null)
+            return null;
+            
+        var result = new List<CharacterPanel.EquippedSkillData>();
+        
+        // 收集施法技能 / Collect cast skills
+        if (enemy.Entity?.CastSkillIds != null)
+        {
+            int slotIndex = 1;
+            foreach (var skillId in enemy.Entity.CastSkillIds)
+            {
+                var skill = skillRepo.GetSkill(skillId);
+                if (skill != null)
+                {
+                    result.Add(new CharacterPanel.EquippedSkillData
+                    {
+                        Skill = skill,
+                        SlotId = $"cast_{slotIndex}",
+                        RemainingCooldown = Battle.GetSkillRemainingCooldown(skillId),
+                        IsResourceInsufficient = false, // 怪物通常不缺资源 / Monsters usually don't lack resources
+                        IsConditionNotMet = false,
+                        JustTriggered = false
+                    });
+                    slotIndex++;
+                }
+            }
+        }
+        
+        // 收集瞬发技能 / Collect instant skills
+        if (enemy.Entity?.InstantSkillIds != null)
+        {
+            int slotIndex = 1;
+            foreach (var skillId in enemy.Entity.InstantSkillIds)
+            {
+                var skill = skillRepo.GetSkill(skillId);
+                if (skill != null)
+                {
+                    result.Add(new CharacterPanel.EquippedSkillData
+                    {
+                        Skill = skill,
+                        SlotId = $"instant_{slotIndex}",
+                        RemainingCooldown = Battle.GetSkillRemainingCooldown(skillId),
+                        IsResourceInsufficient = false,
+                        IsConditionNotMet = false,
+                        JustTriggered = false
+                    });
+                    slotIndex++;
+                }
+            }
+        }
+        
+        _cachedEnemySkills[enemyId] = result;
+        _lastEnemySkillConfigKey[enemyId] = configKey;
+        return result.Count > 0 ? result : null;
     }
 }

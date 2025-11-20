@@ -1,11 +1,13 @@
 @using BlazorIdle.Game.Buffs
 @using BlazorIdle.Models
 @namespace BlazorIdle.Components
+@implements IDisposable
 
 @* Phase 9: Buff/Debuff icon component with JSON icon support *@
-<div class="buff-icon @KindClass" 
-     @onmouseenter="ShowTooltip" 
-     @onmouseleave="HideTooltip">
+<div class="buff-icon @KindClass"
+     @onmouseenter="OnMouseEnter"
+     @onmouseleave="OnMouseLeave"
+     @key="@TooltipId">
     <div class="buff-icon-content">
         @if (!string.IsNullOrEmpty(IconDisplay))
         {
@@ -18,23 +20,25 @@
             <span class="buff-letter">@IconLetter</span>
         }
     </div>
-    
+
     @* Stack count *@
     @if (Buff.Stacks > 1)
     {
         <span class="buff-stack">@Buff.Stacks</span>
     }
-    
+
     @* Remaining duration *@
     @if (Buff.RemainingDurationSec.HasValue)
     {
         <span class="buff-duration">@DurationText</span>
     }
-    
+
     @* Custom tooltip overlay *@
     @if (_showTooltip)
     {
-        <div class="buff-tooltip">@((MarkupString)TooltipHtml)</div>
+        <div class="buff-tooltip" @onmouseenter="OnMouseEnter" @onmouseleave="OnMouseLeave">
+            @((MarkupString)TooltipHtml)
+        </div>
     }
 </div>
 
@@ -43,16 +47,48 @@
     public BuffInstance Buff { get; set; } = null!;
 
     private bool _showTooltip = false;
+    private bool _lastShowTooltip = false;  // 追踪 tooltip 状态变化
     private string? _cachedIconDisplay = null;
     private string? _cachedBuffName = null;
     private string? _lastBuffId = null;
     private int _lastStacks = -1;
     private double? _lastDuration = null;
 
+    // Phase 10.3: Tooltip 唯一标识
+    // Phase 10.3: Unique tooltip identifier
+    private string TooltipId => $"buff_{Buff.Id}_{Buff.Stacks}";
+
+    protected override void OnParametersSet()
+    {
+        // If buff changed, hide tooltip
+        if (_lastBuffId != null && _lastBuffId != Buff.Id && _showTooltip)
+        {
+            _showTooltip = false;
+        }
+        _lastBuffId = Buff.Id;
+    }
+
+    public void Dispose()
+    {
+        _showTooltip = false;
+    }
+
+    private void OnMouseEnter()
+    {
+        _showTooltip = true;
+        StateHasChanged();  // 强制触发渲染
+    }
+
+    private void OnMouseLeave()
+    {
+        _showTooltip = false;
+        StateHasChanged();  // 强制触发渲染
+    }
+
     private string KindClass => Buff.Kind == BuffKind.Buff ? "buff" : "debuff";
-    
+
     private string IconLetter => string.IsNullOrEmpty(Buff.Id) ? "?" : Buff.Id[0].ToString().ToUpper();
-    
+
     private string IconDisplay
     {
         get
@@ -69,39 +105,34 @@
             return _cachedIconDisplay;
         }
     }
-    
+
     private string BuffName => _cachedBuffName ?? Buff.Id;
-    
+
     private string DurationText
     {
         get
         {
             if (!Buff.RemainingDurationSec.HasValue)
                 return "";
-            
+
             var seconds = (int)Math.Ceiling(Buff.RemainingDurationSec.Value);
             return seconds.ToString();
         }
     }
-    
-    private void ShowTooltip()
-    {
-        _showTooltip = true;
-        StateHasChanged();
-    }
-    
-    private void HideTooltip()
-    {
-        _showTooltip = false;
-        StateHasChanged();
-    }
-    
+
     protected override bool ShouldRender()
     {
+        // Always render when tooltip state changes
+        if (_showTooltip != _lastShowTooltip)
+        {
+            _lastShowTooltip = _showTooltip;
+            return true;
+        }
+
         // Only re-render if meaningful properties have changed
         // This prevents constant re-renders from timer ticks
         bool shouldRender = _lastStacks != Buff.Stacks;
-        
+
         // Check duration change (only care about second-level changes)
         if (Buff.RemainingDurationSec.HasValue && _lastDuration.HasValue)
         {
@@ -113,31 +144,31 @@
         {
             shouldRender = true;
         }
-        
+
         _lastStacks = Buff.Stacks;
         _lastDuration = Buff.RemainingDurationSec;
-        
-        return shouldRender || _showTooltip;
+
+        return shouldRender;
     }
-    
+
     private string TooltipHtml
     {
         get
         {
             var html = new System.Text.StringBuilder();
-            
+
             html.Append("<div class='tooltip-content'>");
-            
+
             // Buff name with kind
             html.Append($"<div class='tooltip-title'>{BuffName}</div>");
             html.Append($"<div class='tooltip-kind'>{(Buff.Kind == BuffKind.Buff ? "增益" : "减益")}</div>");
-            
+
             // Stacks
             if (Buff.Stacks > 1)
             {
                 html.Append($"<div class='tooltip-info'>层数: <strong>{Buff.Stacks}</strong></div>");
             }
-            
+
             // Duration
             if (Buff.RemainingDurationSec.HasValue)
             {
@@ -147,7 +178,7 @@
             {
                 html.Append("<div class='tooltip-info'>永久效果</div>");
             }
-            
+
             // Effects summary
             if (Buff.Effects?.Count > 0)
             {
@@ -158,13 +189,13 @@
                 }
                 html.Append("</div>");
             }
-            
+
             html.Append("</div>");
-            
+
             return html.ToString();
         }
     }
-    
+
     private string FormatEffect(BuffEffect effect)
     {
         return effect.Type switch
@@ -192,18 +223,24 @@
         display: inline-block;
         margin: 2px;
         cursor: help;
+        transition: all 0.2s ease;
     }
-    
-    .buff-icon.buff {
-        border-color: #28a745; /* Green for buffs */
-        background-color: rgba(40, 167, 69, 0.1);
-    }
-    
-    .buff-icon.debuff {
-        border-color: #dc3545; /* Red for debuffs */
-        background-color: rgba(220, 53, 69, 0.1);
-    }
-    
+
+        .buff-icon:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .buff-icon.buff {
+            border-color: #28a745; /* Green for buffs */
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+
+        .buff-icon.debuff {
+            border-color: #dc3545; /* Red for debuffs */
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+
     .buff-icon-content {
         width: 100%;
         height: 100%;
@@ -211,19 +248,19 @@
         align-items: center;
         justify-content: center;
     }
-    
+
     .buff-icon-display {
         font-size: 20px;
         line-height: 1;
         user-select: none;
     }
-    
+
     .buff-letter {
         font-size: 16px;
         font-weight: bold;
         color: currentColor;
     }
-    
+
     .buff-stack {
         position: absolute;
         bottom: 0;
@@ -236,7 +273,7 @@
         border-radius: 2px;
         line-height: 1.2;
     }
-    
+
     .buff-duration {
         position: absolute;
         top: 0;
@@ -249,7 +286,7 @@
         border-radius: 2px;
         line-height: 1.2;
     }
-    
+
     /* Custom tooltip styling */
     .buff-tooltip {
         position: absolute;
@@ -263,12 +300,24 @@
         border-radius: 6px;
         white-space: nowrap;
         z-index: 1000;
-        pointer-events: none;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         font-size: 12px;
         min-width: 150px;
+        animation: fadeIn 0.15s ease;
     }
-    
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(5px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    }
+
     .buff-tooltip::after {
         content: '';
         position: absolute;
@@ -278,35 +327,36 @@
         border: 5px solid transparent;
         border-top-color: rgba(0, 0, 0, 0.95);
     }
-    
+
     .tooltip-content {
         text-align: left;
+        white-space: normal;
     }
-    
+
     .tooltip-title {
         font-weight: bold;
         font-size: 13px;
         margin-bottom: 4px;
         color: #ffc107;
     }
-    
+
     .tooltip-kind {
         font-size: 11px;
         color: #aaa;
         margin-bottom: 6px;
     }
-    
+
     .tooltip-info {
         margin: 3px 0;
         font-size: 11px;
     }
-    
+
     .tooltip-effects {
         margin-top: 6px;
         padding-top: 6px;
         border-top: 1px solid rgba(255, 255, 255, 0.2);
     }
-    
+
     .tooltip-effect {
         margin: 2px 0;
         font-size: 11px;
