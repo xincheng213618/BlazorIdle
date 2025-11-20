@@ -84,13 +84,6 @@
     private string? _cachedIconDisplay = null;
     private string? _lastSkillId = null;
     private double _lastCooldown = -1;
-    
-    // Tooltip caching (issue #10)
-    private string? _cachedTooltipHtml = null;
-    private string? _lastTooltipSkillId = null;
-    private double _lastTooltipCooldown = -1;
-    private bool _lastTooltipResourceInsufficient = false;
-    private bool _lastTooltipConditionNotMet = false;
 
     // Phase 10.3: Tooltip 唯一标识
     // Phase 10.3: Unique tooltip identifier
@@ -252,21 +245,6 @@
             if (Skill == null)
                 return "<div class='tooltip-content'>空槽位</div>";
 
-            // Cache check: only rebuild if something changed (issue #10)
-            var currentSkillId = Skill.Id;
-            var currentCooldown = RemainingCooldown;
-            var needsRebuild = _cachedTooltipHtml == null
-                || _lastTooltipSkillId != currentSkillId
-                || Math.Abs(_lastTooltipCooldown - currentCooldown) > 0.1  // Only rebuild if cooldown changed significantly
-                || _lastTooltipResourceInsufficient != IsResourceInsufficient
-                || _lastTooltipConditionNotMet != IsConditionNotMet;
-
-            if (!needsRebuild)
-            {
-                return _cachedTooltipHtml!;
-            }
-
-            // Build new tooltip HTML
             var html = new System.Text.StringBuilder();
 
             html.Append("<div class='tooltip-content'>");
@@ -288,7 +266,7 @@
             // 冷却时间 / Cooldown
             if (Skill.CooldownSec > 0)
             {
-                html.Append($"<div class='tooltip-info'>冷却: <strong>{Skill.CooldownSec}�strong>");
+                html.Append($"<div class='tooltip-info'>冷却: <strong>{Skill.CooldownSec}秒</strong>");
                 if (IsOnCooldown)
                 {
                     html.Append($" (剩余 {RemainingCooldown:F1}s)");
@@ -340,14 +318,7 @@
 
             html.Append("</div>");
 
-            // Cache the result
-            _cachedTooltipHtml = html.ToString();
-            _lastTooltipSkillId = currentSkillId;
-            _lastTooltipCooldown = currentCooldown;
-            _lastTooltipResourceInsufficient = IsResourceInsufficient;
-            _lastTooltipConditionNotMet = IsConditionNotMet;
-
-            return _cachedTooltipHtml;
+            return html.ToString();
         }
     }
 

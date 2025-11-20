@@ -2222,6 +2222,66 @@ public double GetSkillRemainingCooldown(string characterId, string skillId)
 ### 2025-11-14 v1.0
 - 初始版本，12 个阶段
 
+### 2025-11-20 v10.3 - Phase 10.3 战斗技能图标显示完成 🎨
+- ✅ **Phase 10.3 SkillIcon 组件完整实施**（~6h，跳过 Phase 10.2）
+  - ✅ 40×40px 技能图标组件（槽位编号：玩家1-3/P，怪物执行顺序）
+  - ✅ 冷却时间可视化（覆盖层 + 百分比 + 倒计时）
+  - ✅ 资源不足状态显示（红色感叹号，有已知问题）
+  - ✅ 条件不满足灰化效果
+  - ✅ 技能触发动画预留（trigger-flash）
+  - ✅ 详细 Tooltip（14+ 属性字段）
+  - ✅ 智能 Tooltip 管理（用户修复：StateHasChanged()）
+  - ✅ 自定义图标支持（SkillDef.Icon 属性，备用首字母）
+- ✅ **面板集成**
+  - ✅ CharacterPanel：4 技能槽位（3 主动 + 1 被动）
+  - ✅ EnemyTeamPanel：怪物技能显示（带执行顺序编号）
+  - ✅ BattleDemo：数据流水线（技能配置 → 冷却状态 → UI）
+- ✅ **MultiBattleInstance API 扩展**
+  - ✅ GetSkillRemainingCooldown(skillId)：查询冷却剩余时间
+  - ✅ IsSkillReady(skillId)：检查技能是否就绪
+  - ⚠️ 已知问题：不区分角色 ID（多角色冷却混淆）
+- ✅ **性能优化（3 项完成）**
+  - ✅ 玩家技能列表缓存（问题 #2）：配置键跟踪 + 快速路径
+  - ✅ 怪物技能列表缓存（问题 #14）：按敌人 ID 独立缓存
+  - ⚠️ Tooltip HTML 缓存（问题 #10）：已回退（导致冷却显示异常）
+- ✅ **Tooltip 系统改进历程**
+  - ✅ 初始实现（TooltipManager 单例）
+  - ✅ 修复可见性问题（DOM 重构：skill-icon-inner）
+  - ✅ 修复残留问题（用户诊断并修复：StateHasChanged()）
+  - ✅ 最终方案：移除 TooltipManager，强制刷新解决
+- ✅ **测试结果**
+  - ✅ 所有 632 个测试通过
+  - ✅ 零破坏性变更
+  - ✅ 编译成功（0 errors）
+- ✅ **代码变更**
+  - ✅ SkillIcon.razor: +575 行（新建）
+  - ✅ MultiBattleInstance.cs: +24 行（API 扩展）
+  - ✅ CharacterPanel/EnemyTeamPanel/BattleDemo: +185 行（集成）
+  - ✅ BuffIcon/SkillIcon: +48 行（Tooltip 修复）
+  - ✅ SkillDef.cs: +6 行（Icon 属性）
+  - ✅ 性能优化: +71 行（2 项缓存）
+  - ✅ 净增加：+909 行（不含已回退的 Tooltip HTML 缓存）
+- ⚠️ **已知问题（需独立 PR 修复）**
+  - ⚠️ 问题 1：职业切换后资源类型未同步更新
+    - 影响：技能资源不足检测不准确
+    - 原因：角色面板不会自动刷新，BuffOwner 未同步职业
+    - 优先级：中
+  - ⚠️ 问题 2：全局冷却管理器导致多角色冷却混淆
+    - 影响：多角色战斗时冷却显示错误
+    - 原因：MultiBattleInstance 只有一个 CooldownManager
+    - 方案：Per-Character 冷却管理架构
+    - 优先级：中
+  - ⚠️ 问题 3：技能触发状态未实现
+    - 影响：trigger-flash 动画不显示
+    - 原因：JustTriggered 硬编码为 false
+    - 优先级：低（纯视觉效果）
+- 📝 **实施说明**
+  - Phase 10.2（SkillEquipmentPanel）按用户指示跳过，下个 PR 实施
+  - Tooltip HTML 缓存优化因导致冷却显示异常已回退
+  - 性能优化保持 2 项（玩家/怪物技能列表缓存）
+  - 详细问题分析已记录在"已知问题"章节
+- 🎯 **下一阶段：** Phase 10.2 - SkillEquipmentPanel UI（下个 PR）
+
 ### 2025-11-20 v10.1 - Phase 10.1 技能学习 UI 完成 🎨
 - ✅ **Phase 10.1 SkillLearningPanel 完整实施**（~4h）
   - ✅ 左右分栏布局（38% 技能列表 + 62% 详细信息）
