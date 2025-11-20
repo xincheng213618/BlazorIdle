@@ -1052,13 +1052,6 @@ namespace BlazorIdle.Game
                 // Legacy path: Use normal attack skill
                 string skillId = enemy.GetNormalAttackSkillId();
                 ExecuteSkill(enemyId, skillId, "enemy_attack", isCasterPlayer: false);
-                
-                // FIX: 怪物普攻完成后立即尝试施法（与玩家行为保持一致）
-                // FIX: After monster normal attack, immediately try to start casting (consistent with player behavior)
-                // 这也适用于没有配置技能的遗留怪物
-                // This also applies to legacy monsters without configured skills
-                int nowMs = _clock.NowMs;
-                TryStartMonsterCasting(enemyId, enemy, nowMs);
             }
         }
 
@@ -1169,25 +1162,12 @@ namespace BlazorIdle.Game
                 {
                     ExecuteSkill(enemyId, skill.Id, "enemy_skill", isCasterPlayer: false);
                 }
-                
-                // FIX: 怪物使用瞬发技能后也尝试施法（与玩家行为保持一致）
-                // FIX: After monster instant skills, also try to start casting (consistent with player behavior)
-                int nowMs = _clock.NowMs;
-                TryStartMonsterCasting(enemyId, enemy, nowMs);
-                
                 return;  // Used instant skills, don't do normal attack
             }
 
             // Fallback: Use normal attack if no cast/instant skills were selected
             string normalAttackId = enemy.GetNormalAttackSkillId();
             ExecuteSkill(enemyId, normalAttackId, "enemy_attack", isCasterPlayer: false);
-            
-            // FIX: 怪物普攻完成后立即尝试施法（与玩家行为保持一致）
-            // FIX: After monster normal attack, immediately try to start casting (consistent with player behavior)
-            // 这样可以避免等待下一次 AttackTrack 触发才检查施法
-            // This avoids waiting for the next AttackTrack trigger to check for casting
-            int nowMs2 = _clock.NowMs;
-            TryStartMonsterCasting(enemyId, enemy, nowMs2);
         }
 
         /// <summary>
