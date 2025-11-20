@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using BlazorIdle.Game;
+using BlazorIdle.Game.Buffs;
 
 namespace BlazorIdle.Game.Skills
 {
@@ -23,6 +24,73 @@ namespace BlazorIdle.Game.Skills
                 return false;
 
             var buckets = context.PlayerBuffOwner.Buckets;
+            if (buckets == null)
+                return true; // No resource system, all skills available
+
+            // 检查新格式的资源消耗（Costs 列表）
+            // Check new format resource costs (Costs list)
+            if (skill.Costs != null && skill.Costs.Count > 0)
+            {
+                foreach (var cost in skill.Costs)
+                {
+                    if (!HasSufficientResource(buckets, cost.BucketId, cost.Amount))
+                        return false;
+                }
+                return true;
+            }
+
+            // 兼容旧格式的资源消耗（ResourceCosts 字典）
+            // Compatible with old format resource costs (ResourceCosts dictionary)
+            if (skill.ResourceCosts != null && skill.ResourceCosts.Count > 0)
+            {
+                foreach (var kvp in skill.ResourceCosts)
+                {
+                    if (!HasSufficientResource(buckets, kvp.Key, kvp.Value))
+                        return false;
+                }
+                return true;
+            }
+
+            // 没有资源消耗要求，视为满足
+            // No resource cost requirement, considered satisfied
+            return true;
+        }
+
+        /// <summary>
+        /// Phase 9: 检查是否有足够资源施放技能（支持怪物）
+        /// Phase 9: Check if there are enough resources to cast skill (supports monsters)
+        /// </summary>
+        /// <param name="skill">技能定义 / Skill definition</param>
+        /// <param name="context">战斗上下文 / Battle context</param>
+        /// <param name="isCasterPlayer">施法者是否为玩家 / Is caster a player</param>
+        /// <param name="casterId">施法者ID（用于怪物）/ Caster ID (for monsters)</param>
+        /// <returns>如果资源足够返回 true，否则返回 false / True if resources are sufficient, false otherwise</returns>
+        public bool CheckResourceCost(SkillDef skill, BattleContext context, bool isCasterPlayer, string? casterId = null)
+        {
+            if (skill == null || context == null)
+                return false;
+
+            // 获取施法者的 BuffOwner
+            // Get caster's BuffOwner
+            IBuffOwner? caster = null;
+            if (isCasterPlayer)
+            {
+                caster = context.PlayerBuffOwner;
+            }
+            else
+            {
+                // 对于怪物，从 EnemyBuffOwners 字典中查找
+                // For monsters, find from EnemyBuffOwners dictionary
+                if (casterId != null && context.EnemyBuffOwners != null)
+                {
+                    caster = context.EnemyBuffOwners.GetValueOrDefault(casterId);
+                }
+            }
+
+            if (caster == null)
+                return true; // No caster found, assume no resource requirements
+
+            var buckets = caster.Buckets;
             if (buckets == null)
                 return true; // No resource system, all skills available
 

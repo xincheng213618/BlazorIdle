@@ -79,12 +79,31 @@ namespace BlazorIdle.Tests
             };
         }
 
+        /// <summary>
+        /// Phase 9: Helper method to simulate old Tick behavior using new methods
+        /// Tests can use this to check both cast and instant skills
+        /// </summary>
+        private string? SimulateTick(AutoCastEngine engine, CharacterData character, string professionId, BattleContext context)
+        {
+            // Try cast skills first
+            var castSkill = engine.SelectCastSkill(character, professionId, context);
+            if (castSkill != null)
+                return castSkill.Id;
+
+            // Try instant skills
+            var instantSkills = engine.ExecuteWindow(character, professionId, context, gcdAlreadyUsed: false, "Test");
+            if (instantSkills.Count > 0)
+                return instantSkills[0].Id;
+
+            return null;
+        }
+
         #endregion
 
         #region Skill Selection Tests (5 tests)
 
         [Fact]
-        public void AutoCastEngine_Tick_ReturnsNullWhenNoSkillsEquipped()
+        public void AutoCastEngine_SelectSkill_ReturnsNullWhenNoSkillsEquipped()
         {
             // Arrange
             var engine = CreateEngine();
@@ -92,14 +111,14 @@ namespace BlazorIdle.Tests
             var context = CreateTestContext(character);
 
             // Act
-            var result = engine.Tick(0.1, character, "warrior", context);
+            var result = SimulateTick(engine, character, "warrior", context);
 
             // Assert
             Assert.Null(result);
         }
 
         [Fact]
-        public void AutoCastEngine_Tick_SelectsFirstAvailableSkill()
+        public void AutoCastEngine_SelectSkill_SelectsFirstAvailableSkill()
         {
             // Arrange
             var repo = new SkillRepository();
@@ -120,14 +139,14 @@ namespace BlazorIdle.Tests
             var context = CreateTestContext(character, buckets);
 
             // Act
-            var result = engine.Tick(0.1, character, "warrior", context);
+            var result = SimulateTick(engine, character, "warrior", context);
 
             // Assert
             Assert.Equal("warrior_mortal_strike", result);
         }
 
         [Fact]
-        public void AutoCastEngine_Tick_SkipsSkillOnCooldown()
+        public void AutoCastEngine_SelectSkill_SkipsSkillOnCooldown()
         {
             // Arrange
             var repo = new SkillRepository();
@@ -153,14 +172,14 @@ namespace BlazorIdle.Tests
             cooldownManager.StartCooldown("warrior_mortal_strike", 5.0);
 
             // Act
-            var result = engine.Tick(0.1, character, "warrior", context);
+            var result = SimulateTick(engine, character, "warrior", context);
 
             // Assert
             Assert.Equal("warrior_rend", result); // Should select second skill
         }
 
         [Fact]
-        public void AutoCastEngine_Tick_SkipsSkillWithInsufficientResources()
+        public void AutoCastEngine_SelectSkill_SkipsSkillWithInsufficientResources()
         {
             // Arrange
             var repo = new SkillRepository();
@@ -183,14 +202,14 @@ namespace BlazorIdle.Tests
             var context = CreateTestContext(character, buckets2);
 
             // Act
-            var result = engine.Tick(0.1, character, "warrior", context);
+            var result = SimulateTick(engine, character, "warrior", context);
 
             // Assert
             Assert.Equal("warrior_slam", result); // Should select second skill (first doesn't have enough rage)
         }
 
         [Fact]
-        public void AutoCastEngine_Tick_ReturnsNullWhenAllSkillsUnavailable()
+        public void AutoCastEngine_SelectSkill_ReturnsNullWhenAllSkillsUnavailable()
         {
             // Arrange
             var repo = new SkillRepository();
@@ -213,7 +232,7 @@ namespace BlazorIdle.Tests
             var context = CreateTestContext(character, buckets3);
 
             // Act
-            var result = engine.Tick(0.1, character, "warrior", context);
+            var result = SimulateTick(engine, character, "warrior", context);
 
             // Assert
             Assert.Null(result);
@@ -224,7 +243,7 @@ namespace BlazorIdle.Tests
         #region Execution Flow Tests (5 tests)
 
         [Fact]
-        public void AutoCastEngine_Tick_HandlesMultipleSkillsCorrectly()
+        public void AutoCastEngine_SelectSkill_HandlesMultipleSkillsCorrectly()
         {
             // Arrange
             var repo = new SkillRepository();
@@ -248,14 +267,14 @@ namespace BlazorIdle.Tests
             var context = CreateTestContext(character, buckets4);
 
             // Act
-            var result = engine.Tick(0.1, character, "warrior", context);
+            var result = SimulateTick(engine, character, "warrior", context);
 
             // Assert
             Assert.Equal("warrior_mortal_strike", result); // Should select first available
         }
 
         [Fact]
-        public void AutoCastEngine_Tick_RespectsSlotOrder()
+        public void AutoCastEngine_SelectSkill_RespectsSlotOrder()
         {
             // Arrange
             var repo = new SkillRepository();
@@ -279,14 +298,14 @@ namespace BlazorIdle.Tests
             var context = CreateTestContext(character, buckets5);
 
             // Act
-            var result = engine.Tick(0.1, character, "warrior", context);
+            var result = SimulateTick(engine, character, "warrior", context);
 
             // Assert
             Assert.Equal("warrior_slam", result); // Should select slot 1 first
         }
 
         [Fact]
-        public void AutoCastEngine_Tick_IncludesPassiveSkills()
+        public void AutoCastEngine_SelectSkill_IncludesPassiveSkills()
         {
             // Arrange
             var repo = new SkillRepository();
@@ -303,35 +322,35 @@ namespace BlazorIdle.Tests
             var context = CreateTestContext(character);
 
             // Act
-            var result = engine.Tick(0.1, character, "warrior", context);
+            var result = SimulateTick(engine, character, "warrior", context);
 
             // Assert
             Assert.Equal("warrior_special_pulse", result);
         }
 
         [Fact]
-        public void AutoCastEngine_Tick_HandlesNullContextGracefully()
+        public void AutoCastEngine_SelectSkill_HandlesNullContextGracefully()
         {
             // Arrange
             var engine = CreateEngine();
             var character = CreateTestCharacter();
 
             // Act
-            var result = engine.Tick(0.1, character, "warrior", null!);
+            var result = SimulateTick(engine, character, "warrior", null!);
 
             // Assert
             Assert.Null(result);
         }
 
         [Fact]
-        public void AutoCastEngine_Tick_HandlesNullCharacterGracefully()
+        public void AutoCastEngine_SelectSkill_HandlesNullCharacterGracefully()
         {
             // Arrange
             var engine = CreateEngine();
             var context = CreateTestContext(CreateTestCharacter());
 
             // Act
-            var result = engine.Tick(0.1, null!, "warrior", context);
+            var result = SimulateTick(engine, null!, "warrior", context);
 
             // Assert
             Assert.Null(result);
@@ -365,12 +384,13 @@ namespace BlazorIdle.Tests
             engine.SkillSelectionDecision += (e) => capturedEvent = e;
 
             // Act
-            engine.Tick(0.1, character, "warrior", context);
+            SimulateTick(engine, character, "warrior", context);
 
             // Assert
             Assert.NotNull(capturedEvent);
             Assert.Equal("warrior_mortal_strike", capturedEvent!.SkillId);
-            Assert.Equal("Available", capturedEvent.Reason);
+            // Phase 9: Updated reason format (was "Available", now window-specific like "Test-GCD")
+            Assert.Contains("-", capturedEvent.Reason); // Should contain window name format
         }
 
         [Fact]
@@ -397,7 +417,7 @@ namespace BlazorIdle.Tests
             engine.SkillCastAttempt += (e) => capturedEvent = e;
 
             // Act
-            engine.Tick(0.1, character, "warrior", context);
+            SimulateTick(engine, character, "warrior", context);
 
             // Assert
             Assert.NotNull(capturedEvent);
@@ -432,7 +452,7 @@ namespace BlazorIdle.Tests
             engine.SkillFailure += (e) => failureEvents.Add(e);
 
             // Act
-            engine.Tick(0.1, character, "warrior", context);
+            SimulateTick(engine, character, "warrior", context);
 
             // Assert
             Assert.Single(failureEvents);
@@ -478,7 +498,7 @@ namespace BlazorIdle.Tests
             engine.SkillFailure += (e) => failures.Add(e);
 
             // Act
-            var result = engine.Tick(0.1, character, "warrior", context);
+            var result = SimulateTick(engine, character, "warrior", context);
 
             // Assert
             Assert.Equal("warrior_slam", result);
@@ -521,7 +541,7 @@ namespace BlazorIdle.Tests
             engine.SkillFailure += (e) => failures.Add(e);
 
             // Act
-            var result = engine.Tick(0.1, character, "warrior", context);
+            var result = SimulateTick(engine, character, "warrior", context);
 
             // Assert
             Assert.Null(result); // No skills available

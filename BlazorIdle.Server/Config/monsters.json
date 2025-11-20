@@ -61,5 +61,28 @@
         "dropChance": 1.0
       }
     ]
+  },
+  {
+    "id": "fire_mage",
+    "name": "Fire Mage",
+    "desc": "Phase 9: 测试怪物 - 火焰法师，可以施放火球术和使用护盾",
+    "level": 15,
+    "maxHp": 400,
+    "attackIntervalSec": 2.5,
+    "damagePerHit": 12,
+    "variancePct": 0.05,
+    "respawnSec": 5.0,
+    "baseExperience": 15,
+    "normalAttackSkillId": "monster_attack_basic",
+    "castSkillIds": ["monster_fireball", "monster_ice_bolt"],
+    "instantSkillIds": ["monster_fire_shield"],
+    "lootDrops": [
+      {
+        "itemId": "gold_coin",
+        "minQuantity": 20,
+        "maxQuantity": 35,
+        "dropChance": 1.0
+      }
+    ]
   }
 ]

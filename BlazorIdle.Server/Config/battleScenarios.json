@@ -90,6 +90,24 @@
     ]
   },
   {
+    "id": "single_fire_mage",
+    "name": "单个火焰法师",
+    "description": "对战一只会施法的火焰法师",
+    "battleConfigId": "default",
+    "monsterGroups": [
+      {
+        "monsterId": "fire_mage",
+        "count": 1,
+        "spawnDelaySec": 0,
+        "hpMultiplier": 1.0,
+        "damageMultiplier": 1.0,
+        "attackSpeedMultiplier": 1.0,
+        "isElite": false,
+        "isBoss": false
+      }
+    ]
+  },
+  {
     "id": "mixed_encounter",
     "name": "混合遭遇",
     "description": "同时对战史莱姆和野狼",

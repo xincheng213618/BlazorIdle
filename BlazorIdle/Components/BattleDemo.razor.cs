@@ -428,7 +428,10 @@ namespace BlazorIdle.Components
                         LootDrops = monsterGroup.SpecialDrops?.ToList() ?? monsterDef.LootDrops?.ToList() ?? new List<Game.Config.LootDrop>(),
                         BaseExperience = monsterDef.BaseExperience,
                         MonsterId = monsterDef.Id,
-                        NormalAttackSkillId = monsterDef.NormalAttackSkillId  // Phase 7: 设置怪物攻击技能ID
+                        NormalAttackSkillId = monsterDef.NormalAttackSkillId,  // Phase 7: 设置怪物攻击技能ID
+                        // Phase 9: Copy skill lists from monster definition
+                        CastSkillIds = monsterDef.CastSkillIds,
+                        InstantSkillIds = monsterDef.InstantSkillIds
                     };
 
                     string enemyId = $"{monsterGroup.MonsterId}_{enemyIndex}";

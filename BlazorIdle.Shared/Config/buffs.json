@@ -615,5 +615,23 @@
         "value": 0.50
       }
     ]
+  },
+  {
+    "id": "monster_fire_shield_buff",
+    "name": "火焰护盾",
+    "description": "Phase 9: 怪物技能示例 - 提升防御力",
+    "icon": "🛡️",
+    "kind": "Buff",
+    "durationSec": 8.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatAdditive",
+        "target": "DamageReduction",
+        "value": 5.0
+      }
+    ]
   }
 ]

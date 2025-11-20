@@ -111,12 +111,34 @@
         public string? NormalAttackSkillId { get; set; }
 
         /// <summary>
+        /// Phase 9 Monster Skills: 施法技能ID列表 - 从monsters.json配置
+        /// Phase 9 Monster Skills: Cast skill IDs list - configured from monsters.json
+        /// </summary>
+        public List<string>? CastSkillIds { get; set; }
+
+        /// <summary>
+        /// Phase 9 Monster Skills: 瞬发技能ID列表 - 从monsters.json配置
+        /// Phase 9 Monster Skills: Instant skill IDs list - configured from monsters.json
+        /// </summary>
+        public List<string>? InstantSkillIds { get; set; }
+
+        /// <summary>
         /// 获取普通攻击技能ID - 如果未设置则返回默认通用技能
         /// Get normal attack skill ID - returns default universal skill if not set
         /// </summary>
         public string GetNormalAttackSkillId()
         {
             return NormalAttackSkillId ?? "monster_attack_basic";
+        }
+
+        /// <summary>
+        /// Phase 9: 检查怪物是否配置了额外技能
+        /// Phase 9: Check if monster has configured additional skills
+        /// </summary>
+        public bool HasConfiguredSkills()
+        {
+            return (CastSkillIds != null && CastSkillIds.Count > 0) ||
+                   (InstantSkillIds != null && InstantSkillIds.Count > 0);
         }
     }
 }

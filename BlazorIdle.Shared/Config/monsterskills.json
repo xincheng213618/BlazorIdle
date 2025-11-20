@@ -85,6 +85,64 @@
     },
     "canCrit": false,
     "alwaysHits": true
+  },
+  {
+    "id": "monster_fireball",
+    "name": "火球术",
+    "description": "Phase 9: 怪物施法技能示例 - 火球术，2秒施法时间",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "cast",
+    "castTimeSec": 2.0,
+    "isGcd": true,
+    "targetPolicy": "random_player",
+    "cooldownSec": 5.0,
+    "allowedProfessions": [],
+    "damage": {
+      "coefAtk": 1.5,
+      "flat": 10
+    },
+    "canCrit": false
+  },
+  {
+    "id": "monster_fire_shield",
+    "name": "火焰护盾",
+    "description": "Phase 9: 怪物瞬发技能示例 - 火焰护盾，提升防御",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "self",
+    "cooldownSec": 10.0,
+    "allowedProfessions": [],
+    "onCastBuffs": [
+      {
+        "type": "Apply",
+        "buffConfigId": "monster_fire_shield_buff",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "monster_ice_bolt",
+    "name": "寒冰箭",
+    "description": "Phase 9: 怪物施法技能示例 - 寒冰箭，1.5秒施法时间",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "cast",
+    "castTimeSec": 1.5,
+    "isGcd": true,
+    "targetPolicy": "random_player",
+    "cooldownSec": 3.0,
+    "allowedProfessions": [],
+    "damage": {
+      "coefAtk": 1.2,
+      "flat": 8
+    },
+    "canCrit": false
   }
 ]
 
