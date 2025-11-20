@@ -289,17 +289,13 @@ namespace BlazorIdle.Components
                         var skill = skillRepo.GetSkill(skillId);
                         if (skill != null)
                         {
-                            // Phase 10.3: Check resource and conditions
-                            bool hasResources = battle.CheckSkillResourceCost(SelectedCharacter.Id, skillId);
-                            bool conditionsMet = battle.CheckSkillConditions(SelectedCharacter.Id, skillId);
-                            
                             result.Add(new CharacterPanel.EquippedSkillData
                             {
                                 Skill = skill,
                                 SlotId = kvp.Key,
                                 RemainingCooldown = battle.GetSkillRemainingCooldown(skillId),
-                                IsResourceInsufficient = !hasResources,
-                                IsConditionNotMet = !conditionsMet,
+                                IsResourceInsufficient = false, // TODO: 实际检查资源 / Actually check resources
+                                IsConditionNotMet = false, // TODO: 实际检查条件 / Actually check conditions
                                 JustTriggered = false
                             });
                         }
@@ -312,17 +308,13 @@ namespace BlazorIdle.Components
                     var skill = skillRepo.GetSkill(equipConfig.PassiveSlot);
                     if (skill != null)
                     {
-                        // Phase 10.3: Check resource and conditions
-                        bool hasResources = battle.CheckSkillResourceCost(SelectedCharacter.Id, equipConfig.PassiveSlot);
-                        bool conditionsMet = battle.CheckSkillConditions(SelectedCharacter.Id, equipConfig.PassiveSlot);
-                        
                         result.Add(new CharacterPanel.EquippedSkillData
                         {
                             Skill = skill,
                             SlotId = "passive_1",
                             RemainingCooldown = battle.GetSkillRemainingCooldown(equipConfig.PassiveSlot),
-                            IsResourceInsufficient = !hasResources,
-                            IsConditionNotMet = !conditionsMet,
+                            IsResourceInsufficient = false,
+                            IsConditionNotMet = false,
                             JustTriggered = false
                         });
                     }
