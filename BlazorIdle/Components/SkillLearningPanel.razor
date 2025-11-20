@@ -187,40 +187,215 @@
                             </div>
 
                             <div class="detail-body mt-3">
-                                <div class="skill-description">@GetSkillDescription(s)</div>
+                                <!-- 技能描述 -->
+                                <div class="skill-description mb-3 p-2 bg-light rounded">
+                                    <div class="text-muted small mb-1">技能描述</div>
+                                    <div>@GetSkillDescription(s)</div>
+                                </div>
 
-                                @if (s.Unlock != null && s.Unlock.MinLevel > 0)
-                                {
-                                    var curLv = GetCharacterLevel();
-                                    <div class="skill-requirement @(curLv < s.Unlock.MinLevel ? "text-danger" : "text-muted")">
-                                        <i class="bi bi-star"></i>
-                                        需要等级: @s.Unlock.MinLevel (当前: @curLv)
+                                <!-- 技能属性网格 -->
+                                <div class="skill-properties">
+                                    <!-- 基础属性 -->
+                                    <div class="property-section mb-3">
+                                        <h6 class="property-title">基础属性</h6>
+                                        <div class="property-grid">
+                                            <div class="property-item">
+                                                <span class="property-label">类型:</span>
+                                                <span class="property-value">
+                                                    <span class="badge @(s.Type == "passive" ? "bg-info" : "bg-primary")">
+                                                        @(s.Type == "passive" ? "被动" : "主动")
+                                                    </span>
+                                                </span>
+                                            </div>
+                                            <div class="property-item">
+                                                <span class="property-label">释放方式:</span>
+                                                <span class="property-value">
+                                                    <span class="badge @(s.ReleaseType == "cast" ? "bg-warning" : "bg-secondary")">
+                                                        @(s.ReleaseType == "cast" ? "施法" : "瞬发")
+                                                    </span>
+                                                </span>
+                                            </div>
+                                            @if (s.ReleaseType == "cast" && s.CastTimeSec > 0)
+                                            {
+                                                <div class="property-item">
+                                                    <span class="property-label">施法时间:</span>
+                                                    <span class="property-value">@s.CastTimeSec.ToString("F1") 秒</span>
+                                                </div>
+                                            }
+                                            @if (s.CooldownSec > 0)
+                                            {
+                                                <div class="property-item">
+                                                    <span class="property-label">冷却时间:</span>
+                                                    <span class="property-value text-primary">@s.CooldownSec 秒</span>
+                                                </div>
+                                            }
+                                            <div class="property-item">
+                                                <span class="property-label">GCD:</span>
+                                                <span class="property-value">@(s.IsGcd ? "是" : "否")</span>
+                                            </div>
+                                            @if (!string.IsNullOrEmpty(s.TargetPolicy))
+                                            {
+                                                <div class="property-item">
+                                                    <span class="property-label">目标:</span>
+                                                    <span class="property-value">
+                                                        @GetTargetPolicyText(s.TargetPolicy)
+                                                        @if (IsAoESkill(s.TargetPolicy))
+                                                        {
+                                                            <span class="badge bg-danger ms-1">AOE</span>
+                                                        }
+                                                    </span>
+                                                </div>
+                                            }
+                                        </div>
                                     </div>
-                                }
 
-                                @if (s.Costs != null && s.Costs.Count > 0)
-                                {
-                                    <div class="skill-cost">
-                                        <i class="bi bi-droplet"></i>
-                                        消耗: @string.Join(", ", s.Costs.Select(c => $"{c.Amount} {GetResourceName(c.BucketId)}"))
-                                    </div>
-                                }
+                                    <!-- 解锁要求 -->
+                                    @if (s.Unlock != null && s.Unlock.MinLevel > 0)
+                                    {
+                                        var curLv = GetCharacterLevel();
+                                        <div class="property-section mb-3">
+                                            <h6 class="property-title">解锁要求</h6>
+                                            <div class="property-grid">
+                                                <div class="property-item">
+                                                    <span class="property-label">需要等级:</span>
+                                                    <span class="property-value @(curLv < s.Unlock.MinLevel ? "text-danger" : "text-success")">
+                                                        Lv.@s.Unlock.MinLevel @(curLv >= s.Unlock.MinLevel ? "✓" : $"(当前 Lv.{curLv})")
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
 
-                                @if (s.CooldownSec > 0)
-                                {
-                                    <div class="skill-cooldown">
-                                        <i class="bi bi-clock"></i>
-                                        冷却: @s.CooldownSec 秒
-                                    </div>
-                                }
+                                    <!-- 资源消耗与获得 -->
+                                    @if ((s.Costs != null && s.Costs.Count > 0) || (s.Gains != null && s.Gains.Count > 0))
+                                    {
+                                        <div class="property-section mb-3">
+                                            <h6 class="property-title">资源</h6>
+                                            <div class="property-grid">
+                                                @if (s.Costs != null && s.Costs.Count > 0)
+                                                {
+                                                    <div class="property-item">
+                                                        <span class="property-label">消耗:</span>
+                                                        <span class="property-value text-danger">
+                                                            @foreach (var cost in s.Costs)
+                                                            {
+                                                                <span class="me-2">-@cost.Amount @GetResourceName(cost.BucketId)</span>
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                }
+                                                @if (s.Gains != null && s.Gains.Count > 0)
+                                                {
+                                                    <div class="property-item">
+                                                        <span class="property-label">获得:</span>
+                                                        <span class="property-value text-success">
+                                                            @foreach (var gain in s.Gains)
+                                                            {
+                                                                <span class="me-2">+@gain.Amount @GetResourceName(gain.BucketId)</span>
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
 
-                                @if (s.InstantHeal > 0)
-                                {
-                                    <div class="skill-heal">
-                                        <i class="bi bi-heart-pulse"></i>
-                                        即时治疗: @s.InstantHeal
+                                    <!-- 伤害与治疗 -->
+                                    @if (s.Damage != null || s.InstantHeal > 0)
+                                    {
+                                        <div class="property-section mb-3">
+                                            <h6 class="property-title">效果</h6>
+                                            <div class="property-grid">
+                                                @if (s.Damage != null)
+                                                {
+                                                    <div class="property-item">
+                                                        <span class="property-label">伤害:</span>
+                                                        <span class="property-value text-danger">
+                                                            @if (s.Damage.CoefAtk > 0)
+                                                            {
+                                                                <span>@(s.Damage.CoefAtk * 100)% 攻击力</span>
+                                                            }
+                                                            @if (s.Damage.Flat > 0)
+                                                            {
+                                                                <span>+ @s.Damage.Flat 固定伤害</span>
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                }
+                                                @if (s.InstantHeal > 0)
+                                                {
+                                                    <div class="property-item">
+                                                        <span class="property-label">治疗:</span>
+                                                        <span class="property-value text-success">+@s.InstantHeal HP</span>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+
+                                    <!-- Buff效果 -->
+                                    @if ((s.OnCastBuffs != null && s.OnCastBuffs.Count > 0) || (s.OnHitBuffs != null && s.OnHitBuffs.Count > 0))
+                                    {
+                                        <div class="property-section mb-3">
+                                            <h6 class="property-title">Buff效果</h6>
+                                            <div class="buff-list">
+                                                @if (s.OnCastBuffs != null && s.OnCastBuffs.Count > 0)
+                                                {
+                                                    <div class="small text-muted mb-1">施法时:</div>
+                                                    @foreach (var buff in s.OnCastBuffs)
+                                                    {
+                                                        <div class="buff-item">
+                                                            <span class="badge bg-info me-1">@GetBuffOpText(buff.Type)</span>
+                                                            <span>@(buff.BuffConfigId ?? buff.BuffIdToRemove ?? "Buff")</span>
+                                                            <span class="text-muted small">→ @buff.Target</span>
+                                                        </div>
+                                                    }
+                                                }
+                                                @if (s.OnHitBuffs != null && s.OnHitBuffs.Count > 0)
+                                                {
+                                                    <div class="small text-muted mb-1 mt-2">命中时:</div>
+                                                    @foreach (var buff in s.OnHitBuffs)
+                                                    {
+                                                        <div class="buff-item">
+                                                            <span class="badge bg-warning me-1">@GetBuffOpText(buff.Type)</span>
+                                                            <span>@(buff.BuffConfigId ?? buff.BuffIdToRemove ?? "Buff")</span>
+                                                            <span class="text-muted small">→ @buff.Target</span>
+                                                        </div>
+                                                    }
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+
+                                    <!-- 触发器 -->
+                                    @if (s.Triggers != null && s.Triggers.Count > 0)
+                                    {
+                                        <div class="property-section mb-3">
+                                            <h6 class="property-title">触发效果</h6>
+                                            <div class="trigger-list">
+                                                @foreach (var trigger in s.Triggers)
+                                                {
+                                                    <div class="trigger-item small">
+                                                        <span class="badge bg-secondary me-1">@GetTriggerWhenText(trigger.When)</span>
+                                                        @if (trigger.ProcChance < 1.0)
+                                                        {
+                                                            <span class="text-warning">@((trigger.ProcChance * 100).ToString("F0"))% 概率</span>
+                                                        }
+                                                        <span>触发 @trigger.FireSkillId</span>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+
+                                    <!-- 技能ID (调试信息) -->
+                                    <div class="property-section">
+                                        <div class="text-muted small">
+                                            <span class="property-label">技能ID:</span>
+                                            <code class="text-muted">@s.Id</code>
+                                        </div>
                                     </div>
-                                }
+                                </div>
                             </div>
 
                             <div class="detail-footer mt-3">
@@ -594,6 +769,42 @@
         SkillListFilter.Locked => "未解锁",
         _ => "可学习"
     };
+
+    // 新增辅助方法用于详情面板
+    private string GetTargetPolicyText(string targetPolicy) => targetPolicy switch
+    {
+        "current_target" => "当前目标",
+        "random_enemy" => "随机敌人",
+        "random_player" => "随机队友",
+        "enemies_all" => "全体敌人",
+        "allies_all" => "全体队友",
+        "self" => "自身",
+        "lowest_hp_ally" => "血量最低队友",
+        "highest_threat_enemy" => "威胁最高敌人",
+        _ => targetPolicy
+    };
+
+    private bool IsAoESkill(string targetPolicy) =>
+        targetPolicy == "enemies_all" || targetPolicy == "allies_all";
+
+    private string GetBuffOpText(BlazorIdle.Game.Skills.BuffOperationType opType) => opType switch
+    {
+        BlazorIdle.Game.Skills.BuffOperationType.Apply => "施加",
+        BlazorIdle.Game.Skills.BuffOperationType.Remove => "移除",
+        _ => opType.ToString()
+    };
+
+    private string GetTriggerWhenText(string when) => when switch
+    {
+        "OnAttackHit" => "攻击命中",
+        "OnCastComplete" => "施法完成",
+        "OnDamageTaken" => "受到伤害",
+        "OnHeal" => "治疗时",
+        "OnKill" => "击杀时",
+        "OnBuffApplied" => "Buff施加",
+        "OnBuffExpired" => "Buff过期",
+        _ => when
+    };
 }
 
 <style>
@@ -894,6 +1105,63 @@
             margin-right: 4px;
         }
 
+    /* 新增详情面板样式 */
+    .skill-properties {
+        font-size: 0.9rem;
+    }
+
+    .property-section {
+        border-left: 3px solid #667eea;
+        padding-left: 12px;
+    }
+
+    .property-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #667eea;
+        margin-bottom: 8px;
+    }
+
+    .property-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 8px;
+    }
+
+    .property-item {
+        display: flex;
+        gap: 8px;
+        padding: 4px 0;
+    }
+
+    .property-label {
+        color: #6c757d;
+        font-weight: 500;
+        min-width: 80px;
+    }
+
+    .property-value {
+        color: #212529;
+        flex: 1;
+    }
+
+    .buff-list, .trigger-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .buff-item, .trigger-item {
+        padding: 6px 10px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        border-left: 3px solid #6f42c1;
+    }
+
+    .trigger-item {
+        border-left-color: #fd7e14;
+    }
+
     @@media (max-width: 992px) {
         .sl-split {
             flex-direction: column;
@@ -906,6 +1174,10 @@
 
         .section-title {
             top: 0;
+        }
+
+        .property-grid {
+            grid-template-columns: 1fr;
         }
     }
 
