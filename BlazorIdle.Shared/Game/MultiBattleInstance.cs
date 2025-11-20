@@ -998,6 +998,12 @@ namespace BlazorIdle.Game
                 // Phase 7: PostAttack 窗口触发器
                 // Phase 7: PostAttack window triggers
                 ProcessWindowTriggers(charId, "OnPostAttackWindow", normalAttackSkillId, isCasterPlayer: true);
+                
+                // FIX: 普攻完成后立即尝试施法（如果有可用的施法技能）
+                // FIX: After normal attack, immediately try to start casting (if there's an available cast skill)
+                // 这样可以避免等待下一次 AttackTrack 触发才检查施法
+                // This avoids waiting for the next AttackTrack trigger to check for casting
+                TryStartCasting(charId, now);
             }
         }
 
