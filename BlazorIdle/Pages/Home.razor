@@ -44,6 +44,15 @@
 
             <div class="row">
                 <div class="col-12">
+                    <SkillLearningPanel Character="@selectedCharacter"
+                                        ProfessionId="@selectedCharacter.ProfessionId"
+                                        StartCollapsed="true"
+                                        OnSkillLearned="OnSkillLearned" />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
                     <BattleDemo SelectedCharacter="@selectedCharacter"
                                 OnCharacterDataChanged="OnCharacterDataChanged" />
                 </div>
@@ -161,6 +170,24 @@
         // 角色对象引用没变，但内容已更新，触发重新渲染
         // Character object reference unchanged, but content updated, trigger re-render
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// 技能学习回调 - 保存角色数据
+    /// Skill learned callback - save character data
+    /// </summary>
+    private async Task OnSkillLearned()
+    {
+        if (selectedCharacter != null)
+        {
+            // 保存角色数据到服务器
+            // Save character data to server
+            await CharacterService.UpdateCharacterAsync(selectedCharacter.Id, selectedCharacter);
+            
+            // 触发重新渲染
+            // Trigger re-render
+            StateHasChanged();
+        }
     }
 }
 

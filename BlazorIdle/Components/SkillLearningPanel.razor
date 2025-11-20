@@ -1,0 +1,632 @@
+@using BlazorIdle.Shared.Models
+@using BlazorIdle.Game.Skills
+@inject SkillRepository SkillRepository
+
+<div class="skill-learning-card">
+    <div class="sl-header d-flex align-items-center justify-content-between"
+         role="button"
+         @onclick="ToggleCollapse"
+         aria-expanded="@(!isCollapsed)">
+        <h5 class="mb-0 text-white d-flex align-items-center">
+            <span class="me-2">📖</span>
+            技能学习 (Skill Learning) - @ProfessionName
+        </h5>
+        <button class="btn btn-sm btn-outline-light"
+                @onclick:stopPropagation="true"
+                @onclick="ToggleCollapse">
+            @(isCollapsed ? "展开" : "收起")
+        </button>
+    </div>
+
+    <div class="sl-body" style="@(isCollapsed ? "display:none" : null)">
+        @if (Character == null)
+        {
+            <div class="text-muted">请先选择角色...</div>
+        }
+        else
+        {
+            <!-- 技能学习统计信息 -->
+            <div class="skill-stats-info mb-3">
+                <div class="stats-display">
+                    <div class="stat-item">
+                        <span class="stat-label">已学习技能:</span>
+                        <span class="stat-value text-success">@learnedCount</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">可学习技能:</span>
+                        <span class="stat-value text-primary">@learnableCount</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">未解锁技能:</span>
+                        <span class="stat-value text-muted">@lockedCount</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 技能分类显示 -->
+            <div class="skill-categories">
+                <!-- 可学习的技能 -->
+                @if (learnableSkills.Count > 0)
+                {
+                    <div class="skill-section mb-4">
+                        <h6 class="section-title">
+                            <span class="badge bg-primary">可学习</span>
+                            <span class="ms-2">共 @learnableSkills.Count 个技能</span>
+                        </h6>
+                        <div class="skill-list">
+                            @foreach (var skill in learnableSkills)
+                            {
+                                <div class="skill-card learnable">
+                                    <div class="skill-header">
+                                        <div class="skill-icon">
+                                            @GetSkillIcon(skill)
+                                        </div>
+                                        <div class="skill-info">
+                                            <div class="skill-name">@skill.Name</div>
+                                            <div class="skill-type-badge @GetSkillTypeCssClass(skill)">
+                                                @GetSkillTypeText(skill)
+                                            </div>
+                                        </div>
+                                        <button class="btn btn-sm btn-success learn-btn"
+                                                @onclick="() => LearnSkill(skill.Id)"
+                                                disabled="@isLearning">
+                                            @if (isLearning && currentSkillId == skill.Id)
+                                            {
+                                                <span>学习中...</span>
+                                            }
+                                            else
+                                            {
+                                                <span>学习</span>
+                                            }
+                                        </button>
+                                    </div>
+                                    <div class="skill-details">
+                                        <div class="skill-description">@GetSkillDescription(skill)</div>
+                                        @if (skill.Unlock != null && skill.Unlock.MinLevel > 0)
+                                        {
+                                            <div class="skill-requirement">
+                                                <i class="bi bi-star"></i> 需要等级: @skill.Unlock.MinLevel
+                                            </div>
+                                        }
+                                        @if (skill.Costs != null && skill.Costs.Count > 0)
+                                        {
+                                            <div class="skill-cost">
+                                                <i class="bi bi-droplet"></i> 消耗: @string.Join(", ", skill.Costs.Select(c => $"{c.Amount} {GetResourceName(c.BucketId)}"))
+                                            </div>
+                                        }
+                                        @if (skill.CooldownSec > 0)
+                                        {
+                                            <div class="skill-cooldown">
+                                                <i class="bi bi-clock"></i> 冷却: @skill.CooldownSec 秒
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- 已学习的技能 -->
+                @if (learnedSkills.Count > 0)
+                {
+                    <div class="skill-section mb-4">
+                        <h6 class="section-title">
+                            <span class="badge bg-success">已学习</span>
+                            <span class="ms-2">共 @learnedSkills.Count 个技能</span>
+                        </h6>
+                        <div class="skill-list">
+                            @foreach (var skill in learnedSkills)
+                            {
+                                <div class="skill-card learned">
+                                    <div class="skill-header">
+                                        <div class="skill-icon">
+                                            @GetSkillIcon(skill)
+                                        </div>
+                                        <div class="skill-info">
+                                            <div class="skill-name">@skill.Name</div>
+                                            <div class="skill-type-badge @GetSkillTypeCssClass(skill)">
+                                                @GetSkillTypeText(skill)
+                                            </div>
+                                        </div>
+                                        <span class="badge bg-success">已学会</span>
+                                    </div>
+                                    <div class="skill-details">
+                                        <div class="skill-description">@GetSkillDescription(skill)</div>
+                                        @if (skill.Costs != null && skill.Costs.Count > 0)
+                                        {
+                                            <div class="skill-cost">
+                                                <i class="bi bi-droplet"></i> 消耗: @string.Join(", ", skill.Costs.Select(c => $"{c.Amount} {GetResourceName(c.BucketId)}"))
+                                            </div>
+                                        }
+                                        @if (skill.CooldownSec > 0)
+                                        {
+                                            <div class="skill-cooldown">
+                                                <i class="bi bi-clock"></i> 冷却: @skill.CooldownSec 秒
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- 未解锁的技能 -->
+                @if (lockedSkills.Count > 0)
+                {
+                    <div class="skill-section">
+                        <h6 class="section-title">
+                            <span class="badge bg-secondary">未解锁</span>
+                            <span class="ms-2">共 @lockedSkills.Count 个技能</span>
+                        </h6>
+                        <div class="skill-list">
+                            @foreach (var skill in lockedSkills)
+                            {
+                                <div class="skill-card locked">
+                                    <div class="skill-header">
+                                        <div class="skill-icon">
+                                            🔒
+                                        </div>
+                                        <div class="skill-info">
+                                            <div class="skill-name">@skill.Name</div>
+                                            <div class="skill-type-badge @GetSkillTypeCssClass(skill)">
+                                                @GetSkillTypeText(skill)
+                                            </div>
+                                        </div>
+                                        <span class="badge bg-secondary">已锁定</span>
+                                    </div>
+                                    <div class="skill-details">
+                                        <div class="skill-description">@GetSkillDescription(skill)</div>
+                                        @if (skill.Unlock != null && skill.Unlock.MinLevel > 0)
+                                        {
+                                            <div class="skill-requirement text-danger">
+                                                <i class="bi bi-lock"></i> 需要等级: @skill.Unlock.MinLevel (当前: @GetCharacterLevel())
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @if (learnableSkills.Count == 0 && learnedSkills.Count == 0 && lockedSkills.Count == 0)
+                {
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        当前职业暂无可学习的技能。
+                    </div>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger mt-3">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    @errorMessage
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success mt-3">
+                    <i class="bi bi-check-circle"></i>
+                    @successMessage
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public CharacterData? Character { get; set; }
+
+    [Parameter]
+    public string ProfessionId { get; set; } = "warrior";
+
+    [Parameter]
+    public bool StartCollapsed { get; set; }
+
+    [Parameter]
+    public EventCallback OnSkillLearned { get; set; }
+
+    private bool isCollapsed;
+    private bool isLearning = false;
+    private string? currentSkillId;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+
+    private SkillLearningManager? _learningManager;
+    private List<SkillDef> learnableSkills = new();
+    private List<SkillDef> learnedSkills = new();
+    private List<SkillDef> lockedSkills = new();
+
+    private int learnableCount => learnableSkills.Count;
+    private int learnedCount => learnedSkills.Count;
+    private int lockedCount => lockedSkills.Count;
+
+    private string ProfessionName => GetProfessionName(ProfessionId);
+
+    protected override void OnInitialized()
+    {
+        isCollapsed = StartCollapsed;
+        _learningManager = new SkillLearningManager(SkillRepository);
+    }
+
+    protected override void OnParametersSet()
+    {
+        RefreshSkillLists();
+    }
+
+    private void RefreshSkillLists()
+    {
+        if (Character == null || _learningManager == null)
+        {
+            learnableSkills.Clear();
+            learnedSkills.Clear();
+            lockedSkills.Clear();
+            return;
+        }
+
+        var characterLevel = GetCharacterLevel();
+        var allSkills = SkillRepository.GetSkillsByProfession(ProfessionId).Where(s => !s.Fixed).ToList();
+
+        // 分类技能
+        learnableSkills = allSkills
+            .Where(s => !Character.LearnedSkills.Contains(s.Id) && 
+                        _learningManager.CanLearnSkill(Character, s.Id, characterLevel, ProfessionId))
+            .ToList();
+
+        learnedSkills = allSkills
+            .Where(s => Character.LearnedSkills.Contains(s.Id))
+            .ToList();
+
+        lockedSkills = allSkills
+            .Where(s => !Character.LearnedSkills.Contains(s.Id) && 
+                        !_learningManager.CanLearnSkill(Character, s.Id, characterLevel, ProfessionId))
+            .ToList();
+    }
+
+    private async Task LearnSkill(string skillId)
+    {
+        if (Character == null || _learningManager == null || isLearning)
+            return;
+
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+        isLearning = true;
+        currentSkillId = skillId;
+
+        try
+        {
+            var characterLevel = GetCharacterLevel();
+            var result = _learningManager.LearnSkill(Character, skillId, characterLevel, ProfessionId);
+
+            if (result)
+            {
+                var skill = SkillRepository.GetSkill(skillId);
+                successMessage = $"成功学习技能: {skill?.Name ?? skillId}";
+                RefreshSkillLists();
+
+                if (OnSkillLearned.HasDelegate)
+                {
+                    await OnSkillLearned.InvokeAsync();
+                }
+
+                // 2秒后清除成功消息
+                _ = Task.Delay(2000).ContinueWith(_ =>
+                {
+                    successMessage = string.Empty;
+                    InvokeAsync(StateHasChanged);
+                });
+            }
+            else
+            {
+                errorMessage = "学习技能失败";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"学习技能失败: {ex.Message}";
+        }
+        finally
+        {
+            isLearning = false;
+            currentSkillId = null;
+        }
+    }
+
+    private void ToggleCollapse() => isCollapsed = !isCollapsed;
+
+    private int GetCharacterLevel()
+    {
+        if (Character == null)
+            return 1;
+
+        if (Character.Professions.TryGetValue(ProfessionId, out var profession))
+        {
+            return profession.Level;
+        }
+
+        return 1;
+    }
+
+    private string GetSkillIcon(SkillDef skill)
+    {
+        // 根据技能类型返回不同图标
+        if (skill.ReleaseType == "cast")
+            return "🔮"; // 施法技能
+        else if (skill.SlotType == "passive")
+            return "⚡"; // 被动技能
+        else if (skill.TargetPolicy == "enemies_all" || skill.TargetPolicy == "allies_all")
+            return "💥"; // AOE技能
+        else
+            return "⚔️"; // 普通主动技能
+    }
+
+    private string GetSkillTypeText(SkillDef skill)
+    {
+        if (skill.SlotType == "passive")
+            return "被动";
+        else if (skill.ReleaseType == "cast")
+            return "施法";
+        else
+            return "瞬发";
+    }
+
+    private string GetSkillTypeCssClass(SkillDef skill)
+    {
+        if (skill.SlotType == "passive")
+            return "badge-passive";
+        else if (skill.ReleaseType == "cast")
+            return "badge-cast";
+        else
+            return "badge-instant";
+    }
+
+    private string GetSkillDescription(SkillDef skill)
+    {
+        if (!string.IsNullOrEmpty(skill.Description))
+            return skill.Description;
+
+        if (skill.Damage != null)
+        {
+            var dmgText = $"{skill.Damage.CoefAtk:P0} 攻击力";
+            if (skill.Damage.Flat > 0)
+                dmgText += $" + {skill.Damage.Flat}";
+            if (skill.TargetPolicy == "enemies_all" || skill.TargetPolicy == "allies_all")
+                dmgText += " (AOE)";
+            return $"造成 {dmgText} 伤害";
+        }
+
+        return skill.Type == "passive" ? "被动效果" : "特殊技能";
+    }
+
+    private string GetResourceName(string bucketId)
+    {
+        return bucketId switch
+        {
+            "rage" => "怒气",
+            "mana" => "法力",
+            "energy" => "能量",
+            _ => bucketId
+        };
+    }
+
+    private string GetProfessionName(string professionId)
+    {
+        return professionId switch
+        {
+            "warrior" => "战士",
+            "mage" => "法师",
+            "ranger" => "游侠",
+            "rogue" => "盗贼",
+            _ => professionId
+        };
+    }
+}
+
+<style>
+    .skill-learning-card {
+        background: #fff;
+        border: 1px solid #e5e5e5;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        overflow: hidden;
+    }
+
+    .sl-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        padding: 12px 16px;
+        cursor: pointer;
+    }
+
+    .sl-header .btn {
+        margin-top: 0;
+        padding: .25rem .5rem;
+        line-height: 1.2;
+        border: 1px solid rgba(255,255,255,.5);
+    }
+
+    .sl-body {
+        padding: 20px;
+    }
+
+    .skill-stats-info {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 15px;
+    }
+
+    .stats-display {
+        display: flex;
+        justify-content: space-around;
+        gap: 20px;
+    }
+
+    .stat-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin-bottom: 5px;
+    }
+
+    .stat-value {
+        font-weight: 600;
+        font-size: 1.5rem;
+    }
+
+    .skill-categories {
+        margin-top: 20px;
+    }
+
+    .skill-section {
+        margin-bottom: 25px;
+    }
+
+    .section-title {
+        margin-bottom: 15px;
+        color: #495057;
+        display: flex;
+        align-items: center;
+    }
+
+    .skill-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .skill-card {
+        background: #fff;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        transition: all 0.2s;
+    }
+
+    .skill-card.learnable {
+        border-color: #007bff;
+    }
+
+    .skill-card.learnable:hover {
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
+        transform: translateY(-2px);
+    }
+
+    .skill-card.learned {
+        border-color: #28a745;
+        background: #f1f8f4;
+    }
+
+    .skill-card.locked {
+        border-color: #dee2e6;
+        background: #f8f9fa;
+        opacity: 0.7;
+    }
+
+    .skill-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 10px;
+    }
+
+    .skill-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        flex-shrink: 0;
+    }
+
+    .skill-info {
+        flex: 1;
+    }
+
+    .skill-name {
+        font-weight: 600;
+        color: #212529;
+        font-size: 1.1rem;
+        margin-bottom: 4px;
+    }
+
+    .skill-type-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .badge-passive {
+        background: #6f42c1;
+        color: white;
+    }
+
+    .badge-cast {
+        background: #17a2b8;
+        color: white;
+    }
+
+    .badge-instant {
+        background: #ffc107;
+        color: #212529;
+    }
+
+    .learn-btn {
+        margin-top: 0;
+        padding: 6px 16px;
+        font-weight: 500;
+    }
+
+    .skill-details {
+        padding-left: 60px;
+    }
+
+    .skill-description {
+        color: #666;
+        font-size: 0.95rem;
+        margin-bottom: 8px;
+    }
+
+    .skill-requirement,
+    .skill-cost,
+    .skill-cooldown {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin-bottom: 4px;
+    }
+
+    .skill-requirement i,
+    .skill-cost i,
+    .skill-cooldown i {
+        margin-right: 4px;
+    }
+
+    @@media (max-width: 768px) {
+        .stats-display {
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .skill-details {
+            padding-left: 0;
+        }
+    }
+</style>
