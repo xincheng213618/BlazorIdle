@@ -32,6 +32,11 @@ namespace BlazorIdle.Game.Skills
             if (skill == null)
                 return false;
 
+            // 固定技能或没有unlock属性的技能不能学习（如触发技能）
+            // Fixed skills or skills without unlock property cannot be learned (e.g., trigger skills)
+            if (skill.Fixed || skill.Unlock == null)
+                return false;
+
             // 已经学习过
             // Already learned
             if (characterData.LearnedSkills.Contains(skillId))
@@ -120,7 +125,7 @@ namespace BlazorIdle.Game.Skills
         public List<SkillDef> GetLearnableSkills(CharacterData characterData, int characterLevel, string currentProfessionId)
         {
             return _skillRepository.GetSkillsByProfession(currentProfessionId)
-                .Where(skill => !skill.Fixed && CanLearnSkill(characterData, skill.Id, characterLevel, currentProfessionId))
+                .Where(skill => !skill.Fixed && skill.Unlock != null && CanLearnSkill(characterData, skill.Id, characterLevel, currentProfessionId))
                 .ToList();
         }
 

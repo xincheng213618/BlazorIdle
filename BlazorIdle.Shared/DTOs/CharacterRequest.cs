@@ -111,6 +111,18 @@ public class UpdateCharacterRequest
     /// Currently active combat profession ID
     /// </summary>
     public string? ActiveCombatProfessionId { get; set; }
+
+    /// <summary>
+    /// 已学习的技能ID列表 (Step 2 Phase 2.5)
+    /// List of learned skill IDs
+    /// </summary>
+    public HashSet<string>? LearnedSkills { get; set; }
+
+    /// <summary>
+    /// 已装备的技能配置 - 按职业分组 (Step 2 Phase 2.5)
+    /// Equipped skills configuration - grouped by profession
+    /// </summary>
+    public Dictionary<string, BlazorIdle.Shared.Models.EquippedSkillsConfig>? EquippedSkillsByProfession { get; set; }
 }
 
 /// <summary>

@@ -37,8 +37,23 @@
 
             <div class="row">
                 <div class="col-12">
-                    <InventoryPanel Inventory="@selectedCharacter.Inventory"
-                                    StartCollapsed="true" />
+                    <!-- 物品栏：增加外框，并单独加下间距，不影响其它 row -->
+                    <div class="section-frame mb-3">
+                        <InventoryPanel Inventory="@selectedCharacter.Inventory"
+                                        StartCollapsed="true" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <!-- 技能学习：增加外框（并避免内部卡片双重边框） -->
+                    <div class="section-frame">
+                        <SkillLearningPanel Character="@selectedCharacter"
+                                            ProfessionId="@selectedCharacter.ActiveCombatProfessionId"
+                                            StartCollapsed="true"
+                                            OnSkillLearned="OnSkillLearned" />
+                    </div>
                 </div>
             </div>
 
@@ -80,14 +95,14 @@
         // 获取当前选中的角色
         // Get currently selected character
         selectedCharacter = await CharacterService.GetSelectedCharacterAsync();
-        
+
         // 如果有选中的角色，启动心跳服务
         // If a character is selected, start heartbeat service
         if (selectedCharacter != null)
         {
             HeartbeatService.Start(selectedCharacter);
         }
-        
+
         isReady = true; // 数据已就绪，再渲染子组件，确保 StartCollapsed 生效
     }
 
@@ -110,12 +125,12 @@
     private void OnCharacterSelected(CharacterData? character)
     {
         selectedCharacter = character;
-        
+
         // 心跳服务已通过事件订阅自动处理角色切换
         // Heartbeat service automatically handles character switch through event subscription
         // 因此这里不需要手动调用 HeartbeatService.Start/Stop
         // So no need to manually call HeartbeatService.Start/Stop here
-        
+
         StateHasChanged();
     }
 
@@ -136,11 +151,11 @@
     private void OnProfessionSwitched(CharacterData updatedCharacter)
     {
         selectedCharacter = updatedCharacter;
-        
+
         // 更新心跳服务跟踪的角色数据
         // Update HeartbeatService tracked character
         HeartbeatService.UpdateCharacter(updatedCharacter);
-        
+
         StateHasChanged();
     }
 
@@ -153,14 +168,48 @@
         // 更新本地引用
         // Update local reference
         selectedCharacter = updatedCharacter;
-        
+
         // 更新心跳服务跟踪的角色数据，确保自动保存使用最新数据
         // Update HeartbeatService tracked character to ensure auto-save uses latest data
         HeartbeatService.UpdateCharacter(updatedCharacter);
-        
+
         // 角色对象引用没变，但内容已更新，触发重新渲染
         // Character object reference unchanged, but content updated, trigger re-render
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// 技能学习回调 - 保存角色数据
+    /// Skill learned callback - save character data
+    /// </summary>
+    private async Task OnSkillLearned()
+    {
+        if (selectedCharacter != null)
+        {
+            // 调试日志：保存前的技能列表
+            // Debug log: skill list before save
+            Console.WriteLine($"[Home] Saving character with {selectedCharacter.LearnedSkills.Count} learned skills");
+            Console.WriteLine($"[Home] Learned skills: {string.Join(", ", selectedCharacter.LearnedSkills)}");
+
+            // 保存角色数据到服务器
+            // Save character data to server
+            var response = await CharacterService.UpdateCharacterAsync(selectedCharacter.Id, selectedCharacter);
+
+            // 调试日志：保存结果
+            // Debug log: save result
+            if (response != null && response.Success)
+            {
+                Console.WriteLine($"[Home] Character saved successfully");
+            }
+            else
+            {
+                Console.WriteLine($"[Home] Character save failed: {response?.Message ?? "Unknown error"}");
+            }
+
+            // 触发重新渲染
+            // Trigger re-render
+            StateHasChanged();
+        }
     }
 }
 
@@ -182,5 +231,22 @@
 
         .btn-danger:hover {
             background-color: #c82333;
+        }
+
+    /* 新增：本页局部的外边框容器，仅包裹 InventoryPanel 与 SkillLearningPanel */
+    .section-frame {
+        border: 1px solid #e5e5e5;
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        overflow: hidden; /* 让内部圆角贴合 */
+        padding: 0; /* 交由内部组件自己控制内边距 */
+    }
+
+        /* 避免技能组件出现双重边框（技能面板内部已经有卡片样式） */
+        .section-frame .skill-learning-card {
+            border: 0;
+            box-shadow: none;
+            margin-bottom: 0;
         }
 </style>
