@@ -226,7 +226,7 @@
                                             {
                                                 <div class="property-item">
                                                     <span class="property-label">冷却时间:</span>
-                                                    <span class="property-value text-primary">@s.CooldownSec 秒</span>
+                                                    <span class="property-value text-primary">@FormatNumber(s.CooldownSec) 秒</span>
                                                 </div>
                                             }
                                             <div class="property-item">
@@ -279,7 +279,7 @@
                                                         <span class="property-value text-danger">
                                                             @foreach (var cost in s.Costs)
                                                             {
-                                                                <span class="me-2">-@cost.Amount @GetResourceName(cost.BucketId)</span>
+                                                                <span class="me-2">-@FormatNumber(cost.Amount) @GetResourceName(cost.BucketId)</span>
                                                             }
                                                         </span>
                                                     </div>
@@ -291,7 +291,7 @@
                                                         <span class="property-value text-success">
                                                             @foreach (var gain in s.Gains)
                                                             {
-                                                                <span class="me-2">+@gain.Amount @GetResourceName(gain.BucketId)</span>
+                                                                <span class="me-2">+@FormatNumber(gain.Amount) @GetResourceName(gain.BucketId)</span>
                                                             }
                                                         </span>
                                                     </div>
@@ -313,11 +313,11 @@
                                                         <span class="property-value text-danger">
                                                             @if (s.Damage.CoefAtk > 0)
                                                             {
-                                                                <span>@(s.Damage.CoefAtk * 100)% 攻击力</span>
+                                                                <span>@FormatPercentage(s.Damage.CoefAtk) 攻击力</span>
                                                             }
                                                             @if (s.Damage.Flat > 0)
                                                             {
-                                                                <span>+ @s.Damage.Flat 固定伤害</span>
+                                                                <span>@(s.Damage.CoefAtk > 0 ? "+ " : "")@FormatNumber(s.Damage.Flat) 固定伤害</span>
                                                             }
                                                         </span>
                                                     </div>
@@ -326,7 +326,7 @@
                                                 {
                                                     <div class="property-item">
                                                         <span class="property-label">治疗:</span>
-                                                        <span class="property-value text-success">+@s.InstantHeal HP</span>
+                                                        <span class="property-value text-success">+@FormatNumber(s.InstantHeal) HP</span>
                                                     </div>
                                                 }
                                             </div>
@@ -805,6 +805,48 @@
         "OnBuffExpired" => "Buff过期",
         _ => when
     };
+
+    // 数值格式化辅助方法
+    // Number formatting helper methods
+    
+    /// <summary>
+    /// 格式化数值，处理浮点精度问题
+    /// Format number, handling floating point precision issues
+    /// </summary>
+    private string FormatNumber(double value)
+    {
+        // 如果是整数或接近整数，显示为整数
+        if (Math.Abs(value - Math.Round(value)) < 0.001)
+            return Math.Round(value).ToString("F0");
+        
+        // 否则保留1位小数
+        return value.ToString("F1");
+    }
+
+    /// <summary>
+    /// 格式化数值（整数重载）
+    /// Format number (integer overload)
+    /// </summary>
+    private string FormatNumber(int value)
+    {
+        return value.ToString();
+    }
+
+    /// <summary>
+    /// 格式化百分比（系数转百分比）
+    /// Format percentage (coefficient to percentage)
+    /// </summary>
+    private string FormatPercentage(double coefficient)
+    {
+        var percentage = coefficient * 100;
+        
+        // 如果是整数或接近整数，显示为整数
+        if (Math.Abs(percentage - Math.Round(percentage)) < 0.01)
+            return $"{Math.Round(percentage):F0}%";
+        
+        // 否则保留1位小数
+        return $"{percentage:F1}%";
+    }
 }
 
 <style>
