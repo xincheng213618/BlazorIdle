@@ -1012,16 +1012,115 @@ namespace BlazorIdle.Game
         /// <summary>
         /// 通过 SkillResolver 处理怪物攻击（Phase 7.3 + Monster Skill System）
         /// Process enemy attack via SkillResolver (Phase 7.3 + Monster Skill System)
+        /// 
+        /// Phase 9: 扩展支持怪物施法和瞬发技能
+        /// Phase 9: Extended to support monster cast and instant skills
         /// </summary>
         private void ProcessEnemyAttackViaSkillResolver(string enemyId, Enemy enemy)
         {
-            // Monster Skill System: 从怪物实体获取普通攻击技能ID
-            // Monster Skill System: Get normal attack skill ID from enemy entity
-            string skillId = enemy.GetNormalAttackSkillId();
+            // Phase 9: Check if monster has configured skills (cast/instant)
+            if (enemy.HasConfiguredSkills())
+            {
+                ProcessMonsterSkillAttack(enemyId, enemy);
+            }
+            else
+            {
+                // Legacy path: Use normal attack skill
+                string skillId = enemy.GetNormalAttackSkillId();
+                ExecuteSkill(enemyId, skillId, "enemy_attack", isCasterPlayer: false);
+            }
+        }
+
+        /// <summary>
+        /// Phase 9: 处理怪物使用配置的技能系统（施法和瞬发技能）
+        /// Phase 9: Process monster using configured skill system (cast and instant skills)
+        /// </summary>
+        private void ProcessMonsterSkillAttack(string enemyId, Enemy enemy)
+        {
+            // Get monster's buff owner for context
+            if (!_enemyBuffOwners.TryGetValue(enemyId, out var buffOwner))
+                return;
+
+            // Create battle context for monster
+            var context = new BattleContext
+            {
+                Player = null,  // Monster is caster, not player
+                Enemy = enemy,
+                PlayerBuffOwner = null,
+                EnemyBuffOwners = _enemyBuffOwners,  // Pass the dictionary
+                Rng = _rng,
+                Clock = _clock,
+                CurrentTargetId = SelectTargetForEnemy()  // Get a player target
+            };
+
+            // Phase 9: PreAttack Window - Try to select a cast skill
+            var castSkill = _autoCastEngine.SelectMonsterCastSkill(enemy, enemyId, context);
+            if (castSkill != null)
+            {
+                // Monster starts casting
+                double haste = 0.0;  // Monsters don't have haste for now
+                double castTime = castSkill.CastTimeSec;
+                
+                if (castTime > 0)
+                {
+                    // Start casting
+                    _castingController.StartCast(enemyId, castSkill.Id, castTime, haste);
+                    
+                    // Pause monster's attack track during cast
+                    if (_enemyTracks.TryGetValue(enemyId, out var track))
+                    {
+                        int nowMs = _clock.NowMs;
+                        track.AttackTrack.Pause(nowMs);
+                    }
+                    
+                    // Record event
+                    RecordMonsterCastStart(enemyId, castSkill.Id, castTime);
+                    return;  // Casting, don't do normal attack
+                }
+            }
+
+            // Phase 9: PostAttack Window - Execute instant skills
+            var instantSkills = _autoCastEngine.ExecuteMonsterWindow(enemy, enemyId, context, gcdAlreadyUsed: false, "PostAttack");
             
-            // Monster Skill System: 调用统一的通用技能执行函数
-            // Monster Skill System: Call unified generic skill execution function
-            ExecuteSkill(enemyId, skillId, "enemy_attack", isCasterPlayer: false);
+            if (instantSkills.Count > 0)
+            {
+                // Execute all instant skills
+                foreach (var skill in instantSkills)
+                {
+                    ExecuteSkill(enemyId, skill.Id, "enemy_skill", isCasterPlayer: false);
+                }
+                return;  // Used instant skills, don't do normal attack
+            }
+
+            // Fallback: Use normal attack if no cast/instant skills were selected
+            string normalAttackId = enemy.GetNormalAttackSkillId();
+            ExecuteSkill(enemyId, normalAttackId, "enemy_attack", isCasterPlayer: false);
+        }
+
+        /// <summary>
+        /// Phase 9: 记录怪物开始施法
+        /// Phase 9: Record monster cast start
+        /// </summary>
+        private void RecordMonsterCastStart(string enemyId, string skillId, double castTime)
+        {
+            // This could be expanded to create a cast start event if needed
+            // For now, the CastingController will handle the cast completion event
+        }
+
+        /// <summary>
+        /// Phase 9: 为怪物选择一个玩家目标
+        /// Phase 9: Select a player target for monster
+        /// </summary>
+        private string SelectTargetForEnemy()
+        {
+            // Use existing target selection logic
+            var alivePlayerIds = _playerTeam.GetAliveMemberIds();
+            if (alivePlayerIds.Count == 0)
+                return string.Empty;
+
+            // For now, use random selection (could be enhanced based on target policy)
+            int randomIndex = _rng.NextRange(0, alivePlayerIds.Count - 1);
+            return alivePlayerIds[randomIndex];
         }
 
         /// <summary>
@@ -2882,10 +2981,29 @@ namespace BlazorIdle.Game
             var skillDef = _skillRepository.GetSkill(skillId);
             if (skillDef == null) return;
 
-            // 获取角色信息 / Get character info
-            var member = _playerTeam.GetMember(casterId);
-            if (member == null) return;
-            var character = member.Entity;
+            // Phase 9: Check if caster is a player or monster
+            var playerMember = _playerTeam.GetMember(casterId);
+            if (playerMember != null)
+            {
+                HandlePlayerCastComplete(casterId, skillId, skillDef, playerMember.Entity, now);
+            }
+            else
+            {
+                // Phase 9: Monster cast complete
+                var enemyMember = _enemyTeam.GetMember(casterId);
+                if (enemyMember != null)
+                {
+                    HandleMonsterCastComplete(casterId, skillId, skillDef, enemyMember.Entity, now);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Phase 9: 处理玩家施法完成
+        /// Phase 9: Handle player cast complete
+        /// </summary>
+        private void HandlePlayerCastComplete(string casterId, string skillId, SkillDef skillDef, Character character, int now)
+        {
 
             // 执行施法技能效果 / Execute cast skill effects
             ExecuteSkill(casterId, skillId, "cast", isCasterPlayer: true, EventSource.Cast);
@@ -2945,6 +3063,59 @@ namespace BlazorIdle.Game
                 {
                     tracks.ResumeAttackTrack(now);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Phase 9: 处理怪物施法完成
+        /// Phase 9: Handle monster cast complete
+        /// </summary>
+        private void HandleMonsterCastComplete(string monsterId, string skillId, SkillDef skillDef, Enemy enemy, int now)
+        {
+            // 执行施法技能效果 / Execute cast skill effects
+            ExecuteSkill(monsterId, skillId, "enemy_cast", isCasterPlayer: false, EventSource.Cast);
+
+            // Phase 9: PostCast 窗口：怪物施法完成后执行瞬发技能
+            // Phase 9: PostCast window: Execute instant skills after monster casting
+            if (_enemyBuffOwners.TryGetValue(monsterId, out var buffOwner))
+            {
+                // 构建战斗上下文 / Build battle context
+                var context = new BattleContext
+                {
+                    Player = null,
+                    Enemy = enemy,
+                    PlayerBuffOwner = null,
+                    EnemyBuffOwners = _enemyBuffOwners,  // Pass the dictionary
+                    Rng = _rng,
+                    Clock = _clock,
+                    CurrentTargetId = SelectTargetForEnemy()
+                };
+
+                bool castSkillIsGcd = skillDef.IsGcd;
+                var postCastSkills = _autoCastEngine.ExecuteMonsterWindow(enemy, monsterId, context, castSkillIsGcd, "PostCast");
+                foreach (var skill in postCastSkills)
+                {
+                    ExecuteSkill(monsterId, skill.Id, "enemy_postcast", isCasterPlayer: false, EventSource.PostCast);
+                }
+
+                // Phase 7: PostCast 窗口触发器 / PostCast window triggers
+                ProcessWindowTriggers(monsterId, "OnPostCastWindow", skillId, isCasterPlayer: false);
+            }
+
+            // 记录施法完成事件 / Record cast complete event
+            var activeCast = _castingController.GetActiveCast(monsterId);
+            CastCompleted?.Invoke(new CastCompleteEvent
+            {
+                TimeMs = now,
+                CasterId = monsterId,
+                SkillId = skillId,
+                ActualCastTimeSec = activeCast?.ElapsedSec ?? 0
+            });
+
+            // 恢复怪物的攻击轨道 / Resume monster's attack track
+            if (_enemyTracks.TryGetValue(monsterId, out var track))
+            {
+                track.AttackTrack.Resume(now);
             }
         }
 
