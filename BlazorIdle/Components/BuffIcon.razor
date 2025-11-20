@@ -1,11 +1,13 @@
 @using BlazorIdle.Game.Buffs
 @using BlazorIdle.Models
+@using BlazorIdle.Services
 @namespace BlazorIdle.Components
 
 @* Phase 9: Buff/Debuff icon component with JSON icon support *@
 <div class="buff-icon @KindClass" 
      @onmouseenter="ShowTooltip" 
-     @onmouseleave="HideTooltip">
+     @onmouseleave="HideTooltip"
+     @key="@TooltipId">
     <div class="buff-icon-content">
         @if (!string.IsNullOrEmpty(IconDisplay))
         {
@@ -49,6 +51,10 @@
     private int _lastStacks = -1;
     private double? _lastDuration = null;
 
+    // Phase 10.3: Tooltip 唯一标识（用于管理器）
+    // Phase 10.3: Unique tooltip identifier (for manager)
+    private string TooltipId => $"buff_{Buff.Id}_{Buff.Stacks}";
+
     private string KindClass => Buff.Kind == BuffKind.Buff ? "buff" : "debuff";
     
     private string IconLetter => string.IsNullOrEmpty(Buff.Id) ? "?" : Buff.Id[0].ToString().ToUpper();
@@ -84,15 +90,29 @@
         }
     }
     
+    /// <summary>
+    /// Phase 10.3: 显示 Tooltip（使用 TooltipManager 确保同一时间只显示一个）
+    /// Phase 10.3: Show tooltip (use TooltipManager to ensure only one is shown at a time)
+    /// </summary>
     private void ShowTooltip()
     {
         _showTooltip = true;
+        TooltipManager.Instance.ShowTooltip(TooltipId, () =>
+        {
+            _showTooltip = false;
+            StateHasChanged();
+        });
         StateHasChanged();
     }
     
+    /// <summary>
+    /// Phase 10.3: 隐藏 Tooltip
+    /// Phase 10.3: Hide tooltip
+    /// </summary>
     private void HideTooltip()
     {
         _showTooltip = false;
+        TooltipManager.Instance.HideTooltip(TooltipId);
         StateHasChanged();
     }
     

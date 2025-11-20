@@ -1,11 +1,13 @@
 @using BlazorIdle.Game.Skills
 @using BlazorIdle.Shared.Models
+@using BlazorIdle.Services
 @namespace BlazorIdle.Components
 
 @* Phase 10.3: 战斗技能图标组件 / Battle skill icon component *@
 <div class="skill-icon @SlotTypeClass @DisabledClass @TriggerClass" 
      @onmouseenter="ShowTooltip" 
-     @onmouseleave="HideTooltip">
+     @onmouseleave="HideTooltip"
+     @key="@TooltipId">
     
     @* 槽位编号背景 / Slot number background *@
     <div class="skill-slot-number">@SlotNumber</div>
@@ -14,8 +16,16 @@
     <div class="skill-icon-content">
         @if (!string.IsNullOrEmpty(Skill?.Id))
         {
-            @* 显示技能首字母或emoji / Display first letter or emoji *@
-            <span class="skill-icon-display">@IconDisplay</span>
+            @if (!string.IsNullOrEmpty(IconDisplay))
+            {
+                @* 显示技能图标（emoji或文字）/ Display skill icon (emoji or text) *@
+                <span class="skill-icon-display">@IconDisplay</span>
+            }
+            else
+            {
+                @* 备用方案：显示技能名称首字母 / Fallback: display first letter of skill name *@
+                <span class="skill-icon-display">@IconLetter</span>
+            }
         }
         else
         {
@@ -65,8 +75,13 @@
     
     private bool _showTooltip = false;
     private string? _cachedSkillName = null;
+    private string? _cachedIconDisplay = null;
     private string? _lastSkillId = null;
     private double _lastCooldown = -1;
+    
+    // Phase 10.3: Tooltip 唯一标识（用于管理器）
+    // Phase 10.3: Unique tooltip identifier (for manager)
+    private string TooltipId => $"skill_{Skill?.Id ?? "empty"}_{SlotId}";
     
     private string SlotNumber
     {
@@ -104,21 +119,47 @@
         }
     }
     
+    /// <summary>
+    /// Phase 10.3: 技能图标显示（优先使用 Icon 属性，如果为空则返回空字符串）
+    /// Phase 10.3: Skill icon display (use Icon property if available, return empty string otherwise)
+    /// </summary>
     private string IconDisplay
+    {
+        get
+        {
+            if (Skill == null || string.IsNullOrEmpty(Skill.Id))
+                return "";
+            
+            // 缓存图标查找 / Cache icon lookup
+            if (_cachedIconDisplay == null || _lastSkillId != Skill.Id)
+            {
+                _cachedIconDisplay = Skill.Icon ?? "";
+                _cachedSkillName = Skill.Name;
+                _lastSkillId = Skill.Id;
+            }
+            
+            return _cachedIconDisplay;
+        }
+    }
+    
+    /// <summary>
+    /// Phase 10.3: 技能名称首字母（备用方案）
+    /// Phase 10.3: First letter of skill name (fallback)
+    /// </summary>
+    private string IconLetter
     {
         get
         {
             if (Skill == null || string.IsNullOrEmpty(Skill.Id))
                 return "?";
             
-            // Cache skill name lookup
+            // 使用缓存的技能名称 / Use cached skill name
             if (_cachedSkillName == null || _lastSkillId != Skill.Id)
             {
                 _cachedSkillName = Skill.Name;
                 _lastSkillId = Skill.Id;
             }
             
-            // Use first letter of skill name
             return string.IsNullOrEmpty(_cachedSkillName) 
                 ? Skill.Id[0].ToString().ToUpper() 
                 : _cachedSkillName[0].ToString().ToUpper();
@@ -127,15 +168,29 @@
     
     private string SkillName => Skill?.Name ?? Skill?.Id ?? "未知技能";
     
+    /// <summary>
+    /// Phase 10.3: 显示 Tooltip（使用 TooltipManager 确保同一时间只显示一个）
+    /// Phase 10.3: Show tooltip (use TooltipManager to ensure only one is shown at a time)
+    /// </summary>
     private void ShowTooltip()
     {
         _showTooltip = true;
+        TooltipManager.Instance.ShowTooltip(TooltipId, () =>
+        {
+            _showTooltip = false;
+            StateHasChanged();
+        });
         StateHasChanged();
     }
     
+    /// <summary>
+    /// Phase 10.3: 隐藏 Tooltip
+    /// Phase 10.3: Hide tooltip
+    /// </summary>
     private void HideTooltip()
     {
         _showTooltip = false;
+        TooltipManager.Instance.HideTooltip(TooltipId);
         StateHasChanged();
     }
     
