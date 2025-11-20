@@ -51,18 +51,44 @@
                             @if (!m.IsDead)
                             {
                                 <div class="small">
-                                    <div class="text-muted mb-1">攻击进度</div>
-                                    <div class="progress" style="height:8px;">
-                                        <div class="progress-bar bg-danger @((ShouldDisableTransition(m) || IsWrapNow(m.Id)) ? "no-transition" : null)"
-                                             @key="@($"{m.Id}-{GetReviveVersion(m.Id)}")"
-                                             role="progressbar"
-                                             style="width: @(GetProgress01ForRender(m.Id) * 100)%"
-                                             aria-valuemin="0" aria-valuemax="100">
+                                    @if (IsEnemyCasting(m.Id))
+                                    {
+                                        @* Phase 8: 施法进度条 / Casting progress bar *@
+                                        <div class="d-flex justify-content-between text-muted mb-1">
+                                            <span>施法中 Casting</span>
+                                            <span>@($"{GetEnemyCastingProgress(m.Id) * 100:0}%")</span>
                                         </div>
-                                    </div>
-                                    <div class="text-end text-muted mt-1">
-                                        下次攻击：@((int)Math.Round(GetEnemyRemainMs(m.Id))) ms
-                                    </div>
+                                        <div class="progress" style="height:8px;">
+                                            <div class="progress-bar bg-warning"
+                                                 role="progressbar"
+                                                 style="width: @(GetEnemyCastingProgress(m.Id) * 100)%"
+                                                 aria-valuemin="0" aria-valuemax="100">
+                                                @if (!string.IsNullOrEmpty(GetEnemyCastingSkillName(m.Id)))
+                                                {
+                                                    <small class="casting-skill-name">@GetEnemyCastingSkillName(m.Id)</small>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div class="text-end text-muted mt-1">
+                                            剩余：@((int)Math.Round(GetEnemyCastingRemainMs(m.Id))) ms
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        @* 攻击进度条 / Attack progress bar *@
+                                        <div class="text-muted mb-1">攻击进度</div>
+                                        <div class="progress" style="height:8px;">
+                                            <div class="progress-bar bg-danger @((ShouldDisableTransition(m) || IsWrapNow(m.Id)) ? "no-transition" : null)"
+                                                 @key="@($"{m.Id}-{GetReviveVersion(m.Id)}")"
+                                                 role="progressbar"
+                                                 style="width: @(GetProgress01ForRender(m.Id) * 100)%"
+                                                 aria-valuemin="0" aria-valuemax="100">
+                                            </div>
+                                        </div>
+                                        <div class="text-end text-muted mt-1">
+                                            下次攻击：@((int)Math.Round(GetEnemyRemainMs(m.Id))) ms
+                                        </div>
+                                    }
                                 </div>
                             }
                         </div>
@@ -179,4 +205,25 @@
     // 非战斗（冷却）或阵亡时禁用过渡，立即归零；恢复战斗后自动启用过渡
     private bool ShouldDisableTransition(BattleMember<Enemy> member)
         => member.IsDead || _battleState != MultiBattleState.Fighting;
+
+    // Phase 8: 怪物施法相关方法 / Monster casting related methods
+    private bool IsEnemyCasting(string enemyId)
+        => Battle?.IsCastingForCharacter(enemyId) ?? false;
+
+    private double GetEnemyCastingProgress(string enemyId)
+        => Battle?.GetCastingProgress(enemyId) ?? 0.0;
+
+    private double GetEnemyCastingRemainMs(string enemyId)
+        => Battle?.GetCastingTimeRemaining(enemyId) ?? 0.0;
+
+    private string? GetEnemyCastingSkillName(string enemyId)
+    {
+        var skillId = Battle?.GetCastingSkillId(enemyId);
+        if (string.IsNullOrEmpty(skillId))
+            return null;
+
+        var skillRepo = Battle?.GetSkillRepository();
+        var skill = skillRepo?.GetSkill(skillId);
+        return skill?.Name ?? skillId;
+    }
 }

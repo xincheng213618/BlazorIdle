@@ -9,7 +9,7 @@
     border-left: 4px solid #dc3545;
 }
 
-/* Íø¸ñÓë¿¨Æ¬×´Ì¬ */
+/* ï¿½ï¿½ï¿½ï¿½ï¿½ë¿¨Æ¬×´Ì¬ */
 .enemy-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -44,7 +44,7 @@
     font-size: 0.9em;
 }
 
-/* ÎÄ±¾ÓëÑªÌõ */
+/* ï¿½Ä±ï¿½ï¿½ï¿½Ñªï¿½ï¿½ */
 .member-name {
     font-weight: bold;
     margin-bottom: 5px;
@@ -80,7 +80,7 @@
     text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
 }
 
-/* ½ø¶ÈÌõ¹ı¶É¿ØÖÆ£¨Óë CharacterPanel ±£³ÖÒ»ÖÂ£© */
+/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É¿ï¿½ï¿½Æ£ï¿½ï¿½ï¿½ CharacterPanel ï¿½ï¿½ï¿½ï¿½Ò»ï¿½Â£ï¿½ */
 .enemy-team .progress-bar {
     transition: width 120ms linear;
 }
@@ -95,4 +95,22 @@
     gap: 2px;
     min-height: 36px;
     align-items: flex-start;
+}
+
+/* Phase 8: æ–½æ³•æ¡æ ·å¼ / Casting bar styles */
+.enemy-team .progress-bar.bg-warning {
+    background-color: #ffc107 !important;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.enemy-team .casting-skill-name {
+    color: #000;
+    font-weight: 600;
+    font-size: 10px;
+    position: absolute;
+    white-space: nowrap;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
 }
