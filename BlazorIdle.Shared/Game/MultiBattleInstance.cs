@@ -3122,21 +3122,15 @@ namespace BlazorIdle.Game
             // Phase 8: After cast completes, immediately check if should start next cast
             bool startedNewCast = TryStartCasting(casterId, now);
             
-            // Phase 9 Fix: 如果没有开始新的施法，立即进行一次攻击决策（PreAttack窗口）
-            // Phase 9 Fix: If didn't start new cast, immediately perform attack decision (PreAttack window)
+            // Phase 9 Fix: 如果没有开始新的施法，恢复攻击轨道
+            // Phase 9 Fix: If didn't start new cast, resume attack track
             if (!startedNewCast)
             {
                 if (_characterTracks.TryGetValue(casterId, out var tracks))
                 {
-                    // 重置攻击轨道到当前时刻，下次攻击将在一个完整间隔后触发
-                    // Reset attack track to current moment, next attack will trigger after full interval
-                    tracks.AttackTrack.Reset(now);
-                    
-                    // 立即进行一次攻击决策点处理
-                    // Immediately process one attack decision point
-                    // 这样玩家会立即检查PreAttack窗口，选择施法或普攻
-                    // This way player immediately checks PreAttack window, choosing to cast or normal attack
-                    ProcessAttackDecisionPoint(casterId, character, now);
+                    // 恢复攻击轨道（使用暂停前的剩余时间）
+                    // Resume attack track (using remaining time before pause)
+                    tracks.ResumeAttackTrack(now);
                 }
             }
         }
@@ -3191,21 +3185,15 @@ namespace BlazorIdle.Game
             // Phase 9 Fix: Monster should also try to start next cast after cast completes
             bool startedNewCast = TryStartMonsterCasting(monsterId, enemy, now);
             
-            // Phase 9 Fix: 如果没有开始新的施法，立即进行一次攻击决策（PreAttack窗口）
-            // Phase 9 Fix: If didn't start new cast, immediately perform attack decision (PreAttack window)
+            // Phase 9 Fix: 如果没有开始新的施法，恢复攻击轨道
+            // Phase 9 Fix: If didn't start new cast, resume attack track
             if (!startedNewCast)
             {
                 if (_enemyTracks.TryGetValue(monsterId, out var track))
                 {
-                    // 重置攻击轨道到当前时刻，下次攻击将在一个完整间隔后触发
-                    // Reset attack track to current moment, next attack will trigger after full interval
-                    track.AttackTrack.Reset(now);
-                    
-                    // 立即进行一次攻击决策处理
-                    // Immediately process one attack decision
-                    // 这样怪物会立即检查PreAttack窗口，选择施法或普攻
-                    // This way monster immediately checks PreAttack window, choosing to cast or normal attack
-                    ProcessEnemyAttackViaSkillResolver(monsterId, enemy);
+                    // 恢复攻击轨道（使用暂停前的剩余时间）
+                    // Resume attack track (using remaining time before pause)
+                    track.AttackTrack.Resume(now);
                 }
             }
         }
