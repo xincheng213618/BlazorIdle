@@ -9,45 +9,48 @@
      @onmouseleave="HideTooltip"
      @key="@TooltipId">
     
-    @* 槽位编号背景 / Slot number background *@
-    <div class="skill-slot-number">@SlotNumber</div>
-    
-    @* 技能图标内容 / Skill icon content *@
-    <div class="skill-icon-content">
-        @if (!string.IsNullOrEmpty(Skill?.Id))
-        {
-            @if (!string.IsNullOrEmpty(IconDisplay))
+    @* Inner wrapper for clipping content while allowing tooltip overflow *@
+    <div class="skill-icon-inner">
+        @* 槽位编号背景 / Slot number background *@
+        <div class="skill-slot-number">@SlotNumber</div>
+        
+        @* 技能图标内容 / Skill icon content *@
+        <div class="skill-icon-content">
+            @if (!string.IsNullOrEmpty(Skill?.Id))
             {
-                @* 显示技能图标（emoji或文字）/ Display skill icon (emoji or text) *@
-                <span class="skill-icon-display">@IconDisplay</span>
+                @if (!string.IsNullOrEmpty(IconDisplay))
+                {
+                    @* 显示技能图标（emoji或文字）/ Display skill icon (emoji or text) *@
+                    <span class="skill-icon-display">@IconDisplay</span>
+                }
+                else
+                {
+                    @* 备用方案：显示技能名称首字母 / Fallback: display first letter of skill name *@
+                    <span class="skill-icon-display">@IconLetter</span>
+                }
             }
             else
             {
-                @* 备用方案：显示技能名称首字母 / Fallback: display first letter of skill name *@
-                <span class="skill-icon-display">@IconLetter</span>
+                @* 空槽位 / Empty slot *@
+                <span class="skill-empty">-</span>
             }
-        }
-        else
+        </div>
+        
+        @* 冷却覆盖层 / Cooldown overlay *@
+        @if (IsOnCooldown)
         {
-            @* 空槽位 / Empty slot *@
-            <span class="skill-empty">-</span>
+            <div class="skill-cooldown-overlay" style="height: @($"{CooldownPercent}%")"></div>
+            <span class="skill-cooldown-text">@CooldownText</span>
+        }
+        
+        @* 资源不足标识 / Insufficient resource indicator *@
+        @if (IsResourceInsufficient)
+        {
+            <div class="skill-resource-indicator">!</div>
         }
     </div>
     
-    @* 冷却覆盖层 / Cooldown overlay *@
-    @if (IsOnCooldown)
-    {
-        <div class="skill-cooldown-overlay" style="height: @($"{CooldownPercent}%")"></div>
-        <span class="skill-cooldown-text">@CooldownText</span>
-    }
-    
-    @* 资源不足标识 / Insufficient resource indicator *@
-    @if (IsResourceInsufficient)
-    {
-        <div class="skill-resource-indicator">!</div>
-    }
-    
-    @* Tooltip *@
+    @* Tooltip (outside inner wrapper so it's not clipped) *@
     @if (_showTooltip && Skill != null)
     {
         <div class="skill-tooltip">@((MarkupString)TooltipHtml)</div>
@@ -318,10 +321,19 @@
         border: 2px solid #444;
         display: inline-block;
         margin: 2px;
-        cursor: help;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .skill-icon-inner {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 4px;
         background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
         overflow: hidden;
-        transition: all 0.2s ease;
     }
     
     .skill-icon:hover {
