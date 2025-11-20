@@ -1130,13 +1130,13 @@ namespace BlazorIdle.Game
             var castSkill = _autoCastEngine.SelectMonsterCastSkill(enemy, enemyId, context);
             if (castSkill != null)
             {
-                // Monster starts casting
+                // Monster has a cast skill available
                 double haste = 0.0;  // Monsters don't have haste for now
                 double castTime = castSkill.CastTimeSec;
                 
                 if (castTime > 0)
                 {
-                    // Start casting
+                    // Cast skill with cast time - start casting immediately
                     _castingController.StartCast(enemyId, castSkill.Id, castTime, haste);
                     
                     // Pause monster's attack track during cast
@@ -1150,24 +1150,44 @@ namespace BlazorIdle.Game
                     RecordMonsterCastStart(enemyId, castSkill.Id, castTime);
                     return;  // Casting, don't do normal attack
                 }
-            }
-
-            // Phase 9: PostAttack Window - Execute instant skills
-            var instantSkills = _autoCastEngine.ExecuteMonsterWindow(enemy, enemyId, context, gcdAlreadyUsed: false, "PostAttack");
-            
-            if (instantSkills.Count > 0)
-            {
-                // Execute all instant skills
-                foreach (var skill in instantSkills)
+                else
                 {
-                    ExecuteSkill(enemyId, skill.Id, "enemy_skill", isCasterPlayer: false);
+                    // Instant cast skill (castTime == 0) - execute immediately
+                    ExecuteSkill(enemyId, castSkill.Id, "enemy_cast", isCasterPlayer: false, EventSource.Cast);
+                    
+                    // Execute PostCast window for instant cast
+                    bool castSkillIsGcd = castSkill.IsGcd;
+                    var postCastSkills = _autoCastEngine.ExecuteMonsterWindow(enemy, enemyId, context, castSkillIsGcd, "PostCast");
+                    foreach (var skill in postCastSkills)
+                    {
+                        ExecuteSkill(enemyId, skill.Id, "enemy_postcast", isCasterPlayer: false, EventSource.PostCast);
+                    }
+                    
+                    // PostCast window triggers
+                    ProcessWindowTriggers(enemyId, "OnPostCastWindow", castSkill.Id, isCasterPlayer: false);
+                    return;  // Instant cast executed, don't do normal attack
                 }
-                return;  // Used instant skills, don't do normal attack
             }
 
-            // Fallback: Use normal attack if no cast/instant skills were selected
+            // No cast skill available or cast skill not ready - execute normal attack
+            // This matches player behavior: normal attack → PostAttack instant skills → try casting
             string normalAttackId = enemy.GetNormalAttackSkillId();
             ExecuteSkill(enemyId, normalAttackId, "enemy_attack", isCasterPlayer: false);
+
+            // Phase 9: PostAttack Window - Execute instant skills after normal attack
+            var instantSkills = _autoCastEngine.ExecuteMonsterWindow(enemy, enemyId, context, gcdAlreadyUsed: false, "PostAttack");
+            foreach (var skill in instantSkills)
+            {
+                ExecuteSkill(enemyId, skill.Id, "enemy_skill", isCasterPlayer: false, EventSource.PostAttack);
+            }
+            
+            // PostAttack window triggers
+            ProcessWindowTriggers(enemyId, "OnPostAttackWindow", normalAttackId, isCasterPlayer: false);
+            
+            // FIX: After normal attack and instant skills, try to start casting
+            // This matches player behavior - check for casting after completing attack sequence
+            int nowMs2 = _clock.NowMs;
+            TryStartMonsterCasting(enemyId, enemy, nowMs2);
         }
 
         /// <summary>
