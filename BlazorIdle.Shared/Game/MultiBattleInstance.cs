@@ -1053,15 +1053,15 @@ namespace BlazorIdle.Game
         /// Phase 9: 战斗开始时尝试让怪物开始施法
         /// Phase 9: Try to start monster casting at battle start
         /// </summary>
-        private void TryStartMonsterCasting(string enemyId, Enemy enemy, int now)
+        private bool TryStartMonsterCasting(string enemyId, Enemy enemy, int now)
         {
             // Monster shouldn't be casting yet
             if (_castingController.IsCastingForCaster(enemyId))
-                return;
+                return false;
 
             // Get monster's buff owner for context
             if (!_enemyBuffOwners.TryGetValue(enemyId, out var buffOwner))
-                return;
+                return false;
 
             // Create battle context for monster
             var context = new BattleContext
@@ -1090,8 +1090,12 @@ namespace BlazorIdle.Game
                     
                     // Record event
                     RecordMonsterCastStart(enemyId, castSkill.Id, castSkill.CastTimeSec);
+                    
+                    return true;  // Started casting
                 }
             }
+            
+            return false;  // Did not start casting
         }
 
         /// <summary>
@@ -3118,13 +3122,21 @@ namespace BlazorIdle.Game
             // Phase 8: After cast completes, immediately check if should start next cast
             bool startedNewCast = TryStartCasting(casterId, now);
             
-            // 如果没有开始新的施法，恢复攻击轨道
-            // If didn't start new cast, resume attack track
+            // Phase 9 Fix: 如果没有开始新的施法，立即进行一次攻击决策（PreAttack窗口）
+            // Phase 9 Fix: If didn't start new cast, immediately perform attack decision (PreAttack window)
             if (!startedNewCast)
             {
                 if (_characterTracks.TryGetValue(casterId, out var tracks))
                 {
-                    tracks.ResumeAttackTrack(now);
+                    // 重置攻击轨道到当前时刻，下次攻击将在一个完整间隔后触发
+                    // Reset attack track to current moment, next attack will trigger after full interval
+                    tracks.AttackTrack.Reset(now);
+                    
+                    // 立即进行一次攻击决策点处理
+                    // Immediately process one attack decision point
+                    // 这样玩家会立即检查PreAttack窗口，选择施法或普攻
+                    // This way player immediately checks PreAttack window, choosing to cast or normal attack
+                    ProcessAttackDecisionPoint(casterId, character, now);
                 }
             }
         }
@@ -3175,10 +3187,26 @@ namespace BlazorIdle.Game
                 ActualCastTimeSec = activeCast?.ElapsedSec ?? 0
             });
 
-            // 恢复怪物的攻击轨道 / Resume monster's attack track
-            if (_enemyTracks.TryGetValue(monsterId, out var track))
+            // Phase 9 Fix: 怪物施法完成后也需要尝试开始下一次施法
+            // Phase 9 Fix: Monster should also try to start next cast after cast completes
+            bool startedNewCast = TryStartMonsterCasting(monsterId, enemy, now);
+            
+            // Phase 9 Fix: 如果没有开始新的施法，立即进行一次攻击决策（PreAttack窗口）
+            // Phase 9 Fix: If didn't start new cast, immediately perform attack decision (PreAttack window)
+            if (!startedNewCast)
             {
-                track.AttackTrack.Resume(now);
+                if (_enemyTracks.TryGetValue(monsterId, out var track))
+                {
+                    // 重置攻击轨道到当前时刻，下次攻击将在一个完整间隔后触发
+                    // Reset attack track to current moment, next attack will trigger after full interval
+                    track.AttackTrack.Reset(now);
+                    
+                    // 立即进行一次攻击决策处理
+                    // Immediately process one attack decision
+                    // 这样怪物会立即检查PreAttack窗口，选择施法或普攻
+                    // This way monster immediately checks PreAttack window, choosing to cast or normal attack
+                    ProcessEnemyAttackViaSkillResolver(monsterId, enemy);
+                }
             }
         }
 
