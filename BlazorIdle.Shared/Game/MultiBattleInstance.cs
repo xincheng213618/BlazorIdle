@@ -1052,6 +1052,13 @@ namespace BlazorIdle.Game
                 // Legacy path: Use normal attack skill
                 string skillId = enemy.GetNormalAttackSkillId();
                 ExecuteSkill(enemyId, skillId, "enemy_attack", isCasterPlayer: false);
+                
+                // FIX: 怪物普攻完成后立即尝试施法（与玩家行为保持一致）
+                // FIX: After monster normal attack, immediately try to start casting (consistent with player behavior)
+                // 这也适用于没有配置技能的遗留怪物
+                // This also applies to legacy monsters without configured skills
+                int nowMs = _clock.NowMs;
+                TryStartMonsterCasting(enemyId, enemy, nowMs);
             }
         }
 
