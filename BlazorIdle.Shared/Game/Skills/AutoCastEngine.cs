@@ -185,7 +185,7 @@ namespace BlazorIdle.Game.Skills
                 var skill = _skillRepository.GetSkill(skillId);
                 if (skill == null) continue;
 
-                if (IsSkillAvailable(skill, context))
+                if (IsSkillAvailable(skill, context, isCasterPlayer: false))
                 {
                     RecordSkillSelection(skill.Id, $"Monster-{monsterId}-PreAttack-Cast");
                     RecordSkillCastAttempt(skill.Id);
@@ -220,7 +220,7 @@ namespace BlazorIdle.Game.Skills
                 var skill = _skillRepository.GetSkill(skillId);
                 if (skill == null) continue;
 
-                if (!IsSkillAvailable(skill, context))
+                if (!IsSkillAvailable(skill, context, isCasterPlayer: false))
                     continue;
 
                 if (skill.IsGcd)
@@ -283,8 +283,9 @@ namespace BlazorIdle.Game.Skills
         /// <summary>
         /// 检查技能是否可用（冷却、条件、资源）
         /// Check if skill is available (cooldown, conditions, resources)
+        /// Phase 9: Updated to support monster skill checking
         /// </summary>
-        private bool IsSkillAvailable(SkillDef skill, BattleContext context)
+        private bool IsSkillAvailable(SkillDef skill, BattleContext context, bool isCasterPlayer = true)
         {
             // 检查冷却
             if (!_cooldownManager.IsReady(skill.Id))
@@ -294,7 +295,7 @@ namespace BlazorIdle.Game.Skills
             }
 
             // 检查条件
-            if (skill.Conditions != null && !_conditionChecker.CheckConditions(skill, context, isCasterPlayer: true))
+            if (skill.Conditions != null && !_conditionChecker.CheckConditions(skill, context, isCasterPlayer))
             {
                 RecordSkillFailure(skill.Id, "Condition", "Skill conditions not met");
                 return false;

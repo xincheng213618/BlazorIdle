@@ -798,6 +798,13 @@ namespace BlazorIdle.Game
                     ProcessBuffOperations(result, casterId, primaryTargetId, isCasterPlayer: false);
                     ApplyResourceChanges(result, casterId, isCasterPlayer: false, skillId: skillId);
                 }
+
+                // Phase 9: 启动怪物技能冷却
+                // Phase 9: Start monster skill cooldown
+                if (skillDef != null && skillDef.CooldownSec > 0)
+                {
+                    _cooldownManager.StartCooldown(skillId, skillDef.CooldownSec);
+                }
             }
         }
 
