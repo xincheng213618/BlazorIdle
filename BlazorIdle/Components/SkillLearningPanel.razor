@@ -1,6 +1,5 @@
 @using BlazorIdle.Shared.Models
 @using BlazorIdle.Game.Skills
-@inject SkillRepository SkillRepository
 
 <div class="skill-learning-card">
     <div class="sl-header d-flex align-items-center justify-content-between"
@@ -238,6 +237,7 @@
     private string errorMessage = string.Empty;
     private string successMessage = string.Empty;
 
+    private readonly SkillRepository _skillRepository = new SkillRepository();
     private SkillLearningManager? _learningManager;
     private List<SkillDef> learnableSkills = new();
     private List<SkillDef> learnedSkills = new();
@@ -252,7 +252,7 @@
     protected override void OnInitialized()
     {
         isCollapsed = StartCollapsed;
-        _learningManager = new SkillLearningManager(SkillRepository);
+        _learningManager = new SkillLearningManager(_skillRepository);
     }
 
     protected override void OnParametersSet()
@@ -271,7 +271,7 @@
         }
 
         var characterLevel = GetCharacterLevel();
-        var allSkills = SkillRepository.GetSkillsByProfession(ProfessionId).Where(s => !s.Fixed).ToList();
+        var allSkills = _skillRepository.GetSkillsByProfession(ProfessionId).Where(s => !s.Fixed).ToList();
 
         // 分类技能
         learnableSkills = allSkills
@@ -306,7 +306,7 @@
 
             if (result)
             {
-                var skill = SkillRepository.GetSkill(skillId);
+                var skill = _skillRepository.GetSkill(skillId);
                 successMessage = $"成功学习技能: {skill?.Name ?? skillId}";
                 RefreshSkillLists();
 
