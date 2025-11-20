@@ -2,6 +2,7 @@
 @using BlazorIdle.Models
 @using BlazorIdle.Services
 @namespace BlazorIdle.Components
+@implements IDisposable
 
 @* Phase 9: Buff/Debuff icon component with JSON icon support *@
 <div class="buff-icon @KindClass" 
@@ -50,10 +51,33 @@
     private string? _lastBuffId = null;
     private int _lastStacks = -1;
     private double? _lastDuration = null;
+    private string? _lastTooltipId = null;
 
     // Phase 10.3: Tooltip 唯一标识（用于管理器）
     // Phase 10.3: Unique tooltip identifier (for manager)
     private string TooltipId => $"buff_{Buff.Id}_{Buff.Stacks}";
+    
+    protected override void OnParametersSet()
+    {
+        // If buff changed while tooltip was showing, clean up the old tooltip
+        var currentTooltipId = TooltipId;
+        if (_lastTooltipId != null && _lastTooltipId != currentTooltipId && _showTooltip)
+        {
+            // Clean up old tooltip from manager
+            TooltipManager.Instance.HideTooltip(_lastTooltipId);
+            _showTooltip = false;
+        }
+        _lastTooltipId = currentTooltipId;
+    }
+    
+    public void Dispose()
+    {
+        // Clean up tooltip when component is disposed
+        if (_showTooltip)
+        {
+            TooltipManager.Instance.HideTooltip(TooltipId);
+        }
+    }
 
     private string KindClass => Buff.Kind == BuffKind.Buff ? "buff" : "debuff";
     
