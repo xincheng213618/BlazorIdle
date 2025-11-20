@@ -140,6 +140,10 @@
 
     // 当前战斗状态（用于冷却/阵亡时禁用过渡）
     private MultiBattleState _battleState = MultiBattleState.NotStarted;
+    
+    // 缓存怪物技能列表 / Cache enemy skills list
+    private readonly Dictionary<string, List<CharacterPanel.EquippedSkillData>> _cachedEnemySkills = new();
+    private readonly Dictionary<string, string> _lastEnemySkillConfigKey = new();
 
     protected override void OnParametersSet()
     {
@@ -245,7 +249,7 @@
         return skill?.Name ?? skillId;
     }
     
-    // Phase 10.3: 获取怪物技能信息 / Get monster skill information
+    // Phase 10.3: 获取怪物技能信息（带缓存优化）/ Get monster skill information (with caching optimization)
     private List<CharacterPanel.EquippedSkillData>? GetEnemySkills(string enemyId)
     {
         if (Battle == null || Team == null)
@@ -254,7 +258,28 @@
         var enemy = Team.GetMember(enemyId);
         if (enemy == null || enemy.IsDead)
             return null;
-            
+        
+        // 生成配置键用于检测变化 / Generate config key to detect changes
+        var castSkills = enemy.Entity?.CastSkillIds != null ? string.Join(",", enemy.Entity.CastSkillIds) : "";
+        var instantSkills = enemy.Entity?.InstantSkillIds != null ? string.Join(",", enemy.Entity.InstantSkillIds) : "";
+        var configKey = $"{castSkills}|{instantSkills}";
+        
+        // 如果配置未变化且缓存存在，更新冷却时间后返回缓存 / If config unchanged and cache exists, update cooldowns and return cache
+        if (_lastEnemySkillConfigKey.TryGetValue(enemyId, out var lastKey) && lastKey == configKey && 
+            _cachedEnemySkills.TryGetValue(enemyId, out var cached))
+        {
+            // 只更新冷却时间（性能优化）/ Only update cooldowns (performance optimization)
+            foreach (var skillData in cached)
+            {
+                if (skillData.Skill != null)
+                {
+                    skillData.RemainingCooldown = Battle.GetSkillRemainingCooldown(skillData.Skill.Id);
+                }
+            }
+            return cached;
+        }
+        
+        // 配置已变化，重建列表 / Config changed, rebuild list
         var skillRepo = Battle.GetSkillRepository();
         if (skillRepo == null)
             return null;
@@ -307,6 +332,8 @@
             }
         }
         
+        _cachedEnemySkills[enemyId] = result;
+        _lastEnemySkillConfigKey[enemyId] = configKey;
         return result.Count > 0 ? result : null;
     }
 }
