@@ -125,7 +125,14 @@
                 return SlotId.Replace("active_", "");
             if (SlotId.StartsWith("passive_"))
                 return "P";
-            return "?";
+            // 怪物技能：显示顺序编号 / Monster skills: show sequence number
+            if (SlotId.StartsWith("cast_") || SlotId.StartsWith("instant_"))
+            {
+                var parts = SlotId.Split('_');
+                if (parts.Length == 2)
+                    return parts[1]; // 返回数字部分 / Return the numeric part
+            }
+            return "";
         }
     }
 
