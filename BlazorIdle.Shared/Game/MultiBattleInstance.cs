@@ -889,122 +889,37 @@ namespace BlazorIdle.Game
                 CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
             };
 
-            // Phase 6: PreAttack 窗口：使用 WindowExecutor 检查是否有施法技能要释放
-            // Phase 6: PreAttack window: Use WindowExecutor to check if there's a cast skill to release
-            var castSkills = _windowExecutor.ExecuteWindow(WindowType.PreAttack, characterData, character.ActiveCombatProfessionId, context, gcdAlreadyUsed: false);
-            var castSkill = castSkills.FirstOrDefault();
+            // FIX: 永远先执行普通攻击，然后检查施法
+            // FIX: Always execute normal attack first, then check for casting
+            // 这样避免浪费攻击进度条准备时间
+            // This avoids wasting attack track preparation time
+            
+            // === 窗口执行路径：NormalAttack → PostAttack → TryStartCasting ===
+            // === Window execution path: NormalAttack → PostAttack → TryStartCasting ===
+            
+            string normalAttackSkillId = character.GetNormalAttackSkillId();
+            var normalAttackSkill = _skillRepository.GetSkill(normalAttackSkillId);
+            bool normalAttackIsGcd = normalAttackSkill?.IsGcd ?? true;
 
-            if (castSkill != null)
+            ExecuteSkill(charId, normalAttackSkillId, "attack", isCasterPlayer: true, EventSource.Attack);
+
+            // Phase 6: PostAttack 窗口：使用 WindowExecutor 执行瞬发技能
+            // Phase 6: PostAttack window: Use WindowExecutor to execute instant skills
+            var instantSkills = _windowExecutor.ExecuteWindow(WindowType.PostAttack, characterData, character.ActiveCombatProfessionId, context, normalAttackIsGcd);
+            foreach (var skill in instantSkills)
             {
-                // === 窗口执行路径：PreAttack → Cast → PostCast ===
-                // === Window execution path: PreAttack → Cast → PostCast ===
-                
-                // Phase 8: 开始施法 / Start casting
-                if (castSkill.CastTimeSec > 0)
-                {
-                    // 获取急速加成 / Get haste bonus
-                    double hastePercent = character.HastePercent;
-                    if (_playerBuffOwners.TryGetValue(charId, out var buffOwner))
-                    {
-                        // 应用 Buff 效果到急速 / Apply buff effects to haste
-                        var sortedBuffs = buffOwner.Buffs.Values
-                            .OrderBy(b => b.AppliedAtMs)
-                            .ToList();
-                        
-                        foreach (var buff in sortedBuffs)
-                        {
-                            foreach (var effect in buff.Effects)
-                            {
-                                if (effect.Target != "HastePercent") continue;
-                                
-                                switch (effect.Type)
-                                {
-                                    case Buffs.BuffEffectType.StatMultiplier:
-                                        hastePercent *= (1.0 + effect.Value);
-                                        break;
-                                    case Buffs.BuffEffectType.StatAdditive:
-                                        hastePercent += effect.Value;
-                                        break;
-                                    case Buffs.BuffEffectType.StatReduction:
-                                        hastePercent *= (1.0 - effect.Value);
-                                        break;
-                                }
-                            }
-                        }
-                    }
-
-                    // 开始施法 / Start casting
-                    bool castStarted = _castingController.StartCast(charId, castSkill.Id, castSkill.CastTimeSec, hastePercent, pauseAttackTrack: true);
-                    
-                    if (castStarted)
-                    {
-                        // 暂停攻击轨道 / Pause attack track
-                        if (_characterTracks.TryGetValue(charId, out var tracks))
-                        {
-                            tracks.PauseAttackTrack(now);
-                        }
-
-                        // 记录施法开始事件 / Record cast start event
-                        var actualCastTime = castSkill.CastTimeSec / (1.0 + hastePercent / 100.0);
-                        CastStarted?.Invoke(new CastStartEvent
-                        {
-                            TimeMs = now,
-                            CasterId = charId,
-                            SkillId = castSkill.Id,
-                            CastTimeSec = actualCastTime,
-                            PauseAttackTrack = true
-                        });
-                    }
-                }
-                else
-                {
-                    // 瞬发施法技能，立即执行 / Instant cast skill, execute immediately
-                    ExecuteSkill(charId, castSkill.Id, "preattack", isCasterPlayer: true, EventSource.Cast);
-                    
-                    // Phase 6: PostCast 窗口（瞬发也可以触发）
-                    // Phase 6: PostCast window (instant can also trigger)
-                    bool castSkillIsGcd = castSkill.IsGcd;
-                    var postCastSkills = _windowExecutor.ExecuteWindow(WindowType.PostCast, characterData, character.ActiveCombatProfessionId, context, castSkillIsGcd);
-                    foreach (var skill in postCastSkills)
-                    {
-                        ExecuteSkill(charId, skill.Id, "postcast", isCasterPlayer: true, EventSource.PostCast);
-                    }
-                    
-                    // Phase 7: PostCast 窗口触发器 / PostCast window triggers
-                    ProcessWindowTriggers(charId, "OnPostCastWindow", castSkill.Id, isCasterPlayer: true);
-                }
+                ExecuteSkill(charId, skill.Id, "postattack", isCasterPlayer: true, EventSource.PostAttack);
             }
-            else
-            {
-                // === 窗口执行路径：PreAttack → NormalAttack → PostAttack ===
-                // === Window execution path: PreAttack → NormalAttack → PostAttack ===
-                
-                // 没有施法技能，执行普通攻击
-                // No cast skill, execute normal attack
-                string normalAttackSkillId = character.GetNormalAttackSkillId();
-                var normalAttackSkill = _skillRepository.GetSkill(normalAttackSkillId);
-                bool normalAttackIsGcd = normalAttackSkill?.IsGcd ?? true;
-
-                ExecuteSkill(charId, normalAttackSkillId, "attack", isCasterPlayer: true, EventSource.Attack);
-
-                // Phase 6: PostAttack 窗口：使用 WindowExecutor 执行瞬发技能
-                // Phase 6: PostAttack window: Use WindowExecutor to execute instant skills
-                var instantSkills = _windowExecutor.ExecuteWindow(WindowType.PostAttack, characterData, character.ActiveCombatProfessionId, context, normalAttackIsGcd);
-                foreach (var skill in instantSkills)
-                {
-                    ExecuteSkill(charId, skill.Id, "postattack", isCasterPlayer: true, EventSource.PostAttack);
-                }
-                
-                // Phase 7: PostAttack 窗口触发器
-                // Phase 7: PostAttack window triggers
-                ProcessWindowTriggers(charId, "OnPostAttackWindow", normalAttackSkillId, isCasterPlayer: true);
-                
-                // FIX: 普攻完成后立即尝试施法（如果有可用的施法技能）
-                // FIX: After normal attack, immediately try to start casting (if there's an available cast skill)
-                // 这样可以避免等待下一次 AttackTrack 触发才检查施法
-                // This avoids waiting for the next AttackTrack trigger to check for casting
-                TryStartCasting(charId, now);
-            }
+            
+            // Phase 7: PostAttack 窗口触发器
+            // Phase 7: PostAttack window triggers
+            ProcessWindowTriggers(charId, "OnPostAttackWindow", normalAttackSkillId, isCasterPlayer: true);
+            
+            // FIX: 普攻完成后立即尝试施法（如果有可用的施法技能）
+            // FIX: After normal attack, immediately try to start casting (if there's an available cast skill)
+            // 这样可以避免等待下一次 AttackTrack 触发才检查施法
+            // This avoids waiting for the next AttackTrack trigger to check for casting
+            TryStartCasting(charId, now);
         }
 
         /// <summary>
@@ -1126,51 +1041,12 @@ namespace BlazorIdle.Game
                 CurrentTargetId = SelectTargetForEnemy()  // Get a player target
             };
 
-            // Phase 9: PreAttack Window - Try to select a cast skill
-            var castSkill = _autoCastEngine.SelectMonsterCastSkill(enemy, enemyId, context);
-            if (castSkill != null)
-            {
-                // Monster has a cast skill available
-                double haste = 0.0;  // Monsters don't have haste for now
-                double castTime = castSkill.CastTimeSec;
-                
-                if (castTime > 0)
-                {
-                    // Cast skill with cast time - start casting immediately
-                    _castingController.StartCast(enemyId, castSkill.Id, castTime, haste);
-                    
-                    // Pause monster's attack track during cast
-                    if (_enemyTracks.TryGetValue(enemyId, out var track))
-                    {
-                        int nowMs = _clock.NowMs;
-                        track.AttackTrack.Pause(nowMs);
-                    }
-                    
-                    // Record event
-                    RecordMonsterCastStart(enemyId, castSkill.Id, castTime);
-                    return;  // Casting, don't do normal attack
-                }
-                else
-                {
-                    // Instant cast skill (castTime == 0) - execute immediately
-                    ExecuteSkill(enemyId, castSkill.Id, "enemy_cast", isCasterPlayer: false, EventSource.Cast);
-                    
-                    // Execute PostCast window for instant cast
-                    bool castSkillIsGcd = castSkill.IsGcd;
-                    var postCastSkills = _autoCastEngine.ExecuteMonsterWindow(enemy, enemyId, context, castSkillIsGcd, "PostCast");
-                    foreach (var skill in postCastSkills)
-                    {
-                        ExecuteSkill(enemyId, skill.Id, "enemy_postcast", isCasterPlayer: false, EventSource.PostCast);
-                    }
-                    
-                    // PostCast window triggers
-                    ProcessWindowTriggers(enemyId, "OnPostCastWindow", castSkill.Id, isCasterPlayer: false);
-                    return;  // Instant cast executed, don't do normal attack
-                }
-            }
-
-            // No cast skill available or cast skill not ready - execute normal attack
-            // This matches player behavior: normal attack → PostAttack instant skills → try casting
+            // FIX: 永远先执行普通攻击，然后检查施法（与玩家行为一致）
+            // FIX: Always execute normal attack first, then check for casting (matching player behavior)
+            // 这样避免浪费攻击进度条准备时间
+            // This avoids wasting attack track preparation time
+            
+            // Execute normal attack
             string normalAttackId = enemy.GetNormalAttackSkillId();
             ExecuteSkill(enemyId, normalAttackId, "enemy_attack", isCasterPlayer: false);
 
@@ -1186,8 +1062,8 @@ namespace BlazorIdle.Game
             
             // FIX: After normal attack and instant skills, try to start casting
             // This matches player behavior - check for casting after completing attack sequence
-            int nowMs2 = _clock.NowMs;
-            TryStartMonsterCasting(enemyId, enemy, nowMs2);
+            int nowMs = _clock.NowMs;
+            TryStartMonsterCasting(enemyId, enemy, nowMs);
         }
 
         /// <summary>
