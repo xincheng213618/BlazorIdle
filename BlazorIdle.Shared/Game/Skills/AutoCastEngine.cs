@@ -185,7 +185,7 @@ namespace BlazorIdle.Game.Skills
                 var skill = _skillRepository.GetSkill(skillId);
                 if (skill == null) continue;
 
-                if (IsSkillAvailable(skill, context, isCasterPlayer: false))
+                if (IsSkillAvailable(skill, context, isCasterPlayer: false, casterId: monsterId))
                 {
                     RecordSkillSelection(skill.Id, $"Monster-{monsterId}-PreAttack-Cast");
                     RecordSkillCastAttempt(skill.Id);
@@ -220,7 +220,7 @@ namespace BlazorIdle.Game.Skills
                 var skill = _skillRepository.GetSkill(skillId);
                 if (skill == null) continue;
 
-                if (!IsSkillAvailable(skill, context, isCasterPlayer: false))
+                if (!IsSkillAvailable(skill, context, isCasterPlayer: false, casterId: monsterId))
                     continue;
 
                 if (skill.IsGcd)
@@ -285,7 +285,7 @@ namespace BlazorIdle.Game.Skills
         /// Check if skill is available (cooldown, conditions, resources)
         /// Phase 9: Updated to support monster skill checking
         /// </summary>
-        private bool IsSkillAvailable(SkillDef skill, BattleContext context, bool isCasterPlayer = true)
+        private bool IsSkillAvailable(SkillDef skill, BattleContext context, bool isCasterPlayer = true, string? casterId = null)
         {
             // 检查冷却
             if (!_cooldownManager.IsReady(skill.Id))
@@ -295,14 +295,14 @@ namespace BlazorIdle.Game.Skills
             }
 
             // 检查条件
-            if (skill.Conditions != null && !_conditionChecker.CheckConditions(skill, context, isCasterPlayer))
+            if (skill.Conditions != null && !_conditionChecker.CheckConditions(skill, context, isCasterPlayer, casterId))
             {
                 RecordSkillFailure(skill.Id, "Condition", "Skill conditions not met");
                 return false;
             }
 
             // 检查资源
-            if (!_resourceManager.CheckResourceCost(skill, context))
+            if (!_resourceManager.CheckResourceCost(skill, context, isCasterPlayer, casterId))
             {
                 RecordSkillFailure(skill.Id, "Resource", "Insufficient resources");
                 return false;

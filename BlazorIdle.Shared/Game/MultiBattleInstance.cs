@@ -324,6 +324,17 @@ namespace BlazorIdle.Game
                 TryStartCasting(charId, now);
             }
 
+            // Phase 9: 战斗开始时，检查怪物是否应该立即开始施法
+            // Phase 9: At battle start, check if monsters should start casting immediately
+            foreach (var enemyId in _enemyTeam.GetAliveMemberIds())
+            {
+                var member = _enemyTeam.GetMember(enemyId);
+                if (member != null && member.Entity.HasConfiguredSkills())
+                {
+                    TryStartMonsterCasting(enemyId, member.Entity, now);
+                }
+            }
+
             // 重置统计
             foreach (var key in _damageDealtByCharacter.Keys.ToList())
             {
@@ -1035,6 +1046,51 @@ namespace BlazorIdle.Game
                 // Legacy path: Use normal attack skill
                 string skillId = enemy.GetNormalAttackSkillId();
                 ExecuteSkill(enemyId, skillId, "enemy_attack", isCasterPlayer: false);
+            }
+        }
+
+        /// <summary>
+        /// Phase 9: 战斗开始时尝试让怪物开始施法
+        /// Phase 9: Try to start monster casting at battle start
+        /// </summary>
+        private void TryStartMonsterCasting(string enemyId, Enemy enemy, int now)
+        {
+            // Monster shouldn't be casting yet
+            if (_castingController.IsCastingForCaster(enemyId))
+                return;
+
+            // Get monster's buff owner for context
+            if (!_enemyBuffOwners.TryGetValue(enemyId, out var buffOwner))
+                return;
+
+            // Create battle context for monster
+            var context = new BattleContext
+            {
+                Player = null,  // Monster is caster, not player
+                Enemy = enemy,
+                PlayerBuffOwner = null,
+                EnemyBuffOwners = _enemyBuffOwners,  // Pass the dictionary
+                Rng = _rng,
+                Clock = _clock,
+                CurrentTargetId = SelectTargetForEnemy()  // Get a player target
+            };
+
+            // Try to select a cast skill
+            var castSkill = _autoCastEngine.SelectMonsterCastSkill(enemy, enemyId, context);
+            if (castSkill != null && castSkill.CastTimeSec > 0)
+            {
+                // Start casting immediately
+                double haste = 0.0;  // Monsters don't have haste for now
+                bool castStarted = _castingController.StartCast(enemyId, castSkill.Id, castSkill.CastTimeSec, haste, pauseAttackTrack: true);
+                
+                if (castStarted && _enemyTracks.TryGetValue(enemyId, out var track))
+                {
+                    // Pause attack track during cast
+                    track.AttackTrack.Pause(now);
+                    
+                    // Record event
+                    RecordMonsterCastStart(enemyId, castSkill.Id, castSkill.CastTimeSec);
+                }
             }
         }
 
