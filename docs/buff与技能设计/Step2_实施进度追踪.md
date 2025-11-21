@@ -1870,14 +1870,15 @@ public double GetSkillRemainingCooldown(string characterId, string skillId)
 | 阶段 11 - 集成测试验收 | ⬜ 未开始 | 6-8h | +30 |
 | 阶段 12 - 文档与交付 | 🔄 进行中 | 4-5h | - |
 
-**总体进度：** 14.5/16 (90.6%) ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅🔄⬜  
-**Phase 10 全部完成（10.1-10.7），有 2 个已知问题需要后续 PR 修复（职业切换资源同步 + 多角色冷却混淆）**  
-**实际总工时：** ~82-105 小时（含 Phase 9+, Phase 10 完整）  
-**预计新增测试：** ~255 个（已完成 202 个）  
-**当前测试基线：** 643 个（阶段 10 完成，所有测试通过）  
-**完成后预计总测试：** ~873 个
+**总体进度：** 15/16 (93.8%) ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅⬜  
+**Phase 10 全部完成（10.1-10.7），已知问题2（多角色冷却混淆）已修复 ✅**  
+**已知问题1（职业切换资源同步）待后续PR修复**  
+**实际总工时：** ~84-109 小时（含 Phase 9+: 8-10h，Phase 10: ~14h）  
+**预计新增测试：** ~255 个（已完成 203 个）  
+**当前测试基线：** 644 个（Per-Character冷却重构完成，所有测试通过）  
+**完成后预计总测试：** ~874 个
 
-**已完成工时：** ~70-83 小时（含 Phase 9+: 8-10h，Phase 10: ~12h）  
+**已完成工时：** ~72-87 小时（含 Phase 9+: 8-10h，Phase 10: ~14h）  
 **剩余工时：** ~9-17 小时（Phase 11: 6-8h + Phase 12: 4-5h）
 
 ---
@@ -1904,9 +1905,9 @@ public double GetSkillRemainingCooldown(string characterId, string skillId)
 4. ✅ CSS样式通过内嵌方式完整实现
 5. ✅ 643个单元测试全部通过（零破坏性变更）
 
-**已知问题（需独立PR修复）：**
-- ⚠️ 问题1：职业切换后资源类型未同步（中优先级）
-- ⚠️ 问题2：全局冷却管理器多角色混淆（中优先级）
+**已知问题状态更新：**
+- ⚠️ 问题1：职业切换后资源类型未同步（中优先级，待后续PR）
+- ✅ 问题2：全局冷却管理器多角色混淆（**已修复** - 2025-11-21 v10.5）
 
 **文档更新：**
 - ✅ 更新Phase 10状态为"已完成"
@@ -2607,6 +2608,124 @@ public double GetSkillRemainingCooldown(string characterId, string skillId)
 
 ---
 
-**最后更新：** 2025-11-20 v5.2  
+### 2025-11-21 v10.5 - Per-Character 冷却管理架构重构 🔧✅
+
+**PR标题**: Complete Phase 10 verification and fix multi-character cooldown confusion
+
+#### 背景
+- **已知问题 2**: 技能冷却时间使用全局 CooldownManager，多角色战斗会混淆冷却状态
+- **问题场景**: 两个战士角色A和B都装备"致死打击"，A释放后B也无法使用（共享冷却）
+- **影响范围**: 多角色战斗（副本模式）、战斗技能图标冷却显示
+
+#### ✅ 核心重构工作（方案B：Per-Character冷却管理）
+
+**1. 架构变更**（4个核心文件，~150行修改）
+- ✅ `MultiBattleInstance.cs`: 
+  - 从单一 `CooldownManager` 改为 `Dictionary<string, CooldownManager>`
+  - 添加 `GetOrCreateCooldownManager(string casterId)` 方法
+  - 添加内存清理逻辑（`Start()` 方法中清空字典）
+  - 添加 casterId 验证（抛出 ArgumentException）
+- ✅ `AutoCastEngine.cs`:
+  - 接受 `Func<string, CooldownManager>` 委托替代单一实例
+  - 更新 `SelectCastSkill` 和 `ExecuteWindow` 签名（添加 casterId 参数）
+  - 更新 `SelectMonsterCastSkill` 签名（添加 casterId 参数）
+  - 更新 `IsSkillAvailable` 方法使用委托获取管理器
+- ✅ `WindowExecutor.cs`:
+  - 接受 `Func<string, CooldownManager>` 委托
+  - 更新 `ExecuteWindow` 签名（添加 casterId 参数）
+- ✅ `TriggerProcessor.cs`:
+  - 接受 `Func<string, CooldownManager>` 委托
+  - 更新 `ProcessTriggers` 签名（添加 casterId 参数）
+
+**2. UI组件更新**（2个文件，6处调用）
+- ✅ `BattleDemo.razor.cs`: 3处 `GetSkillRemainingCooldown` 调用添加 `SelectedCharacter.Id`
+- ✅ `EnemyTeamPanel.razor`: 3处 `GetSkillRemainingCooldown` 调用添加 `enemyId`
+
+**3. 测试套件更新**（6个文件，42+处调用）
+- ✅ `Step2Phase5Tests.cs`: CooldownManager 单元测试（无需修改）
+- ✅ `Step2Phase6Tests.cs`: WindowExecutor 测试（16处调用更新）
+  - 更新 `CreateWindowExecutor` helper 使用委托
+  - 更新所有 `ExecuteWindow` 调用添加 casterId
+- ✅ `Step2Phase7Tests.cs`: TriggerProcessor 测试（12处调用更新）
+  - 更新 `CreateTriggerProcessor` helper 使用委托
+  - 更新所有 `ProcessTriggers` 调用添加 casterId
+- ✅ `Step2Phase9Tests.cs`: AutoCastEngine 测试（8处调用更新）
+  - 更新 `CreateAutoCastEngine` helper 使用委托
+  - 更新 `SimulateTick` helper 添加 casterId
+- ✅ `Step2Phase9IntegrationTests.cs`: 集成测试（4处调用更新）
+  - 新增 `PerCharacterCooldown_TwoCharactersWithSameSkill_IndependentCooldowns` 测试
+- ✅ `Step2Phase9MonsterIntegrationTests.cs`: 怪物测试（2处调用更新）
+
+**4. 代码质量改进**
+- ✅ 更新过时注释（从"same _cooldownManager"改为"GetOrCreateCooldownManager delegate"）
+- ✅ 添加 casterId 空值验证（防止无效管理器创建）
+- ✅ 测试代码使用技能定义的冷却时间（消除魔法数字）
+- ✅ 测试委托匹配生产环境行为（TryGetValue + 自动创建）
+
+#### ✅ 测试结果
+
+```
+Passed!  - Failed:     0, Passed:   644, Skipped:     0
+           Total:   644, Duration: 2 s
+```
+
+**644/644 测试通过** (643原有 + 1新增核心场景测试) ✅
+
+#### ✅ 架构优势
+
+1. **正确性**: 每个角色/怪物独立管理冷却，完全消除混淆
+2. **性能**: 更小的per-character字典，更好的内存局部性
+3. **可维护性**: 可按角色清除/查询冷却，调试更清晰
+4. **扩展性**: 支持未来per-character冷却统计
+5. **内存管理**: 战斗重启时自动清理，防止内存泄漏
+
+#### ✅ 代码审查与修复
+
+**初始审查评分**: 7/10
+- 正确性: 10/10 ✅
+- 测试覆盖: 7/10 ⚠️
+- 生产就绪: 5/10 ⚠️ (内存泄漏)
+- 代码质量: 8/10 ✅
+
+**修复后评分**: 9/10 ✅
+- ✅ P0修复: 内存泄漏 + 文档更新
+- ✅ P1修复: casterId验证 + 核心场景测试 + 注释更新
+- ✅ 代码审查反馈处理: 测试健壮性提升
+
+#### 📝 提交历史
+
+1. `a5b4437` - Initial plan（初步计划）
+2. `cda56a0` - Complete Phase 10 verification and documentation update（Phase 10验证）
+3. `edca2cf` - Implement per-character cooldown management - core changes complete（核心架构）
+4. `a982e7e` - Fix UI components cooldown calls - add casterId parameter（UI组件修复）
+5. `d9c1a83` - Complete per-character cooldown implementation - all 643 tests passing（测试套件更新）
+6. `ef5f0fa` - Fix P0/P1 issues: add validation, memory cleanup, tests, and update docs（关键问题修复）
+7. `a9839fd` - Address code review feedback - improve test robustness（代码审查反馈）
+
+#### 📊 代码变更统计
+
+- **核心文件**: 4个（MultiBattleInstance, AutoCastEngine, WindowExecutor, TriggerProcessor）
+- **UI文件**: 2个（BattleDemo, EnemyTeamPanel）
+- **测试文件**: 6个（Phase5/6/7/9集成测试）
+- **代码修改**: ~150行核心逻辑 + ~100行测试更新
+- **新增测试**: 1个（核心场景验证）
+- **测试基线**: 644个（643 → 644）
+
+#### 🎯 影响与价值
+
+- **消除关键Bug**: 多角色战斗冷却混淆问题彻底解决
+- **架构提升**: Per-character设计更清晰、可维护
+- **生产就绪**: 内存管理、验证、测试覆盖达到生产标准
+- **零破坏性**: 所有原有测试继续通过
+- **向后兼容**: API变更仅添加参数，未删除功能
+
+#### 📌 已知问题状态更新
+
+- ⚠️ **已知问题 1**：职业切换后资源类型未同步更新（中优先级，待修复）
+- ✅ **已知问题 2**：技能冷却时间per-character管理（**已修复** - 2025-11-21）
+
+---
+
+**最后更新：** 2025-11-21 v10.5  
 **维护者：** @copilot  
-**状态：** 已更新，阶段 9、9.5、9+ 已完成 + 玩家和怪物施法时机Bug修复
+**状态：** 已更新，阶段 10（10.1-10.7）已完成 + Per-Character冷却管理重构完成
