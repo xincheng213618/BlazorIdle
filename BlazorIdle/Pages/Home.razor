@@ -48,11 +48,24 @@
             <div class="row">
                 <div class="col-12">
                     <!-- 技能学习：增加外框（并避免内部卡片双重边框） -->
-                    <div class="section-frame">
+                    <div class="section-frame mb-3">
                         <SkillLearningPanel Character="@selectedCharacter"
                                             ProfessionId="@selectedCharacter.ActiveCombatProfessionId"
                                             StartCollapsed="true"
                                             OnSkillLearned="OnSkillLearned" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <!-- 技能装备：增加外框 -->
+                    <div class="section-frame">
+                        <SkillEquipmentPanel Character="@selectedCharacter"
+                                             ProfessionId="@selectedCharacter.ActiveCombatProfessionId"
+                                             StartCollapsed="true"
+                                             OnSkillEquipped="OnSkillEquipped"
+                                             OnSkillUnequipped="OnSkillUnequipped" />
                     </div>
                 </div>
             </div>
@@ -205,6 +218,42 @@
             {
                 Console.WriteLine($"[Home] Character save failed: {response?.Message ?? "Unknown error"}");
             }
+
+            // 触发重新渲染
+            // Trigger re-render
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// 技能装备回调 - 保存角色数据
+    /// Skill equipped callback - save character data
+    /// </summary>
+    private async Task OnSkillEquipped()
+    {
+        if (selectedCharacter != null)
+        {
+            // 保存角色数据到服务器
+            // Save character data to server
+            await CharacterService.UpdateCharacterAsync(selectedCharacter.Id, selectedCharacter);
+
+            // 触发重新渲染
+            // Trigger re-render
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// 技能卸载回调 - 保存角色数据
+    /// Skill unequipped callback - save character data
+    /// </summary>
+    private async Task OnSkillUnequipped()
+    {
+        if (selectedCharacter != null)
+        {
+            // 保存角色数据到服务器
+            // Save character data to server
+            await CharacterService.UpdateCharacterAsync(selectedCharacter.Id, selectedCharacter);
 
             // 触发重新渲染
             // Trigger re-render
