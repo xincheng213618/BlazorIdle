@@ -4,7 +4,7 @@
 @implements IDisposable
 
 @* Phase 10.3: 战斗技能图标组件 / Battle skill icon component *@
-<div class="skill-icon @SlotTypeClass @DisabledClass @TriggerClass"
+<div class="skill-icon @SlotTypeClass @DisabledClass @CooldownClass @TriggerClass"
      @onmouseenter="OnMouseEnter"
      @onmouseleave="OnMouseLeave"
      @key="@TooltipId">
@@ -139,6 +139,8 @@
     private string SlotTypeClass => SlotId.StartsWith("passive") ? "passive" : "active";
 
     private string DisabledClass => (IsResourceInsufficient || IsConditionNotMet || IsOnCooldown) ? "disabled" : "";
+
+    private string CooldownClass => IsOnCooldown ? "on-cooldown" : "";
 
     private string TriggerClass => JustTriggered ? "triggered" : "";
 
@@ -376,6 +378,12 @@
         filter: grayscale(70%);
         cursor: not-allowed;
     }
+
+        /* Phase 10.6: 资源不足但冷却已完成时的特殊样式 / Special style when resource insufficient but cooldown complete */
+        .skill-icon.disabled:not(.on-cooldown) .skill-icon-inner {
+            background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
+            border: 1px solid #ff6b6b;
+        }
 
     .skill-icon.triggered {
         animation: trigger-flash 0.5s ease;

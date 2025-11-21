@@ -290,12 +290,13 @@ namespace BlazorIdle.Components
                 // 如果配置未变化且缓存存在，更新冷却时间后返回缓存 / If config unchanged and cache exists, update cooldowns and return cache
                 if (_lastSkillConfigKey == configKey && _cachedPlayerSkills != null)
                 {
-                    // 只更新冷却时间（性能优化）/ Only update cooldowns (performance optimization)
+                    // 只更新冷却时间和资源状态（性能优化）/ Only update cooldowns and resource status (performance optimization)
                     foreach (var skillData in _cachedPlayerSkills)
                     {
                         if (skillData.Skill != null)
                         {
                             skillData.RemainingCooldown = battle.GetSkillRemainingCooldown(SelectedCharacter.Id, skillData.Skill.Id);
+                            skillData.IsResourceInsufficient = !CheckSkillResourceSufficient(skillData.Skill, SelectedCharacter.Id);
                         }
                     }
                     return _cachedPlayerSkills;
@@ -326,7 +327,7 @@ namespace BlazorIdle.Components
                                 Skill = skill,
                                 SlotId = kvp.Key,
                                 RemainingCooldown = battle.GetSkillRemainingCooldown(SelectedCharacter.Id, skillId),
-                                IsResourceInsufficient = false, // TODO: 实际检查资源 / Actually check resources
+                                IsResourceInsufficient = !CheckSkillResourceSufficient(skill, SelectedCharacter.Id),
                                 IsConditionNotMet = false, // TODO: 实际检查条件 / Actually check conditions
                                 JustTriggered = false
                             });
@@ -345,7 +346,7 @@ namespace BlazorIdle.Components
                             Skill = skill,
                             SlotId = "passive_1",
                             RemainingCooldown = battle.GetSkillRemainingCooldown(SelectedCharacter.Id, equipConfig.PassiveSlot),
-                            IsResourceInsufficient = false,
+                            IsResourceInsufficient = !CheckSkillResourceSufficient(skill, SelectedCharacter.Id),
                             IsConditionNotMet = false,
                             JustTriggered = false
                         });
@@ -361,6 +362,35 @@ namespace BlazorIdle.Components
         // 缓存玩家装备技能列表 - Cache player equipped skills list
         private List<CharacterPanel.EquippedSkillData>? _cachedPlayerSkills = null;
         private string? _lastSkillConfigKey = null; // 用于检测技能配置变化 / Used to detect skill config changes
+
+        /// <summary>
+        /// Phase 10.6: 检查技能资源是否充足 / Check if skill has sufficient resources
+        /// </summary>
+        private bool CheckSkillResourceSufficient(Game.Skills.SkillDef skill, string characterId)
+        {
+            if (battle == null || skill == null)
+                return true; // 无法检查时默认充足 / Default to sufficient when unable to check
+
+            // 获取角色当前资源 / Get character's current resources
+            var resourceSnapshot = battle.GetResourceSnapshot();
+            if (!resourceSnapshot.TryGetValue(characterId, out var resources))
+                return true; // 没有资源信息时默认充足 / Default to sufficient when no resource info
+
+            // 检查所有资源消耗 / Check all resource costs
+            if (skill.Costs != null && skill.Costs.Count > 0)
+            {
+                foreach (var cost in skill.Costs)
+                {
+                    var currentAmount = resources.GetValueOrDefault(cost.BucketId, 0);
+                    if (currentAmount < cost.Amount)
+                    {
+                        return false; // 资源不足 / Insufficient resource
+                    }
+                }
+            }
+
+            return true; // 资源充足 / Sufficient resources
+        }
         
         // 日志列表 - 存储战斗日志
         // Log list - stores battle logs
