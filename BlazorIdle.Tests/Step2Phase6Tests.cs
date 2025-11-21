@@ -20,10 +20,21 @@ namespace BlazorIdle.Tests
         {
             repo ??= new SkillRepository();
             var conditionChecker = new ConditionChecker();
-            var cooldownManager = new CooldownManager();
+            var cooldownManagers = new Dictionary<string, CooldownManager>();
             var resourceManager = new ResourceManager();
 
-            return new WindowExecutor(repo, conditionChecker, cooldownManager, resourceManager);
+            // Create a lambda that gets or creates a cooldown manager for each caster
+            CooldownManager GetCooldownManager(string casterId)
+            {
+                if (!cooldownManagers.TryGetValue(casterId, out var manager))
+                {
+                    manager = new CooldownManager();
+                    cooldownManagers[casterId] = manager;
+                }
+                return manager;
+            }
+
+            return new WindowExecutor(repo, conditionChecker, GetCooldownManager, resourceManager);
         }
 
         private CharacterData CreateTestCharacter(string professionId = "warrior")

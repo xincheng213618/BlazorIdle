@@ -273,7 +273,7 @@
             {
                 if (skillData.Skill != null)
                 {
-                    skillData.RemainingCooldown = Battle.GetSkillRemainingCooldown(skillData.Skill.Id);
+                    skillData.RemainingCooldown = Battle.GetSkillRemainingCooldown(enemyId, skillData.Skill.Id);
                 }
             }
             return cached;
@@ -299,7 +299,7 @@
                     {
                         Skill = skill,
                         SlotId = $"cast_{slotIndex}",
-                        RemainingCooldown = Battle.GetSkillRemainingCooldown(skillId),
+                        RemainingCooldown = Battle.GetSkillRemainingCooldown(enemyId, skillId),
                         IsResourceInsufficient = false, // 怪物通常不缺资源 / Monsters usually don't lack resources
                         IsConditionNotMet = false,
                         JustTriggered = false
@@ -322,7 +322,7 @@
                     {
                         Skill = skill,
                         SlotId = $"instant_{slotIndex}",
-                        RemainingCooldown = Battle.GetSkillRemainingCooldown(skillId),
+                        RemainingCooldown = Battle.GetSkillRemainingCooldown(enemyId, skillId),
                         IsResourceInsufficient = false,
                         IsConditionNotMet = false,
                         JustTriggered = false

@@ -295,7 +295,7 @@ namespace BlazorIdle.Components
                     {
                         if (skillData.Skill != null)
                         {
-                            skillData.RemainingCooldown = battle.GetSkillRemainingCooldown(skillData.Skill.Id);
+                            skillData.RemainingCooldown = battle.GetSkillRemainingCooldown(SelectedCharacter.Id, skillData.Skill.Id);
                         }
                     }
                     return _cachedPlayerSkills;
@@ -325,7 +325,7 @@ namespace BlazorIdle.Components
                             {
                                 Skill = skill,
                                 SlotId = kvp.Key,
-                                RemainingCooldown = battle.GetSkillRemainingCooldown(skillId),
+                                RemainingCooldown = battle.GetSkillRemainingCooldown(SelectedCharacter.Id, skillId),
                                 IsResourceInsufficient = false, // TODO: 实际检查资源 / Actually check resources
                                 IsConditionNotMet = false, // TODO: 实际检查条件 / Actually check conditions
                                 JustTriggered = false
@@ -344,7 +344,7 @@ namespace BlazorIdle.Components
                         {
                             Skill = skill,
                             SlotId = "passive_1",
-                            RemainingCooldown = battle.GetSkillRemainingCooldown(equipConfig.PassiveSlot),
+                            RemainingCooldown = battle.GetSkillRemainingCooldown(SelectedCharacter.Id, equipConfig.PassiveSlot),
                             IsResourceInsufficient = false,
                             IsConditionNotMet = false,
                             JustTriggered = false
