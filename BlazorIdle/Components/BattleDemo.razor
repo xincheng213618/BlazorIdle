@@ -94,35 +94,51 @@
             <span class="float-end" title="@($"{snapshot.ElapsedMs / 1000.0:0.00}s")">用时: @FormatDuration(snapshot.ElapsedMs)</span>
         </div>
 
-        <div class="row g-3 mb-3">
-            <div class="col-12 col-lg-6">
-                <CharacterPanel Title="@SelectedCharacter.Name"
-                                Subtitle="@GetProfessionName(SelectedCharacter.ProfessionId)"
-                                Tag="@SelectedCharacter.Id"
-                                StatusText="@PlayerStatusText"
-                                Hp="@GetPlayerHp()"
-                                MaxHp="@GetPlayerMaxHp()"
-                                Resources="@playerResources"
-                                ResourceConfig="@playerResourceConfig"
-                                Buffs="@playerBuffs"
-                                EquippedSkills="@playerEquippedSkills"
-                                IsCasting="@isCasting"
-                                CastingProgress01="@castingProgress01"
-                                CastingRemainMs="@castingRemainMs"
-                                CastingSkillName="@castingSkillName"
-                                AttackProgress01="@attackProgress01"
-                                AttackRemainMs="@attackRemainMs"
-                                SpecialProgress01="@specialProgress01"
-                                SpecialRemainMs="@specialRemainMs" />
-            </div>
+        @* 仅在战斗实例存在时显示面板（动态创建模式）/ Only show panels when battle instance exists (dynamic creation mode) *@
+        @if (battle != null && playerTeam != null && enemyTeam != null)
+        {
+            <div class="row g-3 mb-3">
+                <div class="col-12 col-lg-6">
+                    <CharacterPanel Title="@SelectedCharacter.Name"
+                                    Subtitle="@GetProfessionName(SelectedCharacter.ProfessionId)"
+                                    Tag="@SelectedCharacter.Id"
+                                    StatusText="@PlayerStatusText"
+                                    Hp="@GetPlayerHp()"
+                                    MaxHp="@GetPlayerMaxHp()"
+                                    Resources="@playerResources"
+                                    ResourceConfig="@playerResourceConfig"
+                                    Buffs="@playerBuffs"
+                                    EquippedSkills="@playerEquippedSkills"
+                                    IsCasting="@isCasting"
+                                    CastingProgress01="@castingProgress01"
+                                    CastingRemainMs="@castingRemainMs"
+                                    CastingSkillName="@castingSkillName"
+                                    AttackProgress01="@attackProgress01"
+                                    AttackRemainMs="@attackRemainMs"
+                                    SpecialProgress01="@specialProgress01"
+                                    SpecialRemainMs="@specialRemainMs" />
+                </div>
 
-            <div class="col-12 col-lg-6">
-                <EnemyTeamPanel Title="敌人队伍"
-                                Team="@enemyTeam"
-                                Battle="@battle"
-                                NameResolver="@GetEnemyDisplayName" />
+                <div class="col-12 col-lg-6">
+                    <EnemyTeamPanel Title="敌人队伍"
+                                    Team="@enemyTeam"
+                                    Battle="@battle"
+                                    NameResolver="@GetEnemyDisplayName" />
+                </div>
             </div>
-        </div>
+        }
+        else
+        {
+            @* 战斗未开始时的占位提示 / Placeholder when battle not started *@
+            <div class="row g-3 mb-3">
+                <div class="col-12">
+                    <div class="alert alert-secondary text-center">
+                        <i class="bi bi-info-circle me-2"></i>
+                        点击"开始战斗"以创建战斗面板
+                    </div>
+                </div>
+            </div>
+        }
 
         <div class="btn-group mb-3">
             <button class="btn btn-success" @onclick="StartBattle" disabled="@(!configReady || isRunning)">开始战斗</button>
