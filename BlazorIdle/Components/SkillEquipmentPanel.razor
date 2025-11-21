@@ -69,7 +69,13 @@
                                             aria-selected="@(selectedSkillId == skill.Id)">
                                             <div class="skill-item-icon">@GetSkillIcon(skill)</div>
                                             <div class="skill-item-main">
-                                                <div class="skill-item-name">@skill.Name</div>
+                                                <div class="skill-item-name">
+                                                    @skill.Name
+                                                    @if (skill.Fixed)
+                                                    {
+                                                        <span class="badge bg-secondary ms-1" style="font-size: 0.65rem;">职业</span>
+                                                    }
+                                                </div>
                                                 <div class="skill-meta small">
                                                     @if (skill.CooldownSec > 0)
                                                     {
@@ -109,29 +115,6 @@
                 <!-- 右侧：槽位配置 -->
                 <div class="se-right">
                     <div class="slots-wrapper">
-                        <!-- 固定技能 -->
-                        @if (fixedSkills.Count > 0)
-                        {
-                            <div class="slot-section mb-3">
-                                <h6 class="slot-title">
-                                    <span class="badge bg-secondary">职业固定技能</span>
-                                    <span class="ms-2 small text-muted">不可更改</span>
-                                </h6>
-                                <div class="slot-grid fixed">
-                                    @foreach (var skill in fixedSkills)
-                                    {
-                                        <div class="skill-slot fixed-slot">
-                                            <div class="slot-icon">@GetSkillIcon(skill)</div>
-                                            <div class="slot-info">
-                                                <div class="slot-name">@skill.Name</div>
-                                                <div class="slot-desc text-muted small">@GetSkillDescription(skill)</div>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        }
-
                         <!-- 主动技能槽位 -->
                         <div class="slot-section mb-3">
                             <h6 class="slot-title">
@@ -681,15 +664,18 @@
         }
 
         var learnedSkills = _learningManager.GetLearnedSkills(Character);
+        
+        // Combine learned skills with fixed skills (fixed skills don't need to be learned)
+        var allAvailableSkills = learnedSkills.Concat(fixedSkills).Distinct().ToList();
 
-        activeSkills = learnedSkills
+        activeSkills = allAvailableSkills
             .Where(s => s.SlotType == "active" &&
                         (s.AllowedProfessions == null ||
                          s.AllowedProfessions.Count == 0 ||
                          s.AllowedProfessions.Contains(ProfessionId)))
             .ToList();
 
-        passiveSkills = learnedSkills
+        passiveSkills = allAvailableSkills
             .Where(s => s.SlotType == "passive" &&
                         (s.AllowedProfessions == null ||
                          s.AllowedProfessions.Count == 0 ||
