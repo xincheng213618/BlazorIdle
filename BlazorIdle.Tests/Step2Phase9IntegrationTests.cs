@@ -223,7 +223,12 @@ namespace BlazorIdle.Tests
 
             CooldownManager GetCooldownManager(string casterId)
             {
-                return cooldownManagers[casterId];
+                if (!cooldownManagers.TryGetValue(casterId, out var manager))
+                {
+                    manager = new CooldownManager();
+                    cooldownManagers[casterId] = manager;
+                }
+                return manager;
             }
 
             var autoCastEngine = new AutoCastEngine(repo, conditionChecker, GetCooldownManager, resourceManager);
@@ -281,8 +286,11 @@ namespace BlazorIdle.Tests
             Assert.NotEmpty(char1Skills);
             Assert.Equal("warrior_mortal_strike", char1Skills[0].Id);
 
-            // 模拟技能施放后进入冷却（5秒冷却）
-            cooldownManager1.StartCooldown("warrior_mortal_strike", 5.0);
+            // 模拟技能施放后进入冷却（使用技能定义的冷却时间）
+            // Simulate skill going on cooldown (use cooldown from skill definition)
+            var skillDef = repo.GetSkill("warrior_mortal_strike");
+            var cooldownDuration = skillDef?.CooldownSec ?? 5.0;
+            cooldownManager1.StartCooldown("warrior_mortal_strike", cooldownDuration);
 
             // Assert: Char1 的技能应该在冷却中
             // Assert: Char1's skill should be on cooldown
@@ -300,8 +308,9 @@ namespace BlazorIdle.Tests
             Assert.NotEmpty(char2Skills);
             Assert.Equal("warrior_mortal_strike", char2Skills[0].Id);
 
-            // 使用后Char2的技能也进入冷却
-            cooldownManager2.StartCooldown("warrior_mortal_strike", 5.0);
+            // 使用后Char2的技能也进入冷却（使用相同的冷却时间）
+            // After use, Char2's skill also goes on cooldown (use same cooldown duration)
+            cooldownManager2.StartCooldown("warrior_mortal_strike", cooldownDuration);
 
             // 最终验证：两个角色的冷却是完全独立的
             // Final verification: Both characters' cooldowns are completely independent
