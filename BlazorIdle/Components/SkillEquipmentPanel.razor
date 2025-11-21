@@ -25,19 +25,17 @@
         }
         else
         {
-            <!-- 左右分栏 -->
             <div class="se-split">
-                <!-- 左侧：可装备技能列表 -->
+                <!-- 左侧：技能列表（主动 / 被动） -->
                 <div class="se-left">
                     <div class="skill-categories">
-                        <!-- 分类 Tabs -->
                         <div class="category-tabs" role="tablist" aria-label="技能类型切换">
                             <button type="button"
                                     class="cat-tab @(currentFilter == SkillTypeFilter.Active ? "active" : null)"
                                     role="tab"
                                     aria-selected="@(currentFilter == SkillTypeFilter.Active)"
                                     @onclick="() => SetFilter(SkillTypeFilter.Active)">
-                                <span class="badge bg-primary">主动技能</span>
+                                <span class="badge bg-primary">主动</span>
                                 <span class="cat-count">@activeSkillsCount</span>
                             </button>
                             <button type="button"
@@ -45,7 +43,7 @@
                                     role="tab"
                                     aria-selected="@(currentFilter == SkillTypeFilter.Passive)"
                                     @onclick="() => SetFilter(SkillTypeFilter.Passive)">
-                                <span class="badge bg-success">被动技能</span>
+                                <span class="badge bg-info">被动</span>
                                 <span class="cat-count">@passiveSkillsCount</span>
                             </button>
                         </div>
@@ -57,30 +55,33 @@
                         @if (filtered.Count > 0)
                         {
                             <div class="skill-section">
-                                <h6 class="section-title-small">
+                                <h6 class="section-title">
                                     <span class="badge @GetFilterBadgeClass()">@GetFilterText()</span>
-                                    <span class="ms-2">共 @filtered.Count 个</span>
+                                    <span class="ms-2 text-muted small">共 @filtered.Count 个技能</span>
                                 </h6>
                                 <ul class="skill-item-list">
                                     @foreach (var skill in filtered)
                                     {
                                         var isEquipped = IsSkillEquipped(skill.Id);
-                                        <li class="skill-item @(isEquipped ? "equipped-item" : "") @(selectedSkillId == skill.Id ? "selected" : null)"
+                                        <li class="skill-item @(isEquipped ? "equipped" : "") @(selectedSkillId == skill.Id ? "selected" : null)"
                                             role="button"
                                             @onclick="@(() => SelectAndEquipSkill(skill.Id))"
                                             aria-selected="@(selectedSkillId == skill.Id)">
                                             <div class="skill-item-icon">@GetSkillIcon(skill)</div>
                                             <div class="skill-item-main">
                                                 <div class="skill-item-name">@skill.Name</div>
-                                                <div class="skill-item-info">
+                                                <div class="skill-meta small">
                                                     @if (skill.CooldownSec > 0)
                                                     {
-                                                        <span class="text-muted small">CD: @skill.CooldownSec s</span>
+                                                        <span class="me-2 text-muted">CD @skill.CooldownSec s</span>
                                                     }
                                                     @if (skill.Costs != null && skill.Costs.Count > 0)
                                                     {
-                                                        <span class="ms-2 text-primary small">
-                                                            @string.Join(", ", skill.Costs.Select(c => $"{c.Amount} {GetResourceName(c.BucketId)}"))
+                                                        <span class="text-danger">
+                                                            @foreach (var cost in skill.Costs)
+                                                            {
+                                                                <span class="me-2">-@cost.Amount @GetResourceName(cost.BucketId)</span>
+                                                            }
                                                         </span>
                                                     }
                                                 </div>
@@ -98,122 +99,128 @@
                         }
                         else
                         {
-                            <div class="no-skills-message">
-                                <p class="text-muted">暂无可装备的@GetFilterText()</p>
-                                <p class="hint">请先在技能学习界面学习技能</p>
+                            <div class="alert alert-info my-2">
+                                当前分类暂无技能。
                             </div>
                         }
                     </div>
                 </div>
 
-                <!-- 右侧：技能槽位区域 -->
+                <!-- 右侧：槽位配置 -->
                 <div class="se-right">
-                    <!-- 固定技能区域 -->
-                    @if (fixedSkills.Count > 0)
-                    {
-                        <div class="fixed-skills-section mb-3">
-                            <h6 class="section-title">
-                                <span class="badge bg-secondary">职业固定技能</span>
-                                <span class="ms-2 small text-muted">不可更改</span>
-                            </h6>
-                            @foreach (var skill in fixedSkills)
-                            {
-                                <div class="skill-slot fixed-slot">
-                                    <div class="slot-indicator">
-                                        <span class="badge bg-secondary">固定</span>
-                                    </div>
-                                    <div class="equipped-skill">
-                                        <div class="skill-icon-small">@GetSkillIcon(skill)</div>
-                                        <div class="skill-name-small">@skill.Name</div>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    }
-
-                    <!-- 主动技能槽位 -->
-                    <div class="configurable-slots-section mb-3">
-                        <h6 class="section-title">
-                            <span class="badge bg-primary">主动技能槽位</span>
-                            <span class="ms-2 small text-muted">3个槽位</span>
-                        </h6>
-                        @for (int i = 1; i <= 3; i++)
+                    <div class="slots-wrapper">
+                        <!-- 固定技能 -->
+                        @if (fixedSkills.Count > 0)
                         {
-                            var slotId = $"active_{i}";
-                            var equippedSkillId = GetEquippedSkillId(slotId);
-                            var isSelected = SelectedSlot == slotId;
-
-                            <div class="skill-slot @(isSelected ? "selected" : "")"
-                                 role="button"
-                                 @onclick="() => SelectSlot(slotId)"
-                                 aria-selected="@isSelected">
-                                <div class="slot-indicator">
-                                    <span class="badge bg-primary">@i</span>
-                                </div>
-                                @if (!string.IsNullOrEmpty(equippedSkillId))
-                                {
-                                    var skill = GetSkill(equippedSkillId);
-                                    if (skill != null)
+                            <div class="slot-section mb-3">
+                                <h6 class="slot-title">
+                                    <span class="badge bg-secondary">职业固定技能</span>
+                                    <span class="ms-2 small text-muted">不可更改</span>
+                                </h6>
+                                <div class="slot-grid fixed">
+                                    @foreach (var skill in fixedSkills)
                                     {
-                                        <div class="equipped-skill">
-                                            <div class="skill-icon-small">@GetSkillIcon(skill)</div>
-                                            <div class="skill-name-small">@skill.Name</div>
-                                            <button class="btn-unequip"
-                                                    @onclick:stopPropagation="true"
-                                                    @onclick="() => UnequipFromSlot(slotId)"
-                                                    title="卸载技能">×</button>
+                                        <div class="skill-slot fixed-slot">
+                                            <div class="slot-icon">@GetSkillIcon(skill)</div>
+                                            <div class="slot-info">
+                                                <div class="slot-name">@skill.Name</div>
+                                                <div class="slot-desc text-muted small">@GetSkillDescription(skill)</div>
+                                            </div>
                                         </div>
                                     }
-                                }
-                                else
-                                {
-                                    <div class="empty-slot">
-                                        <span>空槽位</span>
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
-
-                    <!-- 被动技能槽位 -->
-                    <div class="configurable-slots-section">
-                        <h6 class="section-title">
-                            <span class="badge bg-success">被动技能槽位</span>
-                            <span class="ms-2 small text-muted">1个槽位</span>
-                        </h6>
-                        @{
-                            var passiveSlotId = "passive_1";
-                            var equippedPassiveId = GetEquippedSkillId(passiveSlotId);
-                            var isPassiveSelected = SelectedSlot == passiveSlotId;
-                        }
-                        <div class="skill-slot passive @(isPassiveSelected ? "selected" : "")"
-                             role="button"
-                             @onclick="() => SelectSlot(passiveSlotId)"
-                             aria-selected="@isPassiveSelected">
-                            <div class="slot-indicator">
-                                <span class="badge bg-success">P</span>
-                            </div>
-                            @if (!string.IsNullOrEmpty(equippedPassiveId))
-                            {
-                                var skill = GetSkill(equippedPassiveId);
-                                if (skill != null)
-                                {
-                                    <div class="equipped-skill">
-                                        <div class="skill-icon-small passive">@GetSkillIcon(skill)</div>
-                                        <div class="skill-name-small">@skill.Name</div>
-                                        <button class="btn-unequip"
-                                                @onclick:stopPropagation="true"
-                                                @onclick="() => UnequipFromSlot(passiveSlotId)"
-                                                title="卸载技能">×</button>
-                                    </div>
-                                }
-                            }
-                            else
-                            {
-                                <div class="empty-slot">
-                                    <span>空槽位</span>
                                 </div>
+                            </div>
+                        }
+
+                        <!-- 主动技能槽位 -->
+                        <div class="slot-section mb-3">
+                            <h6 class="slot-title">
+                                <span class="badge bg-primary">主动技能槽位</span>
+                                <span class="ms-2 small text-muted">3 个槽位</span>
+                            </h6>
+                            <div class="slot-grid">
+                                @for (int i = 1; i <= 3; i++)
+                                {
+                                    var slotId = $"active_{i}";
+                                    var equippedSkillId = GetEquippedSkillId(slotId);
+                                    var isSelected = SelectedSlot == slotId;
+                                    <div class="skill-slot @(isSelected ? "selected" : "")"
+                                         role="button"
+                                         @onclick="() => SelectSlot(slotId)"
+                                         aria-selected="@isSelected">
+                                        <div class="slot-index badge bg-primary">@i</div>
+                                        @if (!string.IsNullOrEmpty(equippedSkillId))
+                                        {
+                                            var skill = GetSkill(equippedSkillId);
+                                            if (skill != null)
+                                            {
+                                                <div class="slot-icon">@GetSkillIcon(skill)</div>
+                                                <div class="slot-info">
+                                                    <div class="slot-name">@skill.Name</div>
+                                                    <div class="slot-desc text-muted small">@GetSkillDescription(skill)</div>
+                                                </div>
+                                                <button class="btn-unequip-slot"
+                                                        @onclick:stopPropagation="true"
+                                                        @onclick="() => UnequipFromSlot(slotId)"
+                                                        title="卸载">
+                                                    ×
+                                                </button>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <div class="slot-empty flex-grow-1 text-muted small">
+                                                空槽位 (点击选择后左侧点技能以装备)
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- 被动技能槽位 -->
+                        <div class="slot-section">
+                            <h6 class="slot-title">
+                                <span class="badge bg-info">被动技能槽位</span>
+                                <span class="ms-2 small text-muted">1 个槽位</span>
+                            </h6>
+                            @{
+                                var passiveSlotId = "passive_1";
+                                var equippedPassiveId = GetEquippedSkillId(passiveSlotId);
+                                var isPassiveSelected = SelectedSlot == passiveSlotId;
                             }
+                            <div class="slot-grid">
+                                <div class="skill-slot passive @(isPassiveSelected ? "selected" : "")"
+                                     role="button"
+                                     @onclick="() => SelectSlot(passiveSlotId)"
+                                     aria-selected="@isPassiveSelected">
+                                    <div class="slot-index badge bg-info">P</div>
+                                    @if (!string.IsNullOrEmpty(equippedPassiveId))
+                                    {
+                                        var skill = GetSkill(equippedPassiveId);
+                                        if (skill != null)
+                                        {
+                                            <div class="slot-icon passive">@GetSkillIcon(skill)</div>
+                                            <div class="slot-info">
+                                                <div class="slot-name">@skill.Name</div>
+                                                <div class="slot-desc text-muted small">@GetSkillDescription(skill)</div>
+                                            </div>
+                                            <button class="btn-unequip-slot"
+                                                    @onclick:stopPropagation="true"
+                                                    @onclick="() => UnequipFromSlot(passiveSlotId)"
+                                                    title="卸载">
+                                                ×
+                                            </button>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="slot-empty flex-grow-1 text-muted small">
+                                            空槽位 (被动技能)
+                                        </div>
+                                    }
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -223,16 +230,18 @@
 </div>
 
 <style>
+    /* 卡片基础样式与 SkillLearningPanel 保持一致风格 */
     .skill-equipment-card {
+        background: #fff;
         border: 1px solid #e5e5e5;
         border-radius: 8px;
         margin-bottom: 20px;
         box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-        overflow: hidden;
+        /* 不使用 overflow:hidden 避免微小位移被裁剪 */
     }
 
     .se-header {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: #fff;
         padding: 12px 16px;
         cursor: pointer;
@@ -253,42 +262,47 @@
     .se-split {
         display: flex;
         gap: 16px;
-        min-height: 400px;
+        min-height: 320px;
     }
 
     .se-left {
         width: 38%;
-        min-width: 280px;
+        min-width: 260px;
         border: 1px solid #e9ecef;
         border-radius: 8px;
         padding: 12px;
         background: #fcfcfd;
         display: flex;
         flex-direction: column;
-        max-height: 70vh;
+        max-height: 60vh;
         overflow: hidden;
     }
 
     .se-right {
         flex: 1;
+        min-width: 0;
         border: 1px solid #e9ecef;
         border-radius: 8px;
         padding: 16px;
         background: #fff;
+        display: flex;
+        flex-direction: column;
+        max-height: 60vh;
         overflow-y: auto;
-        max-height: 70vh;
     }
 
-    /* Left panel scrolling */
-    .skill-categories {
+    /* 左侧滚动容器 */
+    .se-left .skill-categories {
         flex: 1;
         min-height: 0;
         overflow-y: auto;
+        padding-right: 4px;
         display: flex;
         flex-direction: column;
+        gap: 12px;
     }
 
-    /* Category tabs */
+    /* Tabs 与学习面板统一 */
     .category-tabs {
         display: flex;
         gap: 8px;
@@ -297,105 +311,112 @@
         z-index: 2;
         background: #fcfcfd;
         padding-bottom: 8px;
+        margin-bottom: 4px;
         border-bottom: 1px solid #e9ecef;
-        margin-bottom: 12px;
-        flex-shrink: 0;
     }
 
     .cat-tab {
-        flex: 1;
-        padding: 8px 12px;
-        background: white;
-        border: 2px solid #dee2e6;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border: 1px solid #dee2e6;
+        background: #fff;
+        color: #495057;
         border-radius: 6px;
         cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
+        transition: box-shadow .15s, border-color .15s, transform .1s;
+        flex: 1;
         justify-content: center;
-        gap: 8px;
     }
 
         .cat-tab:hover {
-            border-color: #2196F3;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,.06);
         }
 
         .cat-tab.active {
-            border-color: #4CAF50;
-            background: #f1f8f4;
+            border-color: #6c63ff;
+            box-shadow: 0 0 0 2px rgba(102,126,234,.15);
         }
 
     .cat-count {
+        font-size: .75rem;
+        color: #6c757d;
         font-weight: 600;
-        color: #666;
     }
 
-    /* Skills section */
     .skill-section {
-        flex: 1;
-        min-height: 0;
         display: flex;
         flex-direction: column;
+        gap: 8px;
+        flex: 1;
+        min-height: 0;
     }
 
-    .section-title-small {
+    .section-title {
+        margin: 0;
         font-size: 0.85rem;
         font-weight: 600;
         color: #495057;
-        margin-bottom: 8px;
         display: flex;
         align-items: center;
-        flex-shrink: 0;
+        position: sticky;
+        top: 48px;
+        background: #fcfcfd;
+        padding: 4px 0 6px;
+        z-index: 1;
     }
 
     .skill-item-list {
         list-style: none;
         padding: 0;
         margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
         overflow-y: auto;
-        flex: 1;
+        min-height: 0;
     }
 
     .skill-item {
         display: flex;
         align-items: center;
         gap: 10px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
         padding: 10px;
-        margin-bottom: 6px;
-        background: white;
-        border: 2px solid #e0e0e0;
-        border-radius: 6px;
+        background: #fff;
+        transition: border-color .15s, box-shadow .15s, transform .1s;
         cursor: pointer;
-        transition: all 0.2s;
     }
 
         .skill-item:hover {
-            border-color: #2196F3;
-            transform: translateX(2px);
+            box-shadow: 0 2px 10px rgba(0,0,0,.06);
+            transform: translateY(-1px);
         }
 
         .skill-item.selected {
-            border-color: #4CAF50;
-            background: #f1f8f4;
+            outline: 2px solid #a3bffa;
         }
 
-        .skill-item.equipped-item {
-            border-color: #4CAF50;
-            background: #f9fdf9;
+        .skill-item.equipped {
+            border-left: 3px solid #28a745;
+            background: #f7fbf8;
         }
 
     .skill-item-icon {
-        width: 36px;
-        height: 36px;
+        width: 40px;
+        height: 40px;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 4px;
+        color: #fff;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: bold;
-        font-size: 1rem;
+        font-size: 20px;
         flex-shrink: 0;
+        font-weight: 600;
     }
 
     .skill-item-main {
@@ -404,174 +425,188 @@
     }
 
     .skill-item-name {
-        font-weight: 500;
-        color: #333;
-        font-size: 0.9rem;
+        font-weight: 600;
+        color: #212529;
         margin-bottom: 2px;
     }
 
-    .skill-item-info {
-        font-size: 0.75rem;
-        color: #666;
+    .skill-meta span {
+        white-space: nowrap;
     }
 
     .skill-item-status {
         flex-shrink: 0;
     }
 
-    .no-skills-message {
-        text-align: center;
-        padding: 30px 10px;
+    /* 槽位区 */
+    .slots-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
     }
 
-    .section-title {
-        font-size: 0.9rem;
+    .slot-section .slot-title {
+        font-size: 0.85rem;
         font-weight: 600;
         color: #495057;
-        margin-bottom: 10px;
         display: flex;
         align-items: center;
+        margin-bottom: 10px;
     }
 
-    /* Fixed skills */
-    .fixed-slot {
-        background: #f8f9fa !important;
-        border: 2px solid #dee2e6 !important;
-        cursor: default !important;
-        opacity: 0.85;
+    .slot-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
     }
 
-        .fixed-slot:hover {
-            border-color: #dee2e6 !important;
-            transform: none !important;
-        }
-
-    /* Skill slots */
     .skill-slot {
         position: relative;
-        padding: 10px;
-        background: white;
-        border: 2px solid #ddd;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.2s;
-        min-height: 65px;
         display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 8px;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px 14px;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        transition: border-color .15s, box-shadow .15s, background .15s;
+        cursor: pointer;
+        min-height: 72px;
     }
 
-        .skill-slot:hover:not(.fixed-slot) {
-            border-color: #2196F3;
-            transform: translateX(2px);
+        .skill-slot:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102,126,234,.25);
         }
 
         .skill-slot.selected {
-            border-color: #4CAF50;
-            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
-            background: #f1f8f4;
+            border-color: #6c63ff;
+            box-shadow: 0 0 0 2px rgba(102,126,234,.2);
+            background: #f5f7ff;
         }
 
         .skill-slot.passive {
-            border-color: #9C27B0;
+            border-left: 4px solid #6f42c1;
         }
 
-            .skill-slot.passive.selected {
-                border-color: #7B1FA2;
-                box-shadow: 0 0 0 3px rgba(156, 39, 176, 0.2);
+        .skill-slot.fixed-slot {
+            cursor: default;
+            background: #f8f9fa;
+            border-left: 4px solid #6c757d;
+        }
+
+            .skill-slot.fixed-slot:hover {
+                box-shadow: none;
+                border-color: #dee2e6;
             }
 
-    .slot-indicator {
-        min-width: 32px;
+    .slot-index {
+        font-size: 0.7rem;
+        padding: 6px 8px;
+        align-self: flex-start;
     }
 
-        .slot-indicator .badge {
-            font-size: 0.75rem;
-            padding: 4px 8px;
-        }
-
-    .equipped-skill {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .skill-icon-small {
-        width: 36px;
-        height: 36px;
+    .slot-icon {
+        width: 44px;
+        height: 44px;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 4px;
+        color: #fff;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: bold;
-        font-size: 1.1rem;
+        font-size: 22px;
+        font-weight: 600;
+        flex-shrink: 0;
     }
 
-        .skill-icon-small.passive {
-            background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);
+        .slot-icon.passive {
+            background: linear-gradient(135deg, #6f42c1 0%, #9c6bf3 100%);
         }
 
-    .skill-name-small {
+    .slot-info {
         flex: 1;
-        font-weight: 500;
-        color: #333;
-        font-size: 0.9rem;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
     }
 
-    .btn-unequip {
+    .slot-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #212529;
+        line-height: 1.2;
+    }
+
+    .slot-desc {
+        line-height: 1.1;
+    }
+
+    .slot-empty {
+        display: flex;
+        align-items: center;
+        font-style: italic;
+    }
+
+    .btn-unequip-slot {
+        position: absolute;
+        top: 6px;
+        right: 6px;
         width: 24px;
         height: 24px;
-        background: #f44336;
-        color: white;
         border: none;
+        background: #f44336;
+        color: #fff;
         border-radius: 50%;
-        cursor: pointer;
-        font-size: 16px;
+        font-size: 14px;
         line-height: 1;
-        padding: 0;
         display: flex;
         align-items: center;
         justify-content: center;
+        cursor: pointer;
+        transition: background .15s;
     }
 
-        .btn-unequip:hover {
+        .btn-unequip-slot:hover {
             background: #d32f2f;
         }
 
-    .empty-slot {
-        flex: 1;
-        text-align: center;
-        color: #999;
-        font-style: italic;
-        font-size: 0.85rem;
+    /* 响应式 */
+    @@media (max-width: 992px) {
+        .se-split {
+            flex-direction: column;
+        }
+
+        .se-left {
+            width: 100%;
+            max-height: none;
+        }
+
+        .section-title {
+            top: 0;
+        }
     }
 
-    .hint {
-        font-size: 13px;
-        color: #bbb;
-        margin-top: 6px;
+    @@media (max-width: 600px) {
+        .skill-item-icon, .slot-icon {
+            width: 36px;
+            height: 36px;
+            font-size: 18px;
+        }
+
+        .skill-slot {
+            min-height: 64px;
+        }
     }
 </style>
 
 @code {
-    [Parameter]
-    public CharacterData? Character { get; set; }
-
-    [Parameter]
-    public string ProfessionId { get; set; } = "warrior";
-
-    [Parameter]
-    public bool StartCollapsed { get; set; }
-
-    [Parameter]
-    public EventCallback OnSkillEquipped { get; set; }
-
-    [Parameter]
-    public EventCallback OnSkillUnequipped { get; set; }
+    [Parameter] public CharacterData? Character { get; set; }
+    [Parameter] public string ProfessionId { get; set; } = "warrior";
+    [Parameter] public bool StartCollapsed { get; set; }
+    [Parameter] public EventCallback OnSkillEquipped { get; set; }
+    [Parameter] public EventCallback OnSkillUnequipped { get; set; }
 
     private bool isCollapsed;
     private string? SelectedSlot { get; set; }
@@ -584,18 +619,15 @@
     private List<SkillDef> fixedSkills = new();
     private List<SkillDef> activeSkills = new();
     private List<SkillDef> passiveSkills = new();
-    
-    // Tracking for profession switching
+
     private string _previousProfessionId = "";
     private CharacterData? _previousCharacter;
 
-    // Skill type filter
     private enum SkillTypeFilter { Active, Passive }
     private SkillTypeFilter currentFilter = SkillTypeFilter.Active;
 
     private int activeSkillsCount => activeSkills.Count;
     private int passiveSkillsCount => passiveSkills.Count;
-
     private string ProfessionName => GetProfessionName(ProfessionId);
 
     protected override void OnInitialized()
@@ -610,18 +642,15 @@
     {
         var professionChanged = _previousProfessionId != ProfessionId;
         var characterChanged = _previousCharacter != Character;
-        
-        // Check for profession switching
+
         if (professionChanged)
         {
             _previousProfessionId = ProfessionId;
-            // Clear selected slot and skill when profession changes
             SelectedSlot = null;
             selectedSkillId = null;
             currentFilter = SkillTypeFilter.Active;
         }
 
-        // Only refresh if data actually changed
         if (professionChanged || characterChanged)
         {
             RefreshFixedSkills();
@@ -633,14 +662,12 @@
 
     private void RefreshFixedSkills()
     {
-        // Get fixed skills (excluding attack_basic and special_pulse)
-        // AND must have the current profession in AllowedProfessions to avoid showing monster skills
         fixedSkills = _skillRepository.GetSkillsByProfession(ProfessionId)
-            .Where(s => s.Fixed && 
-                       !s.Id.EndsWith("_attack_basic") && 
-                       !s.Id.EndsWith("_special_pulse") &&
-                       s.AllowedProfessions != null &&
-                       s.AllowedProfessions.Contains(ProfessionId))
+            .Where(s => s.Fixed &&
+                        !s.Id.EndsWith("_attack_basic") &&
+                        !s.Id.EndsWith("_special_pulse") &&
+                        s.AllowedProfessions != null &&
+                        s.AllowedProfessions.Contains(ProfessionId))
             .ToList();
     }
 
@@ -654,20 +681,19 @@
         }
 
         var learnedSkills = _learningManager.GetLearnedSkills(Character);
-        
-        // Filter by profession and slot type
+
         activeSkills = learnedSkills
-            .Where(s => s.SlotType == "active" && 
-                       (s.AllowedProfessions == null || 
-                        s.AllowedProfessions.Count == 0 || 
-                        s.AllowedProfessions.Contains(ProfessionId)))
+            .Where(s => s.SlotType == "active" &&
+                        (s.AllowedProfessions == null ||
+                         s.AllowedProfessions.Count == 0 ||
+                         s.AllowedProfessions.Contains(ProfessionId)))
             .ToList();
 
         passiveSkills = learnedSkills
-            .Where(s => s.SlotType == "passive" && 
-                       (s.AllowedProfessions == null || 
-                        s.AllowedProfessions.Count == 0 || 
-                        s.AllowedProfessions.Contains(ProfessionId)))
+            .Where(s => s.SlotType == "passive" &&
+                        (s.AllowedProfessions == null ||
+                         s.AllowedProfessions.Count == 0 ||
+                         s.AllowedProfessions.Contains(ProfessionId)))
             .ToList();
     }
 
@@ -675,8 +701,6 @@
     {
         if (Character != null && _equipmentManager != null)
         {
-            // Ensure profession config exists, but DON'T auto-equip attack_basic/special_pulse
-            // Just create the config structure if it doesn't exist
             if (!Character.EquippedSkillsByProfession.ContainsKey(ProfessionId))
             {
                 Character.EquippedSkillsByProfession[ProfessionId] = new EquippedSkillsConfig
@@ -695,31 +719,23 @@
     }
 
     private IEnumerable<SkillDef> GetFilteredSkills()
-    {
-        return currentFilter == SkillTypeFilter.Active ? activeSkills : passiveSkills;
-    }
+        => currentFilter == SkillTypeFilter.Active ? activeSkills : passiveSkills;
 
     private string GetFilterText()
-    {
-        return currentFilter == SkillTypeFilter.Active ? "主动技能" : "被动技能";
-    }
+        => currentFilter == SkillTypeFilter.Active ? "主动技能" : "被动技能";
 
     private string GetFilterBadgeClass()
-    {
-        return currentFilter == SkillTypeFilter.Active ? "bg-primary" : "bg-success";
-    }
+        => currentFilter == SkillTypeFilter.Active ? "bg-primary" : "bg-info";
 
     private void SelectAndEquipSkill(string skillId)
     {
         selectedSkillId = skillId;
-        
-        // Auto-select appropriate slot if none selected
+
         if (string.IsNullOrEmpty(SelectedSlot))
         {
             var skill = _skillRepository.GetSkill(skillId);
             if (skill != null)
             {
-                // Find first empty slot of matching type
                 if (skill.SlotType == "active")
                 {
                     for (int i = 1; i <= 3; i++)
@@ -731,7 +747,6 @@
                             break;
                         }
                     }
-                    // If no empty slot, select first slot
                     if (string.IsNullOrEmpty(SelectedSlot))
                         SelectedSlot = "active_1";
                 }
@@ -742,7 +757,6 @@
             }
         }
 
-        // Equip to selected slot
         if (!string.IsNullOrEmpty(SelectedSlot))
         {
             EquipToSelectedSlot(skillId);
@@ -754,37 +768,52 @@
     private string? GetEquippedSkillId(string slotId)
     {
         if (Character == null) return null;
-        
         if (!Character.EquippedSkillsByProfession.TryGetValue(ProfessionId, out var config))
             return null;
-
-        if (slotId == "passive_1")
-            return config.PassiveSlot;
-        
+        if (slotId == "passive_1") return config.PassiveSlot;
         return config.ActiveSlots.GetValueOrDefault(slotId);
     }
 
-    private SkillDef? GetSkill(string skillId)
-    {
-        return _skillRepository.GetSkill(skillId);
-    }
+    private SkillDef? GetSkill(string skillId) => _skillRepository.GetSkill(skillId);
 
     private void SelectSlot(string slotId)
     {
         SelectedSlot = slotId;
+
+        // 根据槽位类型自动切换左侧过滤
+        if (slotId.StartsWith("active_", StringComparison.OrdinalIgnoreCase))
+        {
+            if (currentFilter != SkillTypeFilter.Active)
+            {
+                currentFilter = SkillTypeFilter.Active;
+                // 不清空已选技能，方便直接点左侧同类型技能进行替换
+            }
+        }
+        else if (slotId.StartsWith("passive_", StringComparison.OrdinalIgnoreCase))
+        {
+            if (currentFilter != SkillTypeFilter.Passive)
+            {
+                currentFilter = SkillTypeFilter.Passive;
+            }
+        }
+
+        // 如果当前没有选中的技能，且槽位里已有技能，则高亮该技能
+        if (string.IsNullOrEmpty(selectedSkillId))
+        {
+            var equipped = GetEquippedSkillId(slotId);
+            if (!string.IsNullOrEmpty(equipped))
+                selectedSkillId = equipped;
+        }
+
         StateHasChanged();
     }
 
     private bool IsSkillEquipped(string skillId)
     {
         if (Character == null) return false;
-        
         if (!Character.EquippedSkillsByProfession.TryGetValue(ProfessionId, out var config))
             return false;
-
-        if (config.PassiveSlot == skillId)
-            return true;
-
+        if (config.PassiveSlot == skillId) return true;
         return config.ActiveSlots.Values.Any(v => v == skillId);
     }
 
@@ -796,7 +825,7 @@
         if (_equipmentManager.EquipSkill(Character, ProfessionId, SelectedSlot, skillId))
         {
             await OnSkillEquipped.InvokeAsync();
-            RefreshAvailableSkills(); // Refresh to update equipped status
+            RefreshAvailableSkills();
             StateHasChanged();
         }
     }
@@ -808,7 +837,7 @@
         if (_equipmentManager.UnequipSkill(Character, ProfessionId, slotId))
         {
             await OnSkillUnequipped.InvokeAsync();
-            RefreshAvailableSkills(); // Refresh to update equipped status
+            RefreshAvailableSkills();
             StateHasChanged();
         }
     }
@@ -825,28 +854,22 @@
         return skill.Type == "passive" ? "被动效果" : "特殊技能";
     }
 
-    private string GetResourceName(string bucketId)
+    private string GetResourceName(string bucketId) => bucketId switch
     {
-        return bucketId switch
-        {
-            "rage" => "怒气",
-            "mana" => "法力",
-            "energy" => "能量",
-            _ => bucketId
-        };
-    }
+        "rage" => "怒气",
+        "mana" => "法力",
+        "energy" => "能量",
+        _ => bucketId
+    };
 
-    private string GetProfessionName(string professionId)
+    private string GetProfessionName(string professionId) => professionId switch
     {
-        return professionId switch
-        {
-            "warrior" => "战士",
-            "mage" => "法师",
-            "ranger" => "游侠",
-            "rogue" => "盗贼",
-            _ => professionId
-        };
-    }
+        "warrior" => "战士",
+        "mage" => "法师",
+        "ranger" => "游侠",
+        "rogue" => "盗贼",
+        _ => professionId
+    };
 
     private string GetSkillIcon(SkillDef skill)
     {
@@ -855,14 +878,7 @@
         return skill.Id.Substring(0, Math.Min(1, skill.Id.Length)).ToUpper();
     }
 
-    private void ToggleCollapse()
-    {
-        isCollapsed = !isCollapsed;
-        StateHasChanged();
-    }
+    private void ToggleCollapse() => isCollapsed = !isCollapsed;
 
-    public void Dispose()
-    {
-        // Cleanup resources if needed
-    }
+    public void Dispose() { }
 }
