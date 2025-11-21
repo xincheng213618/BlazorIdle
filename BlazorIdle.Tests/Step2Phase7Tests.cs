@@ -31,6 +31,7 @@ namespace BlazorIdle.Tests
             // Act - This skill should have triggers in the config
             var triggeredSkills = processor.ProcessTriggers(
                 "OnAttackHit",
+                "test_char_1",
                 sourceSkill,
                 context,
                 isCasterPlayer: true,
@@ -74,7 +75,7 @@ namespace BlazorIdle.Tests
             // Act
             var triggeredSkills = processor.ProcessTriggers(
                 "OnAttackHit",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -118,7 +119,7 @@ namespace BlazorIdle.Tests
             // Act
             var triggeredSkills = processor.ProcessTriggers(
                 "OnAttackHit",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -167,7 +168,7 @@ namespace BlazorIdle.Tests
             // Act
             var triggeredSkills = processor.ProcessTriggers(
                 "OnAttackHit",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -213,7 +214,7 @@ namespace BlazorIdle.Tests
             // Act - with crit
             var triggeredWithCrit = processor.ProcessTriggers(
                 "OnAttackCrit",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -224,7 +225,7 @@ namespace BlazorIdle.Tests
             processor.ResetCounters();
             var triggeredWithoutCrit = processor.ProcessTriggers(
                 "OnAttackCrit",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -267,7 +268,7 @@ namespace BlazorIdle.Tests
             // Act
             var triggeredSkills = processor.ProcessTriggers(
                 "OnAttackCrit",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -311,7 +312,7 @@ namespace BlazorIdle.Tests
             // Act
             var triggeredSkills = processor.ProcessTriggers(
                 "OnAttackCrit",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -338,7 +339,7 @@ namespace BlazorIdle.Tests
             // Act - No source skill, triggers from equipped skills
             var triggeredSkills = processor.ProcessTriggers(
                 "OnAttackCrit",
-                null,
+                "test_char_1", null,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -382,7 +383,7 @@ namespace BlazorIdle.Tests
             // Act
             var triggeredSkills = processor.ProcessTriggers(
                 "OnPostAttackWindow",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -408,7 +409,7 @@ namespace BlazorIdle.Tests
             // Act - First window (max 5 triggers)
             var triggeredSkills1 = processor.ProcessTriggers(
                 "OnPostAttackWindow",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -418,7 +419,7 @@ namespace BlazorIdle.Tests
             // Act - Second window (counter resets)
             var triggeredSkills2 = processor.ProcessTriggers(
                 "OnPostAttackWindow",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -445,7 +446,7 @@ namespace BlazorIdle.Tests
             // Act
             var triggeredSkills = processor.ProcessTriggers(
                 "OnPostAttackWindow",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -475,7 +476,7 @@ namespace BlazorIdle.Tests
             // Act
             var triggeredSkills = processor.ProcessTriggers(
                 "OnPostCastWindow",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -500,7 +501,7 @@ namespace BlazorIdle.Tests
             // Act - First window
             var triggeredSkills1 = processor.ProcessTriggers(
                 "OnPostCastWindow",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -510,7 +511,7 @@ namespace BlazorIdle.Tests
             // Act - Second window
             var triggeredSkills2 = processor.ProcessTriggers(
                 "OnPostCastWindow",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -536,7 +537,7 @@ namespace BlazorIdle.Tests
             // Act
             var triggeredSkills = processor.ProcessTriggers(
                 "OnPostCastWindow",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -584,7 +585,7 @@ namespace BlazorIdle.Tests
                 processor.ResetCounters();
                 var triggeredSkills = processor.ProcessTriggers(
                     "OnAttackHit",
-                    sourceSkill,
+                    "test_char_1", sourceSkill,
                     context,
                     isCasterPlayer: true,
                     casterCharacterData: characterData,
@@ -632,7 +633,7 @@ namespace BlazorIdle.Tests
                 processor.ResetCounters();
                 var triggeredSkills = processor.ProcessTriggers(
                     "OnAttackHit",
-                    sourceSkill,
+                    "test_char_1", sourceSkill,
                     context,
                     isCasterPlayer: true,
                     casterCharacterData: characterData,
@@ -665,7 +666,7 @@ namespace BlazorIdle.Tests
             // Act
             var triggeredSkills = processor.ProcessTriggers(
                 "OnPostAttackWindow",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -690,7 +691,7 @@ namespace BlazorIdle.Tests
             // Act - Fill counter
             processor.ProcessTriggers(
                 "OnPostAttackWindow",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -703,7 +704,7 @@ namespace BlazorIdle.Tests
             // Try again
             var triggeredSkills = processor.ProcessTriggers(
                 "OnPostAttackWindow",
-                sourceSkill,
+                "test_char_1", sourceSkill,
                 context,
                 isCasterPlayer: true,
                 casterCharacterData: characterData,
@@ -746,7 +747,7 @@ namespace BlazorIdle.Tests
             // Act
             var triggeredSkills = processor.ProcessTriggers(
                 "OnAttackHit",
-                monsterSkill,
+                "test_char_1", monsterSkill,
                 context,
                 isCasterPlayer: false,
                 casterCharacterData: null,
@@ -785,7 +786,7 @@ namespace BlazorIdle.Tests
             // Act - with crit
             var triggeredWithCrit = processor.ProcessTriggers(
                 "OnAttackCrit",
-                monsterSkill,
+                "test_char_1", monsterSkill,
                 context,
                 isCasterPlayer: false,
                 casterCharacterData: null,
@@ -796,7 +797,7 @@ namespace BlazorIdle.Tests
             processor.ResetCounters();
             var triggeredWithoutCrit = processor.ProcessTriggers(
                 "OnAttackCrit",
-                monsterSkill,
+                "test_char_1", monsterSkill,
                 context,
                 isCasterPlayer: false,
                 casterCharacterData: null,
@@ -836,7 +837,7 @@ namespace BlazorIdle.Tests
             // Act
             var triggeredSkills = processor.ProcessTriggers(
                 "OnAttackHit",
-                monsterSkill,
+                "test_char_1", monsterSkill,
                 context,
                 isCasterPlayer: false,
                 casterCharacterData: null,
@@ -859,10 +860,21 @@ namespace BlazorIdle.Tests
             var cooldownManager = new CooldownManager();
             cooldownManager.StartCooldown("warrior_slam", 10.0);
             
+            var cooldownManagers = new Dictionary<string, CooldownManager>();
+            CooldownManager GetCooldownManager(string casterId)
+            {
+                if (!cooldownManagers.TryGetValue(casterId, out var manager))
+                {
+                    manager = cooldownManager; // Reuse the shared manager
+                    cooldownManagers[casterId] = manager;
+                }
+                return manager;
+            }
+
             var processorWithCooldown = new TriggerProcessor(
                 repo,
                 new ConditionChecker(),
-                cooldownManager,
+                GetCooldownManager,
                 new ResourceManager());
             
             var monsterSkill = new SkillDef
@@ -885,6 +897,7 @@ namespace BlazorIdle.Tests
             // Act - Skill is on cooldown
             var triggeredSkills = processorWithCooldown.ProcessTriggers(
                 "OnAttackHit",
+                "test_monster_1",
                 monsterSkill,
                 context,
                 isCasterPlayer: false,
@@ -906,10 +919,21 @@ namespace BlazorIdle.Tests
             var cooldownManager = new CooldownManager();
             var resourceManager = new ResourceManager();
             
+            var cooldownManagers = new Dictionary<string, CooldownManager>();
+            CooldownManager GetCooldownManager(string casterId)
+            {
+                if (!cooldownManagers.TryGetValue(casterId, out var manager))
+                {
+                    manager = new CooldownManager();
+                    cooldownManagers[casterId] = manager;
+                }
+                return manager;
+            }
+
             return new TriggerProcessor(
                 repo,
                 conditionChecker,
-                cooldownManager,
+                GetCooldownManager,
                 resourceManager);
         }
 

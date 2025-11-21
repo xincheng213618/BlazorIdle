@@ -85,7 +85,7 @@ namespace BlazorIdle.Game.Skills
         /// <param name="professionId">当前职业ID</param>
         /// <param name="context">战斗上下文</param>
         /// <returns>选中的施法技能，如果没有返回 null</returns>
-        public SkillDef? SelectCastSkill(CharacterData characterData, string professionId, BattleContext context)
+        public SkillDef? SelectCastSkill(string casterId, CharacterData characterData, string professionId, BattleContext context)
         {
             if (characterData == null || context == null)
                 return null;
@@ -99,7 +99,7 @@ namespace BlazorIdle.Game.Skills
             for (int i = 0; i < cacheEntry.CastSkills.Count; i++)
             {
                 var skill = cacheEntry.CastSkills[i];
-                if (IsSkillAvailable(skill, context))
+                if (IsSkillAvailable(skill, context, true, casterId))
                 {
                     RecordSkillSelection(skill.Id, "PreAttack-Cast");
                     RecordSkillCastAttempt(skill.Id);
@@ -120,7 +120,7 @@ namespace BlazorIdle.Game.Skills
         /// <param name="gcdAlreadyUsed">GCD 槽位是否已被占用（例如普通攻击或施法技能占用）</param>
         /// <param name="windowName">窗口名称（用于日志）</param>
         /// <returns>可以释放的技能列表</returns>
-        public List<SkillDef> ExecuteWindow(CharacterData characterData, string professionId, BattleContext context, bool gcdAlreadyUsed, string windowName = "PostAttack")
+        public List<SkillDef> ExecuteWindow(string casterId, CharacterData characterData, string professionId, BattleContext context, bool gcdAlreadyUsed, string windowName = "PostAttack")
         {
             var results = new List<SkillDef>();
 
@@ -136,7 +136,7 @@ namespace BlazorIdle.Game.Skills
             for (int i = 0; i < cacheEntry.InstantSkills.Count; i++)
             {
                 var skill = cacheEntry.InstantSkills[i];
-                if (!IsSkillAvailable(skill, context))
+                if (!IsSkillAvailable(skill, context, true, casterId))
                     continue;
 
                 if (skill.IsGcd)
@@ -173,7 +173,7 @@ namespace BlazorIdle.Game.Skills
         /// <param name="monsterId">怪物ID / Monster ID</param>
         /// <param name="context">战斗上下文 / Battle context</param>
         /// <returns>选中的施法技能，如果没有返回 null / Selected cast skill, or null if none</returns>
-        public SkillDef? SelectMonsterCastSkill(Enemy enemy, string monsterId, BattleContext context)
+        public SkillDef? SelectMonsterCastSkill(string casterId, Enemy enemy, string monsterId, BattleContext context)
         {
             if (enemy == null || context == null || enemy.CastSkillIds == null || enemy.CastSkillIds.Count == 0)
                 return null;

@@ -1002,7 +1002,7 @@ namespace BlazorIdle.Game
             };
 
             // Try to select a cast skill
-            var castSkill = _autoCastEngine.SelectMonsterCastSkill(enemy, enemyId, context);
+            var castSkill = _autoCastEngine.SelectMonsterCastSkill(enemyId, enemy, enemyId, context);
             if (castSkill != null && castSkill.CastTimeSec > 0)
             {
                 // Start casting immediately

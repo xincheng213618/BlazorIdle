@@ -45,7 +45,17 @@ namespace BlazorIdle.Tests
             var conditionChecker = new ConditionChecker();
             var cooldownManager = new CooldownManager();
             var resourceManager = new ResourceManager();
-            var autoCastEngine = new AutoCastEngine(repo, conditionChecker, cooldownManager, resourceManager);
+            var cooldownManagers = new Dictionary<string, CooldownManager>();
+            CooldownManager GetCooldownManager(string casterId)
+            {
+                if (!cooldownManagers.TryGetValue(casterId, out var manager))
+                {
+                    manager = cooldownManager;
+                    cooldownManagers[casterId] = manager;
+                }
+                return manager;
+            }
+            var autoCastEngine = new AutoCastEngine(repo, conditionChecker, GetCooldownManager, resourceManager);
 
             // 创建角色实体和资源
             // Create character entity and resources
@@ -73,14 +83,14 @@ namespace BlazorIdle.Tests
 
             // Act: 测试 PreAttack 窗口（应该不选择施法技能，因为没有）
             // Act: Test PreAttack window (should not select cast skill as there are none)
-            var castSkill = autoCastEngine.SelectCastSkill(characterData, "warrior", context);
+            var castSkill = autoCastEngine.SelectCastSkill("test_char_1", characterData, "warrior", context);
 
             // 测试 PostAttack 窗口（假设普通攻击 isGcd=false）
             // Test PostAttack window (assuming normal attack isGcd=false)
             var normalAttackSkill = repo.GetSkill("warrior_attack_basic");
             bool normalAttackIsGcd = normalAttackSkill?.IsGcd ?? false;
             
-            var instantSkills = autoCastEngine.ExecuteWindow(characterData, "warrior", context, normalAttackIsGcd, "PostAttack");
+            var instantSkills = autoCastEngine.ExecuteWindow("test_char_1", characterData, "warrior", context, normalAttackIsGcd, "PostAttack");
 
             // Assert: 验证技能选择
             // Assert: Verify skill selection
@@ -137,7 +147,17 @@ namespace BlazorIdle.Tests
             var conditionChecker = new ConditionChecker();
             var cooldownManager = new CooldownManager();
             var resourceManager = new ResourceManager();
-            var autoCastEngine = new AutoCastEngine(repo, conditionChecker, cooldownManager, resourceManager);
+            var cooldownManagers2 = new Dictionary<string, CooldownManager>();
+            CooldownManager GetCooldownManager2(string casterId)
+            {
+                if (!cooldownManagers2.TryGetValue(casterId, out var manager))
+                {
+                    manager = cooldownManager;
+                    cooldownManagers2[casterId] = manager;
+                }
+                return manager;
+            }
+            var autoCastEngine = new AutoCastEngine(repo, conditionChecker, GetCooldownManager2, resourceManager);
 
             var character = new Character
             {
@@ -163,7 +183,7 @@ namespace BlazorIdle.Tests
 
             // Act: 执行 PostAttack 窗口（假设普通攻击是 GCD）
             // Act: Execute PostAttack window (assuming normal attack is GCD)
-            var instantSkills = autoCastEngine.ExecuteWindow(characterData, "warrior", context, gcdAlreadyUsed: true, "PostAttack");
+            var instantSkills = autoCastEngine.ExecuteWindow("test_char_1", characterData, "warrior", context, gcdAlreadyUsed: true, "PostAttack");
 
             // Assert: 应该跳过需要资源的 GCD 技能，只选择不需要资源的技能
             // Assert: Should skip GCD skills requiring resources, only select skills without cost

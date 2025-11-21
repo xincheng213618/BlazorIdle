@@ -378,10 +378,21 @@ namespace BlazorIdle.Tests
             // Test: AutoCastEngine has monster-specific methods
             // 测试：AutoCastEngine 有怪物专用方法
             
+            var cooldownManagers = new Dictionary<string, CooldownManager>();
+            CooldownManager GetCooldownManager(string casterId)
+            {
+                if (!cooldownManagers.TryGetValue(casterId, out var manager))
+                {
+                    manager = new CooldownManager();
+                    cooldownManagers[casterId] = manager;
+                }
+                return manager;
+            }
+
             var autoCastEngine = new AutoCastEngine(
                 skillRepo,
                 new ConditionChecker(),
-                new CooldownManager(),
+                GetCooldownManager,
                 new ResourceManager()
             );
 
