@@ -21,7 +21,7 @@ namespace BlazorIdle.Game.Skills
     {
         private readonly SkillRepository _skillRepository;
         private readonly ConditionChecker _conditionChecker;
-        private readonly CooldownManager _cooldownManager;
+        private readonly Func<string, CooldownManager> _getCooldownManager;
         private readonly ResourceManager _resourceManager;
 
         // Phase 9: 技能列表缓存 / Skill list cache
@@ -48,12 +48,12 @@ namespace BlazorIdle.Game.Skills
         public AutoCastEngine(
             SkillRepository skillRepository,
             ConditionChecker conditionChecker,
-            CooldownManager cooldownManager,
+            Func<string, CooldownManager> getCooldownManager,
             ResourceManager resourceManager)
         {
             _skillRepository = skillRepository ?? throw new ArgumentNullException(nameof(skillRepository));
             _conditionChecker = conditionChecker ?? throw new ArgumentNullException(nameof(conditionChecker));
-            _cooldownManager = cooldownManager ?? throw new ArgumentNullException(nameof(cooldownManager));
+            _getCooldownManager = getCooldownManager ?? throw new ArgumentNullException(nameof(getCooldownManager));
             _resourceManager = resourceManager ?? throw new ArgumentNullException(nameof(resourceManager));
         }
 
@@ -287,10 +287,18 @@ namespace BlazorIdle.Game.Skills
         /// </summary>
         private bool IsSkillAvailable(SkillDef skill, BattleContext context, bool isCasterPlayer = true, string? casterId = null)
         {
-            // 检查冷却
-            if (!_cooldownManager.IsReady(skill.Id))
+            // 需要 casterId 来检查冷却
+            if (string.IsNullOrEmpty(casterId))
             {
-                RecordSkillFailure(skill.Id, "Cooldown", $"Remaining: {_cooldownManager.GetRemainingCooldown(skill.Id):F1}s");
+                RecordSkillFailure(skill.Id, "NoCasterId", "Caster ID is required for cooldown check");
+                return false;
+            }
+
+            // 检查冷却
+            var cooldownManager = _getCooldownManager(casterId);
+            if (!cooldownManager.IsReady(skill.Id))
+            {
+                RecordSkillFailure(skill.Id, "Cooldown", $"Remaining: {cooldownManager.GetRemainingCooldown(skill.Id):F1}s");
                 return false;
             }
 

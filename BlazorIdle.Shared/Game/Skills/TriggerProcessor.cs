@@ -16,7 +16,7 @@ namespace BlazorIdle.Game.Skills
     {
         private readonly SkillRepository _skillRepository;
         private readonly ConditionChecker _conditionChecker;
-        private readonly CooldownManager _cooldownManager;
+        private readonly Func<string, CooldownManager> _getCooldownManager;
         private readonly ResourceManager _resourceManager;
         
         // 安全机制：防止递归触发死循环
@@ -36,12 +36,12 @@ namespace BlazorIdle.Game.Skills
         public TriggerProcessor(
             SkillRepository skillRepository,
             ConditionChecker conditionChecker,
-            CooldownManager cooldownManager,
+            Func<string, CooldownManager> getCooldownManager,
             ResourceManager resourceManager)
         {
             _skillRepository = skillRepository ?? throw new ArgumentNullException(nameof(skillRepository));
             _conditionChecker = conditionChecker ?? throw new ArgumentNullException(nameof(conditionChecker));
-            _cooldownManager = cooldownManager ?? throw new ArgumentNullException(nameof(cooldownManager));
+            _getCooldownManager = getCooldownManager ?? throw new ArgumentNullException(nameof(getCooldownManager));
             _resourceManager = resourceManager ?? throw new ArgumentNullException(nameof(resourceManager));
         }
 
@@ -50,6 +50,7 @@ namespace BlazorIdle.Game.Skills
         /// Process triggers - main entry point
         /// </summary>
         /// <param name="when">触发时机 (OnAttackHit, OnAttackCrit, OnPostAttackWindow, OnPostCastWindow)</param>
+        /// <param name="casterId">施法者ID</param>
         /// <param name="sourceSkill">触发源技能（可能为 null，如普通攻击）</param>
         /// <param name="context">战斗上下文</param>
         /// <param name="isCasterPlayer">施法者是否为玩家</param>
@@ -59,6 +60,7 @@ namespace BlazorIdle.Game.Skills
         /// <returns>触发并应执行的技能列表</returns>
         public List<SkillDef> ProcessTriggers(
             string when,
+            string casterId,
             SkillDef? sourceSkill,
             BattleContext context,
             bool isCasterPlayer,
@@ -127,7 +129,7 @@ namespace BlazorIdle.Game.Skills
                 }
 
                 // 检查触发条件
-                bool conditionsMet = CheckTriggerConditions(trigger, triggeredSkill, context, isCasterPlayer);
+                bool conditionsMet = CheckTriggerConditions(trigger, triggeredSkill, casterId, context, isCasterPlayer);
                 if (!conditionsMet)
                 {
                     RecordTriggerEvent(when, sourceSkill?.Id, trigger.FireSkillId, "ConditionsFailed", "Trigger conditions not met");
@@ -235,14 +237,15 @@ namespace BlazorIdle.Game.Skills
         /// 检查触发条件
         /// Check trigger conditions
         /// </summary>
-        private bool CheckTriggerConditions(TriggerDef trigger, SkillDef skill, BattleContext context, bool isCasterPlayer)
+        private bool CheckTriggerConditions(TriggerDef trigger, SkillDef skill, string casterId, BattleContext context, bool isCasterPlayer)
         {
             // 如果触发器设置了 IgnoreRequirements，跳过所有检查
             if (trigger.IgnoreRequirements)
                 return true;
 
             // 检查冷却
-            if (!_cooldownManager.IsReady(skill.Id))
+            var cooldownManager = _getCooldownManager(casterId);
+            if (!cooldownManager.IsReady(skill.Id))
                 return false;
 
             // 检查资源
