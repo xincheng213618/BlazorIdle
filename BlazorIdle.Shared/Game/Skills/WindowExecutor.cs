@@ -41,7 +41,7 @@ namespace BlazorIdle.Game.Skills
     {
         private readonly SkillRepository _skillRepository;
         private readonly ConditionChecker _conditionChecker;
-        private readonly CooldownManager _cooldownManager;
+        private readonly Func<string, CooldownManager> _getCooldownManager;
         private readonly ResourceManager _resourceManager;
 
         /// <summary>
@@ -53,12 +53,12 @@ namespace BlazorIdle.Game.Skills
         public WindowExecutor(
             SkillRepository skillRepository,
             ConditionChecker conditionChecker,
-            CooldownManager cooldownManager,
+            Func<string, CooldownManager> getCooldownManager,
             ResourceManager resourceManager)
         {
             _skillRepository = skillRepository ?? throw new ArgumentNullException(nameof(skillRepository));
             _conditionChecker = conditionChecker ?? throw new ArgumentNullException(nameof(conditionChecker));
-            _cooldownManager = cooldownManager ?? throw new ArgumentNullException(nameof(cooldownManager));
+            _getCooldownManager = getCooldownManager ?? throw new ArgumentNullException(nameof(getCooldownManager));
             _resourceManager = resourceManager ?? throw new ArgumentNullException(nameof(resourceManager));
         }
 
@@ -67,6 +67,7 @@ namespace BlazorIdle.Game.Skills
         /// Execute window: Select and return executable skills based on window type and GCD status
         /// </summary>
         /// <param name="window">窗口类型</param>
+        /// <param name="casterId">施法者ID</param>
         /// <param name="characterData">角色数据</param>
         /// <param name="professionId">职业ID</param>
         /// <param name="context">战斗上下文</param>
@@ -74,6 +75,7 @@ namespace BlazorIdle.Game.Skills
         /// <returns>可执行的技能列表</returns>
         public List<SkillDef> ExecuteWindow(
             WindowType window,
+            string casterId,
             CharacterData characterData,
             string professionId,
             BattleContext context,
@@ -102,7 +104,7 @@ namespace BlazorIdle.Game.Skills
                 consideredCount++;
 
                 // 检查技能是否可用（冷却、条件、资源）
-                if (!IsSkillAvailable(skill, context))
+                if (!IsSkillAvailable(skill, casterId, context))
                     continue;
 
                 // Window-GCD 规则判定
@@ -208,10 +210,11 @@ namespace BlazorIdle.Game.Skills
         /// 检查技能是否可用（冷却、条件、资源）
         /// Check if skill is available (cooldown, conditions, resources)
         /// </summary>
-        private bool IsSkillAvailable(SkillDef skill, BattleContext context)
+        private bool IsSkillAvailable(SkillDef skill, string casterId, BattleContext context)
         {
             // 检查冷却
-            if (!_cooldownManager.IsReady(skill.Id))
+            var cooldownManager = _getCooldownManager(casterId);
+            if (!cooldownManager.IsReady(skill.Id))
                 return false;
 
             // 检查条件

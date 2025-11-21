@@ -20,10 +20,21 @@ namespace BlazorIdle.Tests
         {
             repo ??= new SkillRepository();
             var conditionChecker = new ConditionChecker();
-            var cooldownManager = new CooldownManager();
+            var cooldownManagers = new Dictionary<string, CooldownManager>();
             var resourceManager = new ResourceManager();
 
-            return new WindowExecutor(repo, conditionChecker, cooldownManager, resourceManager);
+            // Create a lambda that gets or creates a cooldown manager for each caster
+            CooldownManager GetCooldownManager(string casterId)
+            {
+                if (!cooldownManagers.TryGetValue(casterId, out var manager))
+                {
+                    manager = new CooldownManager();
+                    cooldownManagers[casterId] = manager;
+                }
+                return manager;
+            }
+
+            return new WindowExecutor(repo, conditionChecker, GetCooldownManager, resourceManager);
         }
 
         private CharacterData CreateTestCharacter(string professionId = "warrior")
@@ -119,7 +130,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_1", "mage_pyroblast"); // cast skill
 
             // Act
-            var results = executor.ExecuteWindow(WindowType.PreAttack, character, "warrior", context, gcdAlreadyUsed: false);
+            var results = executor.ExecuteWindow(WindowType.PreAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: false);
 
             // Assert
             Assert.Single(results);
@@ -138,7 +149,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_1", "warrior_mortal_strike"); // instant skill
 
             // Act
-            var results = executor.ExecuteWindow(WindowType.PreAttack, character, "warrior", context, gcdAlreadyUsed: false);
+            var results = executor.ExecuteWindow(WindowType.PreAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: false);
 
             // Assert
             Assert.Empty(results);
@@ -157,7 +168,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_1", "mage_pyroblast");
 
             // Act
-            var results = executor.ExecuteWindow(WindowType.PreAttack, character, "warrior", context, gcdAlreadyUsed: false);
+            var results = executor.ExecuteWindow(WindowType.PreAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: false);
 
             // Assert - 应该没有技能可用（资源不足）
             Assert.Empty(results);
@@ -176,7 +187,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_1", "mage_pyroblast");
 
             // Act
-            var results = executor.ExecuteWindow(WindowType.PreAttack, character, "warrior", context, gcdAlreadyUsed: false);
+            var results = executor.ExecuteWindow(WindowType.PreAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: false);
 
             // Assert
             Assert.Single(results);
@@ -200,7 +211,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_1", "warrior_mortal_strike"); // instant, GCD
 
             // Act
-            var results = executor.ExecuteWindow(WindowType.PostAttack, character, "warrior", context, gcdAlreadyUsed: false);
+            var results = executor.ExecuteWindow(WindowType.PostAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: false);
 
             // Assert
             Assert.Single(results);
@@ -219,7 +230,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_1", "mage_pyroblast");
 
             // Act
-            var results = executor.ExecuteWindow(WindowType.PostAttack, character, "warrior", context, gcdAlreadyUsed: false);
+            var results = executor.ExecuteWindow(WindowType.PostAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: false);
 
             // Assert
             Assert.Empty(results);
@@ -238,7 +249,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_1", "warrior_mortal_strike"); // isGcd=true
 
             // Act - GCD 已被占用（例如普攻占用）
-            var results = executor.ExecuteWindow(WindowType.PostAttack, character, "warrior", context, gcdAlreadyUsed: true);
+            var results = executor.ExecuteWindow(WindowType.PostAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: true);
 
             // Assert - GCD 技能不应该触发
             Assert.Empty(results);
@@ -256,7 +267,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_1", "warrior_thunderclap"); // isGcd=false
 
             // Act - GCD 已被占用
-            var results = executor.ExecuteWindow(WindowType.PostAttack, character, "warrior", context, gcdAlreadyUsed: true);
+            var results = executor.ExecuteWindow(WindowType.PostAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: true);
 
             // Assert - 非 GCD 技能可以触发
             Assert.Single(results);
@@ -276,7 +287,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_2", "warrior_battle_shout"); // isGcd=false
 
             // Act
-            var results = executor.ExecuteWindow(WindowType.PostAttack, character, "warrior", context, gcdAlreadyUsed: false);
+            var results = executor.ExecuteWindow(WindowType.PostAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: false);
 
             // Assert - 两个非 GCD 技能都应该触发
             Assert.Equal(2, results.Count);
@@ -299,7 +310,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_3", "warrior_slam"); // isGcd=true
 
             // Act
-            var results = executor.ExecuteWindow(WindowType.PostAttack, character, "warrior", context, gcdAlreadyUsed: false);
+            var results = executor.ExecuteWindow(WindowType.PostAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: false);
 
             // Assert - 应该触发：1个 GCD (slot 1) + 1个非 GCD
             Assert.Equal(2, results.Count);
@@ -345,7 +356,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_2", "test_cotrigger_no");
 
             // Act
-            var results = executor.ExecuteWindow(WindowType.PostCast, character, "warrior", context, gcdAlreadyUsed: true);
+            var results = executor.ExecuteWindow(WindowType.PostCast, "test_char_1", character, "warrior", context, gcdAlreadyUsed: true);
 
             // Assert - 只有 AllowCoTriggerAfterCast=true 的技能触发
             Assert.Single(results);
@@ -375,7 +386,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_1", "test_gcd_cotrigger");
 
             // Act - GCD 已被施法技能占用
-            var results = executor.ExecuteWindow(WindowType.PostCast, character, "warrior", context, gcdAlreadyUsed: true);
+            var results = executor.ExecuteWindow(WindowType.PostCast, "test_char_1", character, "warrior", context, gcdAlreadyUsed: true);
 
             // Assert - GCD 技能不应该触发（即使 AllowCoTriggerAfterCast=true）
             Assert.Empty(results);
@@ -413,7 +424,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_2", "test_cotrigger_2");
 
             // Act
-            var results = executor.ExecuteWindow(WindowType.PostCast, character, "warrior", context, gcdAlreadyUsed: true);
+            var results = executor.ExecuteWindow(WindowType.PostCast, "test_char_1", character, "warrior", context, gcdAlreadyUsed: true);
 
             // Assert - 两个技能都应该触发
             Assert.Equal(2, results.Count);
@@ -433,7 +444,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_1", "mage_pyroblast");
 
             // Act
-            var results = executor.ExecuteWindow(WindowType.PostCast, character, "warrior", context, gcdAlreadyUsed: true);
+            var results = executor.ExecuteWindow(WindowType.PostCast, "test_char_1", character, "warrior", context, gcdAlreadyUsed: true);
 
             // Assert - 施法技能不应该在 PostCast 窗口触发
             Assert.Empty(results);
@@ -458,7 +469,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "passive_1", "warrior_rend"); // GCD
 
             // Act
-            var results = executor.ExecuteWindow(WindowType.PostAttack, character, "warrior", context, gcdAlreadyUsed: false);
+            var results = executor.ExecuteWindow(WindowType.PostAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: false);
 
             // Assert - 只有第一个 GCD 技能触发
             Assert.Single(results);
@@ -479,7 +490,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_2", "warrior_thunderclap"); // 非 GCD
 
             // Act
-            var results = executor.ExecuteWindow(WindowType.PostAttack, character, "warrior", context, gcdAlreadyUsed: false);
+            var results = executor.ExecuteWindow(WindowType.PostAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: false);
 
             // Assert - 两个技能都应该触发
             Assert.Equal(2, results.Count);
@@ -499,7 +510,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_2", "warrior_slam");
 
             // Act - GCD 已被占用（例如普攻）
-            var results = executor.ExecuteWindow(WindowType.PostAttack, character, "warrior", context, gcdAlreadyUsed: true);
+            var results = executor.ExecuteWindow(WindowType.PostAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: true);
 
             // Assert - 所有 GCD 技能都应被阻止
             Assert.Empty(results);
@@ -536,7 +547,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_2", "test_nongcd_2");
 
             // Act - GCD 已被占用
-            var results = executor.ExecuteWindow(WindowType.PostAttack, character, "warrior", context, gcdAlreadyUsed: true);
+            var results = executor.ExecuteWindow(WindowType.PostAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: true);
 
             // Assert - 非 GCD 技能不受影响
             Assert.Equal(2, results.Count);
@@ -586,7 +597,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "passive_1", "test_nongcd_c");
 
             // Act
-            var results = executor.ExecuteWindow(WindowType.PostAttack, character, "warrior", context, gcdAlreadyUsed: false);
+            var results = executor.ExecuteWindow(WindowType.PostAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: false);
 
             // Assert - 所有3个非 GCD 技能都应触发
             Assert.Equal(3, results.Count);
@@ -635,7 +646,7 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_3", "test_nongcd_y"); // 非 GCD
 
             // Act
-            var results = executor.ExecuteWindow(WindowType.PostAttack, character, "warrior", context, gcdAlreadyUsed: false);
+            var results = executor.ExecuteWindow(WindowType.PostAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: false);
 
             // Assert - 应该触发：1 GCD + 2 非 GCD = 3 个技能
             Assert.Equal(3, results.Count);
@@ -688,10 +699,20 @@ namespace BlazorIdle.Tests
             EquipSkill(character, "warrior", "active_2", "test_gcd_2_no_cost");
 
             // 创建新的 executor 使用实际的 managers
-            var testExecutor = new WindowExecutor(repo, conditionChecker, cooldownManager, resourceManager);
+            var cooldownManagers = new Dictionary<string, CooldownManager>();
+            CooldownManager GetCooldownManager(string casterId)
+            {
+                if (!cooldownManagers.TryGetValue(casterId, out var manager))
+                {
+                    manager = cooldownManager; // Reuse the existing manager for tests
+                    cooldownManagers[casterId] = manager;
+                }
+                return manager;
+            }
+            var testExecutor = new WindowExecutor(repo, conditionChecker, GetCooldownManager, resourceManager);
 
             // Act
-            var results = testExecutor.ExecuteWindow(WindowType.PostAttack, character, "warrior", context, gcdAlreadyUsed: false);
+            var results = testExecutor.ExecuteWindow(WindowType.PostAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: false);
 
             // Assert - 应该选择 slot 2 的 GCD 技能（slot 1 因资源不足被跳过）
             Assert.Single(results);
@@ -735,10 +756,20 @@ namespace BlazorIdle.Tests
             cooldownManager.StartCooldown("test_gcd_1_on_cd", 10.0);
 
             // 创建 executor
-            var testExecutor = new WindowExecutor(repo, conditionChecker, cooldownManager, resourceManager);
+            var cooldownManagers2 = new Dictionary<string, CooldownManager>();
+            CooldownManager GetCooldownManager2(string casterId)
+            {
+                if (!cooldownManagers2.TryGetValue(casterId, out var manager))
+                {
+                    manager = cooldownManager; // Reuse the existing manager for tests
+                    cooldownManagers2[casterId] = manager;
+                }
+                return manager;
+            }
+            var testExecutor = new WindowExecutor(repo, conditionChecker, GetCooldownManager2, resourceManager);
 
             // Act
-            var results = testExecutor.ExecuteWindow(WindowType.PostAttack, character, "warrior", context, gcdAlreadyUsed: false);
+            var results = testExecutor.ExecuteWindow(WindowType.PostAttack, "test_char_1", character, "warrior", context, gcdAlreadyUsed: false);
 
             // Assert - 应该选择 slot 2 的 GCD 技能（slot 1 在冷却中被跳过）
             Assert.Single(results);
@@ -782,7 +813,7 @@ namespace BlazorIdle.Tests
 
             // Act - 模拟施法后的 PostCast 窗口
             // 施法技能是 GCD，所以 gcdAlreadyUsed=true
-            var results = executor.ExecuteWindow(WindowType.PostCast, character, "warrior", context, gcdAlreadyUsed: true);
+            var results = executor.ExecuteWindow(WindowType.PostCast, "test_char_1", character, "warrior", context, gcdAlreadyUsed: true);
 
             // Assert - PostCast 窗口应该触发 AllowCoTriggerAfterCast=true 的技能
             Assert.Single(results);

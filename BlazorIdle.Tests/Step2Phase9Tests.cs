@@ -23,7 +23,18 @@ namespace BlazorIdle.Tests
             var cooldownManager = new CooldownManager();
             var resourceManager = new ResourceManager();
 
-            return new AutoCastEngine(repo, conditionChecker, cooldownManager, resourceManager);
+            var cooldownManagers = new Dictionary<string, CooldownManager>();
+            CooldownManager GetCooldownManager(string casterId)
+            {
+                if (!cooldownManagers.TryGetValue(casterId, out var manager))
+                {
+                    manager = new CooldownManager();
+                    cooldownManagers[casterId] = manager;
+                }
+                return manager;
+            }
+
+            return new AutoCastEngine(repo, conditionChecker, GetCooldownManager, resourceManager);
         }
 
         private CharacterData CreateTestCharacter(string professionId = "warrior")
@@ -86,12 +97,12 @@ namespace BlazorIdle.Tests
         private string? SimulateTick(AutoCastEngine engine, CharacterData character, string professionId, BattleContext context)
         {
             // Try cast skills first
-            var castSkill = engine.SelectCastSkill(character, professionId, context);
+            var castSkill = engine.SelectCastSkill("test_char_1", character, professionId, context);
             if (castSkill != null)
                 return castSkill.Id;
 
             // Try instant skills
-            var instantSkills = engine.ExecuteWindow(character, professionId, context, gcdAlreadyUsed: false, "Test");
+            var instantSkills = engine.ExecuteWindow("test_char_1", character, professionId, context, gcdAlreadyUsed: false, "Test");
             if (instantSkills.Count > 0)
                 return instantSkills[0].Id;
 
@@ -151,7 +162,18 @@ namespace BlazorIdle.Tests
             // Arrange
             var repo = new SkillRepository();
             var cooldownManager = new CooldownManager();
-            var engine = new AutoCastEngine(repo, new ConditionChecker(), cooldownManager, new ResourceManager());
+            var cooldownManagers = new Dictionary<string, CooldownManager>();
+            CooldownManager GetCooldownManager(string casterId)
+            {
+                if (!cooldownManagers.TryGetValue(casterId, out var manager))
+                {
+                    manager = cooldownManager;
+                    cooldownManagers[casterId] = manager;
+                }
+                return manager;
+            }
+
+            var engine = new AutoCastEngine(repo, new ConditionChecker(), GetCooldownManager, new ResourceManager());
             var character = CreateTestCharacter();
 
             // Equip two skills
@@ -214,7 +236,18 @@ namespace BlazorIdle.Tests
             // Arrange
             var repo = new SkillRepository();
             var cooldownManager = new CooldownManager();
-            var engine = new AutoCastEngine(repo, new ConditionChecker(), cooldownManager, new ResourceManager());
+            var cooldownManagers = new Dictionary<string, CooldownManager>();
+            CooldownManager GetCooldownManager(string casterId)
+            {
+                if (!cooldownManagers.TryGetValue(casterId, out var manager))
+                {
+                    manager = cooldownManager;
+                    cooldownManagers[casterId] = manager;
+                }
+                return manager;
+            }
+
+            var engine = new AutoCastEngine(repo, new ConditionChecker(), GetCooldownManager, new ResourceManager());
             var character = CreateTestCharacter();
 
             // Equip a skill
@@ -430,7 +463,18 @@ namespace BlazorIdle.Tests
             // Arrange
             var repo = new SkillRepository();
             var cooldownManager = new CooldownManager();
-            var engine = new AutoCastEngine(repo, new ConditionChecker(), cooldownManager, new ResourceManager());
+            var cooldownManagers = new Dictionary<string, CooldownManager>();
+            CooldownManager GetCooldownManager(string casterId)
+            {
+                if (!cooldownManagers.TryGetValue(casterId, out var manager))
+                {
+                    manager = cooldownManager;
+                    cooldownManagers[casterId] = manager;
+                }
+                return manager;
+            }
+
+            var engine = new AutoCastEngine(repo, new ConditionChecker(), GetCooldownManager, new ResourceManager());
             var character = CreateTestCharacter();
 
             character.EquippedSkillsByProfession["warrior"] = new EquippedSkillsConfig
@@ -470,7 +514,18 @@ namespace BlazorIdle.Tests
             // Arrange
             var repo = new SkillRepository();
             var cooldownManager = new CooldownManager();
-            var engine = new AutoCastEngine(repo, new ConditionChecker(), cooldownManager, new ResourceManager());
+            var cooldownManagers = new Dictionary<string, CooldownManager>();
+            CooldownManager GetCooldownManager(string casterId)
+            {
+                if (!cooldownManagers.TryGetValue(casterId, out var manager))
+                {
+                    manager = cooldownManager;
+                    cooldownManagers[casterId] = manager;
+                }
+                return manager;
+            }
+
+            var engine = new AutoCastEngine(repo, new ConditionChecker(), GetCooldownManager, new ResourceManager());
             var character = CreateTestCharacter();
 
             // Equip three skills
@@ -517,7 +572,18 @@ namespace BlazorIdle.Tests
             // Arrange
             var repo = new SkillRepository();
             var cooldownManager = new CooldownManager();
-            var engine = new AutoCastEngine(repo, new ConditionChecker(), cooldownManager, new ResourceManager());
+            var cooldownManagers = new Dictionary<string, CooldownManager>();
+            CooldownManager GetCooldownManager(string casterId)
+            {
+                if (!cooldownManagers.TryGetValue(casterId, out var manager))
+                {
+                    manager = cooldownManager;
+                    cooldownManagers[casterId] = manager;
+                }
+                return manager;
+            }
+
+            var engine = new AutoCastEngine(repo, new ConditionChecker(), GetCooldownManager, new ResourceManager());
             var character = CreateTestCharacter();
 
             character.EquippedSkillsByProfession["warrior"] = new EquippedSkillsConfig

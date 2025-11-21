@@ -44,25 +44,25 @@ namespace BlazorIdle.Game
         private readonly ConditionChecker _conditionChecker = new();
         
         // Phase 5: 冷却和资源管理器 / Cooldown and resource managers
-        // 这些管理器实例被 AutoCastEngine 和 WindowExecutor 共享，确保状态一致性
-        // These manager instances are shared by AutoCastEngine and WindowExecutor to ensure state consistency
-        private readonly CooldownManager _cooldownManager = new();
+        // Per-character cooldown managers for independent cooldown tracking
+        // 每个角色独立的冷却管理器，用于独立跟踪冷却
+        private readonly Dictionary<string, CooldownManager> _cooldownManagers = new();
         private readonly ResourceManager _resourceManager = new();
         
         // Phase 9: AutoCastEngine for unified skill scheduling / AutoCastEngine 统一技能调度
         private readonly AutoCastEngine _autoCastEngine;
         
         // Phase 6: WindowExecutor for window-based skill execution / WindowExecutor 用于窗口化技能执行
-        // 使用相同的 _cooldownManager 和 _resourceManager 实例以保持状态同步
-        // Uses the same _cooldownManager and _resourceManager instances to maintain state synchronization
+        // Uses GetOrCreateCooldownManager delegate for per-character cooldown tracking
+        // 使用 GetOrCreateCooldownManager 委托实现每个角色独立的冷却跟踪
         private readonly WindowExecutor _windowExecutor;
         
         // Phase 9: Character data mapping for skill selection / 角色数据映射用于技能选择
         private readonly Dictionary<string, Shared.Models.CharacterData>? _characterDataMap;
         
         // Phase 7: TriggerProcessor for skill triggers / TriggerProcessor 用于技能触发
-        // 使用相同的管理器实例以保持状态同步
-        // Uses the same manager instances to maintain state synchronization
+        // Uses GetOrCreateCooldownManager delegate for per-character cooldown tracking
+        // 使用 GetOrCreateCooldownManager 委托实现每个角色独立的冷却跟踪
         private readonly TriggerProcessor _triggerProcessor;
         
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
@@ -159,13 +159,13 @@ namespace BlazorIdle.Game
             _castingController = new CastingController();
             
             // Phase 9: 初始化 AutoCastEngine / Initialize AutoCastEngine
-            _autoCastEngine = new AutoCastEngine(_skillRepository, _conditionChecker, _cooldownManager, _resourceManager);
+            _autoCastEngine = new AutoCastEngine(_skillRepository, _conditionChecker, GetOrCreateCooldownManager, _resourceManager);
             
             // Phase 6: 初始化 WindowExecutor / Initialize WindowExecutor
-            _windowExecutor = new WindowExecutor(_skillRepository, _conditionChecker, _cooldownManager, _resourceManager);
+            _windowExecutor = new WindowExecutor(_skillRepository, _conditionChecker, GetOrCreateCooldownManager, _resourceManager);
             
             // Phase 7: 初始化 TriggerProcessor / Initialize TriggerProcessor
-            _triggerProcessor = new TriggerProcessor(_skillRepository, _conditionChecker, _cooldownManager, _resourceManager);
+            _triggerProcessor = new TriggerProcessor(_skillRepository, _conditionChecker, GetOrCreateCooldownManager, _resourceManager);
 
             // Phase 8: 注册施法事件处理器 / Register casting event handlers
             _castingController.OnCastComplete += HandleCastComplete;
@@ -306,6 +306,10 @@ namespace BlazorIdle.Game
             }
             _enemyTeam.Reset();
 
+            // Phase 5: 清除所有冷却管理器（避免内存泄漏）
+            // Phase 5: Clear all cooldown managers (prevent memory leak)
+            _cooldownManagers.Clear();
+
             // 重置所有轨道
             var now = _clock.NowMs;
             foreach (var tracks in _characterTracks.Values)
@@ -416,9 +420,12 @@ namespace BlazorIdle.Game
                 {
                     ProcessBuffTicks(deltaTimeSec);
                     
-                    // Phase 5: 更新技能冷却时间
-                    // Phase 5: Update skill cooldowns
-                    _cooldownManager.TickCooldowns(deltaTimeSec);
+                    // Phase 5: 更新所有角色的技能冷却时间
+                    // Phase 5: Update skill cooldowns for all characters
+                    foreach (var cooldownManager in _cooldownManagers.Values)
+                    {
+                        cooldownManager.TickCooldowns(deltaTimeSec);
+                    }
                 }
                 
                 // 处理角色行动
@@ -607,7 +614,8 @@ namespace BlazorIdle.Game
                 // WindowExecutor checks during selection, but resources may be consumed or cooldowns started between selection and execution
                 // 这个检查防止在同一窗口内多个技能执行时的竞争条件
                 // This check prevents race conditions when multiple skills execute in the same window
-                if (skillDef != null && !_cooldownManager.IsReady(skillId))
+                var casterCooldownMgr = GetOrCreateCooldownManager(casterId);
+                if (skillDef != null && !casterCooldownMgr.IsReady(skillId))
                 {
                     // 技能还在冷却中，跳过施放
                     // Skill is still on cooldown, skip casting
@@ -721,7 +729,7 @@ namespace BlazorIdle.Game
                 // Phase 5: Start cooldown
                 if (skillDef != null && skillDef.CooldownSec > 0)
                 {
-                    _cooldownManager.StartCooldown(skillId, skillDef.CooldownSec);
+                    casterCooldownMgr.StartCooldown(skillId, skillDef.CooldownSec);
                 }
             }
             else
@@ -814,7 +822,8 @@ namespace BlazorIdle.Game
                 // Phase 9: Start monster skill cooldown
                 if (skillDef != null && skillDef.CooldownSec > 0)
                 {
-                    _cooldownManager.StartCooldown(skillId, skillDef.CooldownSec);
+                    var cooldownMgr = GetOrCreateCooldownManager(casterId);
+                    cooldownMgr.StartCooldown(skillId, skillDef.CooldownSec);
                 }
             }
         }
@@ -905,7 +914,7 @@ namespace BlazorIdle.Game
 
             // Phase 6: PostAttack 窗口：使用 WindowExecutor 执行瞬发技能
             // Phase 6: PostAttack window: Use WindowExecutor to execute instant skills
-            var instantSkills = _windowExecutor.ExecuteWindow(WindowType.PostAttack, characterData, character.ActiveCombatProfessionId, context, normalAttackIsGcd);
+            var instantSkills = _windowExecutor.ExecuteWindow(WindowType.PostAttack, charId, characterData, character.ActiveCombatProfessionId, context, normalAttackIsGcd);
             foreach (var skill in instantSkills)
             {
                 ExecuteSkill(charId, skill.Id, "postattack", isCasterPlayer: true, EventSource.PostAttack);
@@ -997,7 +1006,7 @@ namespace BlazorIdle.Game
             };
 
             // Try to select a cast skill
-            var castSkill = _autoCastEngine.SelectMonsterCastSkill(enemy, enemyId, context);
+            var castSkill = _autoCastEngine.SelectMonsterCastSkill(enemyId, enemy, enemyId, context);
             if (castSkill != null && castSkill.CastTimeSec > 0)
             {
                 // Start casting immediately
@@ -2651,25 +2660,48 @@ namespace BlazorIdle.Game
         }
 
         /// <summary>
+        /// Get or create cooldown manager for a specific caster
+        /// 获取或创建指定施法者的冷却管理器
+        /// </summary>
+        private CooldownManager GetOrCreateCooldownManager(string casterId)
+        {
+            if (string.IsNullOrEmpty(casterId))
+            {
+                throw new ArgumentException("CasterId cannot be null or empty", nameof(casterId));
+            }
+
+            if (!_cooldownManagers.TryGetValue(casterId, out var manager))
+            {
+                manager = new CooldownManager();
+                _cooldownManagers[casterId] = manager;
+            }
+            return manager;
+        }
+
+        /// <summary>
         /// Phase 10.3: 获取技能剩余冷却时间
         /// Phase 10.3: Get remaining cooldown time for a skill
         /// </summary>
+        /// <param name="casterId">施法者ID / Caster ID</param>
         /// <param name="skillId">技能ID / Skill ID</param>
         /// <returns>剩余冷却时间（秒）/ Remaining cooldown time in seconds</returns>
-        public double GetSkillRemainingCooldown(string skillId)
+        public double GetSkillRemainingCooldown(string casterId, string skillId)
         {
-            return _cooldownManager.GetRemainingCooldown(skillId);
+            var manager = GetOrCreateCooldownManager(casterId);
+            return manager.GetRemainingCooldown(skillId);
         }
 
         /// <summary>
         /// Phase 10.3: 检查技能是否准备就绪（不在冷却中）
         /// Phase 10.3: Check if a skill is ready (not on cooldown)
         /// </summary>
+        /// <param name="casterId">施法者ID / Caster ID</param>
         /// <param name="skillId">技能ID / Skill ID</param>
         /// <returns>如果技能可用返回 true / True if skill is ready</returns>
-        public bool IsSkillReady(string skillId)
+        public bool IsSkillReady(string casterId, string skillId)
         {
-            return _cooldownManager.IsReady(skillId);
+            var manager = GetOrCreateCooldownManager(casterId);
+            return manager.IsReady(skillId);
         }
 
         /// <summary>
@@ -2747,6 +2779,7 @@ namespace BlazorIdle.Game
             // Process OnAttackHit triggers
             var hitTriggers = _triggerProcessor.ProcessTriggers(
                 "OnAttackHit",
+                casterId,
                 sourceSkill,
                 context,
                 isCasterPlayer,
@@ -2761,6 +2794,7 @@ namespace BlazorIdle.Game
             {
                 critTriggers = _triggerProcessor.ProcessTriggers(
                     "OnAttackCrit",
+                    casterId,
                     sourceSkill,
                     context,
                     isCasterPlayer,
@@ -2832,6 +2866,7 @@ namespace BlazorIdle.Game
             // Process window triggers
             var triggers = _triggerProcessor.ProcessTriggers(
                 windowType,
+                casterId,
                 sourceSkill,
                 context,
                 isCasterPlayer,
@@ -2898,7 +2933,7 @@ namespace BlazorIdle.Game
 
             // 检查是否有施法技能可用
             // Check if there's a cast skill available
-            var castSkills = _windowExecutor.ExecuteWindow(WindowType.PreAttack, characterData, character.ActiveCombatProfessionId, context, gcdAlreadyUsed: false);
+            var castSkills = _windowExecutor.ExecuteWindow(WindowType.PreAttack, charId, characterData, character.ActiveCombatProfessionId, context, gcdAlreadyUsed: false);
             var castSkill = castSkills.FirstOrDefault();
 
             if (castSkill != null && castSkill.CastTimeSec > 0)
@@ -3022,7 +3057,7 @@ namespace BlazorIdle.Game
                 };
 
                 bool castSkillIsGcd = skillDef.IsGcd;
-                var postCastSkills = _windowExecutor.ExecuteWindow(WindowType.PostCast, characterData, character.ActiveCombatProfessionId, context, castSkillIsGcd);
+                var postCastSkills = _windowExecutor.ExecuteWindow(WindowType.PostCast, casterId, characterData, character.ActiveCombatProfessionId, context, castSkillIsGcd);
                 foreach (var skill in postCastSkills)
                 {
                     ExecuteSkill(casterId, skill.Id, "postcast", isCasterPlayer: true, EventSource.PostCast);
