@@ -2726,6 +2726,104 @@ Passed!  - Failed:     0, Passed:   644, Skipped:     0
 
 ---
 
-**最后更新：** 2025-11-21 v10.5  
+### 2025-11-21 v10.6 - BattleDemo 动态面板创建重构 🎯
+
+**PR标题**: Refactor BattleDemo panels to dynamic component creation mode
+
+#### 背景与问题
+- **现有问题**: BattleDemo.razor 中的玩家面板和怪物面板始终存在，即使战斗尚未开始
+- **问题表现**: 面板尝试访问不存在的数据（battle、playerTeam、enemyTeam 为 null）
+- **用户体验**: 战斗前后状态不明确，显示空白或错误信息
+
+#### ✅ 核心重构工作
+
+**1. BattleDemo.razor - 条件渲染** （+12/-2 行）
+```razor
+@* 仅在战斗实例存在时显示面板（动态创建模式）*@
+@if (battle != null && playerTeam != null && enemyTeam != null)
+{
+    <!-- CharacterPanel 和 EnemyTeamPanel -->
+}
+else
+{
+    <!-- 战斗未开始时的占位提示 -->
+    <div class="alert alert-secondary text-center">
+        <i class="bi bi-info-circle me-2"></i>
+        点击"开始战斗"以创建战斗面板
+    </div>
+}
+```
+
+**2. BattleDemo.razor.cs - ResetBattle() 重构** （+11/-13 行）
+```csharp
+// 旧逻辑：重置时立即重建战斗实例
+private void ResetBattle()
+{
+    StopBattle();
+    battle = null;
+    BuildBattle(); // ❌ 立即创建实例
+}
+
+// 新逻辑：重置时清空实例，等待用户开始
+private void ResetBattle()
+{
+    StopBattle();
+    battle = null;
+    playerTeam = null;  // ✅ 清空队伍
+    enemyTeam = null;   // ✅ 清空队伍
+    dungeonManager = null;
+    snapshot = new MultiBattleSnapshot();
+    dungeonSnapshot = null;
+    // ✅ 不调用 BuildBattle，等待 StartBattle() 时创建
+}
+```
+
+**3. OnParametersSet() 简化** （+4/-4 行）
+```csharp
+// 移除自动创建战斗实例的逻辑
+protected override void OnParametersSet()
+{
+    // 动态创建模式：不再自动创建战斗实例
+    // 用户需要显式点击"开始战斗"按钮来创建
+}
+```
+
+#### ✅ 测试结果
+
+```
+Passed!  - Failed:     0, Passed:   644, Skipped:     0, Total:   644
+```
+
+**644/644 测试通过** ✅ （零破坏性变更）
+
+#### ✅ 架构优势
+
+1. **数据安全**: 面板仅在数据存在时渲染，避免 null 访问
+2. **状态清晰**: 战斗前/中/后状态明确，用户体验更好
+3. **内存优化**: 不使用时不创建组件实例
+4. **代码简洁**: 移除自动创建逻辑，职责更清晰
+
+#### 📊 代码变更统计
+
+| 文件 | 变更类型 | 行数变化 | 说明 |
+|------|---------|---------|------|
+| BattleDemo.razor | 修改 | +12/-2 | 添加条件渲染和占位提示 |
+| BattleDemo.razor.cs | 修改 | +15/-17 | 重构 ResetBattle + OnParametersSet |
+| **净变化** | | **+27/-19** | 净增加 8 行（含注释） |
+
+#### 🎯 影响与价值
+
+- **解决关键问题**: 消除战斗未开始时的面板显示错误
+- **改善用户体验**: 清晰的战斗状态提示
+- **架构提升**: 动态创建模式更符合组件生命周期最佳实践
+- **零破坏性**: 所有原有测试继续通过
+
+#### 📝 实施文档
+
+完整设计文档和实施计划见 PR 描述。
+
+---
+
+**最后更新：** 2025-11-21 v10.6  
 **维护者：** @copilot  
-**状态：** 已更新，阶段 10（10.1-10.7）已完成 + Per-Character冷却管理重构完成
+**状态：** 已更新，阶段 10（10.1-10.7）已完成 + Per-Character冷却管理重构完成 + BattleDemo动态面板创建重构完成
