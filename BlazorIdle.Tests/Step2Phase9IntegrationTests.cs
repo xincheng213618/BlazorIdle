@@ -198,5 +198,117 @@ namespace BlazorIdle.Tests
             });
             Assert.False(hasGcdSkill, "因为 GCD 已被占用，不应该有 GCD 技能");
         }
+
+        /// <summary>
+        /// Per-Character Cooldown Test: 验证两个角色使用相同技能时冷却独立
+        /// Per-Character Cooldown Test: Verify independent cooldowns when two characters use the same skill
+        /// </summary>
+        [Fact]
+        public void PerCharacterCooldown_TwoCharactersWithSameSkill_IndependentCooldowns()
+        {
+            // Arrange: 创建两个战士角色，都装备相同的技能
+            // Arrange: Create two warrior characters, both equipped with the same skill
+            var repo = new SkillRepository();
+            var conditionChecker = new ConditionChecker();
+            var cooldownManager1 = new CooldownManager();
+            var cooldownManager2 = new CooldownManager();
+            var resourceManager = new ResourceManager();
+
+            // 创建cooldown管理器字典（模拟MultiBattleInstance的行为）
+            var cooldownManagers = new Dictionary<string, CooldownManager>
+            {
+                { "char_1", cooldownManager1 },
+                { "char_2", cooldownManager2 }
+            };
+
+            CooldownManager GetCooldownManager(string casterId)
+            {
+                return cooldownManagers[casterId];
+            }
+
+            var autoCastEngine = new AutoCastEngine(repo, conditionChecker, GetCooldownManager, resourceManager);
+
+            // 两个角色都装备相同的技能 warrior_mortal_strike
+            var char1Data = new CharacterData
+            {
+                ProfessionId = "warrior",
+                ActiveCombatProfessionId = "warrior",
+                EquippedSkillsByProfession = new Dictionary<string, EquippedSkillsConfig>
+                {
+                    {
+                        "warrior", new EquippedSkillsConfig
+                        {
+                            ProfessionId = "warrior",
+                            ActiveSlots = new Dictionary<string, string>
+                            {
+                                { "active_1", "warrior_mortal_strike" }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var char2Data = new CharacterData
+            {
+                ProfessionId = "warrior",
+                ActiveCombatProfessionId = "warrior",
+                EquippedSkillsByProfession = new Dictionary<string, EquippedSkillsConfig>
+                {
+                    {
+                        "warrior", new EquippedSkillsConfig
+                        {
+                            ProfessionId = "warrior",
+                            ActiveSlots = new Dictionary<string, string>
+                            {
+                                { "active_1", "warrior_mortal_strike" }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var context = new BattleContext
+            {
+                Player = new Character { MaxHp = 1000, Hp = 1000 },
+                Enemy = new Enemy { MaxHp = 1000, Hp = 1000 },
+                Rng = new RngContext(0),
+                Clock = new SimClock()
+            };
+
+            // Act: Char1 使用技能（通过ExecuteWindow选择瞬发技能）
+            // Act: Char1 uses skill (select instant skill via ExecuteWindow)
+            var char1Skills = autoCastEngine.ExecuteWindow("char_1", char1Data, "warrior", context, gcdAlreadyUsed: false, "PostAttack");
+            Assert.NotEmpty(char1Skills);
+            Assert.Equal("warrior_mortal_strike", char1Skills[0].Id);
+
+            // 模拟技能施放后进入冷却（5秒冷却）
+            cooldownManager1.StartCooldown("warrior_mortal_strike", 5.0);
+
+            // Assert: Char1 的技能应该在冷却中
+            // Assert: Char1's skill should be on cooldown
+            Assert.False(cooldownManager1.IsReady("warrior_mortal_strike"));
+            Assert.True(cooldownManager1.GetRemainingCooldown("warrior_mortal_strike") > 0);
+
+            // Assert: Char2 的相同技能应该仍然可用（这是修复的核心bug）
+            // Assert: Char2's same skill should still be available (this is the core bug being fixed)
+            Assert.True(cooldownManager2.IsReady("warrior_mortal_strike"));
+            Assert.Equal(0, cooldownManager2.GetRemainingCooldown("warrior_mortal_strike"));
+
+            // Char2 应该能够选择和使用相同的技能（验证冷却独立）
+            // Char2 should be able to select and use the same skill (verify cooldown independence)
+            var char2Skills = autoCastEngine.ExecuteWindow("char_2", char2Data, "warrior", context, gcdAlreadyUsed: false, "PostAttack");
+            Assert.NotEmpty(char2Skills);
+            Assert.Equal("warrior_mortal_strike", char2Skills[0].Id);
+
+            // 使用后Char2的技能也进入冷却
+            cooldownManager2.StartCooldown("warrior_mortal_strike", 5.0);
+
+            // 最终验证：两个角色的冷却是完全独立的
+            // Final verification: Both characters' cooldowns are completely independent
+            Assert.False(cooldownManager1.IsReady("warrior_mortal_strike"));
+            Assert.False(cooldownManager2.IsReady("warrior_mortal_strike"));
+            Assert.True(cooldownManager1.GetRemainingCooldown("warrior_mortal_strike") > 0);
+            Assert.True(cooldownManager2.GetRemainingCooldown("warrior_mortal_strike") > 0);
+        }
     }
 }

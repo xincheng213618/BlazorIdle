@@ -53,16 +53,16 @@ namespace BlazorIdle.Game
         private readonly AutoCastEngine _autoCastEngine;
         
         // Phase 6: WindowExecutor for window-based skill execution / WindowExecutor 用于窗口化技能执行
-        // 使用相同的 _cooldownManager 和 _resourceManager 实例以保持状态同步
-        // Uses the same _cooldownManager and _resourceManager instances to maintain state synchronization
+        // Uses GetOrCreateCooldownManager delegate for per-character cooldown tracking
+        // 使用 GetOrCreateCooldownManager 委托实现每个角色独立的冷却跟踪
         private readonly WindowExecutor _windowExecutor;
         
         // Phase 9: Character data mapping for skill selection / 角色数据映射用于技能选择
         private readonly Dictionary<string, Shared.Models.CharacterData>? _characterDataMap;
         
         // Phase 7: TriggerProcessor for skill triggers / TriggerProcessor 用于技能触发
-        // 使用相同的管理器实例以保持状态同步
-        // Uses the same manager instances to maintain state synchronization
+        // Uses GetOrCreateCooldownManager delegate for per-character cooldown tracking
+        // 使用 GetOrCreateCooldownManager 委托实现每个角色独立的冷却跟踪
         private readonly TriggerProcessor _triggerProcessor;
         
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
@@ -305,6 +305,10 @@ namespace BlazorIdle.Game
                 _playerTeam.Reset();
             }
             _enemyTeam.Reset();
+
+            // Phase 5: 清除所有冷却管理器（避免内存泄漏）
+            // Phase 5: Clear all cooldown managers (prevent memory leak)
+            _cooldownManagers.Clear();
 
             // 重置所有轨道
             var now = _clock.NowMs;
@@ -2661,6 +2665,11 @@ namespace BlazorIdle.Game
         /// </summary>
         private CooldownManager GetOrCreateCooldownManager(string casterId)
         {
+            if (string.IsNullOrEmpty(casterId))
+            {
+                throw new ArgumentException("CasterId cannot be null or empty", nameof(casterId));
+            }
+
             if (!_cooldownManagers.TryGetValue(casterId, out var manager))
             {
                 manager = new CooldownManager();

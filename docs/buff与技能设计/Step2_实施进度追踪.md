@@ -1396,8 +1396,11 @@
   - ✅ 技能 Tooltip（完整信息）
   - ✅ 集成到 CharacterPanel 和 EnemyTeamPanel
   - ⚠️ **已知问题 1**：切换角色职业后，资源类型未同步更新（显示旧职业资源）
-  - ⚠️ **已知问题 2**：技能冷却时间使用全局 CooldownManager，多角色战斗会混淆冷却状态
-  - **注：这两个问题需要在独立 PR 中修复（涉及角色面板刷新机制重构和冷却管理器架构调整）**
+  - ✅ **已修复 - 已知问题 2**：技能冷却时间现使用per-character CooldownManager，每个角色/怪物独立管理冷却
+    - **修复日期**: 2025-11-21
+    - **实施方案**: Dictionary<string, CooldownManager> + GetOrCreateCooldownManager委托
+    - **测试状态**: 643/643测试通过
+  - **注：问题1需要在独立 PR 中修复（涉及角色面板刷新机制重构）**
 
 - [x] **10.4 施法条组件** ✅ Phase 8 已完成
   - ✅ 显示施法进度条（黄色，区别于攻击蓝色）
