@@ -716,7 +716,15 @@ namespace BlazorIdle.Components
             // Phase 2.7: Get profession resource configurations
             var professionResourceConfigs = BuildProfessionResourceConfigs();
 
-            dungeonManager = new DungeonManager(currentDungeon, clock, rng, playerTeam, GameConfig, professionResourceConfigs);
+            // Phase 10.6: 创建角色数据映射用于技能系统
+            // Phase 10.6: Create character data map for skill system
+            var characterDataMap = new Dictionary<string, Shared.Models.CharacterData>();
+            if (SelectedCharacter != null)
+            {
+                characterDataMap[SelectedCharacter.Id] = SelectedCharacter;
+            }
+
+            dungeonManager = new DungeonManager(currentDungeon, clock, rng, playerTeam, GameConfig, professionResourceConfigs, characterDataMap);
 
             // 默认开启自动循环
             dungeonManager.EnableAutoRepeat(AutoRepeatDelayMs);

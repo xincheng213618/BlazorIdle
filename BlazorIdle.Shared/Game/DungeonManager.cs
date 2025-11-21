@@ -33,6 +33,10 @@ namespace BlazorIdle.Game
         // Phase 2.7: Profession resource configurations
         private readonly Dictionary<string, Shared.Models.ProfessionResourceConfig>? _professionResourceConfigs;
 
+        // Phase 10.6: 角色数据映射（用于技能系统）
+        // Phase 10.6: Character data map (for skill system)
+        private readonly Dictionary<string, Shared.Models.CharacterData>? _characterDataMap;
+
         // 波次计时器
         private int _nextActionAtMs = 0;
 
@@ -71,7 +75,8 @@ namespace BlazorIdle.Game
             RngContext rng,
             BattleTeam<Character> playerTeam,
             IGameConfigService gameConfig,
-            Dictionary<string, Shared.Models.ProfessionResourceConfig>? professionResourceConfigs = null)
+            Dictionary<string, Shared.Models.ProfessionResourceConfig>? professionResourceConfigs = null,
+            Dictionary<string, Shared.Models.CharacterData>? characterDataMap = null)
         {
             _dungeonDef = dungeonDef ?? throw new ArgumentNullException(nameof(dungeonDef));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
@@ -79,6 +84,7 @@ namespace BlazorIdle.Game
             _playerTeam = playerTeam ?? throw new ArgumentNullException(nameof(playerTeam));
             _gameConfig = gameConfig ?? throw new ArgumentNullException(nameof(gameConfig));
             _professionResourceConfigs = professionResourceConfigs;
+            _characterDataMap = characterDataMap;
         }
 
         /// <summary>
@@ -397,9 +403,9 @@ namespace BlazorIdle.Game
                 UnsubscribeBattleEvents();
             }
 
-            // 创建新战斗，传入保留的资源和职业资源配置
-            // Create new battle, passing preserved resources and profession resource configurations
-            _currentBattle = new MultiBattleInstance(_clock, _rng, _playerTeam, _currentEnemyTeam, battleConfig, _preservedPlayerResources, _professionResourceConfigs);
+            // 创建新战斗，传入保留的资源、职业资源配置和角色数据映射
+            // Create new battle, passing preserved resources, profession resource configurations and character data map
+            _currentBattle = new MultiBattleInstance(_clock, _rng, _playerTeam, _currentEnemyTeam, battleConfig, _preservedPlayerResources, _professionResourceConfigs, _characterDataMap);
             SubscribeBattleEvents();
             // 不重置玩家队伍状态，保持波次之间的血量和资源
             // Don't reset player team state, preserve HP and resources between waves
