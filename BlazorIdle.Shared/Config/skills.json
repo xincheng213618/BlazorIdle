@@ -347,6 +347,7 @@
     "type": "passive",
     "slotType": "passive",
     "fixed": true,
+    "isGcd": false,
     "releaseType": "instant",
     "targetPolicy": "current_target",
     "cooldownSec": 0,
