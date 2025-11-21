@@ -632,6 +632,23 @@ namespace BlazorIdle.Components
             var characterDataMap = new Dictionary<string, Shared.Models.CharacterData>();
             if (SelectedCharacter != null)
             {
+                // Phase 10.6: 记录职业切换调试信息 / Log profession switching debug info
+                Logger.LogInformation("BuildBattle: ActiveCombatProfessionId = {ProfessionId}", SelectedCharacter.ActiveCombatProfessionId);
+                Logger.LogInformation("BuildBattle: EquippedSkillsByProfession keys = {Keys}", 
+                    string.Join(", ", SelectedCharacter.EquippedSkillsByProfession.Keys));
+                
+                if (SelectedCharacter.EquippedSkillsByProfession.TryGetValue(SelectedCharacter.ActiveCombatProfessionId, out var equipConfig))
+                {
+                    Logger.LogInformation("BuildBattle: Found equipped skills config for {ProfessionId}, ActiveSlots = {Slots}",
+                        SelectedCharacter.ActiveCombatProfessionId,
+                        string.Join(", ", equipConfig.ActiveSlots.Select(kvp => $"{kvp.Key}:{kvp.Value}")));
+                }
+                else
+                {
+                    Logger.LogWarning("BuildBattle: No equipped skills config found for profession {ProfessionId}!",
+                        SelectedCharacter.ActiveCombatProfessionId);
+                }
+
                 //// Phase 7/8: 临时测试 - 确保角色有装备技能配置
                 //// Phase 7/8: Temporary test - ensure character has equipped skills
                 //if (!SelectedCharacter.EquippedSkillsByProfession.ContainsKey(SelectedCharacter.ActiveCombatProfessionId))
@@ -751,6 +768,23 @@ namespace BlazorIdle.Components
             var characterDataMap = new Dictionary<string, Shared.Models.CharacterData>();
             if (SelectedCharacter != null)
             {
+                // Phase 10.6: 记录职业切换调试信息 / Log profession switching debug info
+                Logger.LogInformation("BuildDungeonBattle: ActiveCombatProfessionId = {ProfessionId}", SelectedCharacter.ActiveCombatProfessionId);
+                Logger.LogInformation("BuildDungeonBattle: EquippedSkillsByProfession keys = {Keys}", 
+                    string.Join(", ", SelectedCharacter.EquippedSkillsByProfession.Keys));
+                
+                if (SelectedCharacter.EquippedSkillsByProfession.TryGetValue(SelectedCharacter.ActiveCombatProfessionId, out var equipConfig))
+                {
+                    Logger.LogInformation("BuildDungeonBattle: Found equipped skills config for {ProfessionId}, ActiveSlots = {Slots}",
+                        SelectedCharacter.ActiveCombatProfessionId,
+                        string.Join(", ", equipConfig.ActiveSlots.Select(kvp => $"{kvp.Key}:{kvp.Value}")));
+                }
+                else
+                {
+                    Logger.LogWarning("BuildDungeonBattle: No equipped skills config found for profession {ProfessionId}!",
+                        SelectedCharacter.ActiveCombatProfessionId);
+                }
+                
                 characterDataMap[SelectedCharacter.Id] = SelectedCharacter;
             }
 
