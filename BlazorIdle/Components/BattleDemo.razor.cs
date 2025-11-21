@@ -394,10 +394,10 @@ namespace BlazorIdle.Components
 
         protected override void OnParametersSet()
         {
-            if (SelectedCharacter != null && configReady && battle == null)
-            {
-                ResetBattle();
-            }
+            // 动态创建模式：不再自动创建战斗实例
+            // Dynamic creation mode: no longer auto-create battle instances
+            // 用户需要显式点击"开始战斗"按钮来创建
+            // User must explicitly click "Start Battle" button to create
         }
 
         /// <summary>
@@ -814,31 +814,23 @@ namespace BlazorIdle.Components
         }
 
         /// <summary>
-        /// 重置战斗 - 停止当前战斗并重新构建
-        /// Reset battle - stop current battle and rebuild
+        /// 重置战斗 - 停止当前战斗并清理实例（不重新构建，等待开始战斗时创建）
+        /// Reset battle - stop current battle and cleanup instances (don't rebuild, wait for start to create)
         /// </summary>
         private void ResetBattle()
         {
             StopBattle();
 
+            // 清理战斗实例和队伍（动态创建模式：只在开始战斗时创建）
+            // Cleanup battle instances and teams (dynamic creation mode: only create when starting battle)
             battle = null;
-
-            if (currentBattleMode == BattleMode.Normal)
-            {
-                BuildBattle();
-                if (battle != null)
-                {
-                    snapshot = battle.GetSnapshot();
-                }
-            }
-            else
-            {
-                BuildDungeonBattle();
-                if (dungeonManager != null)
-                {
-                    dungeonSnapshot = dungeonManager.GetSnapshot();
-                }
-            }
+            playerTeam = null;
+            enemyTeam = null;
+            dungeonManager = null;
+            
+            // 重置快照为初始状态 / Reset snapshots to initial state
+            snapshot = new MultiBattleSnapshot();
+            dungeonSnapshot = null;
 
             StateHasChanged();
         }
