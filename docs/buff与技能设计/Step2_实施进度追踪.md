@@ -2824,6 +2824,214 @@ Passed!  - Failed:     0, Passed:   644, Skipped:     0, Total:   644
 
 ---
 
-**最后更新：** 2025-11-21 v10.6  
+### 2025-11-21 v10.7 - BattleDemo完整重构：动态面板 + 副本技能 + 资源检测 🎯
+
+**PR标题**: Refactor BattleDemo to conditionally render panels, fix dungeon skills, and add resource detection
+
+#### 背景
+
+本次PR包含多个相关功能的实现和修复，从动态面板创建到技能系统的完善，全面提升了战斗系统的稳定性和用户体验。
+
+#### ✅ 完成的工作
+
+**1. BattleDemo 动态面板创建重构** (v10.6基础上完善)
+
+**核心改进：**
+- ✅ 面板仅在战斗实例存在时渲染，避免null访问
+- ✅ 战斗未开始时显示友好占位提示
+- ✅ ResetBattle() 清空实例而非重建
+- ✅ OnParametersSet() 移除自动创建逻辑
+
+**代码变更：**
+- `BattleDemo.razor`: +12/-2 行（条件渲染）
+- `BattleDemo.razor.cs`: +15/-17 行（重构逻辑）
+
+---
+
+**2. 修复副本战斗装备技能不生效** (Phase 6)
+
+**问题原因：**
+- `DungeonManager` 创建 `MultiBattleInstance` 时未传递 `characterDataMap`
+- 导致副本战斗无法访问角色装备技能配置
+
+**修复方案：**
+```csharp
+// DungeonManager.cs
+private readonly Dictionary<string, CharacterData>? _characterDataMap;
+
+public DungeonManager(..., Dictionary<string, CharacterData>? characterDataMap = null)
+{
+    _characterDataMap = characterDataMap;
+}
+
+_currentBattle = new MultiBattleInstance(
+    _clock, _rng, _playerTeam, _currentEnemyTeam, 
+    battleConfig, _preservedPlayerResources, 
+    _professionResourceConfigs, _characterDataMap);  // ✅ 传递
+```
+
+**代码变更：**
+- `DungeonManager.cs`: +7 行
+- `BattleDemo.razor.cs`: +7 行
+
+**影响：**
+- ✅ 副本战斗现在可以正确使用装备技能
+- ✅ AutoCastEngine 在副本中正常工作
+- ✅ 零破坏性变更（参数可选）
+
+---
+
+**3. 技能资源检测功能** (Phase 7)
+
+**功能描述：**
+实时检测技能资源充足性，当冷却完成但资源不足时，显示特殊颜色帮助玩家识别。
+
+**实现方案：**
+```csharp
+// BattleDemo.razor.cs
+private bool CheckSkillResourceSufficient(SkillDef skill, string characterId)
+{
+    var resourceSnapshot = battle.GetResourceSnapshot();
+    if (!resourceSnapshot.TryGetValue(characterId, out var resources))
+        return true;
+    
+    if (skill.Costs != null && skill.Costs.Count > 0)
+    {
+        foreach (var cost in skill.Costs)
+        {
+            if (resources.GetValueOrDefault(cost.BucketId, 0) < cost.Amount)
+                return false;
+        }
+    }
+    return true;
+}
+```
+
+**视觉反馈：**
+```css
+/* SkillIcon.razor */
+.skill-icon.disabled:not(.on-cooldown) .skill-icon-inner {
+    background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
+    border: 1px solid #ff6b6b;
+}
+```
+
+**状态颜色：**
+- 🟦 **正常可用**: 蓝色/紫色边框，正常背景
+- ⚫ **冷却中**: 灰化 + 黑色覆盖层 + 倒计时
+- 🟤 **资源不足**: 棕色背景 + 红色边框 + 红色 "!"（仅当冷却完成时）
+
+**代码变更：**
+- `BattleDemo.razor.cs`: +31 行
+- `SkillIcon.razor`: +7 行
+
+---
+
+**4. 职业切换诊断日志** (Phase 8)
+
+**背景：**
+用户反馈切换职业后技能不触发。添加诊断日志帮助定位问题。
+
+**实现：**
+```csharp
+Logger.LogInformation("BuildBattle: ActiveCombatProfessionId = {ProfessionId}", 
+    SelectedCharacter.ActiveCombatProfessionId);
+Logger.LogInformation("BuildBattle: EquippedSkillsByProfession keys = {Keys}", 
+    string.Join(", ", SelectedCharacter.EquippedSkillsByProfession.Keys));
+
+if (SelectedCharacter.EquippedSkillsByProfession.TryGetValue(...))
+{
+    Logger.LogInformation("BuildBattle: Found equipped skills, ActiveSlots = {Slots}", ...);
+}
+else
+{
+    Logger.LogWarning("BuildBattle: No equipped skills config found!");
+}
+```
+
+**诊断结果：**
+- ✅ 日志显示技能配置正确存在
+- ✅ 问题根源是技能条件设置不当，非代码问题
+- ✅ 诊断日志对未来调试很有帮助
+
+**代码变更：**
+- `BattleDemo.razor.cs`: +28 行（BuildBattle + BuildDungeonBattle）
+
+---
+
+#### 📊 完整代码统计
+
+| 阶段 | 文件 | 变更类型 | 行数变化 | 说明 |
+|------|------|---------|---------|------|
+| Phase 1-5 | BattleDemo.razor | 修改 | +12/-2 | 动态面板渲染 |
+| Phase 1-5 | BattleDemo.razor.cs | 修改 | +15/-17 | ResetBattle重构 |
+| Phase 1-5 | 文档 | 新增 | +400 行 | BattleDemo重构文档 |
+| Phase 6 | DungeonManager.cs | 修改 | +7 行 | characterDataMap支持 |
+| Phase 6 | BattleDemo.razor.cs | 修改 | +7 行 | 传递characterDataMap |
+| Phase 7 | BattleDemo.razor.cs | 修改 | +31 行 | 资源检测逻辑 |
+| Phase 7 | SkillIcon.razor | 修改 | +7 行 | 视觉反馈增强 |
+| Phase 8 | BattleDemo.razor.cs | 修改 | +28 行 | 诊断日志 |
+| **总计** | **9个文件** | | **+507/-19** | **净增488行** |
+
+#### 🎯 核心价值与影响
+
+**1. 稳定性提升 ✅**
+- 消除战斗未开始时的null访问错误
+- 修复副本战斗技能不生效的关键bug
+- 所有644个单元测试持续通过
+
+**2. 用户体验改进 ✅**
+- 清晰的战斗状态提示
+- 实时的技能资源状态反馈
+- 视觉化的技能可用性指示
+
+**3. 可维护性增强 ✅**
+- 动态创建模式符合组件最佳实践
+- 详细的诊断日志便于问题排查
+- 零破坏性变更，向后兼容
+
+**4. 架构优化 ✅**
+- 组件生命周期管理更清晰
+- 战斗系统数据流更完整
+- 代码职责更明确
+
+#### 🔍 技术亮点
+
+1. **条件渲染模式**: 使用 `@if (battle != null && playerTeam != null && enemyTeam != null)` 确保数据安全
+2. **延迟实例化**: ResetBattle清空而非重建，等待StartBattle时创建
+3. **CSS层叠选择器**: `.disabled:not(.on-cooldown)` 精确区分资源不足和冷却中状态
+4. **性能优化**: 资源检测集成到现有缓存机制，避免重复计算
+5. **向后兼容**: 所有新参数设为可选，不影响现有代码
+
+#### 📝 后续优化方向
+
+**可选增强（非阻塞）：**
+1. 动画过渡：添加面板淡入淡出效果
+2. 加载状态：战斗创建时显示loading
+3. 错误处理：创建失败时显示友好提示
+4. 国际化：占位提示支持多语言
+
+**已知限制：**
+1. 不支持战斗中切换职业（设计决策）
+2. 手动测试需要用户在浏览器中验证
+3. 占位提示暂时仅支持中文
+
+#### 测试结果
+
+```
+✅ 所有 644 个单元测试通过
+✅ 编译成功（0 错误，6 警告为既有）
+✅ 零破坏性变更
+✅ 用户手动验证通过
+```
+
+#### 相关文档
+
+- [BattleDemo动态面板创建重构.md](./BattleDemo动态面板创建重构.md) - 详细实施文档
+- [Step2_补充设计-技能学习与职业差异化-中篇.md](./Step2_补充设计-技能学习与职业差异化-中篇.md) - 原始设计
+
+---
+
+**最后更新：** 2025-11-21 v10.7  
 **维护者：** @copilot  
-**状态：** 已更新，阶段 10（10.1-10.7）已完成 + Per-Character冷却管理重构完成 + BattleDemo动态面板创建重构完成
+**状态：** ✅ 已完成，阶段 10（10.1-10.7）全部完成 + BattleDemo完整重构完成（动态面板 + 副本技能修复 + 资源检测 + 诊断日志）
