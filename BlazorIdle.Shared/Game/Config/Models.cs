@@ -85,5 +85,14 @@ namespace BlazorIdle.Game.Config
         /// Phase 9: Instant skill IDs list - Instant skills that monster can release
         /// </summary>
         [JsonPropertyName("instantSkillIds")] public List<string>? InstantSkillIds { get; set; }
+
+        /// <summary>
+        /// Step3 Phase 1: 定期技能ID列表 - 怪物的定期检查技能
+        /// Step3 Phase 1: Periodic skill IDs list - Periodic check skills for monster
+        /// 
+        /// 用于定期检查触发的技能（如光环、条件触发等）
+        /// Used for periodically checked triggered skills (like auras, conditional triggers, etc.)
+        /// </summary>
+        [JsonPropertyName("periodicSkillIds")] public List<string>? PeriodicSkillIds { get; set; }
     }
 }

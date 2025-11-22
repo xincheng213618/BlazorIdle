@@ -561,7 +561,9 @@ namespace BlazorIdle.Components
                         NormalAttackSkillId = monsterDef.NormalAttackSkillId,  // Phase 7: 设置怪物攻击技能ID
                         // Phase 9: Copy skill lists from monster definition
                         CastSkillIds = monsterDef.CastSkillIds,
-                        InstantSkillIds = monsterDef.InstantSkillIds
+                        InstantSkillIds = monsterDef.InstantSkillIds,
+                        // Step3 Phase 1: Copy periodic skill list
+                        PeriodicSkillIds = monsterDef.PeriodicSkillIds
                     };
 
                     string enemyId = $"{monsterGroup.MonsterId}_{enemyIndex}";

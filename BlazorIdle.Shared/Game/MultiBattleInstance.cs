@@ -1784,11 +1784,93 @@ namespace BlazorIdle.Game
         /// <param name="nowMs">当前时间（毫秒）/ Current time (milliseconds)</param>
         private void ProcessEnemyPeriodicSkills(string enemyId, int nowMs)
         {
-            // TODO Step3 Phase 1.6: 需要先扩展 Enemy 数据模型添加 PeriodicSkillIds
-            // TODO Step3 Phase 1.6: Need to extend Enemy data model to add PeriodicSkillIds first
-            
-            // 暂时不处理，等待数据模型扩展
-            // Temporarily skip, waiting for data model extension
+            // 获取怪物成员
+            // Get enemy member
+            var member = _enemyTeam.GetMember(enemyId);
+            if (member == null)
+                return;
+
+            var enemy = member.Entity as Enemy;
+            if (enemy == null || enemy.PeriodicSkillIds == null || enemy.PeriodicSkillIds.Count == 0)
+                return;
+
+            // 创建战斗上下文
+            // Create battle context
+            var context = new BattleContext
+            {
+                Enemy = enemy,
+                PlayerTeam = _playerTeam,
+                EnemyTeam = _enemyTeam,
+                EnemyBuffOwners = _enemyBuffOwners,
+                Rng = _rng,
+                Clock = _clock,
+                CurrentTargetId = SelectPlayerTarget(_config.EnemyTargetStrategy)
+            };
+
+            // 遍历怪物的定期技能
+            // Iterate through monster's periodic skills
+            foreach (var skillId in enemy.PeriodicSkillIds)
+            {
+                var skill = _skillRepository.GetSkillById(skillId);
+                if (skill == null || skill.Triggers == null || skill.Triggers.Count == 0)
+                    continue;
+
+                // 检查是否有 OnPeriodic 触发器
+                // Check if there are OnPeriodic triggers
+                foreach (var trigger in skill.Triggers)
+                {
+                    if (trigger.When != "OnPeriodic")
+                        continue;
+
+                    // 检查触发条件（使用trigger的conditions或技能的conditions）
+                    // Check trigger conditions (use trigger's conditions or skill's conditions)
+                    var conditionsToCheck = trigger.Conditions ?? skill.Conditions;
+                    if (conditionsToCheck != null)
+                    {
+                        // 创建临时技能定义用于条件检查
+                        // Create temporary skill definition for condition checking
+                        var tempSkill = new SkillDef
+                        {
+                            Id = skill.Id,
+                            Conditions = conditionsToCheck
+                        };
+
+                        if (!_conditionChecker.CheckConditions(tempSkill, context, isCasterPlayer: false, enemyId))
+                            continue;
+                    }
+
+                    // 检查概率触发
+                    // Check proc chance
+                    if (trigger.ProcChance < 1.0)
+                    {
+                        double roll = _rng.NextDouble();
+                        if (roll > trigger.ProcChance)
+                            continue;
+                    }
+
+                    // 获取要触发的技能
+                    // Get the skill to trigger
+                    if (string.IsNullOrEmpty(trigger.FireSkillId))
+                        continue;
+
+                    var skillToFire = _skillRepository.GetSkillById(trigger.FireSkillId);
+                    if (skillToFire == null)
+                        continue;
+
+                    // 检查冷却（除非ignoreRequirements为true）
+                    // Check cooldown (unless ignoreRequirements is true)
+                    if (!trigger.IgnoreRequirements)
+                    {
+                        var cooldownManager = GetOrCreateCooldownManager(enemyId);
+                        if (!cooldownManager.IsReady(skillToFire.Id))
+                            continue;
+                    }
+
+                    // 执行触发的技能
+                    // Execute the triggered skill
+                    ExecuteSkill(enemyId, skillToFire.Id, "periodic_trigger", isCasterPlayer: false, EventSource.Trigger);
+                }
+            }
         }
 
         /// <summary>
