@@ -1673,13 +1673,13 @@ namespace BlazorIdle.Game
         /// <param name="nowMs">当前时间（毫秒）/ Current time (milliseconds)</param>
         private void ProcessCharacterPeriodicSkills(string characterId, int nowMs)
         {
-            // 获取角色数据
-            // Get character data
+            // Step3 Optimization: 获取角色数据
+            // Step3 Optimization: Get character data
             if (_characterDataMap == null || !_characterDataMap.TryGetValue(characterId, out var characterData))
                 return;
 
-            // 获取当前职业ID
-            // Get current profession ID
+            // Step3 Optimization: 获取当前职业ID，添加 null 安全检查
+            // Step3 Optimization: Get current profession ID with null safety checks
             var member = _playerTeam.GetMember(characterId);
             if (member == null)
                 return;
@@ -1690,13 +1690,13 @@ namespace BlazorIdle.Game
 
             string professionId = character.ActiveCombatProfessionId;
 
-            // 获取装备的技能
-            // Get equipped skills
+            // Step3 Optimization: 获取装备的技能
+            // Step3 Optimization: Get equipped skills
             if (!characterData.EquippedSkillsByProfession.TryGetValue(professionId, out var config))
                 return;
 
-            // 检查被动技能槽位是否有技能
-            // Check if passive slot has a skill
+            // Step3 Optimization: 快速路径 - 检查被动技能槽位是否有技能
+            // Step3 Optimization: Fast path - check if passive slot has a skill
             if (string.IsNullOrEmpty(config.PassiveSlot))
                 return;
 
@@ -1784,13 +1784,15 @@ namespace BlazorIdle.Game
         /// <param name="nowMs">当前时间（毫秒）/ Current time (milliseconds)</param>
         private void ProcessEnemyPeriodicSkills(string enemyId, int nowMs)
         {
-            // 获取怪物成员
-            // Get enemy member
+            // Step3 Optimization: 获取怪物成员，添加 null 安全检查
+            // Step3 Optimization: Get enemy member with null safety checks
             var member = _enemyTeam.GetMember(enemyId);
             if (member == null)
                 return;
 
             var enemy = member.Entity as Enemy;
+            // Step3 Optimization: 快速路径 - 检查是否有定期技能
+            // Step3 Optimization: Fast path - check if there are periodic skills
             if (enemy == null || enemy.PeriodicSkillIds == null || enemy.PeriodicSkillIds.Count == 0)
                 return;
 
