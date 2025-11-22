@@ -633,5 +633,23 @@
         "value": 5.0
       }
     ]
+  },
+  {
+    "id": "strength_aura_buff",
+    "name": "力量光环",
+    "description": "Step3: 战士光环效果 - 提升全队攻击力",
+    "icon": "⚔️",
+    "kind": "Buff",
+    "durationSec": 10.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "AllAllies",
+    "effects": [
+      {
+        "type": "StatMultiplier",
+        "target": "AttackPower",
+        "value": 0.10
+      }
+    ]
   }
 ]

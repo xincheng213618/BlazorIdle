@@ -1262,5 +1262,92 @@
         "targetOverride": "Self"
       }
     ]
+  },
+  {
+    "id": "warrior_strength_aura_passive",
+    "name": "力量光环",
+    "description": "战士光环，持续为全队提供攻击力加成",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "allies_all",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "triggers": [
+      {
+        "when": "OnPeriodic",
+        "procChance": 1.0,
+        "fireSkillId": "warrior_strength_aura_effect",
+        "priority": 10,
+        "conditions": {
+          "buffTimeCheckId": "strength_aura_buff",
+          "buffTimeRemainingSec": 5.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "warrior_strength_aura_effect",
+    "name": "力量光环效果",
+    "description": "施加力量光环Buff",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "allies_all",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "strength_aura_buff",
+        "targetOverride": "AllAllies"
+      }
+    ]
+  },
+  {
+    "id": "health_potion_skill",
+    "name": "治疗药水",
+    "description": "生命值低于50%时自动使用，恢复100点生命值",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "self",
+    "cooldownSec": 0,
+    "allowedProfessions": [],
+    "triggers": [
+      {
+        "when": "OnPeriodic",
+        "procChance": 1.0,
+        "fireSkillId": "health_potion_effect",
+        "priority": 10,
+        "conditions": {
+          "hpBelowPct": 50
+        }
+      }
+    ]
+  },
+  {
+    "id": "health_potion_effect",
+    "name": "治疗药水效果",
+    "description": "立即恢复100点生命值",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "self",
+    "cooldownSec": 30,
+    "allowedProfessions": [],
+    "instantHeal": 100
   }
 ]
