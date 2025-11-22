@@ -1331,7 +1331,7 @@
         "fireSkillId": "health_potion_effect",
         "priority": 10,
         "conditions": {
-          "hpBelowPct": 50
+          "hpBelowPct": 50.0
         }
       }
     ]
@@ -1346,7 +1346,7 @@
     "releaseType": "instant",
     "isGcd": false,
     "targetPolicy": "self",
-    "cooldownSec": 30,
+    "cooldownSec": 30.0,
     "allowedProfessions": [],
     "instantHeal": 100
   }
