@@ -112,6 +112,11 @@ namespace BlazorIdle.Game.Purchase
             double clampedDiscount = Math.Clamp(discountPercent, 0, 90);
             double multiplier = 1.0 - (clampedDiscount / 100.0);
             double rawPrice = basePrice * multiplier;
+            
+            // 防止溢出：限制在 int.MaxValue 范围内
+            if (rawPrice > int.MaxValue)
+                return int.MaxValue;
+            
             return Math.Max(0, (int)Math.Ceiling(rawPrice));
         }
 

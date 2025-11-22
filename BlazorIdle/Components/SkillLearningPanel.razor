@@ -185,12 +185,12 @@
                                     var finalPrice = GetSkillFinalPrice(s);
                                     var isPaidSkill = s.Purchase?.Enabled == true;
                                     
-                                    @if (isPaidSkill)
+                                    @if (isPaidSkill && s.Purchase != null)
                                     {
                                         <div class="d-flex flex-column align-items-end gap-2">
                                             <div class="skill-price-display">
                                                 <span class="price-icon">🪙</span>
-                                                @if (s.Purchase!.DiscountPercent > 0)
+                                                @if (s.Purchase.DiscountPercent > 0)
                                                 {
                                                     <span class="original-price">@s.Purchase.BasePrice</span>
                                                     <span class="final-price text-success">@finalPrice</span>

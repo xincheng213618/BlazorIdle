@@ -97,7 +97,14 @@ namespace BlazorIdle.Game.Purchase
         private void EnsureDailyReset()
         {
             var today = DateOnly.FromDateTime(DateTime.Now);
-            var lastReset = DateOnly.Parse(_state.LastDailyReset);
+            
+            // 使用 TryParse 防止损坏的保存数据导致崩溃
+            if (!DateOnly.TryParse(_state.LastDailyReset, out var lastReset))
+            {
+                // 如果解析失败，重置为今天
+                lastReset = today;
+                _state.LastDailyReset = today.ToString("O");
+            }
 
             if (lastReset < today)
             {

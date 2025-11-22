@@ -182,7 +182,7 @@ namespace BlazorIdle.Game.Skills
             if (skill.Purchase?.Enabled == true)
             {
                 if (_purchaseService == null)
-                    return (false, "购买服务未初始化");
+                    return (false, "暂时无法购买此技能");
 
                 // 检查是否可以在商店直接购买
                 if (!skill.Purchase.CanBuyInShop)
