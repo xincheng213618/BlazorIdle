@@ -1650,19 +1650,145 @@ namespace BlazorIdle.Game
             
             int nowMs = _clock.NowMs;
             
-            // TODO Step3 Phase 1.4: 检查所有玩家的定期技能
-            // TODO Step3 Phase 1.4: Check all players' periodic skills
-            // foreach (var character in _playerTeam.GetLivingMembers())
-            // {
-            //     ProcessCharacterPeriodicSkills(character.Id, nowMs);
-            // }
+            // Step3 Phase 1.4: 检查所有玩家的定期技能
+            // Step3 Phase 1.4: Check all players' periodic skills
+            foreach (var characterMember in _playerTeam.GetAliveMembers())
+            {
+                ProcessCharacterPeriodicSkills(characterMember.Id, nowMs);
+            }
             
-            // TODO Step3 Phase 1.5: 检查所有怪物的定期技能
-            // TODO Step3 Phase 1.5: Check all monsters' periodic skills
-            // foreach (var enemy in _enemyTeam.GetLivingMembers())
-            // {
-            //     ProcessEnemyPeriodicSkills(enemy.Id, nowMs);
-            // }
+            // Step3 Phase 1.5: 检查所有怪物的定期技能
+            // Step3 Phase 1.5: Check all monsters' periodic skills
+            foreach (var enemyMember in _enemyTeam.GetAliveMembers())
+            {
+                ProcessEnemyPeriodicSkills(enemyMember.Id, nowMs);
+            }
+        }
+
+        /// <summary>
+        /// Step3 Phase 1.4: 处理角色的定期技能检查
+        /// Step3 Phase 1.4: Process character's periodic skill checks
+        /// </summary>
+        /// <param name="characterId">角色ID / Character ID</param>
+        /// <param name="nowMs">当前时间（毫秒）/ Current time (milliseconds)</param>
+        private void ProcessCharacterPeriodicSkills(string characterId, int nowMs)
+        {
+            // 获取角色数据
+            // Get character data
+            if (_characterDataMap == null || !_characterDataMap.TryGetValue(characterId, out var characterData))
+                return;
+
+            // 获取当前职业ID
+            // Get current profession ID
+            var member = _playerTeam.GetMember(characterId);
+            if (member == null)
+                return;
+
+            var character = member.Entity as Character;
+            if (character == null || string.IsNullOrEmpty(character.ActiveCombatProfessionId))
+                return;
+
+            string professionId = character.ActiveCombatProfessionId;
+
+            // 获取装备的技能
+            // Get equipped skills
+            if (!characterData.EquippedSkillsByProfession.TryGetValue(professionId, out var config))
+                return;
+
+            // 检查被动技能槽位是否有技能
+            // Check if passive slot has a skill
+            if (string.IsNullOrEmpty(config.PassiveSlot))
+                return;
+
+            var passiveSkill = _skillRepository.GetSkillById(config.PassiveSlot);
+            if (passiveSkill == null || passiveSkill.Triggers == null || passiveSkill.Triggers.Count == 0)
+                return;
+
+            // 创建战斗上下文
+            // Create battle context
+            var context = new BattleContext
+            {
+                Player = character,
+                PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(characterId),
+                PlayerResources = _playerResources.GetValueOrDefault(characterId),
+                PlayerTeam = _playerTeam,
+                EnemyTeam = _enemyTeam,
+                EnemyBuffOwners = _enemyBuffOwners,
+                Rng = _rng,
+                Clock = _clock,
+                CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
+            };
+
+            // 检查是否有 OnPeriodic 触发器
+            // Check if there are OnPeriodic triggers
+            foreach (var trigger in passiveSkill.Triggers)
+            {
+                if (trigger.When != "OnPeriodic")
+                    continue;
+
+                // 检查触发条件（使用trigger的conditions或技能的conditions）
+                // Check trigger conditions (use trigger's conditions or skill's conditions)
+                var conditionsToCheck = trigger.Conditions ?? passiveSkill.Conditions;
+                if (conditionsToCheck != null)
+                {
+                    // 创建临时技能定义用于条件检查
+                    // Create temporary skill definition for condition checking
+                    var tempSkill = new SkillDef
+                    {
+                        Id = passiveSkill.Id,
+                        Conditions = conditionsToCheck
+                    };
+
+                    if (!_conditionChecker.CheckConditions(tempSkill, context, isCasterPlayer: true, characterId))
+                        continue;
+                }
+
+                // 检查概率触发
+                // Check proc chance
+                if (trigger.ProcChance < 1.0)
+                {
+                    double roll = _rng.NextDouble();
+                    if (roll > trigger.ProcChance)
+                        continue;
+                }
+
+                // 获取要触发的技能
+                // Get the skill to trigger
+                if (string.IsNullOrEmpty(trigger.FireSkillId))
+                    continue;
+
+                var skillToFire = _skillRepository.GetSkillById(trigger.FireSkillId);
+                if (skillToFire == null)
+                    continue;
+
+                // 检查冷却（除非ignoreRequirements为true）
+                // Check cooldown (unless ignoreRequirements is true)
+                if (!trigger.IgnoreRequirements)
+                {
+                    var cooldownManager = GetOrCreateCooldownManager(characterId);
+                    if (!cooldownManager.IsReady(skillToFire.Id))
+                        continue;
+                }
+
+                // 执行触发的技能
+                // Execute the triggered skill
+                ExecuteSkill(characterId, skillToFire.Id, "periodic_trigger", isCasterPlayer: true, EventSource.Trigger);
+            }
+        }
+
+        /// <summary>
+        /// Step3 Phase 1.5: 处理怪物的定期技能检查
+        /// Step3 Phase 1.5: Process enemy's periodic skill checks
+        /// </summary>
+        /// <param name="enemyId">怪物ID / Enemy ID</param>
+        /// <param name="nowMs">当前时间（毫秒）/ Current time (milliseconds)</param>
+        private void ProcessEnemyPeriodicSkills(string enemyId, int nowMs)
+        {
+            // TODO Step3 Phase 1.6: 需要先扩展 Enemy 数据模型添加 PeriodicSkillIds
+            // TODO Step3 Phase 1.6: Need to extend Enemy data model to add PeriodicSkillIds first
+            
+            // 暂时不处理，等待数据模型扩展
+            // Temporarily skip, waiting for data model extension
         }
 
         /// <summary>
