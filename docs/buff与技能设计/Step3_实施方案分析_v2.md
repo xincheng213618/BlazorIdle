@@ -1,9 +1,9 @@
-# Step3 定期技能检查系统 - 实施方案分析 v2.0
+# Step3 定期技能检查系统 - 实施方案分析 v2.1
 
-**文档版本：** v2.0  
+**文档版本：** v2.1  
 **创建日期：** 2025-11-22  
 **更新日期：** 2025-11-22  
-**状态：** 用户反馈后修订
+**状态：** 用户反馈整合完成，准备实施
 
 ---
 
@@ -242,7 +242,15 @@ private bool ShouldRefreshAura(string characterId, TriggerDef trigger, SkillDef 
 
 ### 2.3 战斗开始触发
 
-**保留 OnBattleStart 触发时机（用户认为有用）：**
+**重要说明：** OnBattleStart 保留用于未来扩展，**不用于光环系统**。光环完全通过 buff 续期条件（OnPeriodic + BuffTimeRemainingSec）实现。
+
+OnBattleStart 的未来用途示例：
+- 战斗开始时给全队施加增益/减益
+- 战斗开始的特殊事件触发
+- Boss 战开始的剧情效果
+- 等等
+
+**实现（保留接口）：**
 
 ```csharp
 public void Start()
@@ -252,7 +260,7 @@ public void Start()
     _running = true;
     _state = MultiBattleState.Fighting;
     
-    // 新增：触发战斗开始技能
+    // 新增：触发战斗开始技能（用于未来扩展，当前光环不使用）
     TriggerBattleStartSkills();
     
     // 开始计时
@@ -260,13 +268,17 @@ public void Start()
 }
 
 /// <summary>
-/// 触发战斗开始时的技能（光环等）
-/// Trigger skills at battle start (auras, etc.)
+/// 触发战斗开始时的技能（用于未来扩展）
+/// Trigger skills at battle start (for future expansion)
+/// 
+/// 注意：光环系统不使用此触发器，使用 OnPeriodic + BuffTimeRemainingSec 实现
+/// Note: Aura system does NOT use this trigger, uses OnPeriodic + BuffTimeRemainingSec instead
 /// </summary>
 private void TriggerBattleStartSkills()
 {
     int nowMs = _clock.NowMs;
     
+    // 玩家技能
     foreach (var character in _playerTeam.GetLivingMembers())
     {
         var passiveSkills = GetCharacterPassiveSkills(character.Id);
@@ -283,6 +295,27 @@ private void TriggerBattleStartSkills()
             foreach (var trigger in battleStartTriggers)
             {
                 TriggerSkill(character.Id, trigger, skill, nowMs);
+            }
+        }
+    }
+    
+    // 怪物技能（未来扩展）
+    foreach (var enemy in _enemyTeam.GetLivingMembers())
+    {
+        var periodicSkills = GetEnemyPeriodicSkills(enemy.Id);
+        
+        foreach (var skill in periodicSkills)
+        {
+            var battleStartTriggers = skill.Triggers?
+                .Where(t => t.When == "OnBattleStart")
+                .ToList();
+            
+            if (battleStartTriggers == null || battleStartTriggers.Count == 0)
+                continue;
+            
+            foreach (var trigger in battleStartTriggers)
+            {
+                TriggerSkill(enemy.Id, trigger, skill, nowMs);
             }
         }
     }
@@ -432,20 +465,23 @@ private bool CheckBuffTimeCondition(IBuffOwner? caster, SkillConditions conditio
 
 ### 4.1 战士力量光环（自动续期）
 
+**重要说明：** 光环系统**不使用 OnBattleStart 触发**，完全通过 buff 续期条件实现。OnBattleStart 保留用于未来扩展（如战斗开始的团队增益、特殊事件等）。
+
 **技能定义：**
 ```json
 {
   "id": "warrior_strength_aura_passive",
   "name": "力量光环",
+  "description": "战士光环，持续为全队提供攻击力加成",
   "type": "passive",
   "slotType": "passive",
+  "fixed": false,
+  "releaseType": "instant",
+  "isGcd": false,
+  "targetPolicy": "allies_all",
+  "cooldownSec": 0,
+  "allowedProfessions": ["warrior"],
   "triggers": [
-    {
-      "when": "OnBattleStart",
-      "procChance": 1.0,
-      "fireSkillId": "warrior_strength_aura_effect",
-      "priority": 10
-    },
     {
       "when": "OnPeriodic",
       "procChance": 1.0,
@@ -465,13 +501,20 @@ private bool CheckBuffTimeCondition(IBuffOwner? caster, SkillConditions conditio
 {
   "id": "warrior_strength_aura_effect",
   "name": "力量光环效果",
-  "type": "passive",
+  "description": "施加力量光环Buff",
+  "type": "active",
+  "slotType": "active",
+  "fixed": false,
+  "releaseType": "instant",
+  "isGcd": false,
   "targetPolicy": "allies_all",
-  "buffs": [
+  "cooldownSec": 0,
+  "allowedProfessions": ["warrior"],
+  "onCastBuffs": [
     {
-      "buffId": "strength_aura_buff",
-      "target": "AllTargets",
-      "durationSec": 10
+      "op": "Apply",
+      "buffConfigId": "strength_aura_buff",
+      "targetOverride": "AllTargets"
     }
   ]
 }
@@ -503,13 +546,22 @@ private bool CheckBuffTimeCondition(IBuffOwner? caster, SkillConditions conditio
 
 ### 4.2 治疗药水技能（模拟消耗品）
 
+**说明：** 可装备的被动技能，用于验证 HP 条件触发。未来真实的消耗品系统会有专门的装备栏。
+
 **技能定义：**
 ```json
 {
   "id": "health_potion_skill",
   "name": "治疗药水",
+  "description": "生命值低于50%时自动使用，恢复100点生命值",
   "type": "passive",
   "slotType": "passive",
+  "fixed": false,
+  "releaseType": "instant",
+  "isGcd": false,
+  "targetPolicy": "self",
+  "cooldownSec": 0,
+  "allowedProfessions": [],
   "triggers": [
     {
       "when": "OnPeriodic",
@@ -529,9 +581,15 @@ private bool CheckBuffTimeCondition(IBuffOwner? caster, SkillConditions conditio
 {
   "id": "health_potion_effect",
   "name": "治疗药水效果",
-  "type": "passive",
+  "description": "立即恢复100点生命值",
+  "type": "active",
+  "slotType": "active",
+  "fixed": false,
+  "releaseType": "instant",
+  "isGcd": false,
   "targetPolicy": "self",
   "cooldownSec": 30,
+  "allowedProfessions": [],
   "instantHeal": 100
 }
 ```
@@ -544,13 +602,22 @@ private bool CheckBuffTimeCondition(IBuffOwner? caster, SkillConditions conditio
 
 ### 4.3 群体打击（敌人数量触发）
 
+**说明：** 可装备的被动技能，用于验证敌人数量条件触发。
+
 **技能定义：**
 ```json
 {
   "id": "warrior_aoe_strike",
   "name": "群体打击",
+  "description": "敌人数量≥3时自动触发AOE攻击",
   "type": "passive",
   "slotType": "passive",
+  "fixed": false,
+  "releaseType": "instant",
+  "isGcd": false,
+  "targetPolicy": "enemies_all",
+  "cooldownSec": 0,
+  "allowedProfessions": ["warrior"],
   "triggers": [
     {
       "when": "OnPeriodic",
@@ -570,13 +637,18 @@ private bool CheckBuffTimeCondition(IBuffOwner? caster, SkillConditions conditio
 {
   "id": "warrior_aoe_strike_effect",
   "name": "群体打击效果",
-  "type": "passive",
+  "description": "对所有敌人造成伤害",
+  "type": "active",
+  "slotType": "active",
+  "fixed": false,
+  "releaseType": "instant",
+  "isGcd": false,
   "targetPolicy": "enemies_all",
   "cooldownSec": 10,
+  "allowedProfessions": ["warrior"],
   "damage": {
-    "base": 50,
-    "scaleStat": "AttackPower",
-    "scaleRatio": 0.8
+    "coefAtk": 0.8,
+    "flat": 50
   }
 }
 ```
@@ -588,13 +660,21 @@ private bool CheckBuffTimeCondition(IBuffOwner? caster, SkillConditions conditio
 
 ### 4.4 团队急救（队友低血触发）
 
+**说明：** 牧师专属被动技能，用于验证队友 HP 条件触发。
+
 **技能定义：**
 ```json
 {
   "id": "priest_emergency_heal",
   "name": "团队急救",
+  "description": "任意队友生命值低于30%时自动治疗",
   "type": "passive",
   "slotType": "passive",
+  "fixed": false,
+  "releaseType": "instant",
+  "isGcd": false,
+  "targetPolicy": "allies_lowest_hp_pct",
+  "cooldownSec": 0,
   "allowedProfessions": ["priest"],
   "triggers": [
     {
@@ -615,9 +695,15 @@ private bool CheckBuffTimeCondition(IBuffOwner? caster, SkillConditions conditio
 {
   "id": "priest_emergency_heal_effect",
   "name": "团队急救效果",
-  "type": "passive",
+  "description": "治疗生命值最低的队友",
+  "type": "active",
+  "slotType": "active",
+  "fixed": false,
+  "releaseType": "instant",
+  "isGcd": false,
   "targetPolicy": "allies_lowest_hp_pct",
   "cooldownSec": 20,
+  "allowedProfessions": ["priest"],
   "instantHeal": 150
 }
 ```
@@ -628,13 +714,197 @@ private bool CheckBuffTimeCondition(IBuffOwner? caster, SkillConditions conditio
 - 满足条件时治疗 HP 最低的队友
 - 冷却 20 秒
 
+### 4.5 怪物定期技能示例
+
+**重要说明：** 怪物也需要支持定期技能检查系统。怪物技能配置更简单，直接在 `monsterskills.json` 中定义，然后在 `monsters.json` 的怪物配置中引用（没有装备槽概念）。
+
+#### 4.5.1 怪物狂暴光环（自动续期）
+
+**怪物技能定义（monsterskills.json）：**
+```json
+{
+  "id": "monster_enrage_aura",
+  "name": "怪物狂暴光环",
+  "description": "怪物狂暴光环，持续提升攻击力",
+  "type": "passive",
+  "slotType": "passive",
+  "fixed": false,
+  "releaseType": "instant",
+  "isGcd": false,
+  "targetPolicy": "self",
+  "cooldownSec": 0,
+  "allowedProfessions": [],
+  "triggers": [
+    {
+      "when": "OnPeriodic",
+      "procChance": 1.0,
+      "fireSkillId": "monster_enrage_aura_effect",
+      "priority": 10,
+      "conditions": {
+        "buffTimeCheckId": "monster_enrage_buff",
+        "buffTimeRemainingSec": 5.0
+      }
+    }
+  ]
+}
+```
+
+**光环效果技能：**
+```json
+{
+  "id": "monster_enrage_aura_effect",
+  "name": "怪物狂暴效果",
+  "description": "施加狂暴Buff",
+  "type": "active",
+  "slotType": "active",
+  "fixed": false,
+  "releaseType": "instant",
+  "isGcd": false,
+  "targetPolicy": "self",
+  "cooldownSec": 0,
+  "allowedProfessions": [],
+  "onCastBuffs": [
+    {
+      "op": "Apply",
+      "buffConfigId": "monster_enrage_buff",
+      "targetOverride": "Self"
+    }
+  ]
+}
+```
+
+**Buff 定义（buffs.json）：**
+```json
+{
+  "id": "monster_enrage_buff",
+  "name": "狂暴",
+  "type": "Buff",
+  "duration": 10,
+  "maxStacks": 1,
+  "effects": [
+    {
+      "type": "ModifyStat",
+      "stat": "AttackPower",
+      "operation": "MultiplyPercent",
+      "value": 20
+    }
+  ]
+}
+```
+
+**怪物配置（monsters.json）：**
+```json
+{
+  "id": "enraged_ogre",
+  "name": "狂暴食人魔",
+  "desc": "拥有狂暴光环的食人魔，攻击力持续提升",
+  "level": 15,
+  "maxHp": 600,
+  "attackIntervalSec": 2.2,
+  "damagePerHit": 20,
+  "variancePct": 0.05,
+  "respawnSec": 4.0,
+  "baseExperience": 15,
+  "normalAttackSkillId": "monster_attack_basic",
+  "periodicSkillIds": ["monster_enrage_aura"],
+  "lootDrops": [
+    {
+      "itemId": "gold_coin",
+      "minQuantity": 20,
+      "maxQuantity": 30,
+      "dropChance": 1.0
+    }
+  ]
+}
+```
+
+**说明：**
+- 怪物通过 `periodicSkillIds` 数组配置定期技能（新增字段）
+- 不需要装备槽，直接配置技能 ID
+- 定期检查会遍历怪物的 `periodicSkillIds`，检查触发条件
+- 光环自动续期机制与玩家相同
+
+#### 4.5.2 怪物自我治疗（HP 低于 30% 触发）
+
+**怪物技能定义（monsterskills.json）：**
+```json
+{
+  "id": "monster_self_heal",
+  "name": "怪物自我治疗",
+  "description": "生命值低于30%时自动治疗自己",
+  "type": "passive",
+  "slotType": "passive",
+  "fixed": false,
+  "releaseType": "instant",
+  "isGcd": false,
+  "targetPolicy": "self",
+  "cooldownSec": 0,
+  "allowedProfessions": [],
+  "triggers": [
+    {
+      "when": "OnPeriodic",
+      "procChance": 1.0,
+      "fireSkillId": "monster_self_heal_effect",
+      "priority": 10,
+      "conditions": {
+        "hpBelowPct": 30
+      }
+    }
+  ]
+}
+```
+
+**治疗效果技能：**
+```json
+{
+  "id": "monster_self_heal_effect",
+  "name": "怪物治疗效果",
+  "description": "恢复自身生命值",
+  "type": "active",
+  "slotType": "active",
+  "fixed": false,
+  "releaseType": "instant",
+  "isGcd": false,
+  "targetPolicy": "self",
+  "cooldownSec": 30,
+  "allowedProfessions": [],
+  "instantHeal": 150
+}
+```
+
+**怪物配置：**
+```json
+{
+  "id": "healing_shaman",
+  "name": "治疗萨满",
+  "desc": "会自我治疗的萨满，血量低时恢复生命值",
+  "level": 18,
+  "maxHp": 500,
+  "attackIntervalSec": 2.5,
+  "damagePerHit": 15,
+  "variancePct": 0.05,
+  "respawnSec": 4.5,
+  "baseExperience": 18,
+  "normalAttackSkillId": "monster_attack_basic",
+  "periodicSkillIds": ["monster_self_heal"],
+  "lootDrops": [
+    {
+      "itemId": "gold_coin",
+      "minQuantity": 25,
+      "maxQuantity": 40,
+      "dropChance": 1.0
+    }
+  ]
+}
+```
+
 ---
 
 ## 五、实施计划（修订版）
 
 ### 5.1 阶段 1: 扩展 ProcessBuffTicks（P0 - 3-4小时）
 
-**目标：** 在 Buff 检查中集成条件技能检查
+**目标：** 在 Buff 检查中集成条件技能检查（玩家 + 怪物）
 
 **任务清单：**
 - [ ] 1.1 在 MultiBattleInstance 中添加累积器
@@ -643,20 +913,32 @@ private bool CheckBuffTimeCondition(IBuffOwner? caster, SkillConditions conditio
   - [ ] 累积器逻辑（1s 间隔）
   - [ ] 遍历存活玩家
   - [ ] 调用 `ProcessCharacterPeriodicSkills()`
+  - [ ] 遍历存活怪物
+  - [ ] 调用 `ProcessEnemyPeriodicSkills()`
 - [ ] 1.3 实现 `ProcessCharacterPeriodicSkills()` 方法
-  - [ ] 获取被动技能
+  - [ ] 获取被动技能（从装备槽）
   - [ ] 检查 OnPeriodic 触发器
   - [ ] 检查条件并触发技能
-- [ ] 1.4 在 `ProcessBuffTicks()` 中调用新方法
-- [ ] 1.5 单元测试（5-8 个）
+- [ ] 1.4 实现 `ProcessEnemyPeriodicSkills()` 方法
+  - [ ] 从 Enemy.PeriodicSkillIds 获取技能
+  - [ ] 检查 OnPeriodic 触发器
+  - [ ] 检查条件并触发技能
+- [ ] 1.5 扩展 Enemy 数据模型
+  - [ ] 添加 `PeriodicSkillIds` 属性（List<string>）
+- [ ] 1.6 扩展 Monster 配置
+  - [ ] 添加 `periodicSkillIds` 字段
+- [ ] 1.7 在 `ProcessBuffTicks()` 中调用新方法
+- [ ] 1.8 单元测试（8-10 个）
   - [ ] 累积器逻辑测试（2 个）
-  - [ ] 条件检查测试（3 个）
+  - [ ] 玩家条件检查测试（3 个）
+  - [ ] 怪物条件检查测试（2 个）
   - [ ] 触发逻辑测试（2-3 个）
 
 **验收标准：**
 - ✅ 每秒检查一次条件技能（通过累积器控制）
-- ✅ 条件满足时正确触发技能
-- ✅ 5-8 个单元测试全部通过
+- ✅ 玩家条件满足时正确触发技能
+- ✅ 怪物条件满足时正确触发技能
+- ✅ 8-10 个单元测试全部通过
 - ✅ 所有现有测试（644个）继续通过
 
 **预估工作量：** 3-4 小时
@@ -915,16 +1197,44 @@ private bool CheckBuffTimeCondition(IBuffOwner? caster, SkillConditions conditio
 | 3. 死亡/复活已存在 | 确认，利用现有逻辑 | ✅ 已确认 |
 | 4. 光环自动续期机制 | 采纳，使用 Buff 时间条件 | ✅ 已修订 |
 
-### 9.3 下一步
+### 9.3 用户反馈整合（v2.1 更新）
 
-**等待用户确认以下关键问题：**
+**用户反馈日期：** 2025-11-22
 
-1. ✅ **方案 B（集成 Buff 检查）**：是否同意这个优化方案？
-2. ✅ **光环续期阈值**：5 秒是否合适？还是需要可配置？
-3. ✅ **Buff 持续时间**：光环 Buff 持续 10s 是否合理？
-4. ✅ **检查间隔**：1000ms（1秒）是否满足需求？
+#### ✅ 已确认的关键点
 
-**用户确认后，将按照修订计划开始实施！**
+1. **光环系统不使用 OnBattleStart**
+   - ✅ 光环完全通过 buff 续期条件实现（OnPeriodic + BuffTimeRemainingSec）
+   - ✅ OnBattleStart 保留用于未来扩展（战斗开始的团队增益、特殊事件等）
+
+2. **示例技能遵循现有格式**
+   - ✅ 参考现有被动技能 JSON 格式
+   - ✅ 创建可装备的被动技能用于测试
+   - ✅ 未来消耗品系统会有专门的装备栏
+
+3. **怪物支持是必需的**
+   - ✅ 怪物需要适配定期检查系统
+   - ✅ 怪物技能配置更简单（无装备槽概念）
+   - ✅ 直接在 `monsters.json` 中配置 `periodicSkillIds` 数组
+   - ✅ 技能定义在 `monsterskills.json` 中
+
+4. **技术参数已确认**
+   - ✅ 光环续期阈值：5 秒
+   - ✅ Buff 持续时间：10 秒
+   - ✅ 检查间隔：1000ms（1秒）
+
+### 9.4 下一步
+
+**用户已确认方案，准备开始实施！**
+
+实施顺序：
+1. 阶段 1：扩展 ProcessBuffTicks（玩家 + 怪物）
+2. 阶段 2：战斗开始触发 + 光环续期（保留 OnBattleStart 接口）
+3. 阶段 3：数量和队友条件
+4. 阶段 4：Buff 时间条件 + 示例技能（玩家 + 怪物）
+5. 阶段 5：集成测试和文档
+
+**预计完成时间：** 10-14 小时
 
 ---
 
