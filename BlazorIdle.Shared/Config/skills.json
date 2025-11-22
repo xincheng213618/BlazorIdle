@@ -1277,6 +1277,9 @@
     "allowedProfessions": [
       "warrior"
     ],
+    "unlock": {
+      "minLevel": 1
+    },
     "triggers": [
       {
         "when": "OnPeriodic",
@@ -1324,6 +1327,9 @@
     "targetPolicy": "self",
     "cooldownSec": 0,
     "allowedProfessions": [],
+    "unlock": {
+      "minLevel": 1
+    },
     "triggers": [
       {
         "when": "OnPeriodic",
