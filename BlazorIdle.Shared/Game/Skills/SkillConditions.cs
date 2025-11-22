@@ -59,5 +59,81 @@ namespace BlazorIdle.Game.Skills
         /// Recommendation: minStacks should be a positive integer (> 0)
         /// </summary>
         public Dictionary<string, int>? RequireBuffStacks { get; set; }
+
+        // ============================================================
+        // Step3: 新增条件类型 - New Condition Types
+        // ============================================================
+
+        /// <summary>
+        /// 敌人数量必须大于等于此值
+        /// Enemy count must be greater than or equal to this value
+        /// 
+        /// Step3 Phase 3: 支持基于敌人数量的条件触发
+        /// Step3 Phase 3: Support condition triggers based on enemy count
+        /// </summary>
+        public int? EnemyCountAbove { get; set; }
+
+        /// <summary>
+        /// 敌人数量必须小于等于此值
+        /// Enemy count must be less than or equal to this value
+        /// 
+        /// Step3 Phase 3: 支持基于敌人数量的条件触发
+        /// Step3 Phase 3: Support condition triggers based on enemy count
+        /// </summary>
+        public int? EnemyCountBelow { get; set; }
+
+        /// <summary>
+        /// 队友数量必须大于等于此值
+        /// Ally count must be greater than or equal to this value
+        /// 
+        /// Step3 Phase 3: 支持基于队友数量的条件触发
+        /// Step3 Phase 3: Support condition triggers based on ally count
+        /// </summary>
+        public int? AllyCountAbove { get; set; }
+
+        /// <summary>
+        /// 队友数量必须小于等于此值
+        /// Ally count must be less than or equal to this value
+        /// 
+        /// Step3 Phase 3: 支持基于队友数量的条件触发
+        /// Step3 Phase 3: Support condition triggers based on ally count
+        /// </summary>
+        public int? AllyCountBelow { get; set; }
+
+        /// <summary>
+        /// 任意队友的HP低于此百分比时满足条件
+        /// Condition is met when any ally's HP is below this percentage
+        /// 
+        /// Step3 Phase 3: 支持基于队友HP的条件触发
+        /// Step3 Phase 3: Support condition triggers based on ally HP
+        /// 
+        /// 建议值范围：0.0 - 100.0
+        /// Recommended range: 0.0 - 100.0
+        /// </summary>
+        public double? AllyHpBelowPct { get; set; }
+
+        /// <summary>
+        /// Buff剩余时间必须小于此秒数（用于光环续期）
+        /// Buff remaining time must be less than this value in seconds (for aura refresh)
+        /// 
+        /// Step3 Phase 4: 支持基于Buff时间的条件触发（光环自动续期）
+        /// Step3 Phase 4: Support condition triggers based on buff time (aura auto-refresh)
+        /// 
+        /// 配合 BuffTimeCheckId 使用
+        /// Used together with BuffTimeCheckId
+        /// </summary>
+        public double? BuffTimeRemainingSec { get; set; }
+
+        /// <summary>
+        /// 要检查剩余时间的Buff ID
+        /// Buff ID to check remaining time
+        /// 
+        /// Step3 Phase 4: 支持基于Buff时间的条件触发（光环自动续期）
+        /// Step3 Phase 4: Support condition triggers based on buff time (aura auto-refresh)
+        /// 
+        /// 配合 BuffTimeRemainingSec 使用
+        /// Used together with BuffTimeRemainingSec
+        /// </summary>
+        public string? BuffTimeCheckId { get; set; }
     }
 }

@@ -123,6 +123,15 @@
         public List<string>? InstantSkillIds { get; set; }
 
         /// <summary>
+        /// Step3 Phase 1: 定期技能ID列表 - 从monsters.json配置
+        /// Step3 Phase 1: Periodic skill IDs list - configured from monsters.json
+        /// 
+        /// 用于定期检查触发的技能（如光环、条件触发等）
+        /// Used for periodically checked triggered skills (like auras, conditional triggers, etc.)
+        /// </summary>
+        public List<string>? PeriodicSkillIds { get; set; }
+
+        /// <summary>
         /// 获取普通攻击技能ID - 如果未设置则返回默认通用技能
         /// Get normal attack skill ID - returns default universal skill if not set
         /// </summary>

@@ -33,6 +33,11 @@ namespace BlazorIdle.Game.Skills
             if (!CheckHpConditionFromContext(context, isCasterPlayer, conditions.HpBelowPct, conditions.HpAbovePct))
                 return false;
 
+            // Step3 Optimization: 条件检查按成本递增顺序排列以提升性能
+            // Step3 Optimization: Order condition checks by increasing cost for better performance
+            // 廉价条件优先，昂贵条件后置，遵循短路原则
+            // Cheap conditions first, expensive conditions last, follow short-circuit principle
+            
             // 获取施法者的 BuffOwner（用于 Buff 和资源条件）
             // Get caster's BuffOwner (for Buff and resource conditions)
             IBuffOwner? caster = null;
@@ -56,8 +61,8 @@ namespace BlazorIdle.Game.Skills
                 }
             }
 
-            // 检查 Buff 条件（需要 BuffOwner）
-            // Check Buff conditions (need BuffOwner)
+            // Step3 Optimization: 优先级1 - 廉价条件：Buff 检查（字典查找）
+            // Step3 Optimization: Priority 1 - Cheap conditions: Buff checks (dictionary lookup)
             if (conditions.RequireBuffId != null || conditions.ForbidBuffId != null)
             {
                 if (caster == null)
@@ -67,8 +72,8 @@ namespace BlazorIdle.Game.Skills
                     return false;
             }
 
-            // 检查资源条件（需要 BuffOwner）
-            // Check Resource conditions (need BuffOwner)
+            // Step3 Optimization: 优先级2 - 廉价条件：资源检查（字典查找）
+            // Step3 Optimization: Priority 2 - Cheap conditions: Resource checks (dictionary lookup)
             if (conditions.RequireResource != null && conditions.RequireResource.Count > 0)
             {
                 if (caster == null)
@@ -78,14 +83,53 @@ namespace BlazorIdle.Game.Skills
                     return false;
             }
 
-            // 检查 Buff 层数条件（需要 BuffOwner）
-            // Check Buff stack conditions (need BuffOwner)
+            // Step3 Optimization: 优先级3 - 中等条件：Buff 层数和时间检查
+            // Step3 Optimization: Priority 3 - Medium conditions: Buff stack and time checks
             if (conditions.RequireBuffStacks != null && conditions.RequireBuffStacks.Count > 0)
             {
                 if (caster == null)
                     return false; // 需要 BuffOwner 但无法获取
                 
                 if (!CheckBuffStackCondition(caster, conditions.RequireBuffStacks))
+                    return false;
+            }
+
+            // Step3 Phase 4: 检查 Buff 时间条件（用于光环续期）
+            // Step3 Phase 4: Check buff time conditions (for aura refresh)
+            if (conditions.BuffTimeRemainingSec.HasValue && !string.IsNullOrEmpty(conditions.BuffTimeCheckId))
+            {
+                if (caster == null)
+                    return false; // 需要 BuffOwner 但无法获取
+                
+                if (!CheckBuffTimeCondition(caster, conditions.BuffTimeCheckId, conditions.BuffTimeRemainingSec.Value))
+                    return false;
+            }
+
+            // Step3 Optimization: 优先级4 - 昂贵条件：数量检查（需要遍历存活成员）
+            // Step3 Optimization: Priority 4 - Expensive conditions: Count checks (need to iterate alive members)
+            // Step3 Phase 3: 检查敌人数量条件
+            // Step3 Phase 3: Check enemy count conditions
+            if (conditions.EnemyCountAbove.HasValue || conditions.EnemyCountBelow.HasValue)
+            {
+                if (!CheckEnemyCountCondition(context, conditions.EnemyCountAbove, conditions.EnemyCountBelow))
+                    return false;
+            }
+
+            // Step3 Phase 3: 检查队友数量条件
+            // Step3 Phase 3: Check ally count conditions
+            if (conditions.AllyCountAbove.HasValue || conditions.AllyCountBelow.HasValue)
+            {
+                if (!CheckAllyCountCondition(context, conditions.AllyCountAbove, conditions.AllyCountBelow))
+                    return false;
+            }
+
+            // Step3 Optimization: 优先级5 - 最昂贵条件：HP 遍历检查（需要遍历所有存活成员并检查 HP）
+            // Step3 Optimization: Priority 5 - Most expensive conditions: HP iteration checks (need to iterate all alive members and check HP)
+            // Step3 Phase 3: 检查队友 HP 条件
+            // Step3 Phase 3: Check ally HP conditions
+            if (conditions.AllyHpBelowPct.HasValue)
+            {
+                if (!CheckAllyHpBelowPctCondition(context, conditions.AllyHpBelowPct.Value))
                     return false;
             }
 
@@ -267,6 +311,136 @@ namespace BlazorIdle.Game.Skills
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Step3 Phase 3: 检查敌人数量条件
+        /// Step3 Phase 3: Check enemy count conditions
+        /// </summary>
+        /// <param name="context">战斗上下文 / Battle context</param>
+        /// <param name="enemyCountAbove">敌人数量必须 >= 此值（可选）/ Enemy count must be >= this value (optional)</param>
+        /// <param name="enemyCountBelow">敌人数量必须 <= 此值（可选）/ Enemy count must be <= this value (optional)</param>
+        /// <returns>是否满足敌人数量条件 / Whether enemy count conditions are met</returns>
+        private bool CheckEnemyCountCondition(BattleContext context, int? enemyCountAbove, int? enemyCountBelow)
+        {
+            // 如果没有敌人数量条件，直接通过
+            // If no enemy count conditions, pass directly
+            if (!enemyCountAbove.HasValue && !enemyCountBelow.HasValue)
+                return true;
+
+            // 获取存活敌人数量
+            // Get living enemy count
+            if (context.EnemyTeam == null)
+                return false;
+
+            int livingEnemyCount = context.EnemyTeam.GetAliveMembers().Count;
+
+            // 检查数量下限
+            // Check count lower bound
+            if (enemyCountAbove.HasValue && livingEnemyCount < enemyCountAbove.Value)
+                return false;
+
+            // 检查数量上限
+            // Check count upper bound
+            if (enemyCountBelow.HasValue && livingEnemyCount > enemyCountBelow.Value)
+                return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Step3 Phase 3: 检查队友数量条件
+        /// Step3 Phase 3: Check ally count conditions
+        /// </summary>
+        /// <param name="context">战斗上下文 / Battle context</param>
+        /// <param name="allyCountAbove">队友数量必须 >= 此值（可选）/ Ally count must be >= this value (optional)</param>
+        /// <param name="allyCountBelow">队友数量必须 <= 此值（可选）/ Ally count must be <= this value (optional)</param>
+        /// <returns>是否满足队友数量条件 / Whether ally count conditions are met</returns>
+        private bool CheckAllyCountCondition(BattleContext context, int? allyCountAbove, int? allyCountBelow)
+        {
+            // 如果没有队友数量条件，直接通过
+            // If no ally count conditions, pass directly
+            if (!allyCountAbove.HasValue && !allyCountBelow.HasValue)
+                return true;
+
+            // 获取存活队友数量
+            // Get living ally count
+            if (context.PlayerTeam == null)
+                return false;
+
+            int livingAllyCount = context.PlayerTeam.GetAliveMembers().Count;
+
+            // 检查数量下限
+            // Check count lower bound
+            if (allyCountAbove.HasValue && livingAllyCount < allyCountAbove.Value)
+                return false;
+
+            // 检查数量上限
+            // Check count upper bound
+            if (allyCountBelow.HasValue && livingAllyCount > allyCountBelow.Value)
+                return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Step3 Phase 3: 检查队友 HP 条件
+        /// Step3 Phase 3: Check ally HP conditions
+        /// </summary>
+        /// <param name="context">战斗上下文 / Battle context</param>
+        /// <param name="allyHpBelowPct">任意队友 HP 必须 < 此百分比 / Any ally HP must be < this percentage</param>
+        /// <returns>是否满足队友 HP 条件 / Whether ally HP conditions are met</returns>
+        private bool CheckAllyHpBelowPctCondition(BattleContext context, double allyHpBelowPct)
+        {
+            // 获取所有存活队友
+            // Get all living allies
+            if (context.PlayerTeam == null)
+                return false;
+
+            // 检查是否有任意队友 HP < 阈值
+            // Check if any ally HP < threshold
+            foreach (var allyMember in context.PlayerTeam.GetAliveMembers())
+            {
+                double hpPct = allyMember.MaxHp > 0 
+                    ? (allyMember.CurrentHp * 100.0 / allyMember.MaxHp) 
+                    : 0.0;
+                
+                if (hpPct < allyHpBelowPct)
+                    return true; // 有队友满足条件
+            }
+
+            return false; // 没有队友满足条件
+        }
+
+        /// <summary>
+        /// Step3 Phase 4: 检查 Buff 时间条件（用于光环续期）
+        /// Step3 Phase 4: Check buff time conditions (for aura refresh)
+        /// 
+        /// 智能逻辑说明 / Smart logic explanation:
+        /// 1. 战斗开始或复活后：Buff 不存在 → 返回 true → 首次触发施加 Buff
+        /// 2. 正常运行中：Buff 剩余时间 &lt; 阈值 → 返回 true → 续期触发刷新 Buff
+        /// 3. Buff 充足时：剩余时间 &gt;= 阈值 → 返回 false → 不触发节省资源
+        /// 
+        /// 1. Battle start or after revive: Buff missing → return true → first trigger applies buff
+        /// 2. Normal operation: Buff remaining &lt; threshold → return true → renewal trigger refreshes buff
+        /// 3. Buff sufficient: Remaining &gt;= threshold → return false → no trigger saves resources
+        /// </summary>
+        /// <param name="caster">施法者 / Caster</param>
+        /// <param name="buffId">要检查的 Buff ID / Buff ID to check</param>
+        /// <param name="remainingSecThreshold">剩余时间阈值（秒）/ Remaining time threshold (seconds)</param>
+        /// <returns>是否满足 Buff 时间条件 / Whether buff time conditions are met</returns>
+        private bool CheckBuffTimeCondition(IBuffOwner caster, string buffId, double remainingSecThreshold)
+        {
+            // Step3 Optimization: 智能首次触发 - Buff 不存在时视为满足条件
+            // Step3 Optimization: Smart first trigger - consider condition met when buff doesn't exist
+            // 这使得光环能够在战斗开始、复活后自动触发，无需额外的 OnBattleStart 或 OnRevive 事件
+            // This allows auras to automatically trigger at battle start and after revive without extra OnBattleStart or OnRevive events
+            if (!caster.Buffs.TryGetValue(buffId, out var buffInstance))
+                return true;
+
+            // 检查 Buff 剩余时间是否 < 阈值
+            // Check if buff remaining time < threshold
+            return buffInstance.RemainingDurationSec < remainingSecThreshold;
         }
     }
 }

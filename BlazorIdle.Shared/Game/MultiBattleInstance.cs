@@ -65,6 +65,11 @@ namespace BlazorIdle.Game
         // 使用 GetOrCreateCooldownManager 委托实现每个角色独立的冷却跟踪
         private readonly TriggerProcessor _triggerProcessor;
         
+        // Step3: Periodic skill check system / 定期技能检查系统
+        // Accumulator for periodic skill checks (every 1 second)
+        // 定期技能检查累积器（每秒检查一次）
+        private double _periodicCheckAccumulator = 0.0;
+        
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
         // Current implementation directly uses TrackState + SkillResolver for better clarity.
@@ -1529,6 +1534,10 @@ namespace BlazorIdle.Game
                 
                 ProcessEntityBuffs(buffOwner, deltaTimeSec);
             }
+            
+            // Step3: 处理定期技能检查
+            // Step3: Process periodic skill checks
+            ProcessPeriodicSkillChecks(deltaTimeSec);
         }
 
         /// <summary>
@@ -1616,6 +1625,253 @@ namespace BlazorIdle.Game
                     reason: "expired",
                     bundleId: null
                 );
+            }
+        }
+
+        /// <summary>
+        /// Step3 Phase 1: 处理定期技能检查（每秒检查一次）
+        /// Step3 Phase 1: Process periodic skill checks (check every 1 second)
+        /// 
+        /// 集成到 ProcessBuffTicks 中，复用现有的 BuffOwner 遍历逻辑
+        /// Integrated into ProcessBuffTicks, reusing existing BuffOwner traversal logic
+        /// </summary>
+        private void ProcessPeriodicSkillChecks(double deltaTimeSec)
+        {
+            // 累积时间，每秒检查一次
+            // Accumulate time, check every second
+            _periodicCheckAccumulator += deltaTimeSec;
+            
+            if (_periodicCheckAccumulator < 1.0)
+                return;
+            
+            // 减去1秒，保留余数以保持精度
+            // Subtract 1 second, keep remainder for precision
+            _periodicCheckAccumulator -= 1.0;
+            
+            int nowMs = _clock.NowMs;
+            
+            // Step3 Phase 1.4: 检查所有玩家的定期技能
+            // Step3 Phase 1.4: Check all players' periodic skills
+            foreach (var characterMember in _playerTeam.GetAliveMembers())
+            {
+                ProcessCharacterPeriodicSkills(characterMember.Id, nowMs);
+            }
+            
+            // Step3 Phase 1.5: 检查所有怪物的定期技能
+            // Step3 Phase 1.5: Check all monsters' periodic skills
+            foreach (var enemyMember in _enemyTeam.GetAliveMembers())
+            {
+                ProcessEnemyPeriodicSkills(enemyMember.Id, nowMs);
+            }
+        }
+
+        /// <summary>
+        /// Step3 Phase 1.4: 处理角色的定期技能检查
+        /// Step3 Phase 1.4: Process character's periodic skill checks
+        /// </summary>
+        /// <param name="characterId">角色ID / Character ID</param>
+        /// <param name="nowMs">当前时间（毫秒）/ Current time (milliseconds)</param>
+        private void ProcessCharacterPeriodicSkills(string characterId, int nowMs)
+        {
+            // Step3 Optimization: 获取角色数据
+            // Step3 Optimization: Get character data
+            if (_characterDataMap == null || !_characterDataMap.TryGetValue(characterId, out var characterData))
+                return;
+
+            // Step3 Optimization: 获取当前职业ID，添加 null 安全检查
+            // Step3 Optimization: Get current profession ID with null safety checks
+            var member = _playerTeam.GetMember(characterId);
+            if (member == null)
+                return;
+
+            var character = member.Entity as Character;
+            if (character == null || string.IsNullOrEmpty(character.ActiveCombatProfessionId))
+                return;
+
+            string professionId = character.ActiveCombatProfessionId;
+
+            // Step3 Optimization: 获取装备的技能
+            // Step3 Optimization: Get equipped skills
+            if (!characterData.EquippedSkillsByProfession.TryGetValue(professionId, out var config))
+                return;
+
+            // Step3 Optimization: 快速路径 - 检查被动技能槽位是否有技能
+            // Step3 Optimization: Fast path - check if passive slot has a skill
+            if (string.IsNullOrEmpty(config.PassiveSlot))
+                return;
+
+            var passiveSkill = _skillRepository.GetSkillById(config.PassiveSlot);
+            if (passiveSkill == null || passiveSkill.Triggers == null || passiveSkill.Triggers.Count == 0)
+                return;
+
+            // 创建战斗上下文
+            // Create battle context
+            var context = new BattleContext
+            {
+                Player = character,
+                PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(characterId),
+                PlayerResources = _playerResources.GetValueOrDefault(characterId),
+                PlayerTeam = _playerTeam,
+                EnemyTeam = _enemyTeam,
+                EnemyBuffOwners = _enemyBuffOwners,
+                Rng = _rng,
+                Clock = _clock,
+                CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
+            };
+
+            // 检查是否有 OnPeriodic 触发器
+            // Check if there are OnPeriodic triggers
+            foreach (var trigger in passiveSkill.Triggers)
+            {
+                if (trigger.When != "OnPeriodic")
+                    continue;
+
+                // 检查触发条件（使用trigger的conditions或技能的conditions）
+                // Check trigger conditions (use trigger's conditions or skill's conditions)
+                var conditionsToCheck = trigger.Conditions ?? passiveSkill.Conditions;
+                if (conditionsToCheck != null)
+                {
+                    // 创建临时技能定义用于条件检查
+                    // Create temporary skill definition for condition checking
+                    var tempSkill = new SkillDef
+                    {
+                        Id = passiveSkill.Id,
+                        Conditions = conditionsToCheck
+                    };
+
+                    if (!_conditionChecker.CheckConditions(tempSkill, context, isCasterPlayer: true, characterId))
+                        continue;
+                }
+
+                // 检查概率触发
+                // Check proc chance
+                if (trigger.ProcChance < 1.0)
+                {
+                    double roll = _rng.NextDouble();
+                    if (roll > trigger.ProcChance)
+                        continue;
+                }
+
+                // 获取要触发的技能
+                // Get the skill to trigger
+                if (string.IsNullOrEmpty(trigger.FireSkillId))
+                    continue;
+
+                var skillToFire = _skillRepository.GetSkillById(trigger.FireSkillId);
+                if (skillToFire == null)
+                    continue;
+
+                // 检查冷却（除非ignoreRequirements为true）
+                // Check cooldown (unless ignoreRequirements is true)
+                if (!trigger.IgnoreRequirements)
+                {
+                    var cooldownManager = GetOrCreateCooldownManager(characterId);
+                    if (!cooldownManager.IsReady(skillToFire.Id))
+                        continue;
+                }
+
+                // 执行触发的技能
+                // Execute the triggered skill
+                ExecuteSkill(characterId, skillToFire.Id, "periodic_trigger", isCasterPlayer: true, EventSource.Trigger);
+            }
+        }
+
+        /// <summary>
+        /// Step3 Phase 1.5: 处理怪物的定期技能检查
+        /// Step3 Phase 1.5: Process enemy's periodic skill checks
+        /// </summary>
+        /// <param name="enemyId">怪物ID / Enemy ID</param>
+        /// <param name="nowMs">当前时间（毫秒）/ Current time (milliseconds)</param>
+        private void ProcessEnemyPeriodicSkills(string enemyId, int nowMs)
+        {
+            // Step3 Optimization: 获取怪物成员，添加 null 安全检查
+            // Step3 Optimization: Get enemy member with null safety checks
+            var member = _enemyTeam.GetMember(enemyId);
+            if (member == null)
+                return;
+
+            var enemy = member.Entity as Enemy;
+            // Step3 Optimization: 快速路径 - 检查是否有定期技能
+            // Step3 Optimization: Fast path - check if there are periodic skills
+            if (enemy == null || enemy.PeriodicSkillIds == null || enemy.PeriodicSkillIds.Count == 0)
+                return;
+
+            // 创建战斗上下文
+            // Create battle context
+            var context = new BattleContext
+            {
+                Enemy = enemy,
+                PlayerTeam = _playerTeam,
+                EnemyTeam = _enemyTeam,
+                EnemyBuffOwners = _enemyBuffOwners,
+                Rng = _rng,
+                Clock = _clock,
+                CurrentTargetId = SelectPlayerTarget(_config.EnemyTargetStrategy)
+            };
+
+            // 遍历怪物的定期技能
+            // Iterate through monster's periodic skills
+            foreach (var skillId in enemy.PeriodicSkillIds)
+            {
+                var skill = _skillRepository.GetSkillById(skillId);
+                if (skill == null || skill.Triggers == null || skill.Triggers.Count == 0)
+                    continue;
+
+                // 检查是否有 OnPeriodic 触发器
+                // Check if there are OnPeriodic triggers
+                foreach (var trigger in skill.Triggers)
+                {
+                    if (trigger.When != "OnPeriodic")
+                        continue;
+
+                    // 检查触发条件（使用trigger的conditions或技能的conditions）
+                    // Check trigger conditions (use trigger's conditions or skill's conditions)
+                    var conditionsToCheck = trigger.Conditions ?? skill.Conditions;
+                    if (conditionsToCheck != null)
+                    {
+                        // 创建临时技能定义用于条件检查
+                        // Create temporary skill definition for condition checking
+                        var tempSkill = new SkillDef
+                        {
+                            Id = skill.Id,
+                            Conditions = conditionsToCheck
+                        };
+
+                        if (!_conditionChecker.CheckConditions(tempSkill, context, isCasterPlayer: false, enemyId))
+                            continue;
+                    }
+
+                    // 检查概率触发
+                    // Check proc chance
+                    if (trigger.ProcChance < 1.0)
+                    {
+                        double roll = _rng.NextDouble();
+                        if (roll > trigger.ProcChance)
+                            continue;
+                    }
+
+                    // 获取要触发的技能
+                    // Get the skill to trigger
+                    if (string.IsNullOrEmpty(trigger.FireSkillId))
+                        continue;
+
+                    var skillToFire = _skillRepository.GetSkillById(trigger.FireSkillId);
+                    if (skillToFire == null)
+                        continue;
+
+                    // 检查冷却（除非ignoreRequirements为true）
+                    // Check cooldown (unless ignoreRequirements is true)
+                    if (!trigger.IgnoreRequirements)
+                    {
+                        var cooldownManager = GetOrCreateCooldownManager(enemyId);
+                        if (!cooldownManager.IsReady(skillToFire.Id))
+                            continue;
+                    }
+
+                    // 执行触发的技能
+                    // Execute the triggered skill
+                    ExecuteSkill(enemyId, skillToFire.Id, "periodic_trigger", isCasterPlayer: false, EventSource.Trigger);
+                }
             }
         }
 
