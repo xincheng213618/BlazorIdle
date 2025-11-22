@@ -65,6 +65,11 @@ namespace BlazorIdle.Game
         // 使用 GetOrCreateCooldownManager 委托实现每个角色独立的冷却跟踪
         private readonly TriggerProcessor _triggerProcessor;
         
+        // Step3: Periodic skill check system / 定期技能检查系统
+        // Accumulator for periodic skill checks (every 1 second)
+        // 定期技能检查累积器（每秒检查一次）
+        private double _periodicCheckAccumulator = 0.0;
+        
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
         // Current implementation directly uses TrackState + SkillResolver for better clarity.
@@ -1529,6 +1534,10 @@ namespace BlazorIdle.Game
                 
                 ProcessEntityBuffs(buffOwner, deltaTimeSec);
             }
+            
+            // Step3: 处理定期技能检查
+            // Step3: Process periodic skill checks
+            ProcessPeriodicSkillChecks(deltaTimeSec);
         }
 
         /// <summary>
@@ -1617,6 +1626,43 @@ namespace BlazorIdle.Game
                     bundleId: null
                 );
             }
+        }
+
+        /// <summary>
+        /// Step3 Phase 1: 处理定期技能检查（每秒检查一次）
+        /// Step3 Phase 1: Process periodic skill checks (check every 1 second)
+        /// 
+        /// 集成到 ProcessBuffTicks 中，复用现有的 BuffOwner 遍历逻辑
+        /// Integrated into ProcessBuffTicks, reusing existing BuffOwner traversal logic
+        /// </summary>
+        private void ProcessPeriodicSkillChecks(double deltaTimeSec)
+        {
+            // 累积时间，每秒检查一次
+            // Accumulate time, check every second
+            _periodicCheckAccumulator += deltaTimeSec;
+            
+            if (_periodicCheckAccumulator < 1.0)
+                return;
+            
+            // 减去1秒，保留余数以保持精度
+            // Subtract 1 second, keep remainder for precision
+            _periodicCheckAccumulator -= 1.0;
+            
+            int nowMs = _clock.NowMs;
+            
+            // TODO Step3 Phase 1.4: 检查所有玩家的定期技能
+            // TODO Step3 Phase 1.4: Check all players' periodic skills
+            // foreach (var character in _playerTeam.GetLivingMembers())
+            // {
+            //     ProcessCharacterPeriodicSkills(character.Id, nowMs);
+            // }
+            
+            // TODO Step3 Phase 1.5: 检查所有怪物的定期技能
+            // TODO Step3 Phase 1.5: Check all monsters' periodic skills
+            // foreach (var enemy in _enemyTeam.GetLivingMembers())
+            // {
+            //     ProcessEnemyPeriodicSkills(enemy.Id, nowMs);
+            // }
         }
 
         /// <summary>
