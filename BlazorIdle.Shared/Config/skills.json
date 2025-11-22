@@ -1318,7 +1318,7 @@
   {
     "id": "health_potion_skill",
     "name": "治疗药水",
-    "description": "生命值低于50%时自动使用，恢复100点生命值",
+    "description": "生命值低于50%时自动使用，恢复100点生命值（效果有30秒冷却）",
     "type": "passive",
     "slotType": "passive",
     "fixed": false,

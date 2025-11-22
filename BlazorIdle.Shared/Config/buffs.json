@@ -647,7 +647,7 @@
     "effects": [
       {
         "type": "StatMultiplier",
-        "target": "AttackPower",
+        "target": "DamagePerAttack",
         "value": 0.10
       }
     ]
