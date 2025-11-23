@@ -40,6 +40,9 @@
                     <!-- 物品栏：增加外框，并单独加下间距，不影响其它 row -->
                     <div class="section-frame mb-3">
                         <InventoryPanel Inventory="@selectedCharacter.Inventory"
+                                        Character="@selectedCharacter"
+                                        ProfessionId="@selectedCharacter.ActiveCombatProfessionId"
+                                        OnItemUsed="OnItemUsed"
                                         StartCollapsed="true" />
                     </div>
                 </div>
@@ -223,6 +226,28 @@
 
             // 刷新技能装备面板以显示新学习的技能
             // Refresh skill equipment panel to show newly learned skills
+            skillEquipmentPanel?.Refresh();
+
+            // 触发重新渲染
+            // Trigger re-render
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// 物品使用回调 - 保存角色数据并刷新技能面板
+    /// Item used callback - save character data and refresh skill panels
+    /// </summary>
+    private async Task OnItemUsed()
+    {
+        if (selectedCharacter != null)
+        {
+            // 保存角色数据到服务器
+            // Save character data to server
+            await CharacterService.UpdateCharacterAsync(selectedCharacter.Id, selectedCharacter);
+
+            // 刷新技能装备面板（可能学习了新技能）
+            // Refresh skill equipment panel (may have learned new skills)
             skillEquipmentPanel?.Refresh();
 
             // 触发重新渲染
