@@ -79,7 +79,7 @@
                             }
                         </div>
                         <div class="item-purchase">
-                            <div class="price-display">
+                            <div class="price-display @(canAfford ? "affordable-price" : "unaffordable-price")">
                                 <span class="price-icon">🪙</span>
                                 <span class="price-amount">@shopItem.Price.ToString("N0")</span>
                             </div>
@@ -157,9 +157,26 @@
 
     private void ToggleCollapse() => isCollapsed = !isCollapsed;
 
+    /// <summary>
+    /// 初始化商店商品列表
+    /// Initialize shop items list
+    /// 
+    /// 注意：商品的价格和限购配置在这里定义，而非 items.json 中
+    /// Note: Item prices and purchase limits are defined here, not in items.json
+    /// 
+    /// items.json 只包含物品的基础信息（名称、图标、描述、效果）
+    /// items.json only contains basic item info (name, icon, description, effect)
+    /// 
+    /// 商店配置包括：
+    /// Shop configuration includes:
+    /// - Price: 金币价格 / Gold price
+    /// - Limits: 限购规则 / Purchase limits
+    ///   - PerDay: 每日限购次数 / Daily purchase limit
+    ///   - PerCharacter: 每角色限购次数 / Per-character limit
+    ///   - PerAccount: 每账号限购次数 / Per-account limit
+    /// </summary>
     private void InitializeShopItems()
     {
-        // 示例商品配置 - 实际应该从配置文件加载
         shopItems = new List<ShopItemConfig>
         {
             new ShopItemConfig
@@ -446,7 +463,14 @@
         gap: 6px;
         font-weight: 600;
         font-size: 1.1em;
-        color: #f5576c;
+    }
+
+    .affordable-price {
+        color: #28a745;
+    }
+
+    .unaffordable-price {
+        color: #dc3545;
     }
 
     .price-icon {
