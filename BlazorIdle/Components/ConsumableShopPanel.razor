@@ -158,17 +158,15 @@
     private void ToggleCollapse() => isCollapsed = !isCollapsed;
 
     /// <summary>
-    /// 初始化商店商品列表
-    /// Initialize shop items list
+    /// 初始化商店商品列表 - 从配置文件加载
+    /// Initialize shop items list - load from configuration file
     /// 
-    /// 注意：商品的价格和限购配置在这里定义，而非 items.json 中
-    /// Note: Item prices and purchase limits are defined here, not in items.json
+    /// 配置文件位置：BlazorIdle.Shared/Config/consumableShop.json
+    /// Configuration file location: BlazorIdle.Shared/Config/consumableShop.json
     /// 
-    /// items.json 只包含物品的基础信息（名称、图标、描述、效果）
-    /// items.json only contains basic item info (name, icon, description, effect)
-    /// 
-    /// 商店配置包括：
-    /// Shop configuration includes:
+    /// 配置包括：
+    /// Configuration includes:
+    /// - ItemId: 物品ID（对应 items.json）/ Item ID (corresponds to items.json)
     /// - Price: 金币价格 / Gold price
     /// - Limits: 限购规则 / Purchase limits
     ///   - PerDay: 每日限购次数 / Daily purchase limit
@@ -177,33 +175,7 @@
     /// </summary>
     private void InitializeShopItems()
     {
-        shopItems = new List<ShopItemConfig>
-        {
-            new ShopItemConfig
-            {
-                ItemId = "skill_book_warrior_rend",
-                Price = 800,
-                Limits = new PurchaseLimit { PerCharacter = 1 }
-            },
-            new ShopItemConfig
-            {
-                ItemId = "skill_book_mage_fireball",
-                Price = 1000,
-                Limits = new PurchaseLimit { PerCharacter = 1 }
-            },
-            new ShopItemConfig
-            {
-                ItemId = "health_potion",
-                Price = 50,
-                Limits = new PurchaseLimit { PerDay = 10 }
-            },
-            new ShopItemConfig
-            {
-                ItemId = "exp_scroll",
-                Price = 200,
-                Limits = new PurchaseLimit { PerDay = 5 }
-            }
-        };
+        shopItems = ConfigRepository.LoadConsumableShop();
     }
 
     private int GetGoldBalance()
@@ -314,13 +286,6 @@
         return 1;
     }
 
-    // 商店商品配置
-    private class ShopItemConfig
-    {
-        public string ItemId { get; set; } = string.Empty;
-        public int Price { get; set; }
-        public PurchaseLimit? Limits { get; set; }
-    }
 }
 
 <style>

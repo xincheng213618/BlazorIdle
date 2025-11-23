@@ -52,7 +52,8 @@ namespace BlazorIdle.Game.Config
 
             var profs = response?.Professions ?? DefaultGameConfig.DefaultProfessions();
             var mons = response?.Monsters ?? DefaultGameConfig.DefaultMonsters();
-            var items = response?.Items ?? new List<ItemDefinition>();
+            // Load items from Shared config instead of API
+            var items = ConfigRepository.LoadItems();
             var dungeons = response?.Dungeons ?? new List<DungeonDef>();
             var battleScenarios = response?.BattleScenarios ?? new List<BattleScenarioDef>();
             var battleConfigs = response?.BattleConfigs ?? new List<BattleConfigDef>();
