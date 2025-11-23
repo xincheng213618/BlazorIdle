@@ -61,7 +61,8 @@
                 <div class="col-12">
                     <!-- 技能装备：增加外框 -->
                     <div class="section-frame">
-                        <SkillEquipmentPanel Character="@selectedCharacter"
+                        <SkillEquipmentPanel @ref="skillEquipmentPanel"
+                                             Character="@selectedCharacter"
                                              ProfessionId="@selectedCharacter.ActiveCombatProfessionId"
                                              StartCollapsed="true"
                                              OnSkillEquipped="OnSkillEquipped"
@@ -96,6 +97,7 @@
 
 @code {
     private CharacterSelector? characterSelector;
+    private SkillEquipmentPanel? skillEquipmentPanel;
     private CharacterData? selectedCharacter;
     private bool isReady; // 控制首渲染
 
@@ -218,6 +220,10 @@
             {
                 Console.WriteLine($"[Home] Character save failed: {response?.Message ?? "Unknown error"}");
             }
+
+            // 刷新技能装备面板以显示新学习的技能
+            // Refresh skill equipment panel to show newly learned skills
+            skillEquipmentPanel?.Refresh();
 
             // 触发重新渲染
             // Trigger re-render

@@ -639,6 +639,17 @@
         }
     }
 
+    /// <summary>
+    /// 公共刷新方法 - 用于从外部触发技能列表更新
+    /// Public refresh method - used to trigger skill list update from outside
+    /// </summary>
+    public void Refresh()
+    {
+        RefreshFixedSkills();
+        RefreshAvailableSkills();
+        StateHasChanged();
+    }
+
     private void RefreshFixedSkills()
     {
         fixedSkills = _skillRepository.GetSkillsByProfession(ProfessionId)
