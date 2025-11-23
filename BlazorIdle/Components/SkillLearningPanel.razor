@@ -108,10 +108,10 @@
                                                     {
                                                         <span class="ms-2 text-muted small">CD: @skill.CooldownSec s</span>
                                                     }
-                                                    @if (currentFilter == SkillListFilter.Learnable && skill.Purchase?.Enabled == true)
+                                                    @if ((currentFilter == SkillListFilter.Learnable || currentFilter == SkillListFilter.Locked) && skill.Purchase?.Enabled == true)
                                                     {
                                                         var price = GetSkillFinalPrice(skill);
-                                                        <span class="ms-2 text-warning small">
+                                                        <span class="ms-2 @(currentFilter == SkillListFilter.Locked ? "text-muted" : "text-warning") small">
                                                             <span class="gold-icon-small">🪙</span>@price
                                                         </span>
                                                     }
@@ -191,7 +191,7 @@
                                     var canAfford = CanAffordSkill(s);
                                     var finalPrice = GetSkillFinalPrice(s);
                                     var isPaidSkill = s.Purchase?.Enabled == true;
-                                    
+
                                     @if (isPaidSkill && s.Purchase != null)
                                     {
                                         <div class="d-flex flex-column align-items-end gap-2">

@@ -195,6 +195,14 @@
     "isGcd": false,
     "targetPolicy": "enemies_all",
     "cooldownSec": 10.0,
+    "purchase": {
+      "enabled": true,
+      "canBuyInShop": true,
+      "currencyType": "Gold",
+      "basePrice": 300,
+      "discountPercent": 10,
+      "limits": { "perCharacter": 1 }
+    },
     "allowedProfessions": [
       "warrior"
     ],
@@ -312,7 +320,7 @@
     "triggers": [
       {
         "when": "OnAttackHit",
-        "procChance": 1,
+        "procChance": 0.20,
         "fireSkillId": "warrior_bloodlust_proc",
         "priority": 5,
         "ignoreRequirements": true
@@ -1277,6 +1285,14 @@
     "allowedProfessions": [
       "warrior"
     ],
+    "purchase": {
+      "enabled": true,
+      "canBuyInShop": true,
+      "currencyType": "Gold",
+      "basePrice": 500,
+      "discountPercent": 10,
+      "limits": { "perCharacter": 1 }
+    },
     "unlock": {
       "minLevel": 1
     },
@@ -1326,6 +1342,14 @@
     "isGcd": false,
     "targetPolicy": "self",
     "cooldownSec": 0,
+    "purchase": {
+      "enabled": true,
+      "canBuyInShop": true,
+      "currencyType": "Gold",
+      "basePrice": 500,
+      "discountPercent": 10,
+      "limits": { "perCharacter": 1 }
+    },
     "allowedProfessions": [],
     "unlock": {
       "minLevel": 1
