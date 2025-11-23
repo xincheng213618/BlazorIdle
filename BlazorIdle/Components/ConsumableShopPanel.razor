@@ -1,0 +1,496 @@
+@using BlazorIdle.Shared.Models
+@using BlazorIdle.Game.Config
+@using BlazorIdle.Game.Purchase
+@inject IGameConfigService GameConfig
+
+<div class="consumable-shop-panel">
+    <div class="shop-header"
+         role="button"
+         @onclick="ToggleCollapse"
+         aria-expanded="@(!isCollapsed)">
+        <h5 class="mb-0">
+            <span class="icon">🏪</span>
+            消耗品商店 (Consumable Shop)
+        </h5>
+
+        <div class="d-flex align-items-center gap-3">
+            @if (Character != null)
+            {
+                <div class="gold-balance-display">
+                    <span class="gold-icon">🪙</span>
+                    <span class="gold-amount">@GetGoldBalance().ToString("N0")</span>
+                </div>
+            }
+            <button class="btn btn-sm btn-outline-light"
+                    @onclick:stopPropagation="true"
+                    @onclick="ToggleCollapse">
+                @(isCollapsed ? "展开" : "收起")
+            </button>
+        </div>
+    </div>
+
+    <div class="shop-body" style="@(isCollapsed ? "display:none" : null)">
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success mb-3">@successMessage</div>
+        }
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mb-3">@errorMessage</div>
+        }
+
+        @if (Character == null)
+        {
+            <div class="empty-state">
+                <p class="text-muted mb-0">请先选择角色...</p>
+            </div>
+        }
+        else
+        {
+            <div class="shop-items-grid">
+                @foreach (var shopItem in shopItems)
+                {
+                    var itemDef = GameConfig.GetItem(shopItem.ItemId);
+                    if (itemDef == null) continue;
+
+                    var canAfford = CanAfford(shopItem.Price);
+                    var remaining = GetRemainingPurchases(shopItem.ItemId);
+                    var isSoldOut = remaining == 0;
+
+                    <div class="shop-item-card @(canAfford && !isSoldOut ? "affordable" : "")">
+                        <div class="item-icon-large">@(itemDef.Icon ?? "📦")</div>
+                        <div class="item-info">
+                            <div class="item-name">
+                                @itemDef.Name
+                                @if (itemDef.Type == ItemType.SkillBook)
+                                {
+                                    <span class="badge bg-info ms-1">技能书</span>
+                                }
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(itemDef.Description))
+                            {
+                                <div class="item-desc">@itemDef.Description</div>
+                            }
+                            @if (itemDef.Metadata?.EffectDescription != null)
+                            {
+                                <div class="item-effect">
+                                    <span class="effect-icon">✨</span> @itemDef.Metadata.EffectDescription
+                                </div>
+                            }
+                        </div>
+                        <div class="item-purchase">
+                            <div class="price-display">
+                                <span class="price-icon">🪙</span>
+                                <span class="price-amount">@shopItem.Price.ToString("N0")</span>
+                            </div>
+                            @if (remaining >= 0)
+                            {
+                                <div class="limit-info">
+                                    剩余: @remaining
+                                </div>
+                            }
+                            <button class="btn btn-sm @(canAfford && !isSoldOut ? "btn-success" : "btn-secondary")"
+                                    disabled="@(!canAfford || isSoldOut || isPurchasing)"
+                                    @onclick="() => PurchaseItem(shopItem)">
+                                @if (isPurchasing && currentPurchasingItemId == shopItem.ItemId)
+                                {
+                                    <span>购买中...</span>
+                                }
+                                else if (isSoldOut)
+                                {
+                                    <span>已售罄</span>
+                                }
+                                else if (!canAfford)
+                                {
+                                    <span>金币不足</span>
+                                }
+                                else
+                                {
+                                    <span>购买</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public CharacterData? Character { get; set; }
+
+    [Parameter]
+    public EventCallback OnItemPurchased { get; set; }
+
+    [Parameter]
+    public bool StartCollapsed { get; set; }
+
+    private bool isCollapsed;
+    private bool isPurchasing = false;
+    private string? currentPurchasingItemId = null;
+    private string? errorMessage = null;
+    private string? successMessage = null;
+
+    private PurchaseService? _purchaseService;
+
+    // 商店商品列表 - 实际项目中应该从配置文件加载
+    private List<ShopItemConfig> shopItems = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GameConfig.EnsureLoadedAsync();
+        isCollapsed = StartCollapsed;
+
+        // 初始化商店商品列表
+        InitializeShopItems();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Character != null)
+        {
+            _purchaseService = new PurchaseService(Character.PurchaseState);
+        }
+    }
+
+    private void ToggleCollapse() => isCollapsed = !isCollapsed;
+
+    private void InitializeShopItems()
+    {
+        // 示例商品配置 - 实际应该从配置文件加载
+        shopItems = new List<ShopItemConfig>
+        {
+            new ShopItemConfig
+            {
+                ItemId = "skill_book_warrior_rend",
+                Price = 800,
+                Limits = new PurchaseLimit { PerCharacter = 1 }
+            },
+            new ShopItemConfig
+            {
+                ItemId = "skill_book_mage_fireball",
+                Price = 1000,
+                Limits = new PurchaseLimit { PerCharacter = 1 }
+            },
+            new ShopItemConfig
+            {
+                ItemId = "health_potion",
+                Price = 50,
+                Limits = new PurchaseLimit { PerDay = 10 }
+            },
+            new ShopItemConfig
+            {
+                ItemId = "exp_scroll",
+                Price = 200,
+                Limits = new PurchaseLimit { PerDay = 5 }
+            }
+        };
+    }
+
+    private int GetGoldBalance()
+    {
+        if (Character == null) return 0;
+        return Character.Inventory.GetItemQuantity("gold_coin");
+    }
+
+    private bool CanAfford(int price)
+    {
+        return GetGoldBalance() >= price;
+    }
+
+    private int GetRemainingPurchases(string itemId)
+    {
+        if (_purchaseService == null || Character == null) return -1;
+
+        var shopItem = shopItems.FirstOrDefault(x => x.ItemId == itemId);
+        if (shopItem == null || shopItem.Limits == null) return -1;
+
+        return _purchaseService.GetRemainingPurchases(itemId, Character.Id, shopItem.Limits);
+    }
+
+    private async Task PurchaseItem(ShopItemConfig shopItem)
+    {
+        if (Character == null || _purchaseService == null || isPurchasing)
+            return;
+
+        var itemDef = GameConfig.GetItem(shopItem.ItemId);
+        if (itemDef == null)
+            return;
+
+        errorMessage = null;
+        successMessage = null;
+        isPurchasing = true;
+        currentPurchasingItemId = shopItem.ItemId;
+
+        try
+        {
+            // 构建购买配置
+            var purchaseConfig = new PurchasableConfig
+            {
+                Id = shopItem.ItemId,
+                DisplayName = itemDef.Name,
+                CurrencyType = CurrencyType.Gold,
+                BasePrice = shopItem.Price,
+                DiscountPercent = 0,
+                Limits = shopItem.Limits ?? new PurchaseLimit(),
+                Unlock = null
+            };
+
+            // 执行购买
+            var result = _purchaseService.Purchase(
+                purchaseConfig,
+                Character,
+                Character.ActiveCombatProfessionId,
+                GetCharacterLevel(),
+                (c) => c.Inventory.AddItem(shopItem.ItemId, 1)
+            );
+
+            if (result.Success)
+            {
+                successMessage = $"成功购买 {itemDef.Name}（消耗 {result.SpentAmount} 🪙）";
+
+                // 触发回调
+                if (OnItemPurchased.HasDelegate)
+                {
+                    await OnItemPurchased.InvokeAsync();
+                }
+
+                // 2秒后清除成功消息
+                _ = Task.Delay(2000).ContinueWith(async _ =>
+                {
+                    successMessage = null;
+                    await InvokeAsync(StateHasChanged);
+                }, TaskScheduler.Default);
+            }
+            else
+            {
+                errorMessage = result.Message;
+
+                // 3秒后清除错误消息
+                _ = Task.Delay(3000).ContinueWith(async _ =>
+                {
+                    errorMessage = null;
+                    await InvokeAsync(StateHasChanged);
+                }, TaskScheduler.Default);
+            }
+        }
+        finally
+        {
+            isPurchasing = false;
+            currentPurchasingItemId = null;
+            StateHasChanged();
+        }
+    }
+
+    private int GetCharacterLevel()
+    {
+        if (Character == null) return 1;
+
+        string professionId = Character.ActiveCombatProfessionId;
+        if (Character.Professions.TryGetValue(professionId, out var progress))
+        {
+            return progress.Level;
+        }
+
+        return 1;
+    }
+
+    // 商店商品配置
+    private class ShopItemConfig
+    {
+        public string ItemId { get; set; } = string.Empty;
+        public int Price { get; set; }
+        public PurchaseLimit? Limits { get; set; }
+    }
+}
+
+<style>
+    .consumable-shop-panel {
+        background: #fff;
+        border: 1px solid #e5e5e5;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        overflow: hidden;
+    }
+
+    .shop-header {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+    }
+
+        .shop-header h5 {
+            color: white;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .shop-header .icon {
+            font-size: 1.2em;
+            margin-right: 8px;
+        }
+
+        .shop-header .btn {
+            margin-top: 0;
+            padding: .25rem .5rem;
+            line-height: 1.2;
+            border: 1px solid rgba(255,255,255,.5);
+        }
+
+    .gold-balance-display {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+
+    .gold-icon {
+        font-size: 1.1em;
+    }
+
+    .gold-amount {
+        font-size: 0.95em;
+    }
+
+    .shop-body {
+        padding: 20px;
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6c757d;
+    }
+
+    .shop-items-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 15px;
+    }
+
+    .shop-item-card {
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        transition: all 0.2s ease;
+    }
+
+        .shop-item-card.affordable {
+            border-color: #28a745;
+        }
+
+        .shop-item-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+    .item-icon-large {
+        font-size: 3em;
+        text-align: center;
+        margin-bottom: 8px;
+    }
+
+    .item-info {
+        flex: 1;
+    }
+
+    .item-name {
+        font-weight: 600;
+        color: #212529;
+        font-size: 1em;
+        margin-bottom: 6px;
+    }
+
+    .item-desc {
+        font-size: 0.85em;
+        color: #6c757d;
+        margin-bottom: 4px;
+    }
+
+    .item-effect {
+        font-size: 0.85em;
+        color: #28a745;
+        font-style: italic;
+    }
+
+    .effect-icon {
+        font-size: 1em;
+    }
+
+    .item-purchase {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+    }
+
+    .price-display {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-weight: 600;
+        font-size: 1.1em;
+        color: #f5576c;
+    }
+
+    .price-icon {
+        font-size: 1.2em;
+    }
+
+    .limit-info {
+        text-align: center;
+        font-size: 0.85em;
+        color: #6c757d;
+    }
+
+    .item-purchase .btn {
+        margin-top: 0;
+        width: 100%;
+    }
+
+    .alert {
+        padding: 10px 15px;
+        border-radius: 6px;
+        font-size: 0.9em;
+    }
+
+    .shop-body::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .shop-body::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .shop-body::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+        .shop-body::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+    @@media (max-width: 768px) {
+        .shop-items-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>

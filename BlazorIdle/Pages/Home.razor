@@ -50,6 +50,17 @@
 
             <div class="row">
                 <div class="col-12">
+                    <!-- 消耗品商店：增加外框 -->
+                    <div class="section-frame mb-3">
+                        <ConsumableShopPanel Character="@selectedCharacter"
+                                             OnItemPurchased="OnItemPurchased"
+                                             StartCollapsed="true" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
                     <!-- 技能学习：增加外框（并避免内部卡片双重边框） -->
                     <div class="section-frame mb-3">
                         <SkillLearningPanel Character="@selectedCharacter"
@@ -227,6 +238,24 @@
             // 刷新技能装备面板以显示新学习的技能
             // Refresh skill equipment panel to show newly learned skills
             skillEquipmentPanel?.Refresh();
+
+            // 触发重新渲染
+            // Trigger re-render
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// 物品购买回调 - 保存角色数据
+    /// Item purchased callback - save character data
+    /// </summary>
+    private async Task OnItemPurchased()
+    {
+        if (selectedCharacter != null)
+        {
+            // 保存角色数据到服务器
+            // Save character data to server
+            await CharacterService.UpdateCharacterAsync(selectedCharacter.Id, selectedCharacter);
 
             // 触发重新渲染
             // Trigger re-render
