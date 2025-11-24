@@ -21,46 +21,102 @@ namespace BlazorIdle.Game.Config
         /// 加载物品配置
         /// Load items configuration
         /// </summary>
+        /// <returns>物品列表，加载失败时抛出异常</returns>
+        /// <exception cref="InvalidOperationException">配置加载失败</exception>
         public static List<ItemDefinition> LoadItems()
         {
-            return LoadConfig<List<ItemDefinition>>("items.json") ?? new List<ItemDefinition>();
+            var result = LoadConfig<List<ItemDefinition>>("items.json");
+            if (result == null || result.Count == 0)
+            {
+                throw new InvalidOperationException("物品配置加载失败或为空。请检查 items.json 文件是否正确配置。");
+            }
+            return result;
         }
 
         /// <summary>
         /// 加载消耗品商店配置
         /// Load consumable shop configuration
         /// </summary>
+        /// <returns>商店配置列表，加载失败时抛出异常</returns>
+        /// <exception cref="InvalidOperationException">配置加载失败</exception>
         public static List<ShopItemConfig> LoadConsumableShop()
         {
-            return LoadConfig<List<ShopItemConfig>>("consumableShop.json") ?? new List<ShopItemConfig>();
+            var result = LoadConfig<List<ShopItemConfig>>("consumableShop.json");
+            if (result == null || result.Count == 0)
+            {
+                throw new InvalidOperationException("消耗品商店配置加载失败或为空。请检查 consumableShop.json 文件是否正确配置。");
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 安全加载配置（不抛出异常）
+        /// Load configuration safely (no exception)
+        /// </summary>
+        /// <typeparam name="T">配置类型</typeparam>
+        /// <param name="filename">文件名</param>
+        /// <returns>配置对象或 null</returns>
+        public static T? TryLoadConfig<T>(string filename) where T : class
+        {
+            try
+            {
+                return LoadConfig<T>(filename);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         /// <summary>
         /// 从嵌入资源加载配置文件
         /// Load configuration file from embedded resources
         /// </summary>
+        /// <exception cref="FileNotFoundException">资源文件未找到</exception>
+        /// <exception cref="JsonException">JSON 反序列化失败</exception>
         private static T? LoadConfig<T>(string filename)
         {
+            var assembly = Assembly.GetExecutingAssembly();
+            var resourceName = $"BlazorIdle.Shared.Config.{filename}";
+
+            using var stream = assembly.GetManifestResourceStream(resourceName);
+            if (stream == null)
+            {
+                var errorMsg = $"配置文件未找到: {resourceName}。请确保文件已作为嵌入资源添加到项目中。";
+                Console.Error.WriteLine($"[ConfigRepository] {errorMsg}");
+                throw new FileNotFoundException(errorMsg, filename);
+            }
+
             try
             {
-                var assembly = Assembly.GetExecutingAssembly();
-                var resourceName = $"BlazorIdle.Shared.Config.{filename}";
-
-                using var stream = assembly.GetManifestResourceStream(resourceName);
-                if (stream == null)
-                {
-                    Console.WriteLine($"[ConfigRepository] Resource not found: {resourceName}");
-                    return default;
-                }
-
                 using var reader = new StreamReader(stream);
                 var json = reader.ReadToEnd();
-                return JsonSerializer.Deserialize<T>(json, JsonOptions);
+                
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    throw new InvalidDataException($"配置文件 {filename} 为空");
+                }
+
+                var result = JsonSerializer.Deserialize<T>(json, JsonOptions);
+                if (result == null)
+                {
+                    throw new JsonException($"配置文件 {filename} 反序列化结果为 null");
+                }
+
+                Console.WriteLine($"[ConfigRepository] 成功加载配置: {filename}");
+                return result;
+            }
+            catch (JsonException ex)
+            {
+                var errorMsg = $"配置文件 {filename} JSON 格式错误: {ex.Message}";
+                Console.Error.WriteLine($"[ConfigRepository] {errorMsg}");
+                throw new JsonException(errorMsg, ex);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ConfigRepository] Error loading {filename}: {ex.Message}");
-                return default;
+                var errorMsg = $"加载配置文件 {filename} 时发生错误: {ex.Message}";
+                Console.Error.WriteLine($"[ConfigRepository] {errorMsg}");
+                throw new InvalidOperationException(errorMsg, ex);
             }
         }
     }

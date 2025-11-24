@@ -278,7 +278,7 @@ namespace BlazorIdle.Tests
             var limits = new PurchaseLimit(); // All -1 (unlimited)
 
             // Act
-            var result = tracker.CheckRemaining("skill1", "char1", limits);
+            var result = tracker.CheckRemaining("skill1", "char1", "account1", limits);
 
             // Assert
             Assert.False(result.IsExhausted);
@@ -294,18 +294,18 @@ namespace BlazorIdle.Tests
             var limits = new PurchaseLimit { PerCharacter = 3 };
 
             // Act & Assert
-            var result1 = tracker.CheckRemaining("skill1", "char1", limits);
+            var result1 = tracker.CheckRemaining("skill1", "char1", "account1", limits);
             Assert.False(result1.IsExhausted);
             Assert.Equal(3, result1.Remaining);
 
-            tracker.IncrementCount("skill1", "char1", limits);
-            var result2 = tracker.CheckRemaining("skill1", "char1", limits);
+            tracker.IncrementCount("skill1", "char1", "account1", limits);
+            var result2 = tracker.CheckRemaining("skill1", "char1", "account1", limits);
             Assert.False(result2.IsExhausted);
             Assert.Equal(2, result2.Remaining);
 
-            tracker.IncrementCount("skill1", "char1", limits);
-            tracker.IncrementCount("skill1", "char1", limits);
-            var result3 = tracker.CheckRemaining("skill1", "char1", limits);
+            tracker.IncrementCount("skill1", "char1", "account1", limits);
+            tracker.IncrementCount("skill1", "char1", "account1", limits);
+            var result3 = tracker.CheckRemaining("skill1", "char1", "account1", limits);
             Assert.True(result3.IsExhausted);
             Assert.Equal(0, result3.Remaining);
         }
@@ -318,12 +318,12 @@ namespace BlazorIdle.Tests
             var tracker = new PurchaseLimitTracker(state);
             var limits = new PurchaseLimit { PerAccount = 2 };
 
-            // Act
-            tracker.IncrementCount("skill1", "char1", limits);
-            tracker.IncrementCount("skill1", "char2", limits);
+            // Act - same account, different characters
+            tracker.IncrementCount("skill1", "char1", "account1", limits);
+            tracker.IncrementCount("skill1", "char2", "account1", limits);
             
-            // Assert
-            var result = tracker.CheckRemaining("skill1", "char3", limits);
+            // Assert - third character from same account should be exhausted
+            var result = tracker.CheckRemaining("skill1", "char3", "account1", limits);
             Assert.True(result.IsExhausted);
         }
 

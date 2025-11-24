@@ -18,9 +18,14 @@ namespace BlazorIdle.Game.Purchase
         /// 检查剩余可购买次数
         /// Check remaining purchases
         /// </summary>
+        /// <param name="itemId">物品ID</param>
+        /// <param name="characterId">角色ID</param>
+        /// <param name="accountId">账户ID（用于账号限购）</param>
+        /// <param name="limits">限购配置</param>
         public LimitCheckResult CheckRemaining(
             string itemId,
             string characterId,
+            string accountId,
             PurchaseLimit limits)
         {
             EnsureDailyReset();
@@ -35,10 +40,10 @@ namespace BlazorIdle.Game.Purchase
                 }
             }
 
-            // 检查账号限购
+            // 检查账号限购（使用 accountId）
             if (limits.PerAccount > 0)
             {
-                int accountCount = GetAccountCount(itemId);
+                int accountCount = GetAccountCount(accountId, itemId);
                 if (accountCount >= limits.PerAccount)
                 {
                     return LimitCheckResult.Exhausted("已达账号购买上限");
@@ -64,7 +69,7 @@ namespace BlazorIdle.Game.Purchase
             }
             if (limits.PerAccount > 0)
             {
-                int accountRemaining = limits.PerAccount - GetAccountCount(itemId);
+                int accountRemaining = limits.PerAccount - GetAccountCount(accountId, itemId);
                 remaining = remaining == -1 ? accountRemaining : Math.Min(remaining, accountRemaining);
             }
             if (limits.PerCharacter > 0)
@@ -80,12 +85,16 @@ namespace BlazorIdle.Game.Purchase
         /// 增加购买计数
         /// Increment purchase count
         /// </summary>
-        public void IncrementCount(string itemId, string characterId, PurchaseLimit limits)
+        /// <param name="itemId">物品ID</param>
+        /// <param name="characterId">角色ID</param>
+        /// <param name="accountId">账户ID（用于账号限购）</param>
+        /// <param name="limits">限购配置</param>
+        public void IncrementCount(string itemId, string characterId, string accountId, PurchaseLimit limits)
         {
             if (limits.PerDay > 0)
                 IncrementDayCount(characterId, itemId);
             if (limits.PerAccount > 0)
-                IncrementAccountCount(itemId);
+                IncrementAccountCount(accountId, itemId);
             if (limits.PerCharacter > 0)
                 IncrementCharacterCount(characterId, itemId);
         }
@@ -121,9 +130,11 @@ namespace BlazorIdle.Game.Purchase
             return charCounts.TryGetValue(itemId, out var count) ? count : 0;
         }
 
-        private int GetAccountCount(string itemId)
+        private int GetAccountCount(string accountId, string itemId)
         {
-            return _state.PerAccountCounts.TryGetValue(itemId, out var count) ? count : 0;
+            // 使用 accountId + itemId 作为键，支持多账号限购
+            string key = $"{accountId}:{itemId}";
+            return _state.PerAccountCounts.TryGetValue(key, out var count) ? count : 0;
         }
 
         private int GetCharacterCount(string characterId, string itemId)
@@ -144,12 +155,14 @@ namespace BlazorIdle.Game.Purchase
             _state.PerDayCountsByChar[characterId][itemId]++;
         }
 
-        private void IncrementAccountCount(string itemId)
+        private void IncrementAccountCount(string accountId, string itemId)
         {
-            if (!_state.PerAccountCounts.ContainsKey(itemId))
-                _state.PerAccountCounts[itemId] = 0;
+            // 使用 accountId + itemId 作为键，支持多账号限购
+            string key = $"{accountId}:{itemId}";
+            if (!_state.PerAccountCounts.ContainsKey(key))
+                _state.PerAccountCounts[key] = 0;
 
-            _state.PerAccountCounts[itemId]++;
+            _state.PerAccountCounts[key]++;
         }
 
         private void IncrementCharacterCount(string characterId, string itemId)

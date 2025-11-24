@@ -37,8 +37,8 @@ namespace BlazorIdle.Game.Purchase
             if (!unlockResult.IsUnlocked)
                 return PurchaseCheckResult.Locked(unlockResult.Reason ?? "未解锁");
 
-            // 2. 检查限购
-            var limitResult = _limitTracker.CheckRemaining(config.Id, character.Id, config.Limits);
+            // 2. 检查限购（使用 UserId 作为账户ID）
+            var limitResult = _limitTracker.CheckRemaining(config.Id, character.Id, character.UserId.ToString(), config.Limits);
             if (limitResult.IsExhausted)
                 return PurchaseCheckResult.LimitReached();
 
@@ -76,7 +76,7 @@ namespace BlazorIdle.Game.Purchase
 
             int finalPrice = checkResult.FinalPrice;
 
-            // 2. 扣费
+            // 2. 扣费（使用原子操作）
             if (!CurrencyHelper.TryConsume(character.Inventory, config.CurrencyType, finalPrice))
                 return PurchaseResult.Failed("扣费失败");
 
@@ -85,8 +85,8 @@ namespace BlazorIdle.Game.Purchase
                 // 3. 应用效果（由调用者提供）
                 applyEffect(character);
 
-                // 4. 更新限购计数
-                _limitTracker.IncrementCount(config.Id, character.Id, config.Limits);
+                // 4. 更新限购计数（使用 UserId 作为账户ID）
+                _limitTracker.IncrementCount(config.Id, character.Id, character.UserId.ToString(), config.Limits);
 
                 string currencyName = CurrencyHelper.GetCurrencyName(config.CurrencyType);
                 return PurchaseResult.Successful(finalPrice, $"购买成功（消耗 {finalPrice} {currencyName}）");
@@ -124,9 +124,9 @@ namespace BlazorIdle.Game.Purchase
         /// 获取剩余可购买次数
         /// Get remaining purchase count
         /// </summary>
-        public int GetRemainingPurchases(string itemId, string characterId, PurchaseLimit limits)
+        public int GetRemainingPurchases(string itemId, string characterId, string accountId, PurchaseLimit limits)
         {
-            var result = _limitTracker.CheckRemaining(itemId, characterId, limits);
+            var result = _limitTracker.CheckRemaining(itemId, characterId, accountId, limits);
             return result.Remaining;
         }
     }

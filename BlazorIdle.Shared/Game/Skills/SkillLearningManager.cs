@@ -283,6 +283,7 @@ namespace BlazorIdle.Game.Skills
             return _purchaseService.GetRemainingPurchases(
                 skillId,
                 characterData.Id,
+                characterData.UserId.ToString(),
                 skill.Purchase.Limits ?? new PurchaseLimit());
         }
 

@@ -196,7 +196,11 @@
         var shopItem = shopItems.FirstOrDefault(x => x.ItemId == itemId);
         if (shopItem == null || shopItem.Limits == null) return -1;
 
-        return _purchaseService.GetRemainingPurchases(itemId, Character.Id, shopItem.Limits);
+        return _purchaseService.GetRemainingPurchases(
+            itemId, 
+            Character.Id, 
+            Character.UserId.ToString(), 
+            shopItem.Limits);
     }
 
     private async Task PurchaseItem(ShopItemConfig shopItem)

@@ -55,8 +55,8 @@ namespace BlazorIdle.Game.Purchase
         }
 
         /// <summary>
-        /// 尝试消费货币
-        /// Try to consume currency
+        /// 尝试消费货币（原子操作）
+        /// Try to consume currency (atomic operation)
         /// </summary>
         /// <param name="inventory">库存</param>
         /// <param name="currencyType">货币类型</param>
@@ -68,12 +68,10 @@ namespace BlazorIdle.Game.Purchase
                 return false;
 
             string itemId = GetCurrencyItemId(currencyType);
-            int currentBalance = inventory.GetItemQuantity(itemId);
-
-            if (currentBalance < amount)
-                return false;
-
-            return inventory.RemoveItem(itemId, amount);
+            
+            // 使用原子性的 TryConsumeItem 方法，避免并发问题
+            // Use atomic TryConsumeItem to avoid race conditions
+            return inventory.TryConsumeItem(itemId, amount);
         }
 
         /// <summary>
