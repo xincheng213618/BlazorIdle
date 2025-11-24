@@ -37,7 +37,8 @@ namespace BlazorIdle.Server.Controllers
                 Version = _provider.Version,
                 Professions = _provider.Professions.ToList(),
                 Monsters = _provider.Monsters.ToList(),
-                Items = _provider.Items.ToList(),
+                // Items are now loaded from Shared/Config on client side, not from API
+                Items = new List<ItemDefinition>(), // Keep for backward compatibility but return empty list
                 Dungeons = _provider.Dungeons.ToList(),
                 BattleScenarios = _provider.BattleScenarios.ToList(),
                 BattleConfigs = _provider.BattleConfigs.ToList(), // 添加战斗配置到响应（内部配置）

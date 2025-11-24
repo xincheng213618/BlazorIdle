@@ -42,7 +42,6 @@ namespace BlazorIdle.Server.Services
             var contentRoot = _env.ContentRootPath;
             var profPath = Path.Combine(contentRoot, "Config", "professions.json");
             var monPath = Path.Combine(contentRoot, "Config", "monsters.json");
-            var itemsPath = Path.Combine(contentRoot, "Config", "items.json");
             var dungeonsPath = Path.Combine(contentRoot, "Config", "dungeons.json");
             var battleScenariosPath = Path.Combine(contentRoot, "Config", "battleScenarios.json");
             var battleConfigsPath = Path.Combine(contentRoot, "Config", "battleConfigs.json");
@@ -52,7 +51,6 @@ namespace BlazorIdle.Server.Services
 
             List<ProfessionDef>? profs = null;
             List<MonsterDef>? mons = null;
-            List<ItemDefinition>? items = null;
             List<DungeonDef>? dungeons = null;
             List<BattleScenarioDef>? battleScenarios = null;
             List<BattleConfigDef>? battleConfigs = null;
@@ -76,17 +74,6 @@ namespace BlazorIdle.Server.Services
                 {
                     await using var s = File.OpenRead(monPath);
                     mons = await JsonSerializer.DeserializeAsync<List<MonsterDef>>(s, cancellationToken: ct);
-                }
-            }
-            catch { /* ignore to fallback */ }
-
-            // 加载物品配置
-            try
-            {
-                if (File.Exists(itemsPath))
-                {
-                    await using var s = File.OpenRead(itemsPath);
-                    items = await JsonSerializer.DeserializeAsync<List<ItemDefinition>>(s, cancellationToken: ct);
                 }
             }
             catch { /* ignore to fallback */ }
@@ -161,7 +148,6 @@ namespace BlazorIdle.Server.Services
             // fallback to shared defaults
             profs ??= DefaultGameConfig.DefaultProfessions();
             mons ??= DefaultGameConfig.DefaultMonsters();
-            items ??= new List<ItemDefinition>();
             dungeons ??= new List<DungeonDef>();
             battleScenarios ??= new List<BattleScenarioDef>();
             battleConfigs ??= new List<BattleConfigDef>();
@@ -174,8 +160,8 @@ namespace BlazorIdle.Server.Services
             _monsters.Clear();
             _monsters.AddRange(mons.Where(m => !string.IsNullOrWhiteSpace(m.Id)));
 
-            _items.Clear();
-            _items.AddRange(items.Where(i => !string.IsNullOrWhiteSpace(i.Id)));
+            // Items are now loaded from Shared/Config via ConfigRepository on client side
+            // No need to load or populate _items on server side
 
             _dungeons.Clear();
             _dungeons.AddRange(dungeons.Where(d => !string.IsNullOrWhiteSpace(d.Id)));
@@ -198,7 +184,7 @@ namespace BlazorIdle.Server.Services
             // 设置职业最大等级
             _maxProfessionLevel = professionLimits?.MaxProfessionLevel ?? 100;
 
-            Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-exp:{_experienceCurve.Count}-maxLvl:{_maxProfessionLevel}-profAttrs:{_professionAttributes.Count}";
+            Version = $"p:{_professions.Count}-m:{_monsters.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-exp:{_experienceCurve.Count}-maxLvl:{_maxProfessionLevel}-profAttrs:{_professionAttributes.Count}";
             _loaded = true;
         }
 
