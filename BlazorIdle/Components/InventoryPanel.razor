@@ -1,5 +1,7 @@
 @using BlazorIdle.Shared.Models
 @using BlazorIdle.Game.Config
+@using BlazorIdle.Game.Skills
+@using BlazorIdle.Game.Items
 @inject IGameConfigService GameConfig
 @implements IDisposable
 
@@ -27,6 +29,15 @@
     </div>
 
     <div class="panel-body" style="@(isCollapsed ? "display:none" : null)">
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success mb-3">@successMessage</div>
+        }
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mb-3">@errorMessage</div>
+        }
+        
         @if (Inventory == null || !Inventory.Items.Any())
         {
             <div class="empty-state">
@@ -42,19 +53,59 @@
                 @foreach (var item in Inventory.Items.OrderBy(i => i.ItemId))
                 {
                     var itemDef = GameConfig.GetItem(item.ItemId);
-                    <div class="item-entry">
+                    var isUsable = IsItemUsable(itemDef);
+                    var (canUse, useReason) = CanUseItem(itemDef);
+                    
+                    <div class="item-entry @(isUsable ? "usable-item" : "")">
                         <div class="item-info">
                             <span class="item-icon">@(itemDef?.Icon ?? "📦")</span>
                             <div class="item-details">
-                                <div class="item-name">@(itemDef?.Name ?? item.ItemId)</div>
+                                <div class="item-name">
+                                    @(itemDef?.Name ?? item.ItemId)
+                                    @if (itemDef?.Type == ItemType.SkillBook)
+                                    {
+                                        <span class="badge bg-info ms-2">技能书</span>
+                                    }
+                                    else if (itemDef?.Type == ItemType.Consumable)
+                                    {
+                                        <span class="badge bg-success ms-2">消耗品</span>
+                                    }
+                                </div>
                                 @if (!string.IsNullOrWhiteSpace(itemDef?.Description))
                                 {
                                     <div class="item-desc">@itemDef.Description</div>
                                 }
+                                @if (itemDef?.Metadata?.EffectDescription != null)
+                                {
+                                    <div class="item-effect">
+                                        <span class="effect-icon">✨</span> @itemDef.Metadata.EffectDescription
+                                    </div>
+                                }
+                                @if (isUsable && !canUse)
+                                {
+                                    <div class="item-warning">
+                                        <span class="warning-icon">⚠️</span> @useReason
+                                    </div>
+                                }
                             </div>
                         </div>
-                        <div class="item-quantity">
+                        <div class="item-actions">
                             <span class="quantity-badge">×@item.Quantity.ToString("N0")</span>
+                            @if (isUsable)
+                            {
+                                <button class="btn btn-sm @(canUse ? "btn-primary" : "btn-secondary")"
+                                        disabled="@(!canUse || isUsing)"
+                                        @onclick="() => UseItem(item.ItemId)">
+                                    @if (isUsing && currentUsingItemId == item.ItemId)
+                                    {
+                                        <span>使用中...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>使用</span>
+                                    }
+                                </button>
+                            }
                         </div>
                     </div>
                 }
@@ -71,6 +122,24 @@
     public Inventory? Inventory { get; set; }
 
     /// <summary>
+    /// 角色数据 - 用于物品使用逻辑
+    /// </summary>
+    [Parameter]
+    public CharacterData? Character { get; set; }
+
+    /// <summary>
+    /// 当前职业ID
+    /// </summary>
+    [Parameter]
+    public string? ProfessionId { get; set; }
+
+    /// <summary>
+    /// 物品使用后回调
+    /// </summary>
+    [Parameter]
+    public EventCallback OnItemUsed { get; set; }
+
+    /// <summary>
     /// 初始是否折叠（默认不折叠）
     /// </summary>
     [Parameter]
@@ -78,11 +147,21 @@
 
     private Inventory? _subscribed;
     private bool isCollapsed;
+    private bool isUsing = false;
+    private string? currentUsingItemId = null;
+    private string? errorMessage = null;
+    private string? successMessage = null;
+
+    private readonly SkillRepository _skillRepository = new SkillRepository();
+    private SkillLearningManager? _learningManager;
+    private ItemUsageHelper? _itemUsageHelper;
 
     protected override async Task OnInitializedAsync()
     {
         await GameConfig.EnsureLoadedAsync();
         isCollapsed = StartCollapsed;
+        _learningManager = new SkillLearningManager(_skillRepository);
+        _itemUsageHelper = new ItemUsageHelper(_skillRepository, _learningManager);
     }
 
     protected override void OnParametersSet()
@@ -99,6 +178,99 @@
 
     private void OnInvChanged()
         => _ = InvokeAsync(StateHasChanged);
+
+    private bool IsItemUsable(ItemDefinition? itemDef)
+    {
+        if (itemDef == null) return false;
+        return itemDef.Type == ItemType.Consumable || itemDef.Type == ItemType.SkillBook;
+    }
+
+    private (bool CanUse, string Reason) CanUseItem(ItemDefinition? itemDef)
+    {
+        if (itemDef == null || Character == null || _itemUsageHelper == null)
+            return (false, "");
+
+        if (!IsItemUsable(itemDef))
+            return (false, "");
+
+        int characterLevel = GetCharacterLevel();
+        string professionId = ProfessionId ?? Character.ActiveCombatProfessionId;
+
+        return _itemUsageHelper.CanUseItem(itemDef, Character, professionId, characterLevel);
+    }
+
+    private async Task UseItem(string itemId)
+    {
+        if (Character == null || Inventory == null || _itemUsageHelper == null || isUsing)
+            return;
+
+        var itemDef = GameConfig.GetItem(itemId);
+        if (itemDef == null)
+            return;
+
+        errorMessage = null;
+        successMessage = null;
+        isUsing = true;
+        currentUsingItemId = itemId;
+
+        try
+        {
+            int characterLevel = GetCharacterLevel();
+            string professionId = ProfessionId ?? Character.ActiveCombatProfessionId;
+
+            var (success, message) = _itemUsageHelper.UseItem(itemDef, Character, professionId, characterLevel);
+
+            if (success)
+            {
+                // 从背包中移除一个
+                Inventory.RemoveItem(itemId, 1);
+                successMessage = message;
+
+                // 触发回调
+                if (OnItemUsed.HasDelegate)
+                {
+                    await OnItemUsed.InvokeAsync();
+                }
+
+                // 2秒后清除成功消息
+                _ = Task.Delay(2000).ContinueWith(async _ =>
+                {
+                    successMessage = null;
+                    await InvokeAsync(StateHasChanged);
+                }, TaskScheduler.Default);
+            }
+            else
+            {
+                errorMessage = message;
+
+                // 3秒后清除错误消息
+                _ = Task.Delay(3000).ContinueWith(async _ =>
+                {
+                    errorMessage = null;
+                    await InvokeAsync(StateHasChanged);
+                }, TaskScheduler.Default);
+            }
+        }
+        finally
+        {
+            isUsing = false;
+            currentUsingItemId = null;
+            StateHasChanged();
+        }
+    }
+
+    private int GetCharacterLevel()
+    {
+        if (Character == null) return 1;
+
+        string professionId = ProfessionId ?? Character.ActiveCombatProfessionId;
+        if (Character.Professions.TryGetValue(professionId, out var progress))
+        {
+            return progress.Level;
+        }
+
+        return 1;
+    }
 
     public void Dispose()
     {
@@ -218,6 +390,13 @@
         color: #6c757d;
     }
 
+    .item-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-direction: column;
+    }
+
     .item-quantity {
         display: flex;
         align-items: center;
@@ -232,6 +411,46 @@
         font-size: 0.9em;
         min-width: 60px;
         text-align: center;
+    }
+
+    .usable-item {
+        border-color: #667eea;
+    }
+
+    .usable-item:hover {
+        border-color: #764ba2;
+    }
+
+    .item-effect {
+        font-size: 0.85em;
+        color: #28a745;
+        margin-top: 4px;
+        font-style: italic;
+    }
+
+    .effect-icon {
+        font-size: 1em;
+    }
+
+    .item-warning {
+        font-size: 0.85em;
+        color: #dc3545;
+        margin-top: 4px;
+    }
+
+    .warning-icon {
+        font-size: 1em;
+    }
+
+    .item-actions .btn {
+        margin-top: 0;
+        min-width: 60px;
+    }
+
+    .alert {
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.9em;
     }
 
     .panel-body::-webkit-scrollbar {

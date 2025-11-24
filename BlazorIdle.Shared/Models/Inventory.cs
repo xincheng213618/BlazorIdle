@@ -113,5 +113,38 @@ namespace BlazorIdle.Shared.Models
             var item = Items.FirstOrDefault(i => i.ItemId == itemId);
             return item?.Quantity ?? 0;
         }
+
+        /// <summary>
+        /// 原子性地消费物品（检查并移除）
+        /// Atomically consume item (check and remove)
+        /// </summary>
+        /// <param name="itemId">物品ID</param>
+        /// <param name="quantity">数量</param>
+        /// <returns>是否成功消费</returns>
+        public bool TryConsumeItem(string itemId, int quantity)
+        {
+            if (quantity <= 0) return false;
+
+            var existingItem = Items.FirstOrDefault(i => i.ItemId == itemId);
+            
+            // 原子性检查：必须有足够的数量才能消费
+            if (existingItem == null || existingItem.Quantity < quantity)
+            {
+                return false;
+            }
+
+            // 执行消费
+            existingItem.Quantity -= quantity;
+            
+            // 如果数量为0，从列表中移除
+            if (existingItem.Quantity <= 0)
+            {
+                Items.Remove(existingItem);
+            }
+
+            LastUpdated = DateTime.UtcNow;
+            Changed?.Invoke();
+            return true;
+        }
     }
 }

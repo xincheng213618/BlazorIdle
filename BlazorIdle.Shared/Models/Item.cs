@@ -24,7 +24,13 @@ namespace BlazorIdle.Shared.Models
         /// 消耗品类物品
         /// Consumable items
         /// </summary>
-        Consumable = 3
+        Consumable = 3,
+        
+        /// <summary>
+        /// 技能书类物品 - 使用后学习技能
+        /// Skill book items - learn skill on use
+        /// </summary>
+        SkillBook = 4
     }
 
     /// <summary>
@@ -81,6 +87,41 @@ namespace BlazorIdle.Shared.Models
         /// </summary>
         [JsonPropertyName("maxStack")]
         public int MaxStack { get; set; } = 999999;
+
+        /// <summary>
+        /// 元数据 - 用于存储特殊物品的额外信息（如技能书的技能ID）
+        /// Metadata - stores additional info for special items (like skill ID for skill books)
+        /// </summary>
+        [JsonPropertyName("metadata")]
+        public ItemMetadata? Metadata { get; set; }
+    }
+
+    /// <summary>
+    /// 物品元数据 - 存储特殊物品的额外信息
+    /// Item metadata - stores additional information for special items
+    /// </summary>
+    public class ItemMetadata
+    {
+        /// <summary>
+        /// 技能ID - 用于技能书物品
+        /// Skill ID - for skill book items
+        /// </summary>
+        [JsonPropertyName("skillId")]
+        public string? SkillId { get; set; }
+
+        /// <summary>
+        /// 使用后设置的账户标记 - 用于解锁条件
+        /// Account flag set after use - for unlock conditions
+        /// </summary>
+        [JsonPropertyName("accountFlag")]
+        public string? AccountFlag { get; set; }
+
+        /// <summary>
+        /// 使用效果描述
+        /// Usage effect description
+        /// </summary>
+        [JsonPropertyName("effectDescription")]
+        public string? EffectDescription { get; set; }
     }
 
     /// <summary>

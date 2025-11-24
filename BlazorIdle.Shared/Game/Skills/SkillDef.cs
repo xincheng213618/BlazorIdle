@@ -186,5 +186,11 @@ namespace BlazorIdle.Game.Skills
         /// Whether this skill can critically strike
         /// </summary>
         public bool CanCrit { get; set; } = true;
+
+        /// <summary>
+        /// 购买配置 - 定义技能的价格和限购（Step 4）
+        /// Purchase configuration - defines skill price and limits
+        /// </summary>
+        public SkillPurchaseConfig? Purchase { get; set; }
     }
 }

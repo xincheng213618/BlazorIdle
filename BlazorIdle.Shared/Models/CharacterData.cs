@@ -125,5 +125,12 @@ namespace BlazorIdle.Shared.Models
         /// </summary>
         [JsonPropertyName("fixedSkillsByProfession")]
         public Dictionary<string, ProfessionFixedSkills> FixedSkillsByProfession { get; set; } = new Dictionary<string, ProfessionFixedSkills>();
+
+        /// <summary>
+        /// 购买状态 - 追踪商店限购计数和重置时间 (Step 4)
+        /// Purchase state - tracks shop purchase limits and reset times
+        /// </summary>
+        [JsonPropertyName("purchaseState")]
+        public BlazorIdle.Game.Purchase.PurchaseState PurchaseState { get; set; } = new BlazorIdle.Game.Purchase.PurchaseState();
     }
 }

@@ -113,6 +113,15 @@ public class GameDbContext : DbContext
                     v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, ProfessionFixedSkills>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<string, ProfessionFixedSkills>()
                 )
                 .HasColumnType("TEXT");
+
+            // 配置购买状态为 JSON 列 (Step 4)
+            // Configure purchase state as JSON column - store PurchaseState
+            entity.Property(e => e.PurchaseState)
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => System.Text.Json.JsonSerializer.Deserialize<BlazorIdle.Game.Purchase.PurchaseState>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new BlazorIdle.Game.Purchase.PurchaseState()
+                )
+                .HasColumnType("TEXT");
         });
     }
 }

@@ -40,7 +40,21 @@
                     <!-- 物品栏：增加外框，并单独加下间距，不影响其它 row -->
                     <div class="section-frame mb-3">
                         <InventoryPanel Inventory="@selectedCharacter.Inventory"
+                                        Character="@selectedCharacter"
+                                        ProfessionId="@selectedCharacter.ActiveCombatProfessionId"
+                                        OnItemUsed="OnItemUsed"
                                         StartCollapsed="true" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <!-- 消耗品商店：增加外框 -->
+                    <div class="section-frame mb-3">
+                        <ConsumableShopPanel Character="@selectedCharacter"
+                                             OnItemPurchased="OnItemPurchased"
+                                             StartCollapsed="true" />
                     </div>
                 </div>
             </div>
@@ -49,7 +63,8 @@
                 <div class="col-12">
                     <!-- 技能学习：增加外框（并避免内部卡片双重边框） -->
                     <div class="section-frame mb-3">
-                        <SkillLearningPanel Character="@selectedCharacter"
+                        <SkillLearningPanel @ref="skillLearningPanel"
+                                            Character="@selectedCharacter"
                                             ProfessionId="@selectedCharacter.ActiveCombatProfessionId"
                                             StartCollapsed="true"
                                             OnSkillLearned="OnSkillLearned" />
@@ -61,7 +76,8 @@
                 <div class="col-12">
                     <!-- 技能装备：增加外框 -->
                     <div class="section-frame">
-                        <SkillEquipmentPanel Character="@selectedCharacter"
+                        <SkillEquipmentPanel @ref="skillEquipmentPanel"
+                                             Character="@selectedCharacter"
                                              ProfessionId="@selectedCharacter.ActiveCombatProfessionId"
                                              StartCollapsed="true"
                                              OnSkillEquipped="OnSkillEquipped"
@@ -96,6 +112,8 @@
 
 @code {
     private CharacterSelector? characterSelector;
+    private SkillEquipmentPanel? skillEquipmentPanel;
+    private SkillLearningPanel? skillLearningPanel;
     private CharacterData? selectedCharacter;
     private bool isReady; // 控制首渲染
 
@@ -218,6 +236,54 @@
             {
                 Console.WriteLine($"[Home] Character save failed: {response?.Message ?? "Unknown error"}");
             }
+
+            // 刷新技能装备面板以显示新学习的技能
+            // Refresh skill equipment panel to show newly learned skills
+            skillEquipmentPanel?.Refresh();
+
+            // 触发重新渲染
+            // Trigger re-render
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// 物品购买回调 - 保存角色数据
+    /// Item purchased callback - save character data
+    /// </summary>
+    private async Task OnItemPurchased()
+    {
+        if (selectedCharacter != null)
+        {
+            // 保存角色数据到服务器
+            // Save character data to server
+            await CharacterService.UpdateCharacterAsync(selectedCharacter.Id, selectedCharacter);
+
+            // 触发重新渲染
+            // Trigger re-render
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// 物品使用回调 - 保存角色数据并刷新技能面板
+    /// Item used callback - save character data and refresh skill panels
+    /// </summary>
+    private async Task OnItemUsed()
+    {
+        if (selectedCharacter != null)
+        {
+            // 保存角色数据到服务器
+            // Save character data to server
+            await CharacterService.UpdateCharacterAsync(selectedCharacter.Id, selectedCharacter);
+
+            // 刷新技能学习面板（更新已学习技能列表）
+            // Refresh skill learning panel (update learned skills list)
+            skillLearningPanel?.Refresh();
+
+            // 刷新技能装备面板（可能学习了新技能）
+            // Refresh skill equipment panel (may have learned new skills)
+            skillEquipmentPanel?.Refresh();
 
             // 触发重新渲染
             // Trigger re-render

@@ -11,11 +11,20 @@
             <span class="me-2">📖</span>
             技能学习 (Skill Learning) - @ProfessionName
         </h5>
-        <button class="btn btn-sm btn-outline-light"
-                @onclick:stopPropagation="true"
-                @onclick="ToggleCollapse">
-            @(isCollapsed ? "展开" : "收起")
-        </button>
+        <div class="d-flex align-items-center gap-3">
+            @if (Character != null)
+            {
+                <div class="gold-balance">
+                    <span class="gold-icon">🪙</span>
+                    <span class="gold-amount">@GetGoldBalance().ToString("N0")</span>
+                </div>
+            }
+            <button class="btn btn-sm btn-outline-light"
+                    @onclick:stopPropagation="true"
+                    @onclick="ToggleCollapse">
+                @(isCollapsed ? "展开" : "收起")
+            </button>
+        </div>
     </div>
 
     <div class="sl-body" style="@(isCollapsed ? "display:none" : null)">
@@ -99,6 +108,13 @@
                                                     {
                                                         <span class="ms-2 text-muted small">CD: @skill.CooldownSec s</span>
                                                     }
+                                                    @if ((currentFilter == SkillListFilter.Learnable || currentFilter == SkillListFilter.Locked) && skill.Purchase?.Enabled == true)
+                                                    {
+                                                        var price = GetSkillFinalPrice(skill);
+                                                        <span class="ms-2 @(currentFilter == SkillListFilter.Locked ? "text-muted" : "text-warning") small">
+                                                            <span class="gold-icon-small">🪙</span>@price
+                                                        </span>
+                                                    }
                                                 </div>
                                             </div>
                                             <div class="skill-item-status">
@@ -172,18 +188,59 @@
 
                                 @if (isLearnableNow)
                                 {
-                                    <button class="btn btn-success"
-                                            disabled="@isLearning"
-                                            @onclick="() => LearnSkill(s.Id)">
-                                        @if (isLearning && currentSkillId == s.Id)
-                                        {
-                                            <span>学习中...</span>
-                                        }
-                                        else
-                                        {
-                                            <span>学习</span>
-                                        }
-                                    </button>
+                                    var canAfford = CanAffordSkill(s);
+                                    var finalPrice = GetSkillFinalPrice(s);
+                                    var isPaidSkill = s.Purchase?.Enabled == true;
+
+                                    @if (isPaidSkill && s.Purchase != null)
+                                    {
+                                        <div class="d-flex flex-column align-items-end gap-2">
+                                            <div class="skill-price-display">
+                                                <span class="price-icon">🪙</span>
+                                                @if (s.Purchase.DiscountPercent > 0)
+                                                {
+                                                    <span class="original-price">@s.Purchase.BasePrice</span>
+                                                    <span class="final-price text-success">@finalPrice</span>
+                                                    <span class="discount-badge">-@s.Purchase.DiscountPercent.ToString("F0")%</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="final-price">@finalPrice</span>
+                                                }
+                                            </div>
+                                            <button class="btn @(canAfford ? "btn-success" : "btn-secondary")"
+                                                    disabled="@(!canAfford || isLearning)"
+                                                    @onclick="() => LearnSkill(s.Id)">
+                                                @if (isLearning && currentSkillId == s.Id)
+                                                {
+                                                    <span>学习中...</span>
+                                                }
+                                                else if (!canAfford)
+                                                {
+                                                    <span>金币不足</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>购买学习</span>
+                                                }
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-success"
+                                                disabled="@isLearning"
+                                                @onclick="() => LearnSkill(s.Id)">
+                                            @if (isLearning && currentSkillId == s.Id)
+                                            {
+                                                <span>学习中...</span>
+                                            }
+                                            else
+                                            {
+                                                <span>学习</span>
+                                            }
+                                        </button>
+                                    }
                                 }
                             </div>
 
@@ -476,6 +533,11 @@
     {
         isCollapsed = StartCollapsed;
         _learningManager = new SkillLearningManager(_skillRepository);
+        // 初始化购买服务（如果角色数据可用）
+        if (Character != null)
+        {
+            _learningManager.InitializePurchaseService(Character.PurchaseState);
+        }
         _previousProfessionId = ProfessionId;
         _cancellationTokenSource = new CancellationTokenSource();
     }
@@ -486,6 +548,12 @@
         var characterChanged = _previousCharacter != Character;
         var currentLevel = GetCharacterLevel();
         var levelChanged = _previousCharacterLevel != currentLevel;
+        
+        // 初始化购买服务（当角色数据可用时）
+        if (Character != null && _learningManager != null)
+        {
+            _learningManager.InitializePurchaseService(Character.PurchaseState);
+        }
         
         // 检测职业是否切换
         if (professionChanged)
@@ -512,6 +580,16 @@
         
         EnsureSelection();
         EnsureSelectionForFilter();
+    }
+
+    /// <summary>
+    /// 公共刷新方法 - 用于从外部触发技能列表更新
+    /// Public refresh method - used to trigger skill list update from outside
+    /// </summary>
+    public void Refresh()
+    {
+        RefreshSkillLists();
+        StateHasChanged();
     }
 
     private void RefreshSkillLists()
@@ -570,12 +648,13 @@
         try
         {
             var characterLevel = GetCharacterLevel();
-            var result = _learningManager.LearnSkill(Character, skillId, characterLevel, ProfessionId);
+            // 使用新的购买方法（支持免费和付费学习）
+            var (success, message) = _learningManager.LearnSkillWithPurchase(
+                Character, skillId, characterLevel, ProfessionId);
 
-            if (result)
+            if (success)
             {
-                var skill = _skillRepository.GetSkill(skillId);
-                successMessage = $"成功学习技能: {skill?.Name ?? skillId}";
+                successMessage = message;
 
 #if DEBUG
                 Console.WriteLine($"[SkillLearningPanel] Skill learned: {skillId}");
@@ -613,7 +692,7 @@
             }
             else
             {
-                errorMessage = "学习技能失败";
+                errorMessage = message;
             }
         }
         catch (Exception ex)
@@ -879,6 +958,52 @@
         
         // 否则保留1位小数
         return $"{percentage:F1}%";
+    }
+
+    // ========== Step 4: 购买系统相关方法 ==========
+
+    /// <summary>
+    /// 检查是否可以负担技能价格
+    /// Check if can afford skill price
+    /// </summary>
+    private bool CanAffordSkill(SkillDef skill)
+    {
+        if (Character == null || _learningManager == null)
+            return false;
+        return _learningManager.CanAffordSkill(Character, skill);
+    }
+
+    /// <summary>
+    /// 获取技能最终价格
+    /// Get skill final price
+    /// </summary>
+    private int GetSkillFinalPrice(SkillDef skill)
+    {
+        if (_learningManager == null)
+            return 0;
+        return _learningManager.GetSkillFinalPrice(skill);
+    }
+
+    /// <summary>
+    /// 获取剩余可购买次数
+    /// Get remaining purchase count
+    /// </summary>
+    private int GetRemainingPurchases(string skillId)
+    {
+        if (Character == null || _learningManager == null)
+            return -1;
+        return _learningManager.GetRemainingPurchases(Character, skillId);
+    }
+
+    /// <summary>
+    /// 获取金币余额
+    /// Get gold balance
+    /// </summary>
+    private int GetGoldBalance()
+    {
+        if (Character == null)
+            return 0;
+        return Character.Inventory.GetItemQuantity("gold_coin");
     }
 
     /// <summary>
@@ -1273,5 +1398,60 @@
             flex-direction: column;
             gap: 10px;
         }
+    }
+
+    /* Step 4: 购买系统样式 */
+    .gold-balance {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(255, 255, 255, 0.15);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+
+    .gold-icon {
+        font-size: 1.1em;
+    }
+
+    .gold-amount {
+        font-size: 0.95em;
+    }
+
+    .skill-price-display {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 600;
+        font-size: 0.95em;
+    }
+
+    .price-icon {
+        font-size: 1.2em;
+    }
+
+    .original-price {
+        text-decoration: line-through;
+        color: #6c757d;
+        font-size: 0.9em;
+    }
+
+    .final-price {
+        font-size: 1.1em;
+        color: #212529;
+    }
+
+    .discount-badge {
+        background: #ffc107;
+        color: #000;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        font-weight: 700;
+    }
+
+    .gold-icon-small {
+        font-size: 0.9em;
     }
 </style>
