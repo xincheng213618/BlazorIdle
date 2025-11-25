@@ -435,6 +435,123 @@ namespace BlazorIdle.Tests
 
         #endregion
 
+        #region Persistence Tests (Step 4 Phase 1)
+
+        [Fact]
+        public void PurchaseState_SerializesToJson_Correctly()
+        {
+            // Arrange
+            var state = new PurchaseState();
+            state.PerDayCountsByChar["char1"] = new Dictionary<string, int> { { "item1", 3 } };
+            state.PerAccountCounts["account1:item2"] = 5;
+            state.PerCharacterCounts["char1"] = new Dictionary<string, int> { { "item3", 2 } };
+            state.LastDailyReset = "2025-11-25";
+
+            // Act
+            var json = System.Text.Json.JsonSerializer.Serialize(state);
+            var deserialized = System.Text.Json.JsonSerializer.Deserialize<PurchaseState>(json);
+
+            // Assert
+            Assert.NotNull(deserialized);
+            Assert.Equal(3, deserialized.PerDayCountsByChar["char1"]["item1"]);
+            Assert.Equal(5, deserialized.PerAccountCounts["account1:item2"]);
+            Assert.Equal(2, deserialized.PerCharacterCounts["char1"]["item3"]);
+            Assert.Equal("2025-11-25", deserialized.LastDailyReset);
+        }
+
+        [Fact]
+        public void PurchaseState_PreservedAcrossPurchases()
+        {
+            // Arrange - Simulate character with existing purchase state
+            var character = CreateTestCharacter();
+            character.Inventory.AddItem("gold_coin", 5000);
+            
+            // Pre-set some purchase state (simulating loaded from DB)
+            character.PurchaseState.PerCharacterCounts["test_char_1"] = new Dictionary<string, int>
+            {
+                { "existing_purchase", 1 }
+            };
+
+            var service = new PurchaseService(character.PurchaseState);
+
+            var config = new PurchasableConfig
+            {
+                Id = "new_skill",
+                DisplayName = "新技能",
+                CurrencyType = CurrencyType.Gold,
+                BasePrice = 500,
+                DiscountPercent = 0,
+                Limits = new PurchaseLimit { PerCharacter = 3 }
+            };
+
+            // Act
+            var result = service.Purchase(config, character, "warrior", 10, (c) => { });
+
+            // Assert
+            Assert.True(result.Success);
+            // Existing purchase state should be preserved
+            Assert.Equal(1, character.PurchaseState.PerCharacterCounts["test_char_1"]["existing_purchase"]);
+            // New purchase should be recorded
+            Assert.Equal(1, character.PurchaseState.PerCharacterCounts["test_char_1"]["new_skill"]);
+        }
+
+        [Fact]
+        public void UpdateCharacterRequest_IncludesPurchaseState()
+        {
+            // Arrange
+            var purchaseState = new PurchaseState();
+            purchaseState.PerCharacterCounts["char1"] = new Dictionary<string, int> { { "skill1", 2 } };
+
+            // Act
+            var request = new BlazorIdle.Shared.DTOs.UpdateCharacterRequest
+            {
+                PurchaseState = purchaseState
+            };
+
+            // Assert
+            Assert.NotNull(request.PurchaseState);
+            Assert.Equal(2, request.PurchaseState.PerCharacterCounts["char1"]["skill1"]);
+        }
+
+        [Fact]
+        public void PurchaseState_EmptyState_InitializesCorrectly()
+        {
+            // Arrange & Act
+            var state = new PurchaseState();
+
+            // Assert
+            Assert.NotNull(state.PerDayCountsByChar);
+            Assert.NotNull(state.PerAccountCounts);
+            Assert.NotNull(state.PerCharacterCounts);
+            Assert.NotNull(state.LastDailyReset);
+            Assert.Empty(state.PerDayCountsByChar);
+            Assert.Empty(state.PerAccountCounts);
+            Assert.Empty(state.PerCharacterCounts);
+        }
+
+        [Fact]
+        public void PurchaseLimitTracker_DailyReset_ClearsPerDayCounts()
+        {
+            // Arrange
+            var state = new PurchaseState();
+            state.LastDailyReset = DateOnly.FromDateTime(DateTime.Now.AddDays(-1)).ToString("O");
+            state.PerDayCountsByChar["char1"] = new Dictionary<string, int> { { "item1", 5 } };
+            state.PerCharacterCounts["char1"] = new Dictionary<string, int> { { "item1", 3 } };
+
+            // Act
+            var tracker = new PurchaseLimitTracker(state);
+
+            // Assert
+            // Per-day counts should be cleared (new day)
+            Assert.Empty(state.PerDayCountsByChar);
+            // Per-character counts should be preserved
+            Assert.Equal(3, state.PerCharacterCounts["char1"]["item1"]);
+            // LastDailyReset should be updated to today
+            Assert.Equal(DateOnly.FromDateTime(DateTime.Now).ToString("O"), state.LastDailyReset);
+        }
+
+        #endregion
+
         #region Helper Methods
 
         private CharacterData CreateTestCharacter()

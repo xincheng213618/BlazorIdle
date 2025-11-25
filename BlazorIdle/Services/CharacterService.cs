@@ -323,7 +323,10 @@ namespace BlazorIdle.Services
                     // 技能数据 (Step 2 Phase 2.5)
                     // Skill data
                     LearnedSkills = character.LearnedSkills,
-                    EquippedSkillsByProfession = character.EquippedSkillsByProfession
+                    EquippedSkillsByProfession = character.EquippedSkillsByProfession,
+                    // 购买状态 (Step 4 Phase 1)
+                    // Purchase state
+                    PurchaseState = character.PurchaseState
                 };
 
                 var response = await _httpClient.PutAsJsonAsync(

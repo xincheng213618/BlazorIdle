@@ -123,6 +123,12 @@ public class UpdateCharacterRequest
     /// Equipped skills configuration - grouped by profession
     /// </summary>
     public Dictionary<string, BlazorIdle.Shared.Models.EquippedSkillsConfig>? EquippedSkillsByProfession { get; set; }
+
+    /// <summary>
+    /// 购买状态 - 追踪商店限购计数和重置时间 (Step 4 Phase 1)
+    /// Purchase state - tracks shop purchase limits and reset times
+    /// </summary>
+    public BlazorIdle.Game.Purchase.PurchaseState? PurchaseState { get; set; }
 }
 
 /// <summary>

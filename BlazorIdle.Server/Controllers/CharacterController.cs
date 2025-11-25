@@ -434,6 +434,13 @@ public class CharacterController : ControllerBase
             character.EquippedSkillsByProfession = request.EquippedSkillsByProfession;
         }
 
+        // 更新购买状态 (Step 4 Phase 1)
+        // Update purchase state
+        if (request.PurchaseState != null)
+        {
+            character.PurchaseState = request.PurchaseState;
+        }
+
         try
         {
             // 保存更改到数据库
