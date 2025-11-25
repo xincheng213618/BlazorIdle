@@ -6,7 +6,6 @@ using BlazorIdle.Shared.DTOs;
 using BlazorIdle.Shared.Models;
 using System.Security.Claims;
 using BlazorIdle.Game.Config;
-using Microsoft.Extensions.Configuration;
 
 namespace BlazorIdle.Server.Controllers;
 
@@ -20,18 +19,16 @@ namespace BlazorIdle.Server.Controllers;
 public class CharacterController : ControllerBase
 {
     private readonly GameDbContext _context;
-    private readonly IConfiguration _configuration;
     private readonly ILogger<CharacterController> _logger;
     private readonly BlazorIdle.Server.Services.IGameConfigProvider _gameConfig;
+    private static readonly UserConfig _userConfig = ConfigRepository.LoadUserConfig();
 
     public CharacterController(
         GameDbContext context,
-        IConfiguration configuration,
         ILogger<CharacterController> logger,
         BlazorIdle.Server.Services.IGameConfigProvider gameConfig)
     {
         _context = context;
-        _configuration = configuration;
         _logger = logger;
         _gameConfig = gameConfig;
     }
@@ -135,10 +132,10 @@ public class CharacterController : ControllerBase
             });
         }
 
-        // 从配置文件获取角色名称长度限制
-        // Get character name length limits from configuration
-        var minLength = _configuration.GetValue<int>("CharacterConfig:characterNameMinLength", 2);
-        var maxLength = _configuration.GetValue<int>("CharacterConfig:characterNameMaxLength", 20);
+        // 从 Shared 配置获取角色名称长度限制
+        // Get character name length limits from Shared configuration
+        var minLength = _userConfig.CharacterNameMinLength;
+        var maxLength = _userConfig.CharacterNameMaxLength;
 
         // 验证角色名称
         // Validate character name

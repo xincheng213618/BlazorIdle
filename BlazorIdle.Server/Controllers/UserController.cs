@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using BlazorIdle.Server.Data;
 using BlazorIdle.Shared.DTOs;
 using BlazorIdle.Shared.Models;
+using BlazorIdle.Game.Config;
 using System.Security.Claims;
 
 namespace BlazorIdle.Server.Controllers;
@@ -19,9 +20,7 @@ public class UserController : ControllerBase
 {
     private readonly GameDbContext _context;
     private readonly ILogger<UserController> _logger;
-
-    // 角色槽位价格
-    private const int CharacterSlotPrice = 5000;
+    private static readonly SystemShopConfig _systemShopConfig = ConfigRepository.LoadSystemShop();
 
     public UserController(
         GameDbContext context,
@@ -137,14 +136,28 @@ public class UserController : ControllerBase
             });
         }
 
-        // 检查是否已经购买过（账号限购1次）
-        const string slotItemId = "character_slot";
-        if (user.AccountPurchaseState.GetCount(slotItemId) >= 1)
+        // 从配置获取槽位商品信息
+        var slotConfig = _systemShopConfig.GetCharacterSlotConfig();
+        if (slotConfig == null)
         {
             return BadRequest(new PurchaseCharacterSlotResponse
             {
                 Success = false,
-                Message = "您已购买过角色槽位，每个账号只能购买一次"
+                Message = "角色槽位商品未配置"
+            });
+        }
+
+        const string slotItemId = "character_slot";
+        int maxPurchases = slotConfig.Limits?.PerAccount ?? 1;
+        int price = slotConfig.Price;
+
+        // 检查是否已经购买过（账号限购）
+        if (user.AccountPurchaseState.GetCount(slotItemId) >= maxPurchases)
+        {
+            return BadRequest(new PurchaseCharacterSlotResponse
+            {
+                Success = false,
+                Message = $"您已购买过角色槽位，每个账号只能购买 {maxPurchases} 次"
             });
         }
 
@@ -162,19 +175,19 @@ public class UserController : ControllerBase
 
         // 检查金币是否足够
         int goldBalance = character.Inventory?.GetItemQuantity("gold_coin") ?? 0;
-        if (goldBalance < CharacterSlotPrice)
+        if (goldBalance < price)
         {
             return BadRequest(new PurchaseCharacterSlotResponse
             {
                 Success = false,
-                Message = $"金币不足，需要 {CharacterSlotPrice} 金币"
+                Message = $"金币不足，需要 {price} 金币"
             });
         }
 
         try
         {
             // 扣除金币
-            character.Inventory?.RemoveItem("gold_coin", CharacterSlotPrice);
+            character.Inventory?.RemoveItem("gold_coin", price);
 
             // 增加角色槽位
             user.MaxCharacterSlots += 1;
@@ -221,15 +234,20 @@ public class UserController : ControllerBase
             return NotFound();
         }
 
+        // 从配置获取槽位商品信息
+        var slotConfig = _systemShopConfig.GetCharacterSlotConfig();
+        int price = slotConfig?.Price ?? 5000;
+        int maxPurchases = slotConfig?.Limits?.PerAccount ?? 1;
+
         const string slotItemId = "character_slot";
         int purchasedCount = user.AccountPurchaseState.GetCount(slotItemId);
 
         return Ok(new CharacterSlotShopInfo
         {
-            Price = CharacterSlotPrice,
-            MaxPurchases = 1,
+            Price = price,
+            MaxPurchases = maxPurchases,
             PurchasedCount = purchasedCount,
-            CanPurchase = purchasedCount < 1,
+            CanPurchase = purchasedCount < maxPurchases,
             CurrentSlots = user.MaxCharacterSlots
         });
     }

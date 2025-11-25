@@ -2,6 +2,7 @@ using BlazorIdle.Server.Data;
 using BlazorIdle.Server.Services;
 using BlazorIdle.Shared.DTOs;
 using BlazorIdle.Shared.Models;
+using BlazorIdle.Game.Config;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,7 @@ public class AuthController : ControllerBase
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtService _jwtService;
     private readonly ILogger<AuthController> _logger;
+    private static readonly UserConfig _userConfig = ConfigRepository.LoadUserConfig();
 
     public AuthController(
         GameDbContext context,
@@ -85,7 +87,7 @@ public class AuthController : ControllerBase
                 Username = request.Username,
                 PasswordHash = _passwordHasher.HashPassword(request.Password),
                 CreatedAt = DateTime.UtcNow,
-                MaxCharacterSlots = 1  // 默认1个槽位，可通过系统商店购买更多
+                MaxCharacterSlots = _userConfig.DefaultCharacterSlots
             };
 
             _context.Users.Add(user);

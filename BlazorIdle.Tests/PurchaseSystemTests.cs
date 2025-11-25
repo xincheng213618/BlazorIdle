@@ -737,6 +737,41 @@ namespace BlazorIdle.Tests
 
         #endregion
 
+        #region Configuration Tests (Step 4 Phase 4)
+
+        [Fact]
+        public void UserConfig_LoadsFromJson()
+        {
+            // Act
+            var config = BlazorIdle.Game.Config.ConfigRepository.LoadUserConfig();
+
+            // Assert
+            Assert.NotNull(config);
+            Assert.Equal(1, config.DefaultCharacterSlots);
+            Assert.Equal(2, config.CharacterNameMinLength);
+            Assert.Equal(20, config.CharacterNameMaxLength);
+        }
+
+        [Fact]
+        public void SystemShopConfig_LoadsFromJson()
+        {
+            // Act
+            var config = BlazorIdle.Game.Config.ConfigRepository.LoadSystemShop();
+
+            // Assert
+            Assert.NotNull(config);
+            Assert.NotEmpty(config.Items);
+            
+            var slotItem = config.GetCharacterSlotConfig();
+            Assert.NotNull(slotItem);
+            Assert.Equal("character_slot", slotItem.ItemId);
+            Assert.Equal(5000, slotItem.Price);
+            Assert.NotNull(slotItem.Limits);
+            Assert.Equal(1, slotItem.Limits.PerAccount);
+        }
+
+        #endregion
+
         #region Helper Methods
 
         private CharacterData CreateTestCharacter()

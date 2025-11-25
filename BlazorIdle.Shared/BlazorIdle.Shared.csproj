@@ -17,6 +17,8 @@
     <EmbeddedResource Include="Config\monsterskills.json" />
     <EmbeddedResource Include="Config\items.json" />
     <EmbeddedResource Include="Config\consumableShop.json" />
+    <EmbeddedResource Include="Config\systemShop.json" />
+    <EmbeddedResource Include="Config\userConfig.json" />
   </ItemGroup>
 
 </Project>

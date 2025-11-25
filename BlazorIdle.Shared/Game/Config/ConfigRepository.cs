@@ -50,6 +50,57 @@ namespace BlazorIdle.Game.Config
         }
 
         /// <summary>
+        /// 加载系统商店配置
+        /// Load system shop configuration
+        /// </summary>
+        /// <returns>系统商店配置，加载失败时返回默认配置</returns>
+        public static SystemShopConfig LoadSystemShop()
+        {
+            var result = TryLoadConfig<SystemShopConfig>("systemShop.json");
+            if (result == null)
+            {
+                // 返回默认配置
+                return new SystemShopConfig
+                {
+                    Items = new List<SystemShopItemConfig>
+                    {
+                        new SystemShopItemConfig
+                        {
+                            ItemId = "character_slot",
+                            DisplayName = "角色槽位 +1",
+                            Description = "增加一个可创建角色的槽位",
+                            Price = 5000,
+                            CurrencyType = "Gold",
+                            Limits = new BlazorIdle.Game.Purchase.PurchaseLimit { PerAccount = 1 }
+                        }
+                    }
+                };
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 加载用户配置
+        /// Load user configuration
+        /// </summary>
+        /// <returns>用户配置，加载失败时返回默认配置</returns>
+        public static UserConfig LoadUserConfig()
+        {
+            var result = TryLoadConfig<UserConfig>("userConfig.json");
+            if (result == null)
+            {
+                // 返回默认配置
+                return new UserConfig
+                {
+                    DefaultCharacterSlots = 1,
+                    CharacterNameMinLength = 2,
+                    CharacterNameMaxLength = 20
+                };
+            }
+            return result;
+        }
+
+        /// <summary>
         /// 安全加载配置（不抛出异常）
         /// Load configuration safely (no exception)
         /// </summary>

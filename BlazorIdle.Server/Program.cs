@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using BlazorIdle.Server.Data;
 using BlazorIdle.Server.Services;
 using BlazorIdle.Shared.Models;
+using BlazorIdle.Game.Config;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.StaticFiles; // 新增
@@ -114,11 +115,12 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<GameDbContext>();
     var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-    var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
     dbContext.Database.EnsureCreated();
 
-    var defaultMaxSlots = configuration.GetValue<int>("CharacterConfig:defaultMaxCharacterSlots", 3);
+    // 从 Shared 配置获取默认角色槽位数
+    var userConfig = ConfigRepository.LoadUserConfig();
+    var defaultMaxSlots = userConfig.DefaultCharacterSlots;
 
     if (!dbContext.Users.Any())
     {
