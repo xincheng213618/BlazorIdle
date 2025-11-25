@@ -73,6 +73,28 @@
 
             <div class="row">
                 <div class="col-12">
+                    <!-- 药水商店：增加外框 -->
+                    <div class="section-frame mb-3">
+                        <PotionShopPanel Character="@selectedCharacter"
+                                         OnItemPurchased="OnItemPurchased"
+                                         StartCollapsed="true" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <!-- 食品商店：增加外框 -->
+                    <div class="section-frame mb-3">
+                        <FoodShopPanel Character="@selectedCharacter"
+                                       OnItemPurchased="OnItemPurchased"
+                                       StartCollapsed="true" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
                     <!-- 技能学习：增加外框（并避免内部卡片双重边框） -->
                     <div class="section-frame mb-3">
                         <SkillLearningPanel @ref="skillLearningPanel"
