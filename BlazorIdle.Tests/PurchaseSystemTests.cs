@@ -435,6 +435,343 @@ namespace BlazorIdle.Tests
 
         #endregion
 
+        #region Persistence Tests (Step 4 Phase 1)
+
+        [Fact]
+        public void PurchaseState_SerializesToJson_Correctly()
+        {
+            // Arrange
+            var state = new PurchaseState();
+            state.PerDayCountsByChar["char1"] = new Dictionary<string, int> { { "item1", 3 } };
+            state.PerAccountCounts["account1:item2"] = 5;
+            state.PerCharacterCounts["char1"] = new Dictionary<string, int> { { "item3", 2 } };
+            state.LastDailyReset = "2025-11-25";
+
+            // Act
+            var json = System.Text.Json.JsonSerializer.Serialize(state);
+            var deserialized = System.Text.Json.JsonSerializer.Deserialize<PurchaseState>(json);
+
+            // Assert
+            Assert.NotNull(deserialized);
+            Assert.Equal(3, deserialized.PerDayCountsByChar["char1"]["item1"]);
+            Assert.Equal(5, deserialized.PerAccountCounts["account1:item2"]);
+            Assert.Equal(2, deserialized.PerCharacterCounts["char1"]["item3"]);
+            Assert.Equal("2025-11-25", deserialized.LastDailyReset);
+        }
+
+        [Fact]
+        public void PurchaseState_PreservedAcrossPurchases()
+        {
+            // Arrange - Simulate character with existing purchase state
+            var character = CreateTestCharacter();
+            character.Inventory.AddItem("gold_coin", 5000);
+            
+            // Pre-set some purchase state (simulating loaded from DB)
+            character.PurchaseState.PerCharacterCounts["test_char_1"] = new Dictionary<string, int>
+            {
+                { "existing_purchase", 1 }
+            };
+
+            var service = new PurchaseService(character.PurchaseState);
+
+            var config = new PurchasableConfig
+            {
+                Id = "new_skill",
+                DisplayName = "新技能",
+                CurrencyType = CurrencyType.Gold,
+                BasePrice = 500,
+                DiscountPercent = 0,
+                Limits = new PurchaseLimit { PerCharacter = 3 }
+            };
+
+            // Act
+            var result = service.Purchase(config, character, "warrior", 10, (c) => { });
+
+            // Assert
+            Assert.True(result.Success);
+            // Existing purchase state should be preserved
+            Assert.Equal(1, character.PurchaseState.PerCharacterCounts["test_char_1"]["existing_purchase"]);
+            // New purchase should be recorded
+            Assert.Equal(1, character.PurchaseState.PerCharacterCounts["test_char_1"]["new_skill"]);
+        }
+
+        [Fact]
+        public void UpdateCharacterRequest_IncludesPurchaseState()
+        {
+            // Arrange
+            var purchaseState = new PurchaseState();
+            purchaseState.PerCharacterCounts["char1"] = new Dictionary<string, int> { { "skill1", 2 } };
+
+            // Act
+            var request = new BlazorIdle.Shared.DTOs.UpdateCharacterRequest
+            {
+                PurchaseState = purchaseState
+            };
+
+            // Assert
+            Assert.NotNull(request.PurchaseState);
+            Assert.Equal(2, request.PurchaseState.PerCharacterCounts["char1"]["skill1"]);
+        }
+
+        [Fact]
+        public void PurchaseState_EmptyState_InitializesCorrectly()
+        {
+            // Arrange & Act
+            var state = new PurchaseState();
+
+            // Assert
+            Assert.NotNull(state.PerDayCountsByChar);
+            Assert.NotNull(state.PerAccountCounts);
+            Assert.NotNull(state.PerCharacterCounts);
+            Assert.NotNull(state.LastDailyReset);
+            Assert.Empty(state.PerDayCountsByChar);
+            Assert.Empty(state.PerAccountCounts);
+            Assert.Empty(state.PerCharacterCounts);
+        }
+
+        [Fact]
+        public void PurchaseLimitTracker_DailyReset_ClearsPerDayCounts()
+        {
+            // Arrange
+            var state = new PurchaseState();
+            state.LastDailyReset = DateOnly.FromDateTime(DateTime.Now.AddDays(-1)).ToString("O");
+            state.PerDayCountsByChar["char1"] = new Dictionary<string, int> { { "item1", 5 } };
+            state.PerCharacterCounts["char1"] = new Dictionary<string, int> { { "item1", 3 } };
+
+            // Act
+            var tracker = new PurchaseLimitTracker(state);
+
+            // Assert
+            // Per-day counts should be cleared (new day)
+            Assert.Empty(state.PerDayCountsByChar);
+            // Per-character counts should be preserved
+            Assert.Equal(3, state.PerCharacterCounts["char1"]["item1"]);
+            // LastDailyReset should be updated to today
+            Assert.Equal(DateOnly.FromDateTime(DateTime.Now).ToString("O"), state.LastDailyReset);
+        }
+
+        #endregion
+
+        #region Account-Level Limit Tests (Step 4 Phase 2)
+
+        [Fact]
+        public void AccountPurchaseState_SerializesToJson_Correctly()
+        {
+            // Arrange
+            var state = new AccountPurchaseState();
+            state.PerAccountCounts["item1"] = 3;
+            state.PerAccountCounts["item2"] = 5;
+
+            // Act
+            var json = System.Text.Json.JsonSerializer.Serialize(state);
+            var deserialized = System.Text.Json.JsonSerializer.Deserialize<AccountPurchaseState>(json);
+
+            // Assert
+            Assert.NotNull(deserialized);
+            Assert.Equal(3, deserialized.PerAccountCounts["item1"]);
+            Assert.Equal(5, deserialized.PerAccountCounts["item2"]);
+        }
+
+        [Fact]
+        public void AccountPurchaseState_GetCount_ReturnsZeroForMissingItem()
+        {
+            // Arrange
+            var state = new AccountPurchaseState();
+
+            // Act
+            int count = state.GetCount("nonexistent_item");
+
+            // Assert
+            Assert.Equal(0, count);
+        }
+
+        [Fact]
+        public void AccountPurchaseState_IncrementCount_WorksCorrectly()
+        {
+            // Arrange
+            var state = new AccountPurchaseState();
+
+            // Act
+            state.IncrementCount("item1");
+            state.IncrementCount("item1");
+            state.IncrementCount("item2");
+
+            // Assert
+            Assert.Equal(2, state.GetCount("item1"));
+            Assert.Equal(1, state.GetCount("item2"));
+        }
+
+        [Fact]
+        public void PurchaseLimitTracker_WithAccountState_UsesAccountState()
+        {
+            // Arrange
+            var characterState = new PurchaseState();
+            var accountState = new AccountPurchaseState();
+            accountState.PerAccountCounts["skill1"] = 1;  // Already bought once
+            
+            var tracker = new PurchaseLimitTracker(characterState, accountState);
+            var limits = new PurchaseLimit { PerAccount = 2 };
+
+            // Act
+            var result = tracker.CheckRemaining("skill1", "char1", "account1", limits);
+
+            // Assert
+            Assert.False(result.IsExhausted);
+            Assert.Equal(1, result.Remaining); // 2 - 1 = 1 remaining
+        }
+
+        [Fact]
+        public void PurchaseLimitTracker_WithAccountState_SharedAcrossCharacters()
+        {
+            // Arrange
+            var char1State = new PurchaseState();
+            var char2State = new PurchaseState();
+            var accountState = new AccountPurchaseState();
+            
+            var limits = new PurchaseLimit { PerAccount = 2 };
+
+            // Act - Character 1 buys
+            var tracker1 = new PurchaseLimitTracker(char1State, accountState);
+            tracker1.IncrementCount("skill1", "char1", "account1", limits);
+            tracker1.IncrementCount("skill1", "char1", "account1", limits);
+
+            // Assert - Character 2 should see the same limit
+            var tracker2 = new PurchaseLimitTracker(char2State, accountState);
+            var result = tracker2.CheckRemaining("skill1", "char2", "account1", limits);
+            
+            Assert.True(result.IsExhausted);
+            Assert.Equal(0, result.Remaining);
+        }
+
+        [Fact]
+        public void PurchaseService_WithAccountState_EnforcesAccountLimit()
+        {
+            // Arrange
+            var character = CreateTestCharacter();
+            character.Inventory.AddItem("gold_coin", 5000);
+            var accountState = new AccountPurchaseState();
+            accountState.PerAccountCounts["limited_skill"] = 1; // Already bought once
+
+            var service = new PurchaseService(character.PurchaseState, accountState);
+
+            var config = new PurchasableConfig
+            {
+                Id = "limited_skill",
+                DisplayName = "限购技能",
+                CurrencyType = CurrencyType.Gold,
+                BasePrice = 100,
+                DiscountPercent = 0,
+                Limits = new PurchaseLimit { PerAccount = 1 }
+            };
+
+            // Act
+            var result = service.Purchase(config, character, "warrior", 10, (c) => { });
+
+            // Assert
+            Assert.False(result.Success);
+            Assert.Contains("上限", result.Message);
+        }
+
+        [Fact]
+        public void PurchaseLimitTracker_WithoutAccountState_FallsBackToLegacy()
+        {
+            // Arrange - Use constructor without AccountPurchaseState (legacy mode)
+            var characterState = new PurchaseState();
+            // Legacy format uses accountId:itemId as key
+            characterState.PerAccountCounts["account1:skill1"] = 1; // Legacy data with proper key format
+            
+            var tracker = new PurchaseLimitTracker(characterState);
+            var limits = new PurchaseLimit { PerAccount = 2 };
+
+            // Act
+            var result = tracker.CheckRemaining("skill1", "char1", "account1", limits);
+
+            // Assert - Should read from legacy PerAccountCounts
+            Assert.False(result.IsExhausted);
+            Assert.Equal(1, result.Remaining);
+        }
+
+        #endregion
+
+        #region Character Slot Shop Tests (Step 4 Phase 3)
+
+        [Fact]
+        public void User_DefaultMaxCharacterSlots_IsOne()
+        {
+            // Arrange & Act
+            var user = new BlazorIdle.Shared.Models.User();
+
+            // Assert
+            Assert.Equal(1, user.MaxCharacterSlots);
+        }
+
+        [Fact]
+        public void AccountPurchaseState_TrackSlotPurchase()
+        {
+            // Arrange
+            var state = new AccountPurchaseState();
+            const string slotItemId = "character_slot";
+
+            // Act
+            state.IncrementCount(slotItemId);
+
+            // Assert
+            Assert.Equal(1, state.GetCount(slotItemId));
+        }
+
+        [Fact]
+        public void AccountPurchaseState_SlotPurchaseLimit()
+        {
+            // Arrange
+            var state = new AccountPurchaseState();
+            const string slotItemId = "character_slot";
+            const int maxPurchases = 1;
+
+            // Act - Purchase once
+            state.IncrementCount(slotItemId);
+            bool canPurchaseMore = state.GetCount(slotItemId) < maxPurchases;
+
+            // Assert
+            Assert.False(canPurchaseMore);
+        }
+
+        #endregion
+
+        #region Configuration Tests (Step 4 Phase 4)
+
+        [Fact]
+        public void UserConfig_LoadsFromJson()
+        {
+            // Act
+            var config = BlazorIdle.Game.Config.ConfigRepository.LoadUserConfig();
+
+            // Assert
+            Assert.NotNull(config);
+            Assert.Equal(1, config.DefaultCharacterSlots);
+            Assert.Equal(2, config.CharacterNameMinLength);
+            Assert.Equal(20, config.CharacterNameMaxLength);
+        }
+
+        [Fact]
+        public void SystemShopConfig_LoadsFromJson()
+        {
+            // Act
+            var config = BlazorIdle.Game.Config.ConfigRepository.LoadSystemShop();
+
+            // Assert
+            Assert.NotNull(config);
+            Assert.NotEmpty(config.Items);
+            
+            var slotItem = config.GetCharacterSlotConfig();
+            Assert.NotNull(slotItem);
+            Assert.Equal("character_slot", slotItem.ItemId);
+            Assert.True(slotItem.Price > 0); // 价格应该是正数（实际价格在配置文件中定义）
+            Assert.NotNull(slotItem.Limits);
+            Assert.Equal(1, slotItem.Limits.PerAccount);
+        }
+
+        #endregion
+
         #region Helper Methods
 
         private CharacterData CreateTestCharacter()

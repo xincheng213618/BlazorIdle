@@ -29,5 +29,11 @@ namespace BlazorIdle.Configuration
         /// Get the full URL for the game-config API
         /// </summary>
         public string GameConfigApiUrl => $"{BaseUrl.TrimEnd('/')}/api/game-config";
+
+        /// <summary>
+        /// 获取用户API的完整URL (Step 4 Phase 2)
+        /// Get the full URL for the user API
+        /// </summary>
+        public string UserApiUrl => $"{BaseUrl.TrimEnd('/')}/api/user";
     }
 }

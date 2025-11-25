@@ -1,0 +1,429 @@
+@using BlazorIdle.Shared.Models
+@using BlazorIdle.Shared.DTOs
+@using BlazorIdle.Shared.Constants
+@using BlazorIdle.Services
+@inject IUserService UserService
+
+<div class="system-shop-panel">
+    <div class="shop-header"
+         role="button"
+         @onclick="ToggleCollapse"
+         aria-expanded="@(!isCollapsed)">
+        <h5 class="mb-0">
+            <span class="icon">🏛️</span>
+            系统商店 (System Shop)
+        </h5>
+
+        <div class="d-flex align-items-center gap-3">
+            @if (Character != null)
+            {
+                <div class="gold-balance-display">
+                    <span class="gold-icon">🪙</span>
+                    <span class="gold-amount">@GetGoldBalance().ToString("N0")</span>
+                </div>
+            }
+            <button class="btn btn-sm btn-outline-light"
+                    @onclick:stopPropagation="true"
+                    @onclick="ToggleCollapse">
+                @(isCollapsed ? "展开" : "收起")
+            </button>
+        </div>
+    </div>
+
+    <div class="shop-body" style="@(isCollapsed ? "display:none" : null)">
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success mb-3">@successMessage</div>
+        }
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mb-3">@errorMessage</div>
+        }
+
+        @if (Character == null)
+        {
+            <div class="empty-state">
+                <p class="text-muted mb-0">请先选择角色...</p>
+            </div>
+        }
+        else if (isLoading)
+        {
+            <div class="text-center p-3">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="shop-items-grid">
+                <div class="shop-item @(shopInfo == null || !shopInfo.CanPurchase ? "sold-out" : "") @(!CanAffordSlot() ? "cannot-afford" : "")">
+                    <div class="item-icon">👤</div>
+                    <div class="item-info">
+                        <div class="item-name">角色槽位 +1</div>
+                        <div class="item-desc">增加一个可创建角色的槽位</div>
+
+                        <div class="item-meta">
+                            <span class="price">
+                                <span class="gold-icon">🪙</span>
+                                @(shopInfo?.Price.ToString("N0") ?? "5,000")
+                            </span>
+                            @if (shopInfo != null)
+                            {
+                                <span class="limit">
+                                    @if (shopInfo.CanPurchase)
+                                    {
+                                        <span class="remaining">剩余 @(shopInfo.MaxPurchases - shopInfo.PurchasedCount) 次</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="exhausted">已售罄</span>
+                                    }
+                                </span>
+                            }
+                            <span class="current-slots">
+                                当前槽位: @(shopInfo?.CurrentSlots ?? 1)
+                            </span>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary btn-sm purchase-btn"
+                            disabled="@(isPurchasing || shopInfo == null || !shopInfo.CanPurchase || !CanAffordSlot())"
+                            @onclick="PurchaseCharacterSlot">
+                        @if (isPurchasing)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                        }
+                        else if (shopInfo != null && !shopInfo.CanPurchase)
+                        {
+                            <span>已购买</span>
+                        }
+                        else if (!CanAffordSlot())
+                        {
+                            <span>金币不足</span>
+                        }
+                        else
+                        {
+                            <span>购买</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .system-shop-panel {
+        background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+    }
+
+        .system-shop-panel .shop-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            background: linear-gradient(135deg, #4a1d6e 0%, #6b2d8e 100%);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+            .system-shop-panel .shop-header:hover {
+                background: linear-gradient(135deg, #5a2d7e 0%, #7b3d9e 100%);
+            }
+
+            .system-shop-panel .shop-header h5 {
+                color: #fff;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                margin: 0;
+            }
+
+            .system-shop-panel .shop-header .icon {
+                font-size: 1.3rem;
+            }
+
+        .system-shop-panel .gold-balance-display {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            background: rgba(255, 215, 0, 0.15);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .system-shop-panel .gold-icon {
+            font-size: 1rem;
+        }
+
+        .system-shop-panel .gold-amount {
+            color: #ffd700;
+            font-weight: 600;
+        }
+
+        .system-shop-panel .shop-body {
+            padding: 1rem;
+        }
+
+        /* 关键: 指定列，避免 Grid 默认单列导致内部 flex 被挤压 */
+        .system-shop-panel .shop-items-grid {
+            display: grid;
+            gap: 0.9rem;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        }
+
+        .system-shop-panel .shop-item {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem 1rem 0.85rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.2s ease;
+            min-height: 110px;
+            position: relative;
+        }
+
+            .system-shop-panel .shop-item:hover:not(.sold-out):not(.cannot-afford) {
+                background: rgba(255, 255, 255, 0.08);
+                border-color: rgba(138, 43, 226, 0.5);
+            }
+
+            .system-shop-panel .shop-item.sold-out {
+                opacity: 0.6;
+            }
+
+            .system-shop-panel .shop-item.cannot-afford {
+                opacity: 0.7;
+            }
+
+        .system-shop-panel .item-icon {
+            font-size: 2.2rem;
+            width: 64px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #6b2d8e 0%, #8b4dae 100%);
+            border-radius: 10px;
+            flex-shrink: 0;
+            color: #fff;
+        }
+
+        .system-shop-panel .item-info {
+            flex: 1 1 auto;
+            min-width: 180px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            line-height: 1.35;
+            /* 防止意外的全局 writing-mode 或过度 letter-spacing */
+            writing-mode: horizontal-tb;
+            letter-spacing: normal;
+            word-break: break-word;
+        }
+
+        .system-shop-panel .item-name {
+            font-weight: 600;
+            color: #fff;
+            font-size: 1rem;
+        }
+
+        .system-shop-panel .item-desc {
+            color: rgba(255, 255, 255, 0.65);
+            font-size: 0.82rem;
+        }
+
+        .system-shop-panel .item-meta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 0.2rem;
+            font-size: 0.78rem;
+        }
+
+        .system-shop-panel .price {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            color: #ffd700;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+
+        .system-shop-panel .limit {
+            font-size: 0.72rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .system-shop-panel .remaining {
+            color: #4ade80;
+        }
+
+        .system-shop-panel .exhausted {
+            color: #f87171;
+        }
+
+        .system-shop-panel .current-slots {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.72rem;
+        }
+
+        .system-shop-panel .purchase-btn {
+            margin-left: auto;
+            margin-top: 0.25rem;
+            min-width: 92px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+    @@media (max-width: 600px) {
+        .system-shop-panel .shop-items-grid
+
+    {
+        grid-template-columns: 1fr;
+    }
+
+    .system-shop-panel .purchase-btn {
+        width: 100%;
+        margin-left: 0;
+        order: 99;
+    }
+
+    .system-shop-panel .shop-item {
+        padding: 0.85rem;
+    }
+
+    }
+
+    .system-shop-panel .empty-state {
+        text-align: center;
+        padding: 2rem;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public CharacterData? Character { get; set; }
+
+    [Parameter]
+    public EventCallback OnSlotPurchased { get; set; }
+
+    [Parameter]
+    public bool StartCollapsed { get; set; }
+
+    private bool isCollapsed;
+    private bool isLoading = true;
+    private bool isPurchasing = false;
+    private string? errorMessage = null;
+    private string? successMessage = null;
+
+    private CharacterSlotShopInfo? shopInfo;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isCollapsed = StartCollapsed;
+        await LoadShopInfoAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Character != null && shopInfo == null)
+        {
+            await LoadShopInfoAsync();
+        }
+    }
+
+    private async Task LoadShopInfoAsync()
+    {
+        isLoading = true;
+        try
+        {
+            shopInfo = await UserService.GetCharacterSlotShopInfoAsync();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ToggleCollapse() => isCollapsed = !isCollapsed;
+
+    private int GetGoldBalance()
+    {
+        if (Character == null) return 0;
+        return Character.Inventory?.GetItemQuantity(ItemIds.GoldCoin) ?? 0;
+    }
+
+    private bool CanAffordSlot()
+    {
+        if (shopInfo == null) return false;
+        return GetGoldBalance() >= shopInfo.Price;
+    }
+
+    private async Task PurchaseCharacterSlot()
+    {
+        if (Character == null || isPurchasing || shopInfo == null || !shopInfo.CanPurchase)
+            return;
+
+        if (!CanAffordSlot())
+        {
+            errorMessage = $"金币不足，需要 {shopInfo.Price:N0} 金币";
+            return;
+        }
+
+        errorMessage = null;
+        successMessage = null;
+        isPurchasing = true;
+
+        try
+        {
+            var result = await UserService.PurchaseCharacterSlotAsync(Character.Id);
+
+            if (result?.Success == true)
+            {
+                successMessage = result.Message;
+                Character.Inventory?.RemoveItem(ItemIds.GoldCoin, shopInfo.Price);
+                await LoadShopInfoAsync();
+
+                if (OnSlotPurchased.HasDelegate)
+                {
+                    await OnSlotPurchased.InvokeAsync();
+                }
+
+                _ = Task.Delay(3000).ContinueWith(async _ =>
+                {
+                    successMessage = null;
+                    await InvokeAsync(StateHasChanged);
+                }, TaskScheduler.Default);
+            }
+            else
+            {
+                errorMessage = result?.Message ?? "购买失败";
+                _ = Task.Delay(3000).ContinueWith(async _ =>
+                {
+                    errorMessage = null;
+                    await InvokeAsync(StateHasChanged);
+                }, TaskScheduler.Default);
+            }
+        }
+        finally
+        {
+            isPurchasing = false;
+            StateHasChanged();
+        }
+    }
+}

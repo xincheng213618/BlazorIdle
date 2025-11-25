@@ -123,6 +123,12 @@ public class UpdateCharacterRequest
     /// Equipped skills configuration - grouped by profession
     /// </summary>
     public Dictionary<string, BlazorIdle.Shared.Models.EquippedSkillsConfig>? EquippedSkillsByProfession { get; set; }
+
+    /// <summary>
+    /// 购买状态 - 追踪商店限购计数和重置时间 (Step 4 Phase 1)
+    /// Purchase state - tracks shop purchase limits and reset times
+    /// </summary>
+    public BlazorIdle.Game.Purchase.PurchaseState? PurchaseState { get; set; }
 }
 
 /// <summary>
@@ -192,4 +198,123 @@ public class SwitchProfessionRequest
     /// Profession ID to switch to
     /// </summary>
     public string ProfessionId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 账号购买状态响应DTO (Step 4 Phase 2)
+/// Account purchase state response DTO
+/// </summary>
+public class AccountPurchaseStateResponse
+{
+    /// <summary>
+    /// 操作是否成功
+    /// Whether the operation succeeded
+    /// </summary>
+    public bool Success { get; set; }
+
+    /// <summary>
+    /// 消息（成功提示或错误信息）
+    /// Message (success or error message)
+    /// </summary>
+    public string Message { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 账号购买状态
+    /// Account purchase state
+    /// </summary>
+    public BlazorIdle.Game.Purchase.AccountPurchaseState? AccountPurchaseState { get; set; }
+}
+
+/// <summary>
+/// 更新账号购买状态请求DTO (Step 4 Phase 2)
+/// Update account purchase state request DTO
+/// </summary>
+public class UpdateAccountPurchaseStateRequest
+{
+    /// <summary>
+    /// 账号购买状态
+    /// Account purchase state
+    /// </summary>
+    public BlazorIdle.Game.Purchase.AccountPurchaseState? AccountPurchaseState { get; set; }
+}
+
+/// <summary>
+/// 购买角色槽位请求DTO (Step 4 Phase 3)
+/// Purchase character slot request DTO
+/// </summary>
+public class PurchaseCharacterSlotRequest
+{
+    /// <summary>
+    /// 支付的金币数量（当前角色的金币）
+    /// Gold amount to pay (from current character)
+    /// </summary>
+    public int GoldAmount { get; set; }
+
+    /// <summary>
+    /// 角色ID（用于扣除金币）
+    /// Character ID (for deducting gold)
+    /// </summary>
+    public string CharacterId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 购买角色槽位响应DTO (Step 4 Phase 3)
+/// Purchase character slot response DTO
+/// </summary>
+public class PurchaseCharacterSlotResponse
+{
+    /// <summary>
+    /// 操作是否成功
+    /// Whether the operation succeeded
+    /// </summary>
+    public bool Success { get; set; }
+
+    /// <summary>
+    /// 消息（成功提示或错误信息）
+    /// Message (success or error message)
+    /// </summary>
+    public string Message { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 新的角色槽位数量
+    /// New character slot count
+    /// </summary>
+    public int NewMaxCharacterSlots { get; set; }
+}
+
+/// <summary>
+/// 角色槽位商店信息 (Step 4 Phase 3)
+/// Character slot shop info
+/// </summary>
+public class CharacterSlotShopInfo
+{
+    /// <summary>
+    /// 槽位价格
+    /// Slot price
+    /// </summary>
+    public int Price { get; set; }
+
+    /// <summary>
+    /// 最大购买次数
+    /// Maximum purchases
+    /// </summary>
+    public int MaxPurchases { get; set; }
+
+    /// <summary>
+    /// 已购买次数
+    /// Purchased count
+    /// </summary>
+    public int PurchasedCount { get; set; }
+
+    /// <summary>
+    /// 是否可以购买
+    /// Can purchase
+    /// </summary>
+    public bool CanPurchase { get; set; }
+
+    /// <summary>
+    /// 当前槽位数
+    /// Current slots
+    /// </summary>
+    public int CurrentSlots { get; set; }
 }

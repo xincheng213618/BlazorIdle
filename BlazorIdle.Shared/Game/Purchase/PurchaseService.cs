@@ -11,10 +11,24 @@ namespace BlazorIdle.Game.Purchase
         private readonly UnlockConditionChecker _unlockChecker;
         private readonly PurchaseLimitTracker _limitTracker;
 
+        /// <summary>
+        /// 创建购买服务（仅支持角色级限购，兼容旧代码）
+        /// Create purchase service (character-level limits only, legacy compatibility)
+        /// </summary>
         public PurchaseService(PurchaseState purchaseState)
         {
             _unlockChecker = new UnlockConditionChecker();
             _limitTracker = new PurchaseLimitTracker(purchaseState);
+        }
+
+        /// <summary>
+        /// 创建购买服务（支持角色级和账号级限购）
+        /// Create purchase service (both character-level and account-level limits)
+        /// </summary>
+        public PurchaseService(PurchaseState purchaseState, AccountPurchaseState accountPurchaseState)
+        {
+            _unlockChecker = new UnlockConditionChecker();
+            _limitTracker = new PurchaseLimitTracker(purchaseState, accountPurchaseState);
         }
 
         /// <summary>

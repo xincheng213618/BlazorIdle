@@ -12,7 +12,8 @@
     {
         <div class="row">
             <div class="col-md-6">
-                <CharacterCreation StartCollapsed="@(selectedCharacter is not null)"
+                <CharacterCreation @ref="characterCreation"
+                                   StartCollapsed="@(selectedCharacter is not null)"
                                    OnCharacterCreated="OnCharacterCreated" />
             </div>
             <div class="col-md-6">
@@ -44,6 +45,17 @@
                                         ProfessionId="@selectedCharacter.ActiveCombatProfessionId"
                                         OnItemUsed="OnItemUsed"
                                         StartCollapsed="true" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <!-- 系统商店：增加外框 -->
+                    <div class="section-frame mb-3">
+                        <SystemShopPanel Character="@selectedCharacter"
+                                         OnSlotPurchased="OnSlotPurchased"
+                                         StartCollapsed="true" />
                     </div>
                 </div>
             </div>
@@ -111,6 +123,7 @@
 </div>
 
 @code {
+    private CharacterCreation? characterCreation;
     private CharacterSelector? characterSelector;
     private SkillEquipmentPanel? skillEquipmentPanel;
     private SkillLearningPanel? skillLearningPanel;
@@ -320,6 +333,38 @@
             // 保存角色数据到服务器
             // Save character data to server
             await CharacterService.UpdateCharacterAsync(selectedCharacter.Id, selectedCharacter);
+
+            // 触发重新渲染
+            // Trigger re-render
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// 角色槽位购买回调 - 刷新角色选择器、角色创建面板和保存角色数据
+    /// Character slot purchased callback - refresh character selector, character creation panel and save character data
+    /// </summary>
+    private async Task OnSlotPurchased()
+    {
+        if (selectedCharacter != null)
+        {
+            // 保存角色数据到服务器（扣除金币后）
+            // Save character data to server (after deducting gold)
+            await CharacterService.UpdateCharacterAsync(selectedCharacter.Id, selectedCharacter);
+
+            // 刷新角色选择器以更新槽位显示
+            // Refresh character selector to update slot display
+            if (characterSelector != null)
+            {
+                await characterSelector.RefreshAsync();
+            }
+
+            // 刷新角色创建面板以更新可用槽位数
+            // Refresh character creation panel to update available slots
+            if (characterCreation != null)
+            {
+                await characterCreation.RefreshAsync();
+            }
 
             // 触发重新渲染
             // Trigger re-render

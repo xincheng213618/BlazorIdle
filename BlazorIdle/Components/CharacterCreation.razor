@@ -247,6 +247,16 @@
     }
 
     private void ToggleCollapse() => isCollapsed = !isCollapsed;
+
+    /// <summary>
+    /// 公共刷新方法 - 重新加载角色槽位信息
+    /// Public refresh method - reload character slot information
+    /// </summary>
+    public async Task RefreshAsync()
+    {
+        await LoadCharacterSlotInfo();
+        StateHasChanged();
+    }
 }
 
 <style>
