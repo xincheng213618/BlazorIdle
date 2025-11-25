@@ -58,4 +58,7 @@ builder.Services.AddScoped<IBattleAttributeSyncService, BattleAttributeSyncServi
 // Task 4.5: 页面关闭前保存服务
 builder.Services.AddScoped<BeforeUnloadService>();
 
+// Step 4 Phase 2: 用户服务（账号购买状态等）
+builder.Services.AddScoped<IUserService, UserService>();
+
 await builder.Build().RunAsync();

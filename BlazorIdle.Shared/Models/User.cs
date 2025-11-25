@@ -1,5 +1,7 @@
 namespace BlazorIdle.Shared.Models;
 
+using BlazorIdle.Game.Purchase;
+
 /// <summary>
 /// 用户模型 - 存储用户账号信息和角色槽位配置
 /// User model - stores user account information and character slot configuration
@@ -41,4 +43,10 @@ public class User
     /// Number of character slots used (current character count)
     /// </summary>
     public int UsedCharacterSlots { get; set; } = 0;
+
+    /// <summary>
+    /// 账号级购买状态 - 跨角色共享的限购计数 (Step 4 Phase 2)
+    /// Account-level purchase state - purchase limits shared across characters
+    /// </summary>
+    public AccountPurchaseState AccountPurchaseState { get; set; } = new AccountPurchaseState();
 }

@@ -552,6 +552,147 @@ namespace BlazorIdle.Tests
 
         #endregion
 
+        #region Account-Level Limit Tests (Step 4 Phase 2)
+
+        [Fact]
+        public void AccountPurchaseState_SerializesToJson_Correctly()
+        {
+            // Arrange
+            var state = new AccountPurchaseState();
+            state.PerAccountCounts["item1"] = 3;
+            state.PerAccountCounts["item2"] = 5;
+
+            // Act
+            var json = System.Text.Json.JsonSerializer.Serialize(state);
+            var deserialized = System.Text.Json.JsonSerializer.Deserialize<AccountPurchaseState>(json);
+
+            // Assert
+            Assert.NotNull(deserialized);
+            Assert.Equal(3, deserialized.PerAccountCounts["item1"]);
+            Assert.Equal(5, deserialized.PerAccountCounts["item2"]);
+        }
+
+        [Fact]
+        public void AccountPurchaseState_GetCount_ReturnsZeroForMissingItem()
+        {
+            // Arrange
+            var state = new AccountPurchaseState();
+
+            // Act
+            int count = state.GetCount("nonexistent_item");
+
+            // Assert
+            Assert.Equal(0, count);
+        }
+
+        [Fact]
+        public void AccountPurchaseState_IncrementCount_WorksCorrectly()
+        {
+            // Arrange
+            var state = new AccountPurchaseState();
+
+            // Act
+            state.IncrementCount("item1");
+            state.IncrementCount("item1");
+            state.IncrementCount("item2");
+
+            // Assert
+            Assert.Equal(2, state.GetCount("item1"));
+            Assert.Equal(1, state.GetCount("item2"));
+        }
+
+        [Fact]
+        public void PurchaseLimitTracker_WithAccountState_UsesAccountState()
+        {
+            // Arrange
+            var characterState = new PurchaseState();
+            var accountState = new AccountPurchaseState();
+            accountState.PerAccountCounts["skill1"] = 1;  // Already bought once
+            
+            var tracker = new PurchaseLimitTracker(characterState, accountState);
+            var limits = new PurchaseLimit { PerAccount = 2 };
+
+            // Act
+            var result = tracker.CheckRemaining("skill1", "char1", "account1", limits);
+
+            // Assert
+            Assert.False(result.IsExhausted);
+            Assert.Equal(1, result.Remaining); // 2 - 1 = 1 remaining
+        }
+
+        [Fact]
+        public void PurchaseLimitTracker_WithAccountState_SharedAcrossCharacters()
+        {
+            // Arrange
+            var char1State = new PurchaseState();
+            var char2State = new PurchaseState();
+            var accountState = new AccountPurchaseState();
+            
+            var limits = new PurchaseLimit { PerAccount = 2 };
+
+            // Act - Character 1 buys
+            var tracker1 = new PurchaseLimitTracker(char1State, accountState);
+            tracker1.IncrementCount("skill1", "char1", "account1", limits);
+            tracker1.IncrementCount("skill1", "char1", "account1", limits);
+
+            // Assert - Character 2 should see the same limit
+            var tracker2 = new PurchaseLimitTracker(char2State, accountState);
+            var result = tracker2.CheckRemaining("skill1", "char2", "account1", limits);
+            
+            Assert.True(result.IsExhausted);
+            Assert.Equal(0, result.Remaining);
+        }
+
+        [Fact]
+        public void PurchaseService_WithAccountState_EnforcesAccountLimit()
+        {
+            // Arrange
+            var character = CreateTestCharacter();
+            character.Inventory.AddItem("gold_coin", 5000);
+            var accountState = new AccountPurchaseState();
+            accountState.PerAccountCounts["limited_skill"] = 1; // Already bought once
+
+            var service = new PurchaseService(character.PurchaseState, accountState);
+
+            var config = new PurchasableConfig
+            {
+                Id = "limited_skill",
+                DisplayName = "限购技能",
+                CurrencyType = CurrencyType.Gold,
+                BasePrice = 100,
+                DiscountPercent = 0,
+                Limits = new PurchaseLimit { PerAccount = 1 }
+            };
+
+            // Act
+            var result = service.Purchase(config, character, "warrior", 10, (c) => { });
+
+            // Assert
+            Assert.False(result.Success);
+            Assert.Contains("上限", result.Message);
+        }
+
+        [Fact]
+        public void PurchaseLimitTracker_WithoutAccountState_FallsBackToLegacy()
+        {
+            // Arrange - Use constructor without AccountPurchaseState (legacy mode)
+            var characterState = new PurchaseState();
+            // Legacy format uses accountId:itemId as key
+            characterState.PerAccountCounts["account1:skill1"] = 1; // Legacy data with proper key format
+            
+            var tracker = new PurchaseLimitTracker(characterState);
+            var limits = new PurchaseLimit { PerAccount = 2 };
+
+            // Act
+            var result = tracker.CheckRemaining("skill1", "char1", "account1", limits);
+
+            // Assert - Should read from legacy PerAccountCounts
+            Assert.False(result.IsExhausted);
+            Assert.Equal(1, result.Remaining);
+        }
+
+        #endregion
+
         #region Helper Methods
 
         private CharacterData CreateTestCharacter()

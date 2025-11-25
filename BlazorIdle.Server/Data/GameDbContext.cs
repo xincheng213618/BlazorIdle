@@ -40,6 +40,15 @@ public class GameDbContext : DbContext
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.MaxCharacterSlots).HasDefaultValue(3);
             entity.Property(e => e.UsedCharacterSlots).HasDefaultValue(0);
+
+            // 配置账号级购买状态为 JSON 列 (Step 4 Phase 2)
+            // Configure account-level purchase state as JSON column
+            entity.Property(e => e.AccountPurchaseState)
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => System.Text.Json.JsonSerializer.Deserialize<BlazorIdle.Game.Purchase.AccountPurchaseState>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new BlazorIdle.Game.Purchase.AccountPurchaseState()
+                )
+                .HasColumnType("TEXT");
         });
         
         // 配置角色实体

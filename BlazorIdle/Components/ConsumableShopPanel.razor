@@ -1,7 +1,9 @@
 @using BlazorIdle.Shared.Models
 @using BlazorIdle.Game.Config
 @using BlazorIdle.Game.Purchase
+@using BlazorIdle.Services
 @inject IGameConfigService GameConfig
+@inject IUserService UserService
 
 <div class="consumable-shop-panel">
     <div class="shop-header"
@@ -134,6 +136,7 @@
     private string? successMessage = null;
 
     private PurchaseService? _purchaseService;
+    private AccountPurchaseState? _accountPurchaseState;
 
     // 商店商品列表 - 实际项目中应该从配置文件加载
     private List<ShopItemConfig> shopItems = new();
@@ -145,13 +148,24 @@
 
         // 初始化商店商品列表
         InitializeShopItems();
+
+        // 加载账号级购买状态 (Step 4 Phase 2)
+        _accountPurchaseState = await UserService.GetAccountPurchaseStateAsync();
     }
 
     protected override void OnParametersSet()
     {
         if (Character != null)
         {
-            _purchaseService = new PurchaseService(Character.PurchaseState);
+            // 使用账号级购买状态（如果可用）
+            if (_accountPurchaseState != null)
+            {
+                _purchaseService = new PurchaseService(Character.PurchaseState, _accountPurchaseState);
+            }
+            else
+            {
+                _purchaseService = new PurchaseService(Character.PurchaseState);
+            }
         }
     }
 
@@ -243,6 +257,12 @@
             if (result.Success)
             {
                 successMessage = $"成功购买 {itemDef.Name}（消耗 {result.SpentAmount} 🪙）";
+
+                // 保存账号级购买状态 (Step 4 Phase 2)
+                if (_accountPurchaseState != null && shopItem.Limits?.PerAccount > 0)
+                {
+                    await UserService.UpdateAccountPurchaseStateAsync(_accountPurchaseState);
+                }
 
                 // 触发回调
                 if (OnItemPurchased.HasDelegate)

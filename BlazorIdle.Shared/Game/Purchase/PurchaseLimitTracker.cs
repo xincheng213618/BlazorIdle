@@ -7,10 +7,27 @@ namespace BlazorIdle.Game.Purchase
     public class PurchaseLimitTracker
     {
         private readonly PurchaseState _state;
+        private readonly AccountPurchaseState? _accountState;
 
+        /// <summary>
+        /// 创建限购追踪器（仅支持角色级限购）
+        /// Create limit tracker (character-level limits only)
+        /// </summary>
         public PurchaseLimitTracker(PurchaseState state)
         {
             _state = state ?? throw new ArgumentNullException(nameof(state));
+            _accountState = null;
+            EnsureDailyReset();
+        }
+
+        /// <summary>
+        /// 创建限购追踪器（支持角色级和账号级限购）
+        /// Create limit tracker (both character-level and account-level limits)
+        /// </summary>
+        public PurchaseLimitTracker(PurchaseState state, AccountPurchaseState accountState)
+        {
+            _state = state ?? throw new ArgumentNullException(nameof(state));
+            _accountState = accountState ?? throw new ArgumentNullException(nameof(accountState));
             EnsureDailyReset();
         }
 
@@ -130,11 +147,22 @@ namespace BlazorIdle.Game.Purchase
             return charCounts.TryGetValue(itemId, out var count) ? count : 0;
         }
 
+        /// <summary>
+        /// 获取账号购买计数（优先使用 AccountPurchaseState，兼容旧数据）
+        /// Get account purchase count (prefer AccountPurchaseState, fallback to legacy data)
+        /// </summary>
         private int GetAccountCount(string accountId, string itemId)
         {
-            // 使用 accountId + itemId 作为键，支持多账号限购
-            string key = $"{accountId}:{itemId}";
-            return _state.PerAccountCounts.TryGetValue(key, out var count) ? count : 0;
+            // 优先使用 AccountPurchaseState（新架构）
+            if (_accountState != null)
+            {
+                return _accountState.GetCount(itemId);
+            }
+
+            // 兼容旧数据：使用角色级的 PerAccountCounts（已废弃）
+            // 旧格式使用 accountId:itemId 作为键
+            string legacyKey = $"{accountId}:{itemId}";
+            return _state.PerAccountCounts.TryGetValue(legacyKey, out var count) ? count : 0;
         }
 
         private int GetCharacterCount(string characterId, string itemId)
@@ -155,14 +183,26 @@ namespace BlazorIdle.Game.Purchase
             _state.PerDayCountsByChar[characterId][itemId]++;
         }
 
+        /// <summary>
+        /// 增加账号购买计数（优先使用 AccountPurchaseState，兼容旧数据）
+        /// Increment account purchase count (prefer AccountPurchaseState, fallback to legacy data)
+        /// </summary>
         private void IncrementAccountCount(string accountId, string itemId)
         {
-            // 使用 accountId + itemId 作为键，支持多账号限购
-            string key = $"{accountId}:{itemId}";
-            if (!_state.PerAccountCounts.ContainsKey(key))
-                _state.PerAccountCounts[key] = 0;
+            // 优先使用 AccountPurchaseState（新架构）
+            if (_accountState != null)
+            {
+                _accountState.IncrementCount(itemId);
+                return;
+            }
 
-            _state.PerAccountCounts[key]++;
+            // 兼容旧数据：使用角色级的 PerAccountCounts（已废弃）
+            // 旧格式使用 accountId:itemId 作为键
+            string legacyKey = $"{accountId}:{itemId}";
+            if (!_state.PerAccountCounts.ContainsKey(legacyKey))
+                _state.PerAccountCounts[legacyKey] = 0;
+
+            _state.PerAccountCounts[legacyKey]++;
         }
 
         private void IncrementCharacterCount(string characterId, string itemId)

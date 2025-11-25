@@ -199,3 +199,41 @@ public class SwitchProfessionRequest
     /// </summary>
     public string ProfessionId { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// 账号购买状态响应DTO (Step 4 Phase 2)
+/// Account purchase state response DTO
+/// </summary>
+public class AccountPurchaseStateResponse
+{
+    /// <summary>
+    /// 操作是否成功
+    /// Whether the operation succeeded
+    /// </summary>
+    public bool Success { get; set; }
+
+    /// <summary>
+    /// 消息（成功提示或错误信息）
+    /// Message (success or error message)
+    /// </summary>
+    public string Message { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 账号购买状态
+    /// Account purchase state
+    /// </summary>
+    public BlazorIdle.Game.Purchase.AccountPurchaseState? AccountPurchaseState { get; set; }
+}
+
+/// <summary>
+/// 更新账号购买状态请求DTO (Step 4 Phase 2)
+/// Update account purchase state request DTO
+/// </summary>
+public class UpdateAccountPurchaseStateRequest
+{
+    /// <summary>
+    /// 账号购买状态
+    /// Account purchase state
+    /// </summary>
+    public BlazorIdle.Game.Purchase.AccountPurchaseState? AccountPurchaseState { get; set; }
+}
