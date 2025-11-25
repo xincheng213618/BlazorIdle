@@ -4,7 +4,7 @@
     "name": "金币",
     "icon": "🪙",
     "description": "通用货币",
-    "itemType": 1,
+    "type": 1,
     "stackable": true,
     "maxStack": 999999,
     "rarity": 1,
