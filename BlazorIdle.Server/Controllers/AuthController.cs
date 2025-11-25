@@ -84,7 +84,8 @@ public class AuthController : ControllerBase
             {
                 Username = request.Username,
                 PasswordHash = _passwordHasher.HashPassword(request.Password),
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                MaxCharacterSlots = 1  // 默认1个槽位，可通过系统商店购买更多
             };
 
             _context.Users.Add(user);
