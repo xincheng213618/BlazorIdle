@@ -51,44 +51,12 @@
 
             <div class="row">
                 <div class="col-12">
-                    <!-- 系统商店：增加外框 -->
+                    <!-- 统一商店：包含系统商店、消耗品商店、药水商店、食品商店 -->
                     <div class="section-frame mb-3">
-                        <SystemShopPanel Character="@selectedCharacter"
-                                         OnSlotPurchased="OnSlotPurchased"
-                                         StartCollapsed="true" />
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-12">
-                    <!-- 消耗品商店：增加外框 -->
-                    <div class="section-frame mb-3">
-                        <ConsumableShopPanel Character="@selectedCharacter"
-                                             OnItemPurchased="OnItemPurchased"
-                                             StartCollapsed="true" />
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-12">
-                    <!-- 药水商店：增加外框 -->
-                    <div class="section-frame mb-3">
-                        <PotionShopPanel Character="@selectedCharacter"
-                                         OnItemPurchased="OnItemPurchased"
-                                         StartCollapsed="true" />
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-12">
-                    <!-- 食品商店：增加外框 -->
-                    <div class="section-frame mb-3">
-                        <FoodShopPanel Character="@selectedCharacter"
-                                       OnItemPurchased="OnItemPurchased"
-                                       StartCollapsed="true" />
+                        <ShopPanel Character="@selectedCharacter"
+                                   OnItemPurchased="OnItemPurchased"
+                                   OnSlotPurchased="OnSlotPurchased"
+                                   StartCollapsed="true" />
                     </div>
                 </div>
             </div>
