@@ -90,6 +90,8 @@ public class UserController : ControllerBase
         if (request.AccountPurchaseState != null)
         {
             user.AccountPurchaseState = request.AccountPurchaseState;
+            // 显式标记为已修改，确保 EF Core 检测到变更
+            _context.Entry(user).Property(u => u.AccountPurchaseState).IsModified = true;
         }
 
         try
@@ -194,6 +196,10 @@ public class UserController : ControllerBase
 
             // 记录购买
             user.AccountPurchaseState.IncrementCount(slotItemId);
+
+            // 显式标记 AccountPurchaseState 为已修改，因为 EF Core 的值转换器不会自动检测复杂对象的内部变更
+            // Explicitly mark AccountPurchaseState as modified because EF Core's value converter doesn't auto-detect internal changes to complex objects
+            _context.Entry(user).Property(u => u.AccountPurchaseState).IsModified = true;
 
             await _context.SaveChangesAsync();
 

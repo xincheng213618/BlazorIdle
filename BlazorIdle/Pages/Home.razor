@@ -12,7 +12,8 @@
     {
         <div class="row">
             <div class="col-md-6">
-                <CharacterCreation StartCollapsed="@(selectedCharacter is not null)"
+                <CharacterCreation @ref="characterCreation"
+                                   StartCollapsed="@(selectedCharacter is not null)"
                                    OnCharacterCreated="OnCharacterCreated" />
             </div>
             <div class="col-md-6">
@@ -122,6 +123,7 @@
 </div>
 
 @code {
+    private CharacterCreation? characterCreation;
     private CharacterSelector? characterSelector;
     private SkillEquipmentPanel? skillEquipmentPanel;
     private SkillLearningPanel? skillLearningPanel;
@@ -339,8 +341,8 @@
     }
 
     /// <summary>
-    /// 角色槽位购买回调 - 刷新角色选择器和保存角色数据
-    /// Character slot purchased callback - refresh character selector and save character data
+    /// 角色槽位购买回调 - 刷新角色选择器、角色创建面板和保存角色数据
+    /// Character slot purchased callback - refresh character selector, character creation panel and save character data
     /// </summary>
     private async Task OnSlotPurchased()
     {
@@ -355,6 +357,13 @@
             if (characterSelector != null)
             {
                 await characterSelector.RefreshAsync();
+            }
+
+            // 刷新角色创建面板以更新可用槽位数
+            // Refresh character creation panel to update available slots
+            if (characterCreation != null)
+            {
+                await characterCreation.RefreshAsync();
             }
 
             // 触发重新渲染
