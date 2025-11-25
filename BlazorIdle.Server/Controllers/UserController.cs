@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using BlazorIdle.Server.Data;
 using BlazorIdle.Shared.DTOs;
 using BlazorIdle.Shared.Models;
+using BlazorIdle.Shared.Constants;
 using BlazorIdle.Game.Config;
 using System.Security.Claims;
 
@@ -128,80 +129,94 @@ public class UserController : ControllerBase
     {
         var userId = GetCurrentUserId();
 
-        var user = await _context.Users.FindAsync(userId);
-        if (user == null)
-        {
-            return NotFound(new PurchaseCharacterSlotResponse
-            {
-                Success = false,
-                Message = "用户不存在"
-            });
-        }
-
-        // 从配置获取槽位商品信息
-        var slotConfig = _systemShopConfig.GetCharacterSlotConfig();
-        if (slotConfig == null)
-        {
-            return BadRequest(new PurchaseCharacterSlotResponse
-            {
-                Success = false,
-                Message = "角色槽位商品未配置"
-            });
-        }
-
-        const string slotItemId = "character_slot";
-        int maxPurchases = slotConfig.Limits?.PerAccount ?? 1;
-        int price = slotConfig.Price;
-
-        // 检查是否已经购买过（账号限购）
-        if (user.AccountPurchaseState.GetCount(slotItemId) >= maxPurchases)
-        {
-            return BadRequest(new PurchaseCharacterSlotResponse
-            {
-                Success = false,
-                Message = $"您已购买过角色槽位，每个账号只能购买 {maxPurchases} 次"
-            });
-        }
-
-        // 获取角色并验证金币
-        var character = await _context.Characters.FirstOrDefaultAsync(
-            c => c.Id == request.CharacterId && c.UserId == userId);
-        if (character == null)
-        {
-            return NotFound(new PurchaseCharacterSlotResponse
-            {
-                Success = false,
-                Message = "角色不存在"
-            });
-        }
-
-        // 检查金币是否足够
-        int goldBalance = character.Inventory?.GetItemQuantity("gold_coin") ?? 0;
-        if (goldBalance < price)
-        {
-            return BadRequest(new PurchaseCharacterSlotResponse
-            {
-                Success = false,
-                Message = $"金币不足，需要 {price} 金币"
-            });
-        }
+        // 使用事务确保并发安全
+        // Use transaction to ensure concurrency safety
+        await using var transaction = await _context.Database.BeginTransactionAsync();
 
         try
         {
-            // 扣除金币
-            character.Inventory?.RemoveItem("gold_coin", price);
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+            {
+                return NotFound(new PurchaseCharacterSlotResponse
+                {
+                    Success = false,
+                    Message = "用户不存在"
+                });
+            }
+
+            // 从配置获取槽位商品信息
+            var slotConfig = _systemShopConfig.GetCharacterSlotConfig();
+            if (slotConfig == null)
+            {
+                return BadRequest(new PurchaseCharacterSlotResponse
+                {
+                    Success = false,
+                    Message = "角色槽位商品未配置"
+                });
+            }
+
+            int maxPurchases = slotConfig.Limits?.PerAccount ?? 1;
+            int price = slotConfig.Price;
+
+            // 检查是否已经购买过（账号限购）
+            if (user.AccountPurchaseState.GetCount(ItemIds.CharacterSlot) >= maxPurchases)
+            {
+                return BadRequest(new PurchaseCharacterSlotResponse
+                {
+                    Success = false,
+                    Message = $"您已购买过角色槽位，每个账号只能购买 {maxPurchases} 次"
+                });
+            }
+
+            // 获取角色并验证金币
+            var character = await _context.Characters.FirstOrDefaultAsync(
+                c => c.Id == request.CharacterId && c.UserId == userId);
+            if (character == null)
+            {
+                return NotFound(new PurchaseCharacterSlotResponse
+                {
+                    Success = false,
+                    Message = "角色不存在"
+                });
+            }
+
+            // 验证 Inventory 不为 null
+            if (character.Inventory == null)
+            {
+                return BadRequest(new PurchaseCharacterSlotResponse
+                {
+                    Success = false,
+                    Message = "角色背包数据异常"
+                });
+            }
+
+            // 检查金币是否足够
+            int goldBalance = character.Inventory.GetItemQuantity(ItemIds.GoldCoin);
+            if (goldBalance < price)
+            {
+                return BadRequest(new PurchaseCharacterSlotResponse
+                {
+                    Success = false,
+                    Message = $"金币不足，需要 {price} 金币"
+                });
+            }
+
+            // 扣除金币（已验证 Inventory 不为 null）
+            character.Inventory.RemoveItem(ItemIds.GoldCoin, price);
 
             // 增加角色槽位
             user.MaxCharacterSlots += 1;
 
             // 记录购买
-            user.AccountPurchaseState.IncrementCount(slotItemId);
+            user.AccountPurchaseState.IncrementCount(ItemIds.CharacterSlot);
 
             // 显式标记 AccountPurchaseState 为已修改，因为 EF Core 的值转换器不会自动检测复杂对象的内部变更
             // Explicitly mark AccountPurchaseState as modified because EF Core's value converter doesn't auto-detect internal changes to complex objects
             _context.Entry(user).Property(u => u.AccountPurchaseState).IsModified = true;
 
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             _logger.LogInformation(
                 "User {UserId} purchased character slot with character {CharacterId}. New slot count: {SlotCount}", 
@@ -216,6 +231,7 @@ public class UserController : ControllerBase
         }
         catch (Exception ex)
         {
+            await transaction.RollbackAsync();
             _logger.LogError(ex, "Failed to purchase character slot for user {UserId}", userId);
             return StatusCode(500, new PurchaseCharacterSlotResponse
             {
@@ -237,7 +253,14 @@ public class UserController : ControllerBase
         var user = await _context.Users.FindAsync(userId);
         if (user == null)
         {
-            return NotFound();
+            return NotFound(new CharacterSlotShopInfo
+            {
+                Price = 0,
+                MaxPurchases = 0,
+                PurchasedCount = 0,
+                CanPurchase = false,
+                CurrentSlots = 0
+            });
         }
 
         // 从配置获取槽位商品信息
@@ -245,8 +268,7 @@ public class UserController : ControllerBase
         int price = slotConfig?.Price ?? 5000;
         int maxPurchases = slotConfig?.Limits?.PerAccount ?? 1;
 
-        const string slotItemId = "character_slot";
-        int purchasedCount = user.AccountPurchaseState.GetCount(slotItemId);
+        int purchasedCount = user.AccountPurchaseState.GetCount(ItemIds.CharacterSlot);
 
         return Ok(new CharacterSlotShopInfo
         {

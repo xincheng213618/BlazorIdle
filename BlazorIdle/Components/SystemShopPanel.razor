@@ -1,5 +1,6 @@
 @using BlazorIdle.Shared.Models
 @using BlazorIdle.Shared.DTOs
+@using BlazorIdle.Shared.Constants
 @using BlazorIdle.Services
 @inject IUserService UserService
 
@@ -364,7 +365,7 @@
     private int GetGoldBalance()
     {
         if (Character == null) return 0;
-        return Character.Inventory?.GetItemQuantity("gold_coin") ?? 0;
+        return Character.Inventory?.GetItemQuantity(ItemIds.GoldCoin) ?? 0;
     }
 
     private bool CanAffordSlot()
@@ -395,7 +396,7 @@
             if (result?.Success == true)
             {
                 successMessage = result.Message;
-                Character.Inventory?.RemoveItem("gold_coin", shopInfo.Price);
+                Character.Inventory?.RemoveItem(ItemIds.GoldCoin, shopInfo.Price);
                 await LoadShopInfoAsync();
 
                 if (OnSlotPurchased.HasDelegate)
