@@ -50,6 +50,17 @@
 
             <div class="row">
                 <div class="col-12">
+                    <!-- 系统商店：增加外框 -->
+                    <div class="section-frame mb-3">
+                        <SystemShopPanel Character="@selectedCharacter"
+                                         OnSlotPurchased="OnSlotPurchased"
+                                         StartCollapsed="true" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
                     <!-- 消耗品商店：增加外框 -->
                     <div class="section-frame mb-3">
                         <ConsumableShopPanel Character="@selectedCharacter"
@@ -320,6 +331,31 @@
             // 保存角色数据到服务器
             // Save character data to server
             await CharacterService.UpdateCharacterAsync(selectedCharacter.Id, selectedCharacter);
+
+            // 触发重新渲染
+            // Trigger re-render
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// 角色槽位购买回调 - 刷新角色选择器和保存角色数据
+    /// Character slot purchased callback - refresh character selector and save character data
+    /// </summary>
+    private async Task OnSlotPurchased()
+    {
+        if (selectedCharacter != null)
+        {
+            // 保存角色数据到服务器（扣除金币后）
+            // Save character data to server (after deducting gold)
+            await CharacterService.UpdateCharacterAsync(selectedCharacter.Id, selectedCharacter);
+
+            // 刷新角色选择器以更新槽位显示
+            // Refresh character selector to update slot display
+            if (characterSelector != null)
+            {
+                await characterSelector.RefreshAsync();
+            }
 
             // 触发重新渲染
             // Trigger re-render

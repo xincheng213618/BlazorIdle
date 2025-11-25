@@ -35,6 +35,24 @@ namespace BlazorIdle.Services
         /// Account purchase state changed event
         /// </summary>
         event Action<AccountPurchaseState?>? AccountPurchaseStateChanged;
+
+        /// <summary>
+        /// 获取角色槽位商店信息 (Step 4 Phase 3)
+        /// Get character slot shop info
+        /// </summary>
+        Task<CharacterSlotShopInfo?> GetCharacterSlotShopInfoAsync();
+
+        /// <summary>
+        /// 购买角色槽位 (Step 4 Phase 3)
+        /// Purchase character slot
+        /// </summary>
+        Task<PurchaseCharacterSlotResponse?> PurchaseCharacterSlotAsync(string characterId);
+
+        /// <summary>
+        /// 角色槽位购买成功事件
+        /// Character slot purchased event
+        /// </summary>
+        event Action<int>? CharacterSlotPurchased;
     }
 
     /// <summary>
@@ -51,6 +69,7 @@ namespace BlazorIdle.Services
         private AccountPurchaseState? _cachedAccountPurchaseState;
 
         public event Action<AccountPurchaseState?>? AccountPurchaseStateChanged;
+        public event Action<int>? CharacterSlotPurchased;
 
         public AccountPurchaseState? CachedAccountPurchaseState => _cachedAccountPurchaseState;
 
@@ -149,6 +168,68 @@ namespace BlazorIdle.Services
             {
                 _logger.LogError(ex, "Error updating account purchase state");
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// 获取角色槽位商店信息 (Step 4 Phase 3)
+        /// Get character slot shop info
+        /// </summary>
+        public async Task<CharacterSlotShopInfo?> GetCharacterSlotShopInfoAsync()
+        {
+            try
+            {
+                await ConfigureAuthHeaderAsync();
+                var response = await _httpClient.GetFromJsonAsync<CharacterSlotShopInfo>(
+                    $"{_apiConfig.UserApiUrl}/character-slot-shop");
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching character slot shop info");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 购买角色槽位 (Step 4 Phase 3)
+        /// Purchase character slot
+        /// </summary>
+        public async Task<PurchaseCharacterSlotResponse?> PurchaseCharacterSlotAsync(string characterId)
+        {
+            try
+            {
+                await ConfigureAuthHeaderAsync();
+
+                var request = new PurchaseCharacterSlotRequest
+                {
+                    CharacterId = characterId,
+                    GoldAmount = 5000 // 价格由服务器验证
+                };
+
+                var response = await _httpClient.PostAsJsonAsync(
+                    $"{_apiConfig.UserApiUrl}/purchase-character-slot",
+                    request);
+
+                var result = await response.Content.ReadFromJsonAsync<PurchaseCharacterSlotResponse>();
+                
+                if (result?.Success == true)
+                {
+                    CharacterSlotPurchased?.Invoke(result.NewMaxCharacterSlots);
+                    _logger.LogInformation("Successfully purchased character slot. New count: {SlotCount}", 
+                        result.NewMaxCharacterSlots);
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error purchasing character slot");
+                return new PurchaseCharacterSlotResponse
+                {
+                    Success = false,
+                    Message = "购买失败，请稍后重试"
+                };
             }
         }
     }

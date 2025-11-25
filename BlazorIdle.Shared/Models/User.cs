@@ -36,7 +36,7 @@ public class User
     /// 最大可创建角色数量（角色槽位数）
     /// Maximum number of characters that can be created (character slots)
     /// </summary>
-    public int MaxCharacterSlots { get; set; } = 3;
+    public int MaxCharacterSlots { get; set; } = 1;
     
     /// <summary>
     /// 已使用的角色槽位数（当前角色数量）

@@ -693,6 +693,50 @@ namespace BlazorIdle.Tests
 
         #endregion
 
+        #region Character Slot Shop Tests (Step 4 Phase 3)
+
+        [Fact]
+        public void User_DefaultMaxCharacterSlots_IsOne()
+        {
+            // Arrange & Act
+            var user = new BlazorIdle.Shared.Models.User();
+
+            // Assert
+            Assert.Equal(1, user.MaxCharacterSlots);
+        }
+
+        [Fact]
+        public void AccountPurchaseState_TrackSlotPurchase()
+        {
+            // Arrange
+            var state = new AccountPurchaseState();
+            const string slotItemId = "character_slot";
+
+            // Act
+            state.IncrementCount(slotItemId);
+
+            // Assert
+            Assert.Equal(1, state.GetCount(slotItemId));
+        }
+
+        [Fact]
+        public void AccountPurchaseState_SlotPurchaseLimit()
+        {
+            // Arrange
+            var state = new AccountPurchaseState();
+            const string slotItemId = "character_slot";
+            const int maxPurchases = 1;
+
+            // Act - Purchase once
+            state.IncrementCount(slotItemId);
+            bool canPurchaseMore = state.GetCount(slotItemId) < maxPurchases;
+
+            // Assert
+            Assert.False(canPurchaseMore);
+        }
+
+        #endregion
+
         #region Helper Methods
 
         private CharacterData CreateTestCharacter()

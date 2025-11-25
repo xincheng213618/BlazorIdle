@@ -38,7 +38,7 @@ public class GameDbContext : DbContext
             entity.Property(e => e.Username).IsRequired().HasMaxLength(50);
             entity.Property(e => e.PasswordHash).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();
-            entity.Property(e => e.MaxCharacterSlots).HasDefaultValue(3);
+            entity.Property(e => e.MaxCharacterSlots).HasDefaultValue(1);
             entity.Property(e => e.UsedCharacterSlots).HasDefaultValue(0);
 
             // 配置账号级购买状态为 JSON 列 (Step 4 Phase 2)
