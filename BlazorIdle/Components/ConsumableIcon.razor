@@ -1,0 +1,221 @@
+@using BlazorIdle.Shared.Models
+@namespace BlazorIdle.Components
+
+@* 消耗品图标组件 - 用于战斗面板显示药水/食物 *@
+@* Consumable icon component - for displaying potions/food in battle panel *@
+<div class="consumable-icon @TypeClass @DisabledClass @CooldownClass"
+     title="@TooltipText">
+
+    <div class="consumable-icon-inner">
+        @* 槽位类型标识 / Slot type indicator *@
+        <div class="consumable-slot-type">@SlotLabel</div>
+
+        @* 物品名称（首字母或emoji）/ Item name (first letter or emoji) *@
+        <div class="consumable-icon-content">
+            @if (!string.IsNullOrEmpty(ItemName))
+            {
+                <span class="consumable-icon-display">@ItemName[0]</span>
+            }
+            else
+            {
+                <span class="consumable-empty">-</span>
+            }
+        </div>
+
+        @* 冷却覆盖层 / Cooldown overlay *@
+        @if (IsOnCooldown)
+        {
+            <div class="consumable-cooldown-overlay" style="height: @($"{CooldownPercent}%")"></div>
+            <span class="consumable-cooldown-text">@CooldownText</span>
+        }
+
+        @* 库存数量 / Inventory count *@
+        <div class="consumable-quantity @(Quantity <= 0 ? "out-of-stock" : "")">@Quantity</div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string ItemId { get; set; } = "";
+
+    [Parameter]
+    public string ItemName { get; set; } = "";
+
+    [Parameter]
+    public string SlotId { get; set; } = "";
+
+    [Parameter]
+    public int Quantity { get; set; } = 0;
+
+    [Parameter]
+    public bool IsPotion { get; set; } = true;
+
+    [Parameter]
+    public double RemainingCooldown { get; set; } = 0;
+
+    [Parameter]
+    public double MaxCooldown { get; set; } = 0;
+
+    private string SlotLabel => IsPotion ? "药" : "食";
+
+    private string TypeClass => IsPotion ? "potion" : "food";
+
+    private string DisabledClass => (Quantity <= 0 || IsOnCooldown) ? "disabled" : "";
+
+    private string CooldownClass => IsOnCooldown ? "on-cooldown" : "";
+
+    private bool IsOnCooldown => RemainingCooldown > 0.01;
+
+    private double CooldownPercent => IsOnCooldown && MaxCooldown > 0
+        ? Math.Clamp((RemainingCooldown / MaxCooldown) * 100, 0, 100)
+        : 0;
+
+    private string CooldownText
+    {
+        get
+        {
+            if (!IsOnCooldown) return "";
+            var seconds = Math.Ceiling(RemainingCooldown);
+            return seconds >= 10 ? $"{seconds:F0}" : $"{RemainingCooldown:F1}";
+        }
+    }
+
+    private string TooltipText
+    {
+        get
+        {
+            var type = IsPotion ? "药水" : "食物";
+            var cooldownInfo = IsOnCooldown ? $" (冷却: {RemainingCooldown:F1}s)" : "";
+            var stockInfo = Quantity <= 0 ? " [库存不足]" : "";
+            return $"{ItemName} ({type}) - 剩余: {Quantity}{cooldownInfo}{stockInfo}";
+        }
+    }
+}
+
+<style>
+    .consumable-icon {
+        position: relative;
+        width: 36px;
+        height: 36px;
+        border-radius: 5px;
+        border: 2px solid #444;
+        display: inline-block;
+        margin: 2px;
+        cursor: default;
+        transition: all 0.2s ease;
+    }
+
+    .consumable-icon-inner {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .consumable-icon.potion {
+        border-color: #3498db;
+    }
+
+    .consumable-icon.potion .consumable-icon-inner {
+        background: linear-gradient(135deg, #2980b9 0%, #3498db 100%);
+    }
+
+    .consumable-icon.food {
+        border-color: #27ae60;
+    }
+
+    .consumable-icon.food .consumable-icon-inner {
+        background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    }
+
+    .consumable-icon.disabled {
+        opacity: 0.5;
+        filter: grayscale(50%);
+    }
+
+    .consumable-slot-type {
+        position: absolute;
+        top: 1px;
+        left: 1px;
+        width: 12px;
+        height: 12px;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        font-size: 8px;
+        font-weight: bold;
+        border-radius: 2px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2;
+    }
+
+    .consumable-icon-content {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .consumable-icon-display {
+        font-size: 18px;
+        font-weight: bold;
+        color: white;
+        line-height: 1;
+        user-select: none;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    }
+
+    .consumable-empty {
+        font-size: 16px;
+        color: #7f8c8d;
+    }
+
+    .consumable-cooldown-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: rgba(0, 0, 0, 0.7);
+        transition: height 0.1s linear;
+        z-index: 1;
+    }
+
+    .consumable-cooldown-text {
+        position: absolute;
+        bottom: 1px;
+        right: 1px;
+        font-size: 9px;
+        font-weight: bold;
+        color: white;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        z-index: 3;
+    }
+
+    .consumable-quantity {
+        position: absolute;
+        top: 1px;
+        right: 1px;
+        min-width: 12px;
+        height: 12px;
+        background-color: rgba(0, 0, 0, 0.8);
+        color: white;
+        font-size: 8px;
+        font-weight: bold;
+        border-radius: 2px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 2px;
+        z-index: 2;
+    }
+
+    .consumable-quantity.out-of-stock {
+        background-color: #c0392b;
+        color: white;
+    }
+</style>

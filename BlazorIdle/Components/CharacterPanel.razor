@@ -83,15 +83,16 @@
     @if (EquippedConsumables != null && EquippedConsumables.Count > 0)
     {
         <div class="mb-2">
-            <small class="text-muted">药水/食物:</small>
-            <div class="consumable-container d-flex flex-wrap gap-1 mt-1">
+            <div class="consumable-container">
                 @foreach (var consumable in EquippedConsumables)
                 {
-                    <div class="consumable-slot badge @(consumable.Quantity <= 0 ? "bg-secondary text-decoration-line-through" : (consumable.IsPotion ? "bg-info" : "bg-success"))" 
-                         title="@consumable.ItemName (@(consumable.IsPotion ? "药水" : "食物")) - 剩余: @consumable.Quantity">
-                        @consumable.ItemName
-                        <span class="badge bg-light text-dark ms-1">@consumable.Quantity</span>
-                    </div>
+                    <ConsumableIcon ItemId="@consumable.ItemId"
+                                    ItemName="@consumable.ItemName"
+                                    SlotId="@consumable.SlotId"
+                                    Quantity="@consumable.Quantity"
+                                    IsPotion="@consumable.IsPotion"
+                                    RemainingCooldown="@consumable.RemainingCooldown"
+                                    MaxCooldown="@consumable.MaxCooldown" />
                 }
             </div>
         </div>
@@ -224,6 +225,7 @@
         public int Quantity { get; set; }
         public bool IsPotion { get; set; }
         public double RemainingCooldown { get; set; }
+        public double MaxCooldown { get; set; }
     }
 }
 
@@ -257,6 +259,18 @@
         flex-wrap: wrap;
         gap: 4px;
         min-height: 44px;
+        align-items: flex-start;
+        padding: 4px;
+        background-color: rgba(0, 0, 0, 0.1);
+        border-radius: 6px;
+    }
+
+    /* 消耗品容器样式 / Consumable container styles */
+    .character-panel .consumable-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        min-height: 40px;
         align-items: flex-start;
         padding: 4px;
         background-color: rgba(0, 0, 0, 0.1);

@@ -383,6 +383,8 @@ namespace BlazorIdle.Components
                     if (!string.IsNullOrEmpty(kvp.Value.ItemId))
                     {
                         var itemDef = GameConfig.Items.FirstOrDefault(i => i.Id == kvp.Value.ItemId);
+                        var remainingCooldown = battle?.GetConsumableRemainingCooldown(SelectedCharacter.Id, kvp.Value.ItemId) ?? 0;
+                        var maxCooldown = battle?.GetConsumableMaxCooldown(kvp.Value.ItemId) ?? 0;
                         result.Add(new CharacterPanel.EquippedConsumableData
                         {
                             ItemId = kvp.Value.ItemId,
@@ -390,7 +392,8 @@ namespace BlazorIdle.Components
                             SlotId = kvp.Key,
                             Quantity = SelectedCharacter.Inventory.GetItemQuantity(kvp.Value.ItemId),
                             IsPotion = true,
-                            RemainingCooldown = 0 // TODO: 从战斗实例获取冷却
+                            RemainingCooldown = remainingCooldown,
+                            MaxCooldown = maxCooldown
                         });
                     }
                 }
@@ -401,6 +404,8 @@ namespace BlazorIdle.Components
                     if (!string.IsNullOrEmpty(kvp.Value.ItemId))
                     {
                         var itemDef = GameConfig.Items.FirstOrDefault(i => i.Id == kvp.Value.ItemId);
+                        var remainingCooldown = battle?.GetConsumableRemainingCooldown(SelectedCharacter.Id, kvp.Value.ItemId) ?? 0;
+                        var maxCooldown = battle?.GetConsumableMaxCooldown(kvp.Value.ItemId) ?? 0;
                         result.Add(new CharacterPanel.EquippedConsumableData
                         {
                             ItemId = kvp.Value.ItemId,
@@ -408,7 +413,8 @@ namespace BlazorIdle.Components
                             SlotId = kvp.Key,
                             Quantity = SelectedCharacter.Inventory.GetItemQuantity(kvp.Value.ItemId),
                             IsPotion = false,
-                            RemainingCooldown = 0 // TODO: 从战斗实例获取冷却
+                            RemainingCooldown = remainingCooldown,
+                            MaxCooldown = maxCooldown
                         });
                     }
                 }

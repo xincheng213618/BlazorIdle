@@ -3128,6 +3128,32 @@ namespace BlazorIdle.Game
         }
 
         /// <summary>
+        /// 消耗品系统: 获取消耗品剩余冷却时间
+        /// Consumable system: Get consumable remaining cooldown time
+        /// </summary>
+        /// <param name="characterId">角色ID / Character ID</param>
+        /// <param name="itemId">物品ID / Item ID</param>
+        /// <returns>剩余冷却时间（秒）/ Remaining cooldown time in seconds</returns>
+        public double GetConsumableRemainingCooldown(string characterId, string itemId)
+        {
+            var manager = GetOrCreateCooldownManager(characterId);
+            string cooldownKey = $"consumable_{itemId}";
+            return manager.GetRemainingCooldown(cooldownKey);
+        }
+
+        /// <summary>
+        /// 消耗品系统: 获取消耗品的最大冷却时间（从物品配置）
+        /// Consumable system: Get consumable max cooldown time (from item config)
+        /// </summary>
+        /// <param name="itemId">物品ID / Item ID</param>
+        /// <returns>最大冷却时间（秒）/ Max cooldown time in seconds</returns>
+        public double GetConsumableMaxCooldown(string itemId)
+        {
+            var itemConfig = _gameConfigService?.GetItem(itemId);
+            return itemConfig?.ConsumableConfig?.CooldownSec ?? 0;
+        }
+
+        /// <summary>
         /// Phase 7: 处理攻击触发器
         /// Phase 7: Process attack triggers
         /// </summary>
