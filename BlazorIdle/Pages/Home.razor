@@ -51,35 +51,15 @@
 
             <div class="row">
                 <div class="col-12">
-                    <!-- 系统商店：增加外框 -->
+                    <!-- 统一商店：包含系统商店、技能学习、消耗品商店、药水商店、食品商店 -->
                     <div class="section-frame mb-3">
-                        <SystemShopPanel Character="@selectedCharacter"
-                                         OnSlotPurchased="OnSlotPurchased"
-                                         StartCollapsed="true" />
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-12">
-                    <!-- 消耗品商店：增加外框 -->
-                    <div class="section-frame mb-3">
-                        <ConsumableShopPanel Character="@selectedCharacter"
-                                             OnItemPurchased="OnItemPurchased"
-                                             StartCollapsed="true" />
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-12">
-                    <!-- 技能学习：增加外框（并避免内部卡片双重边框） -->
-                    <div class="section-frame mb-3">
-                        <SkillLearningPanel @ref="skillLearningPanel"
-                                            Character="@selectedCharacter"
-                                            ProfessionId="@selectedCharacter.ActiveCombatProfessionId"
-                                            StartCollapsed="true"
-                                            OnSkillLearned="OnSkillLearned" />
+                        <ShopPanel @ref="shopPanel"
+                                   Character="@selectedCharacter"
+                                   ProfessionId="@selectedCharacter.ActiveCombatProfessionId"
+                                   OnItemPurchased="OnItemPurchased"
+                                   OnSlotPurchased="OnSlotPurchased"
+                                   OnSkillLearned="OnSkillLearned"
+                                   StartCollapsed="true" />
                     </div>
                 </div>
             </div>
@@ -126,7 +106,7 @@
     private CharacterCreation? characterCreation;
     private CharacterSelector? characterSelector;
     private SkillEquipmentPanel? skillEquipmentPanel;
-    private SkillLearningPanel? skillLearningPanel;
+    private ShopPanel? shopPanel;
     private CharacterData? selectedCharacter;
     private bool isReady; // 控制首渲染
 
@@ -292,7 +272,7 @@
 
             // 刷新技能学习面板（更新已学习技能列表）
             // Refresh skill learning panel (update learned skills list)
-            skillLearningPanel?.Refresh();
+            shopPanel?.RefreshSkillPanel();
 
             // 刷新技能装备面板（可能学习了新技能）
             // Refresh skill equipment panel (may have learned new skills)

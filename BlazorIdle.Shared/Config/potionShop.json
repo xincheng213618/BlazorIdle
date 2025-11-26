@@ -1,0 +1,37 @@
+[
+  {
+    "itemId": "health_potion",
+    "price": 50,
+    "limits": {
+      "perDay": 20
+    }
+  },
+  {
+    "itemId": "mana_potion",
+    "price": 60,
+    "limits": {
+      "perDay": 20
+    }
+  },
+  {
+    "itemId": "strength_potion",
+    "price": 100,
+    "limits": {
+      "perDay": 10
+    }
+  },
+  {
+    "itemId": "defense_potion",
+    "price": 100,
+    "limits": {
+      "perDay": 10
+    }
+  },
+  {
+    "itemId": "speed_potion",
+    "price": 120,
+    "limits": {
+      "perDay": 10
+    }
+  }
+]

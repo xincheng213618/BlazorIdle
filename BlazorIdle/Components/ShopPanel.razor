@@ -1,0 +1,315 @@
+@using BlazorIdle.Shared.Models
+@using BlazorIdle.Shared.Constants
+
+@* 统一商店组件 - 包装现有的商店组件 *@
+@* Unified Shop Component - Wraps existing shop components *@
+
+<div class="unified-shop-panel">
+    <div class="shop-header"
+         role="button"
+         @onclick="ToggleCollapse"
+         aria-expanded="@(!isCollapsed)">
+        <h5 class="mb-0">
+            <span class="icon">🛒</span>
+            商店 (Shop)
+        </h5>
+
+        <div class="d-flex align-items-center gap-3">
+            @if (Character != null)
+            {
+                <div class="gold-balance-display">
+                    <span class="gold-icon">🪙</span>
+                    <span class="gold-amount">@GetGoldBalance().ToString("N0")</span>
+                </div>
+            }
+            <button class="btn btn-sm btn-outline-light"
+                    @onclick:stopPropagation="true"
+                    @onclick="ToggleCollapse">
+                @(isCollapsed ? "展开" : "收起")
+            </button>
+        </div>
+    </div>
+
+    <div class="shop-content" style="@(isCollapsed ? "display:none" : null)">
+        @if (Character == null)
+        {
+            <div class="empty-state">
+                <p class="text-muted mb-0">请先选择角色...</p>
+            </div>
+        }
+        else
+        {
+            <!-- 商店分类标签 -->
+            <div class="shop-tabs">
+                <button class="shop-tab @(activeTab == "system" ? "active" : "")"
+                        @onclick="SwitchToSystem">
+                    <span class="tab-icon">🏛️</span>
+                    <span class="tab-text">系统</span>
+                </button>
+                <button class="shop-tab @(activeTab == "skill" ? "active" : "")"
+                        @onclick="SwitchToSkill">
+                    <span class="tab-icon">📖</span>
+                    <span class="tab-text">技能</span>
+                </button>
+                <button class="shop-tab @(activeTab == "consumable" ? "active" : "")"
+                        @onclick="SwitchToConsumable">
+                    <span class="tab-icon">🏪</span>
+                    <span class="tab-text">消耗品</span>
+                </button>
+                <button class="shop-tab @(activeTab == "potion" ? "active" : "")"
+                        @onclick="SwitchToPotion">
+                    <span class="tab-icon">🧪</span>
+                    <span class="tab-text">药水</span>
+                </button>
+                <button class="shop-tab @(activeTab == "food" ? "active" : "")"
+                        @onclick="SwitchToFood">
+                    <span class="tab-icon">🍖</span>
+                    <span class="tab-text">食品</span>
+                </button>
+            </div>
+
+            <!-- 商店内容区域 - 嵌入现有商店组件 -->
+            <div class="shop-body-wrapper">
+                @if (activeTab == "system")
+                {
+                    <SystemShopPanel Character="@Character"
+                                     OnSlotPurchased="OnSlotPurchased"
+                                     StartCollapsed="false" />
+                }
+                else if (activeTab == "skill")
+                {
+                    <SkillLearningPanel @ref="skillLearningPanel"
+                                        Character="@Character"
+                                        ProfessionId="@ProfessionId"
+                                        OnSkillLearned="OnSkillLearned"
+                                        StartCollapsed="false" />
+                }
+                else if (activeTab == "consumable")
+                {
+                    <ConsumableShopPanel Character="@Character"
+                                         OnItemPurchased="OnItemPurchased"
+                                         StartCollapsed="false" />
+                }
+                else if (activeTab == "potion")
+                {
+                    <PotionShopPanel Character="@Character"
+                                     OnItemPurchased="OnItemPurchased"
+                                     StartCollapsed="false" />
+                }
+                else if (activeTab == "food")
+                {
+                    <FoodShopPanel Character="@Character"
+                                   OnItemPurchased="OnItemPurchased"
+                                   StartCollapsed="false" />
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public CharacterData? Character { get; set; }
+
+    [Parameter]
+    public string ProfessionId { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback OnItemPurchased { get; set; }
+
+    [Parameter]
+    public EventCallback OnSlotPurchased { get; set; }
+
+    [Parameter]
+    public EventCallback OnSkillLearned { get; set; }
+
+    [Parameter]
+    public bool StartCollapsed { get; set; }
+
+    private SkillLearningPanel? skillLearningPanel;
+    private bool isCollapsed;
+    private string activeTab = "system";
+
+    protected override void OnInitialized()
+    {
+        isCollapsed = StartCollapsed;
+    }
+
+    private void ToggleCollapse() => isCollapsed = !isCollapsed;
+
+    private void SwitchToSystem() => activeTab = "system";
+    private void SwitchToSkill() => activeTab = "skill";
+    private void SwitchToConsumable() => activeTab = "consumable";
+    private void SwitchToPotion() => activeTab = "potion";
+    private void SwitchToFood() => activeTab = "food";
+
+    private int GetGoldBalance()
+    {
+        if (Character == null) return 0;
+        return Character.Inventory?.GetItemQuantity(ItemIds.GoldCoin) ?? 0;
+    }
+
+    /// <summary>
+    /// 刷新技能学习面板
+    /// Refresh skill learning panel
+    /// </summary>
+    public void RefreshSkillPanel()
+    {
+        skillLearningPanel?.Refresh();
+    }
+}
+
+<style>
+    .unified-shop-panel {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .unified-shop-panel .shop-header {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        color: white;
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+    }
+
+        .unified-shop-panel .shop-header h5 {
+            color: white;
+            font-weight: 600;
+            margin: 0;
+            font-size: 1.1em;
+        }
+
+        .unified-shop-panel .shop-header .icon {
+            font-size: 1.3em;
+            margin-right: 10px;
+        }
+
+        .unified-shop-panel .shop-header .btn {
+            margin-top: 0;
+            padding: .25rem .6rem;
+            line-height: 1.2;
+            border: 1px solid rgba(255,255,255,.5);
+        }
+
+    .unified-shop-panel .gold-balance-display {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+
+    .unified-shop-panel .gold-icon {
+        font-size: 1.1em;
+    }
+
+    .unified-shop-panel .gold-amount {
+        font-size: 0.95em;
+    }
+
+    .unified-shop-panel .shop-content {
+        background: #fafafa;
+    }
+
+    .unified-shop-panel .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6c757d;
+    }
+
+    /* 商店标签栏 */
+    .unified-shop-panel .shop-tabs {
+        display: flex;
+        background: #fff;
+        border-bottom: 1px solid #e5e5e5;
+        padding: 0;
+        overflow-x: auto;
+    }
+
+    .unified-shop-panel .shop-tab {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 14px 16px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-size: 0.95em;
+        color: #666;
+        transition: all 0.2s ease;
+        border-bottom: 3px solid transparent;
+        min-width: 100px;
+    }
+
+        .unified-shop-panel .shop-tab:hover {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .unified-shop-panel .shop-tab.active {
+            color: #6366f1;
+            border-bottom-color: #6366f1;
+            background: #f8f7ff;
+            font-weight: 600;
+        }
+
+    .unified-shop-panel .tab-icon {
+        font-size: 1.2em;
+    }
+
+    .unified-shop-panel .tab-text {
+        font-size: 0.9em;
+    }
+
+    /* 包装子商店组件的容器 */
+    .unified-shop-panel .shop-body-wrapper {
+        /* 移除子组件的外边框和阴影，让它们融入统一面板 */
+    }
+
+        /* 隐藏嵌入的子商店组件的头部（因为统一面板已有标签页导航） */
+        .unified-shop-panel .shop-body-wrapper .shop-header,
+        .unified-shop-panel .shop-body-wrapper .consumable-shop-panel > .shop-header,
+        .unified-shop-panel .shop-body-wrapper .potion-shop-panel > .shop-header,
+        .unified-shop-panel .shop-body-wrapper .food-shop-panel > .shop-header,
+        .unified-shop-panel .shop-body-wrapper .system-shop-panel > .shop-header,
+        .unified-shop-panel .shop-body-wrapper .skill-learning-card > .sl-header {
+            display: none;
+        }
+
+        /* 移除子组件的外边框和圆角，让它们融入统一面板 */
+        .unified-shop-panel .shop-body-wrapper .consumable-shop-panel,
+        .unified-shop-panel .shop-body-wrapper .potion-shop-panel,
+        .unified-shop-panel .shop-body-wrapper .food-shop-panel,
+        .unified-shop-panel .shop-body-wrapper .system-shop-panel,
+        .unified-shop-panel .shop-body-wrapper .skill-learning-card {
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            margin-bottom: 0;
+        }
+
+    /* 响应式 */
+    @@media (max-width: 768px) {
+        .unified-shop-panel .shop-tab {
+            min-width: 80px;
+            padding: 12px 10px;
+        }
+
+        .unified-shop-panel .tab-text {
+            display: none;
+        }
+
+        .unified-shop-panel .tab-icon {
+            font-size: 1.4em;
+        }
+    }
+</style>

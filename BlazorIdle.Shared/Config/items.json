@@ -4,7 +4,7 @@
     "name": "金币",
     "icon": "🪙",
     "description": "通用货币",
-    "itemType": 1,
+    "type": 1,
     "stackable": true,
     "maxStack": 999999,
     "rarity": 1,
@@ -16,24 +16,165 @@
     "name": "生命药水",
     "icon": "🧪",
     "description": "恢复50点生命值",
-    "itemType": 2,
+    "type": 3,
     "stackable": true,
     "maxStack": 99,
     "rarity": 1,
     "sellPrice": 10,
-    "buyPrice": 20
+    "buyPrice": 20,
+    "metadata": {
+      "effectDescription": "使用后恢复50点生命值"
+    }
+  },
+  {
+    "id": "mana_potion",
+    "name": "魔法药水",
+    "icon": "💧",
+    "description": "恢复30点魔法值",
+    "type": 3,
+    "stackable": true,
+    "maxStack": 99,
+    "rarity": 1,
+    "sellPrice": 15,
+    "buyPrice": 30,
+    "metadata": {
+      "effectDescription": "使用后恢复30点魔法值"
+    }
+  },
+  {
+    "id": "strength_potion",
+    "name": "力量药水",
+    "icon": "💪",
+    "description": "临时增加10%攻击力，持续60秒",
+    "type": 3,
+    "stackable": true,
+    "maxStack": 99,
+    "rarity": 2,
+    "sellPrice": 25,
+    "buyPrice": 50,
+    "metadata": {
+      "effectDescription": "使用后增加10%攻击力，持续60秒"
+    }
+  },
+  {
+    "id": "defense_potion",
+    "name": "防御药水",
+    "icon": "🛡️",
+    "description": "临时增加10%防御力，持续60秒",
+    "type": 3,
+    "stackable": true,
+    "maxStack": 99,
+    "rarity": 2,
+    "sellPrice": 25,
+    "buyPrice": 50,
+    "metadata": {
+      "effectDescription": "使用后增加10%防御力，持续60秒"
+    }
+  },
+  {
+    "id": "speed_potion",
+    "name": "敏捷药水",
+    "icon": "⚡",
+    "description": "临时增加15%速度，持续60秒",
+    "type": 3,
+    "stackable": true,
+    "maxStack": 99,
+    "rarity": 2,
+    "sellPrice": 30,
+    "buyPrice": 60,
+    "metadata": {
+      "effectDescription": "使用后增加15%速度，持续60秒"
+    }
+  },
+  {
+    "id": "bread",
+    "name": "面包",
+    "icon": "🍞",
+    "description": "简单的面包，恢复20点生命值",
+    "type": 3,
+    "stackable": true,
+    "maxStack": 99,
+    "rarity": 1,
+    "sellPrice": 5,
+    "buyPrice": 10,
+    "metadata": {
+      "effectDescription": "使用后恢复20点生命值"
+    }
+  },
+  {
+    "id": "apple",
+    "name": "苹果",
+    "icon": "🍎",
+    "description": "新鲜的苹果，恢复15点生命值",
+    "type": 3,
+    "stackable": true,
+    "maxStack": 99,
+    "rarity": 1,
+    "sellPrice": 3,
+    "buyPrice": 6,
+    "metadata": {
+      "effectDescription": "使用后恢复15点生命值"
+    }
+  },
+  {
+    "id": "meat",
+    "name": "烤肉",
+    "icon": "🍖",
+    "description": "美味的烤肉，恢复40点生命值",
+    "type": 3,
+    "stackable": true,
+    "maxStack": 99,
+    "rarity": 1,
+    "sellPrice": 12,
+    "buyPrice": 25,
+    "metadata": {
+      "effectDescription": "使用后恢复40点生命值"
+    }
+  },
+  {
+    "id": "cheese",
+    "name": "奶酪",
+    "icon": "🧀",
+    "description": "营养丰富的奶酪，恢复30点生命值",
+    "type": 3,
+    "stackable": true,
+    "maxStack": 99,
+    "rarity": 1,
+    "sellPrice": 8,
+    "buyPrice": 18,
+    "metadata": {
+      "effectDescription": "使用后恢复30点生命值"
+    }
+  },
+  {
+    "id": "steak",
+    "name": "牛排",
+    "icon": "🥩",
+    "description": "高级牛排，恢复80点生命值并临时增加5%攻击力",
+    "type": 3,
+    "stackable": true,
+    "maxStack": 99,
+    "rarity": 2,
+    "sellPrice": 40,
+    "buyPrice": 80,
+    "metadata": {
+      "effectDescription": "使用后恢复80点生命值并增加5%攻击力，持续30秒"
+    }
   },
   {
     "id": "exp_scroll",
     "name": "经验卷轴",
     "icon": "📜",
     "description": "获得100点经验值",
-    "itemType": 3,
+    "type": 3,
     "stackable": true,
     "maxStack": 99,
     "rarity": 2,
     "sellPrice": 50,
-    "buyPrice": 100
+    "buyPrice": 100,
+    "metadata": {
+      "effectDescription": "使用后获得100点经验值"
+    }
   },
   {
     "id": "skill_book_warrior_rend",

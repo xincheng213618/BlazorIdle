@@ -50,6 +50,38 @@ namespace BlazorIdle.Game.Config
         }
 
         /// <summary>
+        /// 加载药水商店配置
+        /// Load potion shop configuration
+        /// </summary>
+        /// <returns>商店配置列表，加载失败时抛出异常</returns>
+        /// <exception cref="InvalidOperationException">配置加载失败</exception>
+        public static List<ShopItemConfig> LoadPotionShop()
+        {
+            var result = LoadConfig<List<ShopItemConfig>>("potionShop.json");
+            if (result == null || result.Count == 0)
+            {
+                throw new InvalidOperationException("药水商店配置加载失败或为空。请检查 potionShop.json 文件是否正确配置。");
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 加载食品商店配置
+        /// Load food shop configuration
+        /// </summary>
+        /// <returns>商店配置列表，加载失败时抛出异常</returns>
+        /// <exception cref="InvalidOperationException">配置加载失败</exception>
+        public static List<ShopItemConfig> LoadFoodShop()
+        {
+            var result = LoadConfig<List<ShopItemConfig>>("foodShop.json");
+            if (result == null || result.Count == 0)
+            {
+                throw new InvalidOperationException("食品商店配置加载失败或为空。请检查 foodShop.json 文件是否正确配置。");
+            }
+            return result;
+        }
+
+        /// <summary>
         /// 加载系统商店配置
         /// Load system shop configuration
         /// </summary>

@@ -1,0 +1,37 @@
+[
+  {
+    "itemId": "apple",
+    "price": 10,
+    "limits": {
+      "perDay": 50
+    }
+  },
+  {
+    "itemId": "bread",
+    "price": 20,
+    "limits": {
+      "perDay": 30
+    }
+  },
+  {
+    "itemId": "cheese",
+    "price": 35,
+    "limits": {
+      "perDay": 20
+    }
+  },
+  {
+    "itemId": "meat",
+    "price": 50,
+    "limits": {
+      "perDay": 15
+    }
+  },
+  {
+    "itemId": "steak",
+    "price": 150,
+    "limits": {
+      "perDay": 5
+    }
+  }
+]

@@ -19,6 +19,8 @@
     <EmbeddedResource Include="Config\consumableShop.json" />
     <EmbeddedResource Include="Config\systemShop.json" />
     <EmbeddedResource Include="Config\userConfig.json" />
+    <EmbeddedResource Include="Config\potionShop.json" />
+    <EmbeddedResource Include="Config\foodShop.json" />
   </ItemGroup>
 
 </Project>
