@@ -79,6 +79,24 @@
         </div>
     }
 
+    <!-- 消耗品槽位显示 / Consumable slot display -->
+    @if (EquippedConsumables != null && EquippedConsumables.Count > 0)
+    {
+        <div class="mb-2">
+            <small class="text-muted">药水/食物:</small>
+            <div class="consumable-container d-flex flex-wrap gap-1 mt-1">
+                @foreach (var consumable in EquippedConsumables)
+                {
+                    <div class="consumable-slot badge @(consumable.Quantity <= 0 ? "bg-secondary text-decoration-line-through" : (consumable.IsPotion ? "bg-info" : "bg-success"))" 
+                         title="@consumable.ItemName (@(consumable.IsPotion ? "药水" : "食物")) - 剩余: @consumable.Quantity">
+                        @consumable.ItemName
+                        <span class="badge bg-light text-dark ms-1">@consumable.Quantity</span>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
     <!-- Phase 8: Attack 进度 / 施法进度 -->
     <div class="mb-2">
         @if (IsCasting)
@@ -149,6 +167,9 @@
     // Phase 10.3: 装备的技能列表（用于显示技能图标）/ Equipped skills list (for displaying skill icons)
     [Parameter] public List<EquippedSkillData>? EquippedSkills { get; set; }
 
+    // 消耗品槽位列表（用于显示药水/食物）/ Consumable slots list (for displaying potions/food)
+    [Parameter] public List<EquippedConsumableData>? EquippedConsumables { get; set; }
+
     // Phase 8: 施法状态 / Casting state
     [Parameter] public bool IsCasting { get; set; }
     [Parameter] public double CastingProgress01 { get; set; }
@@ -189,6 +210,20 @@
         public bool IsResourceInsufficient { get; set; }
         public bool IsConditionNotMet { get; set; }
         public bool JustTriggered { get; set; }
+    }
+    
+    /// <summary>
+    /// 消耗品数据结构（用于传递药水/食物显示信息）
+    /// Consumable data structure (for passing potion/food display information)
+    /// </summary>
+    public class EquippedConsumableData
+    {
+        public string ItemId { get; set; } = "";
+        public string ItemName { get; set; } = "";
+        public string SlotId { get; set; } = "";
+        public int Quantity { get; set; }
+        public bool IsPotion { get; set; }
+        public double RemainingCooldown { get; set; }
     }
 }
 
