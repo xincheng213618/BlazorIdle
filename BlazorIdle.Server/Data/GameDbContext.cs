@@ -131,6 +131,15 @@ public class GameDbContext : DbContext
                     v => System.Text.Json.JsonSerializer.Deserialize<BlazorIdle.Game.Purchase.PurchaseState>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new BlazorIdle.Game.Purchase.PurchaseState()
                 )
                 .HasColumnType("TEXT");
+
+            // 配置消耗品装备为 JSON 列 (药水与食物系统)
+            // Configure equipped consumables as JSON column - store ConsumableEquipmentConfig
+            entity.Property(e => e.EquippedConsumables)
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => System.Text.Json.JsonSerializer.Deserialize<ConsumableEquipmentConfig>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new ConsumableEquipmentConfig()
+                )
+                .HasColumnType("TEXT");
         });
     }
 }
