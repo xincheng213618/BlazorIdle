@@ -15,6 +15,7 @@
     <EmbeddedResource Include="Config\buffs.json" />
     <EmbeddedResource Include="Config\skills.json" />
     <EmbeddedResource Include="Config\monsterskills.json" />
+    <EmbeddedResource Include="Config\consumableSkills.json" />
     <EmbeddedResource Include="Config\items.json" />
     <EmbeddedResource Include="Config\consumableShop.json" />
     <EmbeddedResource Include="Config\systemShop.json" />

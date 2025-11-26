@@ -24,21 +24,14 @@
     "buyPrice": 20,
     "metadata": {
       "effectDescription": "使用后恢复50点生命值"
-    }
-  },
-  {
-    "id": "mana_potion",
-    "name": "魔法药水",
-    "icon": "💧",
-    "description": "恢复30点魔法值",
-    "type": 3,
-    "stackable": true,
-    "maxStack": 99,
-    "rarity": 1,
-    "sellPrice": 15,
-    "buyPrice": 30,
-    "metadata": {
-      "effectDescription": "使用后恢复30点魔法值"
+    },
+    "consumableConfig": {
+      "category": "food",
+      "skillId": "consumable_health_potion",
+      "triggerConditions": {
+        "hpBelowPct": 50.0
+      },
+      "cooldownSec": 30.0
     }
   },
   {
@@ -54,21 +47,14 @@
     "buyPrice": 50,
     "metadata": {
       "effectDescription": "使用后增加10%攻击力，持续60秒"
-    }
-  },
-  {
-    "id": "defense_potion",
-    "name": "防御药水",
-    "icon": "🛡️",
-    "description": "临时增加10%防御力，持续60秒",
-    "type": 3,
-    "stackable": true,
-    "maxStack": 99,
-    "rarity": 2,
-    "sellPrice": 25,
-    "buyPrice": 50,
-    "metadata": {
-      "effectDescription": "使用后增加10%防御力，持续60秒"
+    },
+    "consumableConfig": {
+      "category": "potion",
+      "skillId": "consumable_strength_potion",
+      "triggerConditions": {
+        "combatStarted": true
+      },
+      "cooldownSec": 120.0
     }
   },
   {
@@ -84,6 +70,14 @@
     "buyPrice": 60,
     "metadata": {
       "effectDescription": "使用后增加15%速度，持续60秒"
+    },
+    "consumableConfig": {
+      "category": "potion",
+      "skillId": "consumable_speed_potion",
+      "triggerConditions": {
+        "combatStarted": true
+      },
+      "cooldownSec": 120.0
     }
   },
   {
@@ -99,6 +93,14 @@
     "buyPrice": 10,
     "metadata": {
       "effectDescription": "使用后恢复20点生命值"
+    },
+    "consumableConfig": {
+      "category": "food",
+      "skillId": "consumable_bread",
+      "triggerConditions": {
+        "hpBelowPct": 60.0
+      },
+      "cooldownSec": 20.0
     }
   },
   {
@@ -114,6 +116,14 @@
     "buyPrice": 6,
     "metadata": {
       "effectDescription": "使用后恢复15点生命值"
+    },
+    "consumableConfig": {
+      "category": "food",
+      "skillId": "consumable_apple",
+      "triggerConditions": {
+        "hpBelowPct": 70.0
+      },
+      "cooldownSec": 15.0
     }
   },
   {
@@ -129,6 +139,14 @@
     "buyPrice": 25,
     "metadata": {
       "effectDescription": "使用后恢复40点生命值"
+    },
+    "consumableConfig": {
+      "category": "food",
+      "skillId": "consumable_meat",
+      "triggerConditions": {
+        "hpBelowPct": 40.0
+      },
+      "cooldownSec": 30.0
     }
   },
   {
@@ -144,6 +162,14 @@
     "buyPrice": 18,
     "metadata": {
       "effectDescription": "使用后恢复30点生命值"
+    },
+    "consumableConfig": {
+      "category": "food",
+      "skillId": "consumable_cheese",
+      "triggerConditions": {
+        "hpBelowPct": 50.0
+      },
+      "cooldownSec": 25.0
     }
   },
   {
@@ -159,6 +185,14 @@
     "buyPrice": 80,
     "metadata": {
       "effectDescription": "使用后恢复80点生命值并增加5%攻击力，持续30秒"
+    },
+    "consumableConfig": {
+      "category": "food",
+      "skillId": "consumable_steak",
+      "triggerConditions": {
+        "hpBelowPct": 30.0
+      },
+      "cooldownSec": 60.0
     }
   },
   {
