@@ -132,5 +132,24 @@ namespace BlazorIdle.Shared.Models
         /// </summary>
         [JsonPropertyName("purchaseState")]
         public BlazorIdle.Game.Purchase.PurchaseState PurchaseState { get; set; } = new BlazorIdle.Game.Purchase.PurchaseState();
+
+        /// <summary>
+        /// 角色装备的消耗品配置 - 药水和食物槽位 (药水与食物系统)
+        /// Equipped consumables configuration - potion and food slots
+        /// 
+        /// 设计说明：
+        /// - 每个角色独立配置
+        /// - 槽位只保存物品ID引用（引用模式）
+        /// - 每次战斗使用时，实时从 Inventory 扣除物品
+        /// - 配置界面显示的数量是背包中该物品的实时库存
+        /// 
+        /// Design notes:
+        /// - Each character has independent configuration
+        /// - Slots store item ID reference (reference mode)
+        /// - Each battle use deducts from Inventory in real-time
+        /// - Config UI shows real-time stock from inventory
+        /// </summary>
+        [JsonPropertyName("equippedConsumables")]
+        public ConsumableEquipmentConfig EquippedConsumables { get; set; } = new ConsumableEquipmentConfig();
     }
 }
