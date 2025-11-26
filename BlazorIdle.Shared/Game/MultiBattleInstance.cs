@@ -65,6 +65,10 @@ namespace BlazorIdle.Game
         // 使用 GetOrCreateCooldownManager 委托实现每个角色独立的冷却跟踪
         private readonly TriggerProcessor _triggerProcessor;
         
+        // 消耗品系统: 游戏配置服务，用于获取物品配置
+        // Consumable system: Game config service for item configuration
+        private readonly Config.IGameConfigService? _gameConfigService;
+        
         // Step3: Periodic skill check system / 定期技能检查系统
         // Accumulator for periodic skill checks (every 1 second)
         // 定期技能检查累积器（每秒检查一次）
@@ -127,6 +131,9 @@ namespace BlazorIdle.Game
         public event Action<CastStartEvent>? CastStarted;
         public event Action<CastCompleteEvent>? CastCompleted;
         public event Action<CastInterruptEvent>? CastInterrupted;
+        // 消耗品系统事件 / Consumable system events
+        public event Action<ConsumableUsedEvent>? ConsumableUsed;
+        public event Action<ConsumableOutOfStockEvent>? ConsumableOutOfStock;
 
         /// <summary>
         /// 构造函数
@@ -140,7 +147,8 @@ namespace BlazorIdle.Game
             MultiBattleConfig? config = null,
             Dictionary<string, Resources.ResourceBucketCollection>? preservedResources = null,
             Dictionary<string, Shared.Models.ProfessionResourceConfig>? professionResourceConfigs = null,
-            Dictionary<string, Shared.Models.CharacterData>? characterDataMap = null)
+            Dictionary<string, Shared.Models.CharacterData>? characterDataMap = null,
+            Config.IGameConfigService? gameConfigService = null)
         {
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _rng = rng ?? throw new ArgumentNullException(nameof(rng));
@@ -149,6 +157,7 @@ namespace BlazorIdle.Game
             _config = config ?? new MultiBattleConfig();
             _professionResourceConfigs = professionResourceConfigs;
             _characterDataMap = characterDataMap;
+            _gameConfigService = gameConfigService;
 
             _rngSeed = rng.Seed;
             _aggregator = new SegmentAggregator(new SegmentAggregatorOptions
@@ -1655,6 +1664,9 @@ namespace BlazorIdle.Game
             foreach (var characterMember in _playerTeam.GetAliveMembers())
             {
                 ProcessCharacterPeriodicSkills(characterMember.Id, nowMs);
+                // 消耗品系统: 检查消耗品触发
+                // Consumable system: Check consumable triggers
+                ProcessCharacterConsumableChecks(characterMember.Id, nowMs);
             }
             
             // Step3 Phase 1.5: 检查所有怪物的定期技能
@@ -1874,6 +1886,161 @@ namespace BlazorIdle.Game
                 }
             }
         }
+
+        #region 消耗品系统 / Consumable System
+
+        /// <summary>
+        /// 消耗品系统: 处理角色的消耗品检查
+        /// Consumable system: Process character's consumable checks
+        /// 
+        /// 触发优先级: 先药水后食物，按槽位顺序 (potion_1 → potion_2 → food_1 → food_2)
+        /// Trigger priority: Potions first, then food, in slot order
+        /// </summary>
+        /// <param name="characterId">角色ID / Character ID</param>
+        /// <param name="nowMs">当前时间（毫秒）/ Current time (milliseconds)</param>
+        private void ProcessCharacterConsumableChecks(string characterId, int nowMs)
+        {
+            // 检查必要的依赖是否可用
+            // Check if required dependencies are available
+            if (_characterDataMap == null || !_characterDataMap.TryGetValue(characterId, out var characterData))
+                return;
+            
+            if (_gameConfigService == null)
+                return;
+
+            // 获取角色的消耗品配置
+            // Get character's consumable configuration
+            var consumableConfig = characterData.EquippedConsumables;
+            if (consumableConfig == null)
+                return;
+
+            // 获取角色成员
+            // Get character member
+            var member = _playerTeam.GetMember(characterId);
+            if (member == null)
+                return;
+
+            var character = member.Entity as Character;
+            if (character == null)
+                return;
+
+            // 创建战斗上下文
+            // Create battle context
+            var context = new BattleContext
+            {
+                Player = character,
+                PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(characterId),
+                PlayerResources = _playerResources.GetValueOrDefault(characterId),
+                PlayerTeam = _playerTeam,
+                EnemyTeam = _enemyTeam,
+                EnemyBuffOwners = _enemyBuffOwners,
+                Rng = _rng,
+                Clock = _clock,
+                CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
+            };
+
+            // 处理药水槽位（优先触发，提供增益效果）
+            // Process potion slots (higher priority, provides buff effects)
+            foreach (var kvp in consumableConfig.PotionSlots.OrderBy(x => x.Key))
+            {
+                ProcessConsumableSlot(characterId, kvp.Key, kvp.Value, context, nowMs, characterData);
+            }
+
+            // 处理食物槽位（其次触发，提供恢复效果）
+            // Process food slots (lower priority, provides recovery effects)
+            foreach (var kvp in consumableConfig.FoodSlots.OrderBy(x => x.Key))
+            {
+                ProcessConsumableSlot(characterId, kvp.Key, kvp.Value, context, nowMs, characterData);
+            }
+        }
+
+        /// <summary>
+        /// 消耗品系统: 处理单个消耗品槽位
+        /// Consumable system: Process a single consumable slot
+        /// </summary>
+        private void ProcessConsumableSlot(
+            string characterId,
+            string slotId,
+            Shared.Models.ConsumableSlotData slotData,
+            BattleContext context,
+            int nowMs,
+            Shared.Models.CharacterData characterData)
+        {
+            // 检查槽位是否装备
+            // Check if slot is equipped
+            if (string.IsNullOrEmpty(slotData.ItemId) || string.IsNullOrEmpty(slotData.SkillId))
+                return;
+
+            // 获取物品配置
+            // Get item configuration
+            var itemConfig = _gameConfigService?.GetItem(slotData.ItemId);
+            if (itemConfig?.ConsumableConfig == null)
+                return;
+
+            // 检查触发条件
+            // Check trigger conditions
+            if (itemConfig.ConsumableConfig.TriggerConditions != null)
+            {
+                var tempSkill = new SkillDef { Conditions = itemConfig.ConsumableConfig.TriggerConditions };
+                if (!_conditionChecker.CheckConditions(tempSkill, context, isCasterPlayer: true, characterId))
+                    return;
+            }
+
+            // 检查冷却（按物品ID追踪，同类物品共享冷却）
+            // Check cooldown (tracked per item ID, same item type shares cooldown)
+            var cooldownManager = GetOrCreateCooldownManager(characterId);
+            string cooldownKey = $"consumable_{slotData.ItemId}";
+            if (!cooldownManager.IsReady(cooldownKey))
+                return;
+
+            // 检查背包库存（不自动卸载，保留配置等待玩家补充）
+            // Check inventory (no auto-unequip, preserve config waiting for player to replenish)
+            int currentCount = characterData.Inventory.GetItemQuantity(slotData.ItemId);
+            if (currentCount <= 0)
+            {
+                // 库存不足，触发库存耗尽事件（UI可据此显示特殊样式）
+                // Out of stock, trigger event (UI can show special style)
+                ConsumableOutOfStock?.Invoke(new ConsumableOutOfStockEvent
+                {
+                    TimeMs = nowMs,
+                    CharacterId = characterId,
+                    ItemId = slotData.ItemId,
+                    SlotId = slotId
+                });
+                return;
+            }
+
+            // 扣除背包库存
+            // Deduct from inventory
+            if (!characterData.Inventory.TryConsumeItem(slotData.ItemId, 1))
+                return;
+
+            // 执行消耗品技能
+            // Execute consumable skill
+            ExecuteSkill(characterId, slotData.SkillId, $"consumable_{slotId}", isCasterPlayer: true, EventSource.Consumable);
+
+            // 启动冷却（使用物品配置的冷却时间）
+            // Start cooldown (using item's cooldown time)
+            double cooldownSec = itemConfig.ConsumableConfig.CooldownSec;
+            if (cooldownSec > 0)
+            {
+                cooldownManager.StartCooldown(cooldownKey, cooldownSec);
+            }
+
+            // 触发消耗品使用事件
+            // Trigger consumable used event
+            ConsumableUsed?.Invoke(new ConsumableUsedEvent
+            {
+                TimeMs = nowMs,
+                CharacterId = characterId,
+                ItemId = slotData.ItemId,
+                SkillId = slotData.SkillId,
+                SlotId = slotId,
+                RemainingCount = characterData.Inventory.GetItemQuantity(slotData.ItemId)
+            });
+        }
+
+        #endregion
 
         /// <summary>
         /// Phase 6: 处理技能释放结果中的 Buff 操作
