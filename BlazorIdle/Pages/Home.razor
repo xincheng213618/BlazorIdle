@@ -80,6 +80,20 @@
 
             <div class="row">
                 <div class="col-12">
+                    <!-- 消耗品装备：药水和食物槽位 -->
+                    <div class="section-frame mb-3">
+                        <ConsumableSlotPanel @ref="consumableSlotPanel"
+                                             Character="@selectedCharacter"
+                                             IsInBattle="false"
+                                             StartCollapsed="true"
+                                             OnConsumableEquipped="OnConsumableEquipped"
+                                             OnConsumableUnequipped="OnConsumableUnequipped" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
                     <BattleDemo SelectedCharacter="@selectedCharacter"
                                 OnCharacterDataChanged="OnCharacterDataChanged" />
                 </div>
@@ -106,6 +120,7 @@
     private CharacterCreation? characterCreation;
     private CharacterSelector? characterSelector;
     private SkillEquipmentPanel? skillEquipmentPanel;
+    private ConsumableSlotPanel? consumableSlotPanel;
     private ShopPanel? shopPanel;
     private CharacterData? selectedCharacter;
     private bool isReady; // 控制首渲染
@@ -307,6 +322,42 @@
     /// Skill unequipped callback - save character data
     /// </summary>
     private async Task OnSkillUnequipped()
+    {
+        if (selectedCharacter != null)
+        {
+            // 保存角色数据到服务器
+            // Save character data to server
+            await CharacterService.UpdateCharacterAsync(selectedCharacter.Id, selectedCharacter);
+
+            // 触发重新渲染
+            // Trigger re-render
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// 消耗品装备回调 - 保存角色数据
+    /// Consumable equipped callback - save character data
+    /// </summary>
+    private async Task OnConsumableEquipped()
+    {
+        if (selectedCharacter != null)
+        {
+            // 保存角色数据到服务器
+            // Save character data to server
+            await CharacterService.UpdateCharacterAsync(selectedCharacter.Id, selectedCharacter);
+
+            // 触发重新渲染
+            // Trigger re-render
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// 消耗品卸载回调 - 保存角色数据
+    /// Consumable unequipped callback - save character data
+    /// </summary>
+    private async Task OnConsumableUnequipped()
     {
         if (selectedCharacter != null)
         {
