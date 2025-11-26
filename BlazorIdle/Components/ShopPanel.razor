@@ -46,6 +46,11 @@
                     <span class="tab-icon">🏛️</span>
                     <span class="tab-text">系统</span>
                 </button>
+                <button class="shop-tab @(activeTab == "skill" ? "active" : "")"
+                        @onclick="SwitchToSkill">
+                    <span class="tab-icon">📖</span>
+                    <span class="tab-text">技能</span>
+                </button>
                 <button class="shop-tab @(activeTab == "consumable" ? "active" : "")"
                         @onclick="SwitchToConsumable">
                     <span class="tab-icon">🏪</span>
@@ -70,6 +75,14 @@
                     <SystemShopPanel Character="@Character"
                                      OnSlotPurchased="OnSlotPurchased"
                                      StartCollapsed="false" />
+                }
+                else if (activeTab == "skill")
+                {
+                    <SkillLearningPanel @ref="skillLearningPanel"
+                                        Character="@Character"
+                                        ProfessionId="@ProfessionId"
+                                        OnSkillLearned="OnSkillLearned"
+                                        StartCollapsed="false" />
                 }
                 else if (activeTab == "consumable")
                 {
@@ -99,14 +112,21 @@
     public CharacterData? Character { get; set; }
 
     [Parameter]
+    public string ProfessionId { get; set; } = string.Empty;
+
+    [Parameter]
     public EventCallback OnItemPurchased { get; set; }
 
     [Parameter]
     public EventCallback OnSlotPurchased { get; set; }
 
     [Parameter]
+    public EventCallback OnSkillLearned { get; set; }
+
+    [Parameter]
     public bool StartCollapsed { get; set; }
 
+    private SkillLearningPanel? skillLearningPanel;
     private bool isCollapsed;
     private string activeTab = "system";
 
@@ -118,6 +138,7 @@
     private void ToggleCollapse() => isCollapsed = !isCollapsed;
 
     private void SwitchToSystem() => activeTab = "system";
+    private void SwitchToSkill() => activeTab = "skill";
     private void SwitchToConsumable() => activeTab = "consumable";
     private void SwitchToPotion() => activeTab = "potion";
     private void SwitchToFood() => activeTab = "food";
@@ -126,6 +147,15 @@
     {
         if (Character == null) return 0;
         return Character.Inventory?.GetItemQuantity(ItemIds.GoldCoin) ?? 0;
+    }
+
+    /// <summary>
+    /// 刷新技能学习面板
+    /// Refresh skill learning panel
+    /// </summary>
+    public void RefreshSkillPanel()
+    {
+        skillLearningPanel?.Refresh();
     }
 }
 
@@ -250,7 +280,8 @@
         .unified-shop-panel .shop-body-wrapper .consumable-shop-panel > .shop-header,
         .unified-shop-panel .shop-body-wrapper .potion-shop-panel > .shop-header,
         .unified-shop-panel .shop-body-wrapper .food-shop-panel > .shop-header,
-        .unified-shop-panel .shop-body-wrapper .system-shop-panel > .shop-header {
+        .unified-shop-panel .shop-body-wrapper .system-shop-panel > .shop-header,
+        .unified-shop-panel .shop-body-wrapper .skill-learning-card > .sl-header {
             display: none;
         }
 
@@ -258,7 +289,8 @@
         .unified-shop-panel .shop-body-wrapper .consumable-shop-panel,
         .unified-shop-panel .shop-body-wrapper .potion-shop-panel,
         .unified-shop-panel .shop-body-wrapper .food-shop-panel,
-        .unified-shop-panel .shop-body-wrapper .system-shop-panel {
+        .unified-shop-panel .shop-body-wrapper .system-shop-panel,
+        .unified-shop-panel .shop-body-wrapper .skill-learning-card {
             border: none;
             border-radius: 0;
             box-shadow: none;
