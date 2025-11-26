@@ -1,11 +1,8 @@
 @using BlazorIdle.Shared.Models
-@using BlazorIdle.Shared.DTOs
 @using BlazorIdle.Shared.Constants
-@using BlazorIdle.Game.Config
-@using BlazorIdle.Game.Purchase
-@using BlazorIdle.Services
-@inject IGameConfigService GameConfig
-@inject IUserService UserService
+
+@* 统一商店组件 - 包装现有的商店组件 *@
+@* Unified Shop Component - Wraps existing shop components *@
 
 <div class="unified-shop-panel">
     <div class="shop-header"
@@ -66,156 +63,31 @@
                 </button>
             </div>
 
-            <!-- 消息提示区域 -->
-            <div class="message-area">
-                @if (!string.IsNullOrEmpty(successMessage))
-                {
-                    <div class="alert alert-success mb-3">@successMessage</div>
-                }
-                @if (!string.IsNullOrEmpty(errorMessage))
-                {
-                    <div class="alert alert-danger mb-3">@errorMessage</div>
-                }
-            </div>
-
-            <!-- 商店内容区域 -->
-            <div class="shop-body">
+            <!-- 商店内容区域 - 嵌入现有商店组件 -->
+            <div class="shop-body-wrapper">
                 @if (activeTab == "system")
                 {
-                    @if (isLoading)
-                    {
-                        <div class="text-center p-3">
-                            <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                <span class="visually-hidden">加载中...</span>
-                            </div>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="shop-items-grid system-grid">
-                            <div class="shop-item system-item @(shopInfo == null || !shopInfo.CanPurchase ? "sold-out" : "") @(!CanAffordSlot() ? "cannot-afford" : "")">
-                                <div class="item-icon system-icon">👤</div>
-                                <div class="item-info">
-                                    <div class="item-name">角色槽位 +1</div>
-                                    <div class="item-desc">增加一个可创建角色的槽位</div>
-
-                                    <div class="item-meta">
-                                        <span class="price">
-                                            <span class="gold-icon">🪙</span>
-                                            @(shopInfo?.Price.ToString("N0") ?? "5,000")
-                                        </span>
-                                        @if (shopInfo != null)
-                                        {
-                                            <span class="limit">
-                                                @if (shopInfo.CanPurchase)
-                                                {
-                                                    <span class="remaining">剩余 @(shopInfo.MaxPurchases - shopInfo.PurchasedCount) 次</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="exhausted">已售罄</span>
-                                                }
-                                            </span>
-                                        }
-                                        <span class="current-slots">
-                                            当前槽位: @(shopInfo?.CurrentSlots ?? 1)
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <button class="btn btn-primary btn-sm purchase-btn"
-                                        disabled="@(isPurchasing || shopInfo == null || !shopInfo.CanPurchase || !CanAffordSlot())"
-                                        @onclick="PurchaseCharacterSlot">
-                                    @if (isPurchasing && activeTab == "system")
-                                    {
-                                        <span class="spinner-border spinner-border-sm" role="status"></span>
-                                    }
-                                    else if (shopInfo != null && !shopInfo.CanPurchase)
-                                    {
-                                        <span>已购买</span>
-                                    }
-                                    else if (!CanAffordSlot())
-                                    {
-                                        <span>金币不足</span>
-                                    }
-                                    else
-                                    {
-                                        <span>购买</span>
-                                    }
-                                </button>
-                            </div>
-                        </div>
-                    }
+                    <SystemShopPanel Character="@Character"
+                                     OnSlotPurchased="OnSlotPurchased"
+                                     StartCollapsed="false" />
                 }
-                else
+                else if (activeTab == "consumable")
                 {
-                    <!-- 消耗品/药水/食品商店 -->
-                    <div class="shop-items-grid">
-                        @foreach (var shopItem in GetCurrentShopItems())
-                        {
-                            var itemDef = GameConfig.GetItem(shopItem.ItemId);
-                            if (itemDef == null) continue;
-
-                            var canAfford = CanAfford(shopItem.Price);
-                            var remaining = GetRemainingPurchases(shopItem.ItemId, shopItem);
-                            var isSoldOut = remaining == 0;
-
-                            <div class="shop-item-card @(canAfford && !isSoldOut ? "affordable" : "") @GetTabColorClass()">
-                                <div class="item-icon-large">@(itemDef.Icon ?? GetDefaultIcon())</div>
-                                <div class="item-info">
-                                    <div class="item-name">
-                                        @itemDef.Name
-                                        @if (itemDef.Type == ItemType.SkillBook)
-                                        {
-                                            <span class="badge bg-info ms-1">技能书</span>
-                                        }
-                                    </div>
-                                    @if (!string.IsNullOrWhiteSpace(itemDef.Description))
-                                    {
-                                        <div class="item-desc">@itemDef.Description</div>
-                                    }
-                                    @if (itemDef.Metadata?.EffectDescription != null)
-                                    {
-                                        <div class="item-effect">
-                                            <span class="effect-icon">✨</span> @itemDef.Metadata.EffectDescription
-                                        </div>
-                                    }
-                                </div>
-                                <div class="item-purchase">
-                                    <div class="price-display @(canAfford ? "affordable-price" : "unaffordable-price")">
-                                        <span class="price-icon">🪙</span>
-                                        <span class="price-amount">@shopItem.Price.ToString("N0")</span>
-                                    </div>
-                                    @if (remaining >= 0)
-                                    {
-                                        <div class="limit-info">
-                                            剩余: @remaining
-                                        </div>
-                                    }
-                                    <button class="btn btn-sm @(canAfford && !isSoldOut ? "btn-success" : "btn-secondary")"
-                                            disabled="@(!canAfford || isSoldOut || isPurchasing)"
-                                            @onclick="() => PurchaseItem(shopItem)">
-                                        @if (isPurchasing && currentPurchasingItemId == shopItem.ItemId)
-                                        {
-                                            <span>购买中...</span>
-                                        }
-                                        else if (isSoldOut)
-                                        {
-                                            <span>已售罄</span>
-                                        }
-                                        else if (!canAfford)
-                                        {
-                                            <span>金币不足</span>
-                                        }
-                                        else
-                                        {
-                                            <span>购买</span>
-                                        }
-                                    </button>
-                                </div>
-                            </div>
-                        }
-                    </div>
+                    <ConsumableShopPanel Character="@Character"
+                                         OnItemPurchased="OnItemPurchased"
+                                         StartCollapsed="false" />
+                }
+                else if (activeTab == "potion")
+                {
+                    <PotionShopPanel Character="@Character"
+                                     OnItemPurchased="OnItemPurchased"
+                                     StartCollapsed="false" />
+                }
+                else if (activeTab == "food")
+                {
+                    <FoodShopPanel Character="@Character"
+                                   OnItemPurchased="OnItemPurchased"
+                                   StartCollapsed="false" />
                 }
             </div>
         }
@@ -236,70 +108,11 @@
     public bool StartCollapsed { get; set; }
 
     private bool isCollapsed;
-    private bool isLoading = true;
-    private bool isPurchasing = false;
     private string activeTab = "system";
-    private string? currentPurchasingItemId = null;
-    private string? errorMessage = null;
-    private string? successMessage = null;
 
-    private PurchaseService? _purchaseService;
-    private AccountPurchaseState? _accountPurchaseState;
-    private CharacterSlotShopInfo? shopInfo;
-
-    // 各商店商品列表
-    private List<ShopItemConfig> consumableItems = new();
-    private List<ShopItemConfig> potionItems = new();
-    private List<ShopItemConfig> foodItems = new();
-
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        await GameConfig.EnsureLoadedAsync();
         isCollapsed = StartCollapsed;
-
-        // 加载各商店配置
-        LoadShopConfigs();
-
-        // 加载账号级购买状态
-        _accountPurchaseState = await UserService.GetAccountPurchaseStateAsync();
-
-        // 加载系统商店信息
-        await LoadShopInfoAsync();
-    }
-
-    protected override void OnParametersSet()
-    {
-        if (Character != null)
-        {
-            if (_accountPurchaseState != null)
-            {
-                _purchaseService = new PurchaseService(Character.PurchaseState, _accountPurchaseState);
-            }
-            else
-            {
-                _purchaseService = new PurchaseService(Character.PurchaseState);
-            }
-        }
-    }
-
-    private void LoadShopConfigs()
-    {
-        consumableItems = ConfigRepository.LoadConsumableShop();
-        potionItems = ConfigRepository.LoadPotionShop();
-        foodItems = ConfigRepository.LoadFoodShop();
-    }
-
-    private async Task LoadShopInfoAsync()
-    {
-        isLoading = true;
-        try
-        {
-            shopInfo = await UserService.GetCharacterSlotShopInfoAsync();
-        }
-        finally
-        {
-            isLoading = false;
-        }
     }
 
     private void ToggleCollapse() => isCollapsed = !isCollapsed;
@@ -309,213 +122,16 @@
     private void SwitchToPotion() => activeTab = "potion";
     private void SwitchToFood() => activeTab = "food";
 
-    private List<ShopItemConfig> GetCurrentShopItems()
-    {
-        return activeTab switch
-        {
-            "consumable" => consumableItems,
-            "potion" => potionItems,
-            "food" => foodItems,
-            _ => new List<ShopItemConfig>()
-        };
-    }
-
-    private string GetDefaultIcon()
-    {
-        return activeTab switch
-        {
-            "consumable" => "📦",
-            "potion" => "🧪",
-            "food" => "🍖",
-            _ => "📦"
-        };
-    }
-
-    private string GetTabColorClass()
-    {
-        return activeTab switch
-        {
-            "consumable" => "consumable-theme",
-            "potion" => "potion-theme",
-            "food" => "food-theme",
-            _ => ""
-        };
-    }
-
     private int GetGoldBalance()
     {
         if (Character == null) return 0;
         return Character.Inventory?.GetItemQuantity(ItemIds.GoldCoin) ?? 0;
-    }
-
-    private bool CanAfford(int price)
-    {
-        return GetGoldBalance() >= price;
-    }
-
-    private bool CanAffordSlot()
-    {
-        if (shopInfo == null) return false;
-        return GetGoldBalance() >= shopInfo.Price;
-    }
-
-    private int GetRemainingPurchases(string itemId, ShopItemConfig shopItem)
-    {
-        if (_purchaseService == null || Character == null) return -1;
-        if (shopItem.Limits == null) return -1;
-
-        return _purchaseService.GetRemainingPurchases(
-            itemId,
-            Character.Id,
-            Character.UserId.ToString(),
-            shopItem.Limits);
-    }
-
-    private int GetCharacterLevel()
-    {
-        if (Character == null) return 1;
-
-        string professionId = Character.ActiveCombatProfessionId;
-        if (Character.Professions.TryGetValue(professionId, out var progress))
-        {
-            return progress.Level;
-        }
-
-        return 1;
-    }
-
-    private async Task PurchaseCharacterSlot()
-    {
-        if (Character == null || isPurchasing || shopInfo == null || !shopInfo.CanPurchase)
-            return;
-
-        if (!CanAffordSlot())
-        {
-            errorMessage = $"金币不足，需要 {shopInfo.Price:N0} 金币";
-            return;
-        }
-
-        errorMessage = null;
-        successMessage = null;
-        isPurchasing = true;
-
-        try
-        {
-            var result = await UserService.PurchaseCharacterSlotAsync(Character.Id);
-
-            if (result?.Success == true)
-            {
-                successMessage = result.Message;
-                Character.Inventory?.RemoveItem(ItemIds.GoldCoin, shopInfo.Price);
-                await LoadShopInfoAsync();
-
-                if (OnSlotPurchased.HasDelegate)
-                {
-                    await OnSlotPurchased.InvokeAsync();
-                }
-
-                _ = Task.Delay(3000).ContinueWith(async _ =>
-                {
-                    successMessage = null;
-                    await InvokeAsync(StateHasChanged);
-                }, TaskScheduler.Default);
-            }
-            else
-            {
-                errorMessage = result?.Message ?? "购买失败";
-                _ = Task.Delay(3000).ContinueWith(async _ =>
-                {
-                    errorMessage = null;
-                    await InvokeAsync(StateHasChanged);
-                }, TaskScheduler.Default);
-            }
-        }
-        finally
-        {
-            isPurchasing = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task PurchaseItem(ShopItemConfig shopItem)
-    {
-        if (Character == null || _purchaseService == null || isPurchasing)
-            return;
-
-        var itemDef = GameConfig.GetItem(shopItem.ItemId);
-        if (itemDef == null)
-            return;
-
-        errorMessage = null;
-        successMessage = null;
-        isPurchasing = true;
-        currentPurchasingItemId = shopItem.ItemId;
-
-        try
-        {
-            var purchaseConfig = new PurchasableConfig
-            {
-                Id = shopItem.ItemId,
-                DisplayName = itemDef.Name,
-                CurrencyType = CurrencyType.Gold,
-                BasePrice = shopItem.Price,
-                DiscountPercent = 0,
-                Limits = shopItem.Limits ?? new PurchaseLimit(),
-                Unlock = null
-            };
-
-            var result = _purchaseService.Purchase(
-                purchaseConfig,
-                Character,
-                Character.ActiveCombatProfessionId,
-                GetCharacterLevel(),
-                (c) => c.Inventory.AddItem(shopItem.ItemId, 1)
-            );
-
-            if (result.Success)
-            {
-                successMessage = $"成功购买 {itemDef.Name}（消耗 {result.SpentAmount} 🪙）";
-
-                if (_accountPurchaseState != null && shopItem.Limits?.PerAccount > 0)
-                {
-                    await UserService.UpdateAccountPurchaseStateAsync(_accountPurchaseState);
-                }
-
-                if (OnItemPurchased.HasDelegate)
-                {
-                    await OnItemPurchased.InvokeAsync();
-                }
-
-                _ = Task.Delay(2000).ContinueWith(async _ =>
-                {
-                    successMessage = null;
-                    await InvokeAsync(StateHasChanged);
-                }, TaskScheduler.Default);
-            }
-            else
-            {
-                errorMessage = result.Message;
-
-                _ = Task.Delay(3000).ContinueWith(async _ =>
-                {
-                    errorMessage = null;
-                    await InvokeAsync(StateHasChanged);
-                }, TaskScheduler.Default);
-            }
-        }
-        finally
-        {
-            isPurchasing = false;
-            currentPurchasingItemId = null;
-            StateHasChanged();
-        }
     }
 }
 
 <style>
     .unified-shop-panel {
         background: #fff;
-        border: 1px solid #e5e5e5;
         border-radius: 12px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         overflow: hidden;
@@ -624,255 +240,33 @@
         font-size: 0.9em;
     }
 
-    /* 消息区域 */
-    .unified-shop-panel .message-area {
-        padding: 15px 20px 0;
+    /* 包装子商店组件的容器 */
+    .unified-shop-panel .shop-body-wrapper {
+        /* 移除子组件的外边框和阴影，让它们融入统一面板 */
     }
 
-        .unified-shop-panel .message-area:empty {
-            padding: 0;
+        /* 隐藏嵌入的子商店组件的头部（因为统一面板已有标签页导航） */
+        .unified-shop-panel .shop-body-wrapper .shop-header,
+        .unified-shop-panel .shop-body-wrapper .consumable-shop-panel > .shop-header,
+        .unified-shop-panel .shop-body-wrapper .potion-shop-panel > .shop-header,
+        .unified-shop-panel .shop-body-wrapper .food-shop-panel > .shop-header,
+        .unified-shop-panel .shop-body-wrapper .system-shop-panel > .shop-header {
+            display: none;
         }
 
-    .unified-shop-panel .alert {
-        padding: 10px 15px;
-        border-radius: 6px;
-        font-size: 0.9em;
-        margin-bottom: 0;
-    }
-
-    /* 商店内容区 */
-    .unified-shop-panel .shop-body {
-        padding: 20px;
-        max-height: 500px;
-        overflow-y: auto;
-    }
-
-    .unified-shop-panel .shop-items-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 15px;
-    }
-
-    /* 系统商店特殊样式 */
-    .unified-shop-panel .system-grid {
-        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    }
-
-    .unified-shop-panel .system-item {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: flex-start;
-        gap: 1rem;
-        padding: 1rem;
-        background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
-        border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: #fff;
-        min-height: 110px;
-    }
-
-        .unified-shop-panel .system-item.sold-out,
-        .unified-shop-panel .system-item.cannot-afford {
-            opacity: 0.7;
-        }
-
-    .unified-shop-panel .system-icon {
-        font-size: 2rem;
-        width: 56px;
-        height: 56px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #6b2d8e 0%, #8b4dae 100%);
-        border-radius: 10px;
-    }
-
-    .unified-shop-panel .system-item .item-info {
-        flex: 1;
-        min-width: 180px;
-    }
-
-    .unified-shop-panel .system-item .item-name {
-        font-weight: 600;
-        color: #fff;
-        font-size: 1rem;
-        margin-bottom: 4px;
-    }
-
-    .unified-shop-panel .system-item .item-desc {
-        color: rgba(255, 255, 255, 0.65);
-        font-size: 0.82rem;
-        margin-bottom: 8px;
-    }
-
-    .unified-shop-panel .system-item .item-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        font-size: 0.78rem;
-    }
-
-    .unified-shop-panel .system-item .price {
-        color: #ffd700;
-        font-weight: 500;
-    }
-
-    .unified-shop-panel .system-item .remaining {
-        color: #4ade80;
-    }
-
-    .unified-shop-panel .system-item .exhausted {
-        color: #f87171;
-    }
-
-    .unified-shop-panel .system-item .current-slots {
-        color: rgba(255, 255, 255, 0.5);
-    }
-
-    .unified-shop-panel .system-item .purchase-btn {
-        margin-left: auto;
-        min-width: 90px;
-    }
-
-    /* 通用商品卡片 */
-    .unified-shop-panel .shop-item-card {
-        background: #fff;
-        border: 2px solid #e9ecef;
-        border-radius: 10px;
-        padding: 15px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        transition: all 0.2s ease;
-    }
-
-        .unified-shop-panel .shop-item-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
-        .unified-shop-panel .shop-item-card.affordable {
-            border-color: #28a745;
-        }
-
-        /* 主题色 */
-        .unified-shop-panel .shop-item-card.consumable-theme.affordable {
-            border-color: #f093fb;
-        }
-
-        .unified-shop-panel .shop-item-card.potion-theme.affordable {
-            border-color: #667eea;
-        }
-
-        .unified-shop-panel .shop-item-card.food-theme.affordable {
-            border-color: #ff9a56;
-        }
-
-    .unified-shop-panel .item-icon-large {
-        font-size: 2.5em;
-        text-align: center;
-        margin-bottom: 6px;
-    }
-
-    .unified-shop-panel .shop-item-card .item-info {
-        flex: 1;
-    }
-
-    .unified-shop-panel .shop-item-card .item-name {
-        font-weight: 600;
-        color: #212529;
-        font-size: 1em;
-        margin-bottom: 4px;
-    }
-
-    .unified-shop-panel .shop-item-card .item-desc {
-        font-size: 0.85em;
-        color: #6c757d;
-        margin-bottom: 4px;
-    }
-
-    .unified-shop-panel .shop-item-card .item-effect {
-        font-size: 0.85em;
-        color: #28a745;
-        font-style: italic;
-    }
-
-        .unified-shop-panel .shop-item-card.consumable-theme .item-effect {
-            color: #f093fb;
-        }
-
-        .unified-shop-panel .shop-item-card.potion-theme .item-effect {
-            color: #667eea;
-        }
-
-        .unified-shop-panel .shop-item-card.food-theme .item-effect {
-            color: #ff6b6b;
-        }
-
-    .unified-shop-panel .item-purchase {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        align-items: stretch;
-    }
-
-    .unified-shop-panel .price-display {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        font-weight: 600;
-        font-size: 1.1em;
-    }
-
-    .unified-shop-panel .affordable-price {
-        color: #28a745;
-    }
-
-    .unified-shop-panel .unaffordable-price {
-        color: #dc3545;
-    }
-
-    .unified-shop-panel .limit-info {
-        text-align: center;
-        font-size: 0.85em;
-        color: #6c757d;
-    }
-
-    .unified-shop-panel .item-purchase .btn {
-        margin-top: 0;
-        width: 100%;
-    }
-
-    /* 滚动条样式 */
-    .unified-shop-panel .shop-body::-webkit-scrollbar {
-        width: 8px;
-    }
-
-    .unified-shop-panel .shop-body::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 4px;
-    }
-
-    .unified-shop-panel .shop-body::-webkit-scrollbar-thumb {
-        background: #ccc;
-        border-radius: 4px;
-    }
-
-        .unified-shop-panel .shop-body::-webkit-scrollbar-thumb:hover {
-            background: #999;
+        /* 移除子组件的外边框和圆角，让它们融入统一面板 */
+        .unified-shop-panel .shop-body-wrapper .consumable-shop-panel,
+        .unified-shop-panel .shop-body-wrapper .potion-shop-panel,
+        .unified-shop-panel .shop-body-wrapper .food-shop-panel,
+        .unified-shop-panel .shop-body-wrapper .system-shop-panel {
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            margin-bottom: 0;
         }
 
     /* 响应式 */
     @@media (max-width: 768px) {
-        .unified-shop-panel .shop-items-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .unified-shop-panel .system-grid {
-            grid-template-columns: 1fr;
-        }
-
         .unified-shop-panel .shop-tab {
             min-width: 80px;
             padding: 12px 10px;
