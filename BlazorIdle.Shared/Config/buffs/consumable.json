@@ -1,0 +1,62 @@
+// 消耗品Buff配置文件 - Consumable Buff Configuration File
+// 
+// 注意 / Note:
+// - 包含所有消耗品（药水、食物等）产生的Buff效果
+// - Contains all buff effects from consumables (potions, food, etc.)
+//
+[
+  {
+    "id": "consumable_strength_buff",
+    "name": "力量药水",
+    "description": "消耗品效果 - 攻击力提升10%",
+    "icon": "💪",
+    "kind": "Buff",
+    "durationSec": 60.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatMultiplier",
+        "target": "DamagePerAttack",
+        "value": 0.10
+      }
+    ]
+  },
+  {
+    "id": "consumable_speed_buff",
+    "name": "敏捷药水",
+    "description": "消耗品效果 - 攻击速度提升15%",
+    "icon": "⚡",
+    "kind": "Buff",
+    "durationSec": 60.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": 15.0
+      }
+    ]
+  },
+  {
+    "id": "consumable_steak_buff",
+    "name": "牛排增益",
+    "description": "消耗品效果 - 攻击力提升5%",
+    "icon": "🥩",
+    "kind": "Buff",
+    "durationSec": 30.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatMultiplier",
+        "target": "DamagePerAttack",
+        "value": 0.05
+      }
+    ]
+  }
+]

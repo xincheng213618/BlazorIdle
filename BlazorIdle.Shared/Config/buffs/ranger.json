@@ -1,0 +1,108 @@
+// 游侠Buff配置文件 - Ranger Buff Configuration File
+// 
+// 注意 / Note:
+// - 包含所有游侠职业相关的Buff效果
+// - Contains all ranger profession related buff effects
+//
+[
+  {
+    "id": "ranger_focus",
+    "name": "集中",
+    "description": "提升暴击率和急速",
+    "icon": "🎯",
+    "kind": "Buff",
+    "durationSec": 6.0,
+    "stackingPolicy": "Stack",
+    "maxStacks": 3,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatAdditive",
+        "target": "CritChancePercent",
+        "value": 5.0
+      },
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": 3.0
+      }
+    ]
+  },
+  {
+    "id": "ranger_berserk_buff",
+    "name": "狂暴射击",
+    "description": "大幅提升攻击速度和伤害",
+    "icon": "🏹",
+    "kind": "Buff",
+    "durationSec": 8.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatMultiplier",
+        "target": "DamagePerAttack",
+        "value": 0.40
+      },
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": 40.0
+      }
+    ]
+  },
+  {
+    "id": "ranger_haste_buff",
+    "name": "快速射击",
+    "description": "提升攻击速度",
+    "icon": "💨",
+    "kind": "Buff",
+    "durationSec": 6.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": 25.0
+      }
+    ]
+  },
+  {
+    "id": "ranger_heal_over_time",
+    "name": "自然恢复",
+    "description": "持续恢复生命值",
+    "icon": "🌿",
+    "kind": "Buff",
+    "durationSec": 12.0,
+    "tickIntervalSec": 3.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "HealOverTime",
+        "amountPerTick": 20
+      }
+    ]
+  },
+  {
+    "id": "ranger_poison_dot",
+    "name": "毒箭",
+    "description": "持续造成毒素伤害",
+    "icon": "☠️",
+    "kind": "Debuff",
+    "durationSec": 10.0,
+    "tickIntervalSec": 2.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Target",
+    "effects": [
+      {
+        "type": "DamageOverTime",
+        "amountPerTick": 10
+      }
+    ]
+  }
+]

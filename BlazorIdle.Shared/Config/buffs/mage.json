@@ -1,0 +1,133 @@
+// 法师Buff配置文件 - Mage Buff Configuration File
+// 
+// 注意 / Note:
+// - 包含所有法师职业相关的Buff效果
+// - Contains all mage profession related buff effects
+//
+[
+  {
+    "id": "mage_burn_dot",
+    "name": "燃烧",
+    "description": "持续造成火焰伤害",
+    "icon": "🔥",
+    "kind": "Debuff",
+    "durationSec": 6.0,
+    "tickIntervalSec": 1.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "AllEnemies",
+    "effects": [
+      {
+        "type": "DamageOverTime",
+        "amountPerTick": 6
+      }
+    ]
+  },
+  {
+    "id": "mage_arcane_power",
+    "name": "奥术充能",
+    "description": "法术伤害提升",
+    "icon": "🔮",
+    "kind": "Buff",
+    "durationSec": 8.0,
+    "stackingPolicy": "Stack",
+    "maxStacks": 5,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatMultiplier",
+        "target": "DamagePerAttack",
+        "value": 0.08
+      },
+      {
+        "type": "StatMultiplier",
+        "target": "SpecialDamage",
+        "value": 0.12
+      }
+    ]
+  },
+  {
+    "id": "mage_blizzard_dot",
+    "name": "暴风雪",
+    "description": "持续造成冰霜伤害",
+    "icon": "❄️",
+    "kind": "Debuff",
+    "durationSec": 8.0,
+    "tickIntervalSec": 2.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "AllEnemies",
+    "effects": [
+      {
+        "type": "DamageOverTime",
+        "amountPerTick": 12
+      }
+    ]
+  },
+  {
+    "id": "mage_frost_slow",
+    "name": "冰霜减速",
+    "description": "降低目标攻击速度",
+    "icon": "🧊",
+    "kind": "Debuff",
+    "durationSec": 6.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Target",
+    "effects": [
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": -20.0
+      }
+    ]
+  },
+  {
+    "id": "mage_haste_buff",
+    "name": "急速施法",
+    "description": "提升施法速度",
+    "icon": "⚡",
+    "kind": "Buff",
+    "durationSec": 10.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": 30.0
+      }
+    ]
+  },
+  {
+    "id": "mage_shield",
+    "name": "法术护盾",
+    "description": "吸收伤害的护盾",
+    "icon": "🛡️",
+    "kind": "Buff",
+    "durationSec": 15.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": []
+  },
+  {
+    "id": "burning",
+    "name": "燃烧",
+    "description": "持续造成火焰伤害（可叠加）",
+    "icon": "🔥",
+    "kind": "Debuff",
+    "durationSec": 10.0,
+    "tickIntervalSec": 2.0,
+    "stackingPolicy": "Stack",
+    "maxStacks": 5,
+    "defaultTarget": "AllEnemies",
+    "effects": [
+      {
+        "type": "DamageOverTime",
+        "amountPerTick": 8
+      }
+    ]
+  }
+]

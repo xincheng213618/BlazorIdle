@@ -12,17 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- 旧版配置文件（保留兼容） / Legacy config files (for compatibility) -->
-    <EmbeddedResource Include="Config\buffs.json" />
-    <EmbeddedResource Include="Config\skills.json" />
-    <EmbeddedResource Include="Config\monsterskills.json" />
-    <EmbeddedResource Include="Config\consumableSkills.json" />
-    <EmbeddedResource Include="Config\items.json" />
-    <EmbeddedResource Include="Config\consumableShop.json" />
-    <EmbeddedResource Include="Config\systemShop.json" />
+    <!-- 用户配置文件 / User config file -->
     <EmbeddedResource Include="Config\userConfig.json" />
-    <EmbeddedResource Include="Config\potionShop.json" />
-    <EmbeddedResource Include="Config\foodShop.json" />
     
     <!-- 物品分类配置文件 / Item category config files -->
     <EmbeddedResource Include="Config\items\currency.json" LogicalName="BlazorIdle.Shared.Config.items.currency.json" />
@@ -44,6 +35,16 @@
     <EmbeddedResource Include="Config\skills\common.json" LogicalName="BlazorIdle.Shared.Config.skills.common.json" />
     <EmbeddedResource Include="Config\skills\consumable.json" LogicalName="BlazorIdle.Shared.Config.skills.consumable.json" />
     <EmbeddedResource Include="Config\skills\monster.json" LogicalName="BlazorIdle.Shared.Config.skills.monster.json" />
+    
+    <!-- Buff分类配置文件 / Buff category config files -->
+    <EmbeddedResource Include="Config\buffs\warrior.json" LogicalName="BlazorIdle.Shared.Config.buffs.warrior.json" />
+    <EmbeddedResource Include="Config\buffs\mage.json" LogicalName="BlazorIdle.Shared.Config.buffs.mage.json" />
+    <EmbeddedResource Include="Config\buffs\rogue.json" LogicalName="BlazorIdle.Shared.Config.buffs.rogue.json" />
+    <EmbeddedResource Include="Config\buffs\ranger.json" LogicalName="BlazorIdle.Shared.Config.buffs.ranger.json" />
+    <EmbeddedResource Include="Config\buffs\common.json" LogicalName="BlazorIdle.Shared.Config.buffs.common.json" />
+    <EmbeddedResource Include="Config\buffs\debuffs.json" LogicalName="BlazorIdle.Shared.Config.buffs.debuffs.json" />
+    <EmbeddedResource Include="Config\buffs\consumable.json" LogicalName="BlazorIdle.Shared.Config.buffs.consumable.json" />
+    <EmbeddedResource Include="Config\buffs\monster.json" LogicalName="BlazorIdle.Shared.Config.buffs.monster.json" />
   </ItemGroup>
 
 </Project>

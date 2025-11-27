@@ -1,0 +1,129 @@
+// 战士Buff配置文件 - Warrior Buff Configuration File
+// 
+// 注意 / Note:
+// - 包含所有战士职业相关的Buff效果
+// - Contains all warrior profession related buff effects
+//
+[
+  {
+    "id": "warrior_rage_boost",
+    "name": "狂暴",
+    "description": "增加攻击力、攻击速度和暴击率",
+    "icon": "⚔️",
+    "kind": "Buff",
+    "durationSec": 6.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatMultiplier",
+        "target": "DamagePerAttack",
+        "value": 0.50
+      },
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": 50.0
+      },
+      {
+        "type": "StatAdditive",
+        "target": "CritChancePercent",
+        "value": 0.05
+      }
+    ]
+  },
+  {
+    "id": "warrior_power_boost",
+    "name": "战士强化",
+    "description": "大幅增加攻击力、攻击速度和暴击率",
+    "icon": "⚔️",
+    "kind": "Buff",
+    "durationSec": 6.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatMultiplier",
+        "target": "DamagePerAttack",
+        "value": 0.15
+      },
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": 50.0
+      },
+      {
+        "type": "StatAdditive",
+        "target": "CritChancePercent",
+        "value": 5.0
+      }
+    ]
+  },
+  {
+    "id": "warrior_stance",
+    "name": "战士架势",
+    "description": "积累架势层数，满3层触发必定暴击",
+    "icon": "🛡️",
+    "kind": "Buff",
+    "durationSec": 30.0,
+    "stackingPolicy": "Stack",
+    "maxStacks": 3,
+    "defaultTarget": "Self",
+    "effects": []
+  },
+  {
+    "id": "warrior_guaranteed_crit",
+    "name": "必定暴击",
+    "description": "下次攻击必定暴击",
+    "icon": "💥",
+    "kind": "Buff",
+    "durationSec": 30.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "ForceCrit",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "id": "warrior_rend_dot",
+    "name": "撕裂",
+    "description": "持续造成流血伤害",
+    "icon": "🩸",
+    "kind": "Debuff",
+    "durationSec": 9.0,
+    "tickIntervalSec": 3.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Target",
+    "effects": [
+      {
+        "type": "DamageOverTime",
+        "amountPerTick": 15
+      }
+    ]
+  },
+  {
+    "id": "strength_aura_buff",
+    "name": "力量光环",
+    "description": "Step3: 战士光环效果 - 提升全队攻击力",
+    "icon": "⚔️",
+    "kind": "Buff",
+    "durationSec": 10.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "AllAllies",
+    "effects": [
+      {
+        "type": "StatMultiplier",
+        "target": "DamagePerAttack",
+        "value": 0.10
+      }
+    ]
+  }
+]

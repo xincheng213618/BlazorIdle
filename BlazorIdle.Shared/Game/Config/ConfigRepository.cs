@@ -60,18 +60,6 @@ namespace BlazorIdle.Game.Config
                 }
             }
 
-            // 如果新的分类文件加载失败，尝试加载旧的 items.json 作为后备
-            if (allItems.Count == 0)
-            {
-                Console.WriteLine("[ConfigRepository] 尝试从旧的 items.json 加载...");
-                var legacyItems = TryLoadConfig<List<ItemDefinition>>("items.json");
-                if (legacyItems != null && legacyItems.Count > 0)
-                {
-                    allItems.AddRange(legacyItems);
-                    Console.WriteLine($"[ConfigRepository] 从 items.json 加载了 {legacyItems.Count} 个物品");
-                }
-            }
-
             if (allItems.Count == 0)
             {
                 throw new InvalidOperationException(
@@ -114,14 +102,13 @@ namespace BlazorIdle.Game.Config
         };
 
         /// <summary>
-        /// 加载消耗品商店配置 - 从分类文件加载，保留旧版兼容
-        /// Load consumable shop configuration - load from categorized files with legacy fallback
+        /// 加载消耗品商店配置 - 从分类文件加载
+        /// Load consumable shop configuration - load from categorized files
         /// </summary>
         /// <returns>商店配置列表，加载失败时抛出异常</returns>
         /// <exception cref="InvalidOperationException">配置加载失败</exception>
         public static List<ShopItemConfig> LoadConsumableShop()
         {
-            // 尝试从新的分类文件加载
             var result = TryLoadConfig<List<ShopItemConfig>>("shops.consumable.json");
             if (result != null && result.Count > 0)
             {
@@ -129,26 +116,17 @@ namespace BlazorIdle.Game.Config
                 return result;
             }
 
-            // 尝试旧版文件
-            result = TryLoadConfig<List<ShopItemConfig>>("consumableShop.json");
-            if (result != null && result.Count > 0)
-            {
-                Console.WriteLine($"[ConfigRepository] 从 consumableShop.json 加载了 {result.Count} 个物品");
-                return result;
-            }
-
-            throw new InvalidOperationException("消耗品商店配置加载失败或为空。");
+            throw new InvalidOperationException("消耗品商店配置加载失败或为空。请检查 Config/shops/consumable.json 是否正确配置。");
         }
 
         /// <summary>
-        /// 加载药水商店配置 - 从分类文件加载，保留旧版兼容
-        /// Load potion shop configuration - load from categorized files with legacy fallback
+        /// 加载药水商店配置 - 从分类文件加载
+        /// Load potion shop configuration - load from categorized files
         /// </summary>
         /// <returns>商店配置列表，加载失败时抛出异常</returns>
         /// <exception cref="InvalidOperationException">配置加载失败</exception>
         public static List<ShopItemConfig> LoadPotionShop()
         {
-            // 尝试从新的分类文件加载
             var result = TryLoadConfig<List<ShopItemConfig>>("shops.potion.json");
             if (result != null && result.Count > 0)
             {
@@ -156,26 +134,17 @@ namespace BlazorIdle.Game.Config
                 return result;
             }
 
-            // 尝试旧版文件
-            result = TryLoadConfig<List<ShopItemConfig>>("potionShop.json");
-            if (result != null && result.Count > 0)
-            {
-                Console.WriteLine($"[ConfigRepository] 从 potionShop.json 加载了 {result.Count} 个物品");
-                return result;
-            }
-
-            throw new InvalidOperationException("药水商店配置加载失败或为空。");
+            throw new InvalidOperationException("药水商店配置加载失败或为空。请检查 Config/shops/potion.json 是否正确配置。");
         }
 
         /// <summary>
-        /// 加载食品商店配置 - 从分类文件加载，保留旧版兼容
-        /// Load food shop configuration - load from categorized files with legacy fallback
+        /// 加载食品商店配置 - 从分类文件加载
+        /// Load food shop configuration - load from categorized files
         /// </summary>
         /// <returns>商店配置列表，加载失败时抛出异常</returns>
         /// <exception cref="InvalidOperationException">配置加载失败</exception>
         public static List<ShopItemConfig> LoadFoodShop()
         {
-            // 尝试从新的分类文件加载
             var result = TryLoadConfig<List<ShopItemConfig>>("shops.food.json");
             if (result != null && result.Count > 0)
             {
@@ -183,25 +152,16 @@ namespace BlazorIdle.Game.Config
                 return result;
             }
 
-            // 尝试旧版文件
-            result = TryLoadConfig<List<ShopItemConfig>>("foodShop.json");
-            if (result != null && result.Count > 0)
-            {
-                Console.WriteLine($"[ConfigRepository] 从 foodShop.json 加载了 {result.Count} 个物品");
-                return result;
-            }
-
-            throw new InvalidOperationException("食品商店配置加载失败或为空。");
+            throw new InvalidOperationException("食品商店配置加载失败或为空。请检查 Config/shops/food.json 是否正确配置。");
         }
 
         /// <summary>
-        /// 加载系统商店配置 - 从分类文件加载，保留旧版兼容
-        /// Load system shop configuration - load from categorized files with legacy fallback
+        /// 加载系统商店配置 - 从分类文件加载
+        /// Load system shop configuration - load from categorized files
         /// </summary>
         /// <returns>系统商店配置，加载失败时返回默认配置</returns>
         public static SystemShopConfig LoadSystemShop()
         {
-            // 尝试从新的分类文件加载
             var result = TryLoadConfig<SystemShopConfig>("shops.system.json");
             if (result != null)
             {
@@ -209,28 +169,23 @@ namespace BlazorIdle.Game.Config
                 return result;
             }
 
-            // 尝试旧版文件
-            result = TryLoadConfig<SystemShopConfig>("systemShop.json");
-            if (result == null)
+            // 返回默认配置
+            Console.WriteLine("[ConfigRepository] 系统商店配置未找到，使用默认配置");
+            return new SystemShopConfig
             {
-                // 返回默认配置
-                return new SystemShopConfig
+                Items = new List<SystemShopItemConfig>
                 {
-                    Items = new List<SystemShopItemConfig>
+                    new SystemShopItemConfig
                     {
-                        new SystemShopItemConfig
-                        {
-                            ItemId = "character_slot",
-                            DisplayName = "角色槽位 +1",
-                            Description = "增加一个可创建角色的槽位",
-                            Price = 5000,
-                            CurrencyType = "Gold",
-                            Limits = new BlazorIdle.Game.Purchase.PurchaseLimit { PerAccount = 1 }
-                        }
+                        ItemId = "character_slot",
+                        DisplayName = "角色槽位 +1",
+                        Description = "增加一个可创建角色的槽位",
+                        Price = 5000,
+                        CurrencyType = "Gold",
+                        Limits = new BlazorIdle.Game.Purchase.PurchaseLimit { PerAccount = 1 }
                     }
-                };
-            }
-            return result;
+                }
+            };
         }
 
         /// <summary>

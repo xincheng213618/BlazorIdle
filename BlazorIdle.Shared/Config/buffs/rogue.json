@@ -1,0 +1,114 @@
+// 盗贼Buff配置文件 - Rogue Buff Configuration File
+// 
+// 注意 / Note:
+// - 包含所有盗贼职业相关的Buff效果
+// - Contains all rogue profession related buff effects
+//
+[
+  {
+    "id": "rogue_combo",
+    "name": "连击点",
+    "description": "积累连击点数，用于释放终结技",
+    "icon": "🗡️",
+    "kind": "Buff",
+    "durationSec": 15.0,
+    "stackingPolicy": "Stack",
+    "maxStacks": 5,
+    "defaultTarget": "Self",
+    "effects": []
+  },
+  {
+    "id": "rogue_deadly_poison_buff",
+    "name": "致命毒药",
+    "description": "武器附加致命毒素",
+    "icon": "🧪",
+    "kind": "Buff",
+    "durationSec": 20.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatMultiplier",
+        "target": "DamagePerAttack",
+        "value": 0.15
+      }
+    ]
+  },
+  {
+    "id": "rogue_poison_dot",
+    "name": "剧毒",
+    "description": "持续造成毒素伤害",
+    "icon": "🦠",
+    "kind": "Debuff",
+    "durationSec": 12.0,
+    "tickIntervalSec": 2.0,
+    "stackingPolicy": "Stack",
+    "maxStacks": 3,
+    "defaultTarget": "Target",
+    "effects": [
+      {
+        "type": "DamageOverTime",
+        "amountPerTick": 8
+      }
+    ]
+  },
+  {
+    "id": "rogue_shadow_dance_buff",
+    "name": "影舞",
+    "description": "大幅提升暴击率",
+    "icon": "🌙",
+    "kind": "Buff",
+    "durationSec": 8.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatAdditive",
+        "target": "CritChancePercent",
+        "value": 30.0
+      }
+    ]
+  },
+  {
+    "id": "rogue_sprint_buff",
+    "name": "疾跑",
+    "description": "提升攻击速度",
+    "icon": "💨",
+    "kind": "Buff",
+    "durationSec": 6.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "StatAdditive",
+        "target": "HastePercent",
+        "value": 50.0
+      }
+    ]
+  },
+  {
+    "id": "rogue_stealth_crit",
+    "name": "潜行暴击",
+    "description": "下次攻击必定暴击且伤害提升",
+    "icon": "🎯",
+    "kind": "Buff",
+    "durationSec": 10.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Self",
+    "effects": [
+      {
+        "type": "ForceCrit",
+        "value": 1
+      },
+      {
+        "type": "StatMultiplier",
+        "target": "DamagePerAttack",
+        "value": 0.50
+      }
+    ]
+  }
+]

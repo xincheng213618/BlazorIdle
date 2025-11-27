@@ -18,6 +18,22 @@ namespace BlazorIdle.Game.Buffs
         private static readonly object _lock = new object();
 
         /// <summary>
+        /// Buff配置文件列表 - 按职业/类型分类存储在 buffs 文件夹中
+        /// Buff config files - stored in buffs folder by profession/type
+        /// </summary>
+        private static readonly string[] BuffConfigFiles = new[]
+        {
+            "buffs.warrior.json",     // 战士Buff
+            "buffs.mage.json",        // 法师Buff
+            "buffs.rogue.json",       // 盗贼Buff
+            "buffs.ranger.json",      // 游侠Buff
+            "buffs.common.json",      // 通用Buff
+            "buffs.debuffs.json",     // 通用Debuff
+            "buffs.consumable.json",  // 消耗品Buff
+            "buffs.monster.json"      // 怪物Buff
+        };
+
+        /// <summary>
         /// Gets the singleton instance of BuffRepository.
         /// Thread-safe implementation.
         /// </summary>
@@ -45,13 +61,14 @@ namespace BlazorIdle.Game.Buffs
         /// </summary>
         private BuffRepository()
         {
-            // Load from JSON file - no fallback to verify JSON is being used
-            bool loaded = TryLoadFromEmbeddedJson();
+            // 从分类文件加载
+            bool loaded = TryLoadFromCategorizedFiles();
+            
             if (!loaded)
             {
                 // No fallback - throw exception to make it clear JSON loading failed
-                var errorMsg = "[BuffRepository] CRITICAL ERROR: Failed to load buffs.json from embedded resources. " +
-                              "Cannot initialize buff system. Check that buffs.json is properly embedded in the assembly.";
+                var errorMsg = "[BuffRepository] CRITICAL ERROR: Failed to load buff configurations from embedded resources. " +
+                              "Cannot initialize buff system. Check that buff config files are properly embedded in the assembly.";
                 Console.WriteLine(errorMsg);
                 throw new InvalidOperationException(errorMsg);
             }
@@ -69,74 +86,78 @@ namespace BlazorIdle.Game.Buffs
         }
 
         /// <summary>
-        /// P0 Fix: Attempts to load buff configurations from embedded JSON resource.
+        /// 尝试从分类文件加载Buff配置
+        /// Attempts to load buff configurations from categorized files.
         /// </summary>
-        /// <returns>True if successfully loaded, false otherwise.</returns>
-        private bool TryLoadFromEmbeddedJson()
+        /// <returns>True if at least one file was successfully loaded, false otherwise.</returns>
+        private bool TryLoadFromCategorizedFiles()
         {
-            try
+            var loadedFiles = new List<string>();
+            var failedFiles = new List<string>();
+            int totalBuffs = 0;
+
+            var assembly = typeof(BuffRepository).Assembly;
+            var options = new JsonSerializerOptions
             {
-                var assembly = typeof(BuffRepository).Assembly;
-                var resourceName = "BlazorIdle.Shared.Config.buffs.json";
-                
-                using (var stream = assembly.GetManifestResourceStream(resourceName))
+                PropertyNameCaseInsensitive = true,
+                ReadCommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true,
+                Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
+            };
+
+            foreach (var filename in BuffConfigFiles)
+            {
+                try
                 {
+                    var resourceName = $"BlazorIdle.Shared.Config.{filename}";
+                    using var stream = assembly.GetManifestResourceStream(resourceName);
+                    
                     if (stream == null)
                     {
-                        // Try alternative resource name format
-                        var resources = assembly.GetManifestResourceNames();
-                        resourceName = resources.FirstOrDefault(r => r.EndsWith("buffs.json"));
-                        
-                        if (resourceName != null)
-                        {
-                            stream?.Dispose();
-                            using (var alternativeStream = assembly.GetManifestResourceStream(resourceName))
-                            {
-                                if (alternativeStream != null)
-                                {
-                                    return LoadFromStream(alternativeStream);
-                                }
-                            }
-                        }
-                        
-                        Console.WriteLine($"[BuffRepository] Warning: Could not find embedded resource 'buffs.json'. Available resources: {string.Join(", ", resources)}");
-                        return false;
+                        failedFiles.Add($"{filename}: 资源未找到");
+                        continue;
                     }
-                    
-                    return LoadFromStream(stream);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[BuffRepository] Error loading from embedded JSON: {ex.Message}");
-                return false;
-            }
-        }
 
-        /// <summary>
-        /// Helper method to load buffs from a stream.
-        /// </summary>
-        private bool LoadFromStream(System.IO.Stream stream)
-        {
-            using (var reader = new System.IO.StreamReader(stream))
-            {
-                var json = reader.ReadToEnd();
-                LoadFromJson(json);
-                Console.WriteLine($"[BuffRepository] ✅ Successfully loaded {_buffs.Count} buffs from buffs.json");
-                
-                // Log a sample buff to confirm values are from JSON
-                var sampleBuff = GetBuffById("warrior_power_boost");
-                if (sampleBuff != null)
-                {
-                    var hasteEffect = sampleBuff.Effects.FirstOrDefault(e => e.Target == "HastePercent");
-                    if (hasteEffect != null)
+                    using var reader = new StreamReader(stream);
+                    var json = reader.ReadToEnd();
+                    
+                    if (string.IsNullOrWhiteSpace(json))
                     {
-                        Console.WriteLine($"[BuffRepository] Sample verification - warrior_power_boost HastePercent = {hasteEffect.Value}");
+                        failedFiles.Add($"{filename}: 文件为空");
+                        continue;
+                    }
+
+                    var configs = JsonSerializer.Deserialize<List<BuffConfig>>(json, options);
+                    if (configs != null && configs.Count > 0)
+                    {
+                        foreach (var config in configs)
+                        {
+                            RegisterBuff(config);
+                        }
+                        totalBuffs += configs.Count;
+                        loadedFiles.Add($"{filename} ({configs.Count} buffs)");
+                        Console.WriteLine($"[BuffRepository] 已加载Buff分类: {filename} ({configs.Count} 个Buff)");
                     }
                 }
-                
+                catch (Exception ex)
+                {
+                    failedFiles.Add($"{filename}: {ex.Message}");
+                    Console.Error.WriteLine($"[BuffRepository] 加载Buff分类失败: {filename} - {ex.Message}");
+                }
+            }
+
+            if (loadedFiles.Count > 0)
+            {
+                Console.WriteLine($"[BuffRepository] ✅ 成功从分类文件加载 {totalBuffs} 个Buff，来自 {loadedFiles.Count} 个文件");
                 return true;
             }
+
+            if (failedFiles.Count > 0)
+            {
+                Console.WriteLine($"[BuffRepository] 警告: 所有分类文件加载失败。失败详情: {string.Join("; ", failedFiles)}");
+            }
+
+            return false;
         }
 
         /// <summary>
