@@ -22,7 +22,7 @@ namespace BlazorIdle.Server.Services
         private int _maxProfessionLevel = 100;
         private volatile bool _loaded;
 
-        public GameConfigProvider(IHostEnvironment env)
+        public GameConfigProvider(IHostEnvironment _)
         {
             // IHostEnvironment no longer needed for file loading, but kept for DI compatibility
             // IHostEnvironment 不再需要用于文件加载，但保留用于 DI 兼容性
