@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json.Serialization;
 
 namespace BlazorIdle.Shared.Models
@@ -22,6 +23,18 @@ namespace BlazorIdle.Shared.Models
     public sealed class ConsumableEquipmentConfig
     {
         /// <summary>
+        /// 药水槽位ID常量数组 - 便于维护和扩展
+        /// Potion slot ID constants - for easier maintenance and extension
+        /// </summary>
+        public static readonly string[] PotionSlotIds = { "potion_1", "potion_2" };
+
+        /// <summary>
+        /// 食物槽位ID常量数组 - 便于维护和扩展
+        /// Food slot ID constants - for easier maintenance and extension
+        /// </summary>
+        public static readonly string[] FoodSlotIds = { "food_1", "food_2" };
+
+        /// <summary>
         /// 药水槽位 (2个槽位: potion_1, potion_2)
         /// Potion slots (2 slots)
         /// 
@@ -29,11 +42,8 @@ namespace BlazorIdle.Shared.Models
         /// Potions mainly provide long/short-term buff effects
         /// </summary>
         [JsonPropertyName("potionSlots")]
-        public Dictionary<string, ConsumableSlotData> PotionSlots { get; set; } = new Dictionary<string, ConsumableSlotData>
-        {
-            { "potion_1", new ConsumableSlotData() },
-            { "potion_2", new ConsumableSlotData() }
-        };
+        public Dictionary<string, ConsumableSlotData> PotionSlots { get; set; } = 
+            PotionSlotIds.ToDictionary(id => id, _ => new ConsumableSlotData());
 
         /// <summary>
         /// 食物槽位 (2个槽位: food_1, food_2)
@@ -43,11 +53,8 @@ namespace BlazorIdle.Shared.Models
         /// Food mainly provides instant/continuous recovery effects
         /// </summary>
         [JsonPropertyName("foodSlots")]
-        public Dictionary<string, ConsumableSlotData> FoodSlots { get; set; } = new Dictionary<string, ConsumableSlotData>
-        {
-            { "food_1", new ConsumableSlotData() },
-            { "food_2", new ConsumableSlotData() }
-        };
+        public Dictionary<string, ConsumableSlotData> FoodSlots { get; set; } = 
+            FoodSlotIds.ToDictionary(id => id, _ => new ConsumableSlotData());
 
         /// <summary>
         /// 获取指定槽位的数据

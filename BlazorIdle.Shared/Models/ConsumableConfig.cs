@@ -1,8 +1,34 @@
+using System;
 using System.Text.Json.Serialization;
 using BlazorIdle.Game.Skills;
 
 namespace BlazorIdle.Shared.Models
 {
+    /// <summary>
+    /// 消耗品类别枚举 - 类型安全的消耗品分类
+    /// Consumable category enum - type-safe consumable classification
+    /// </summary>
+    public enum ConsumableCategory
+    {
+        /// <summary>
+        /// 未知类别
+        /// Unknown category
+        /// </summary>
+        Unknown = 0,
+
+        /// <summary>
+        /// 药水 - 主要提供持久/短期增益效果
+        /// Potion - mainly provides long/short-term buff effects
+        /// </summary>
+        Potion = 1,
+
+        /// <summary>
+        /// 食物 - 主要提供瞬间/持续恢复效果
+        /// Food - mainly provides instant/continuous recovery effects
+        /// </summary>
+        Food = 2
+    }
+
     /// <summary>
     /// 消耗品配置 - 定义消耗品的战斗行为
     /// Consumable configuration - defines consumable battle behavior
@@ -56,17 +82,29 @@ namespace BlazorIdle.Shared.Models
         public double CooldownSec { get; set; } = 30.0;
 
         /// <summary>
+        /// 获取枚举类型的消耗品类别
+        /// Get consumable category as enum type
+        /// </summary>
+        [JsonIgnore]
+        public ConsumableCategory CategoryType => Category?.ToLowerInvariant() switch
+        {
+            "potion" => ConsumableCategory.Potion,
+            "food" => ConsumableCategory.Food,
+            _ => ConsumableCategory.Unknown
+        };
+
+        /// <summary>
         /// 检查是否为药水类
         /// Check if this is a potion
         /// </summary>
         [JsonIgnore]
-        public bool IsPotion => Category?.ToLowerInvariant() == "potion";
+        public bool IsPotion => CategoryType == ConsumableCategory.Potion;
 
         /// <summary>
         /// 检查是否为食物类
         /// Check if this is food
         /// </summary>
         [JsonIgnore]
-        public bool IsFood => Category?.ToLowerInvariant() == "food";
+        public bool IsFood => CategoryType == ConsumableCategory.Food;
     }
 }
