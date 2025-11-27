@@ -199,6 +199,7 @@
     private string? statusMessage;
     private string statusAlertClass = "alert-info";
     private Inventory? _subscribedInventory;
+    private CancellationTokenSource? _clearStatusCts;
 
     protected override async Task OnInitializedAsync()
     {
@@ -463,11 +464,26 @@
 
     private void ClearStatusAfterDelay()
     {
-        _ = Task.Delay(2000).ContinueWith(async _ =>
+        _clearStatusCts?.Cancel();
+        _clearStatusCts = new CancellationTokenSource();
+        _ = ClearStatusWithCancellation(_clearStatusCts.Token);
+    }
+
+    private async Task ClearStatusWithCancellation(CancellationToken ct)
+    {
+        try
         {
-            statusMessage = null;
-            await InvokeAsync(StateHasChanged);
-        }, TaskScheduler.Default);
+            await Task.Delay(2000, ct);
+            if (!ct.IsCancellationRequested)
+            {
+                statusMessage = null;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Expected when component is disposed or new message shown
+        }
     }
 
     private string GetResultMessage(ConsumableOperationResult result) => result switch
@@ -495,6 +511,8 @@
 
     public void Dispose()
     {
+        _clearStatusCts?.Cancel();
+        _clearStatusCts?.Dispose();
         if (_subscribedInventory != null)
             _subscribedInventory.Changed -= OnInventoryChanged;
     }
