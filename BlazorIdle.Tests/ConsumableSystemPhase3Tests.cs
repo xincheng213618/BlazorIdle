@@ -264,5 +264,25 @@ namespace BlazorIdle.Tests
         }
 
         #endregion
+
+        #region DungeonManager Consumable Event Tests
+
+        [Fact]
+        public void DungeonManager_ConsumableEvents_AreExposed()
+        {
+            // This test verifies that DungeonManager has the ConsumableUsed and ConsumableOutOfStock events
+            // The actual event forwarding is tested in integration tests
+            
+            // Assert - DungeonManager should have these events defined
+            var dungeonManagerType = typeof(BlazorIdle.Game.DungeonManager);
+            
+            var consumableUsedEvent = dungeonManagerType.GetEvent("ConsumableUsed");
+            var consumableOutOfStockEvent = dungeonManagerType.GetEvent("ConsumableOutOfStock");
+            
+            Assert.NotNull(consumableUsedEvent);
+            Assert.NotNull(consumableOutOfStockEvent);
+        }
+
+        #endregion
     }
 }

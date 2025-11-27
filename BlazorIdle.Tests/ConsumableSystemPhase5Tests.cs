@@ -412,9 +412,9 @@ namespace BlazorIdle.Tests
             // Act
             character.Inventory.AddItem("test_item", 5);
             
-            // Wait for debounce delay (16ms + some buffer)
-            // 等待防抖动延迟
-            await Task.Delay(50);
+            // Wait for debounce delay (16ms) + extra buffer for thread scheduling
+            // 等待防抖动延迟 + 线程调度缓冲时间
+            await Task.Delay(100);
 
             // Assert
             Assert.True(eventFired);
