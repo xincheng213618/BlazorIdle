@@ -1,0 +1,48 @@
+[
+  {
+    "id": "strength_potion",
+    "name": "力量药水",
+    "icon": "💪",
+    "description": "临时增加10%攻击力，持续60秒",
+    "type": 3,
+    "stackable": true,
+    "maxStack": 99,
+    "rarity": 2,
+    "sellPrice": 25,
+    "buyPrice": 50,
+    "metadata": {
+      "effectDescription": "使用后增加10%攻击力，持续60秒"
+    },
+    "consumableConfig": {
+      "category": "potion",
+      "skillId": "consumable_strength_potion",
+      "triggerConditions": {
+        "combatStarted": true
+      },
+      "cooldownSec": 120.0
+    }
+  },
+  {
+    "id": "speed_potion",
+    "name": "敏捷药水",
+    "icon": "⚡",
+    "description": "临时增加15%速度，持续60秒",
+    "type": 3,
+    "stackable": true,
+    "maxStack": 99,
+    "rarity": 2,
+    "sellPrice": 30,
+    "buyPrice": 60,
+    "metadata": {
+      "effectDescription": "使用后增加15%速度，持续60秒"
+    },
+    "consumableConfig": {
+      "category": "potion",
+      "skillId": "consumable_speed_potion",
+      "triggerConditions": {
+        "combatStarted": true
+      },
+      "cooldownSec": 120.0
+    }
+  }
+]

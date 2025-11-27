@@ -18,19 +18,69 @@ namespace BlazorIdle.Game.Config
         };
 
         /// <summary>
-        /// 加载物品配置
-        /// Load items configuration
+        /// 物品配置文件列表 - 按类型分类存储在 items 文件夹中
+        /// Item config files - stored in items folder by type
+        /// </summary>
+        private static readonly string[] ItemConfigFiles = new[]
+        {
+            "items.currency.json",    // 货币
+            "items.potions.json",     // 药水
+            "items.food.json",        // 食物
+            "items.special.json"      // 特殊物品（技能书、卷轴等）
+        };
+
+        /// <summary>
+        /// 加载物品配置 - 从多个分类文件中合并加载
+        /// Load items configuration - merge from multiple category files
         /// </summary>
         /// <returns>物品列表，加载失败时抛出异常</returns>
         /// <exception cref="InvalidOperationException">配置加载失败</exception>
         public static List<ItemDefinition> LoadItems()
         {
-            var result = LoadConfig<List<ItemDefinition>>("items.json");
-            if (result == null || result.Count == 0)
+            var allItems = new List<ItemDefinition>();
+            var loadedFiles = new List<string>();
+            var failedFiles = new List<string>();
+
+            foreach (var filename in ItemConfigFiles)
             {
-                throw new InvalidOperationException("物品配置加载失败或为空。请检查 items.json 文件是否正确配置。");
+                try
+                {
+                    var items = TryLoadConfig<List<ItemDefinition>>(filename);
+                    if (items != null && items.Count > 0)
+                    {
+                        allItems.AddRange(items);
+                        loadedFiles.Add(filename);
+                        Console.WriteLine($"[ConfigRepository] 已加载物品分类: {filename} ({items.Count} 个物品)");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failedFiles.Add($"{filename}: {ex.Message}");
+                    Console.Error.WriteLine($"[ConfigRepository] 加载物品分类失败: {filename} - {ex.Message}");
+                }
             }
-            return result;
+
+            // 如果新的分类文件加载失败，尝试加载旧的 items.json 作为后备
+            if (allItems.Count == 0)
+            {
+                Console.WriteLine("[ConfigRepository] 尝试从旧的 items.json 加载...");
+                var legacyItems = TryLoadConfig<List<ItemDefinition>>("items.json");
+                if (legacyItems != null && legacyItems.Count > 0)
+                {
+                    allItems.AddRange(legacyItems);
+                    Console.WriteLine($"[ConfigRepository] 从 items.json 加载了 {legacyItems.Count} 个物品");
+                }
+            }
+
+            if (allItems.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"物品配置加载失败或为空。已尝试加载: {string.Join(", ", ItemConfigFiles)}。" +
+                    $"失败详情: {string.Join("; ", failedFiles)}");
+            }
+
+            Console.WriteLine($"[ConfigRepository] 成功加载物品配置，共 {allItems.Count} 个物品，来自 {loadedFiles.Count} 个文件");
+            return allItems;
         }
 
         /// <summary>

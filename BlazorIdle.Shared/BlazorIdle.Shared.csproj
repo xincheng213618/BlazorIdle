@@ -22,6 +22,11 @@
     <EmbeddedResource Include="Config\userConfig.json" />
     <EmbeddedResource Include="Config\potionShop.json" />
     <EmbeddedResource Include="Config\foodShop.json" />
+    <!-- 物品分类配置文件 / Item category config files -->
+    <EmbeddedResource Include="Config\items\currency.json" LogicalName="BlazorIdle.Shared.Config.items.currency.json" />
+    <EmbeddedResource Include="Config\items\potions.json" LogicalName="BlazorIdle.Shared.Config.items.potions.json" />
+    <EmbeddedResource Include="Config\items\food.json" LogicalName="BlazorIdle.Shared.Config.items.food.json" />
+    <EmbeddedResource Include="Config\items\special.json" LogicalName="BlazorIdle.Shared.Config.items.special.json" />
   </ItemGroup>
 
 </Project>
