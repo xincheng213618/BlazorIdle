@@ -16,6 +16,7 @@ namespace BlazorIdle.Game.Config
         private readonly List<BattleScenarioDef> _battleScenarios = new();
         private readonly List<BattleConfigDef> _battleConfigs = new();
         private readonly Dictionary<string, ProfessionAttributeConfig> _professionAttributes = new();
+        private readonly List<LevelExperienceRequirement> _experienceCurve = new();
         private int _maxProfessionLevel = 100;
 
         public GameConfigService(HttpClient http, ApiConfiguration apiConfig)
@@ -40,23 +41,35 @@ namespace BlazorIdle.Game.Config
         {
             if (_loaded) return;
 
-            Shared.DTOs.GameConfigResponse? response = null;
-            try
-            {
-                response = await _http.GetFromJsonAsync<Shared.DTOs.GameConfigResponse>($"{_apiConfig.GameConfigApiUrl}/all", ct);
-            }
-            catch
-            {
-                // ignore, will fallback
-            }
+            // Load all configurations from embedded resources (ConfigRepository)
+            // 从嵌入资源中加载所有配置（不再依赖API）
 
-            var profs = response?.Professions ?? DefaultGameConfig.DefaultProfessions();
-            var mons = response?.Monsters ?? DefaultGameConfig.DefaultMonsters();
-            // Load items from Shared config instead of API
+            // Load items
             var items = ConfigRepository.LoadItems();
-            var dungeons = response?.Dungeons ?? new List<DungeonDef>();
-            var battleScenarios = response?.BattleScenarios ?? new List<BattleScenarioDef>();
-            var battleConfigs = response?.BattleConfigs ?? new List<BattleConfigDef>();
+
+            // Load professions
+            var profs = ConfigRepository.LoadProfessions();
+
+            // Load monsters
+            var mons = ConfigRepository.LoadMonsters();
+
+            // Load dungeons
+            var dungeons = ConfigRepository.LoadDungeons();
+
+            // Load battle scenarios
+            var battleScenarios = ConfigRepository.LoadBattleScenarios();
+
+            // Load battle configs
+            var battleConfigs = ConfigRepository.LoadBattleConfigs();
+
+            // Load profession attributes
+            var professionAttributes = ConfigRepository.LoadProfessionAttributes();
+
+            // Load experience curve
+            var experienceCurve = ConfigRepository.LoadExperienceCurve();
+
+            // Load profession limits
+            var professionLimits = ConfigRepository.LoadProfessionLimits();
 
             _professions.Clear();
             _professions.AddRange(profs.Where(p => !string.IsNullOrWhiteSpace(p.Id)));
@@ -77,18 +90,22 @@ namespace BlazorIdle.Game.Config
             _battleConfigs.AddRange(battleConfigs.Where(b => !string.IsNullOrWhiteSpace(b.Id)));
 
             _professionAttributes.Clear();
-            if (response?.ProfessionAttributes != null)
+            foreach (var kvp in professionAttributes)
             {
-                foreach (var kvp in response.ProfessionAttributes)
-                {
-                    _professionAttributes[kvp.Key] = kvp.Value;
-                }
+                _professionAttributes[kvp.Key] = kvp.Value;
             }
 
-            _maxProfessionLevel = response?.MaxProfessionLevel ?? 100;
+            _experienceCurve.Clear();
+            _experienceCurve.AddRange(experienceCurve.OrderBy(e => e.Level));
 
-            Version = response?.Version ?? $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-profAttrs:{_professionAttributes.Count}";
+            _maxProfessionLevel = professionLimits.MaxProfessionLevel;
+
+            Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-profAttrs:{_professionAttributes.Count}-exp:{_experienceCurve.Count}-maxLvl:{_maxProfessionLevel}";
             _loaded = true;
+
+            // Note: We no longer fetch from API - all configs are loaded from embedded resources
+            // 注意：不再从API获取配置 - 所有配置都从嵌入资源加载
+            await Task.CompletedTask; // Keep async signature for backward compatibility
         }
 
         public ProfessionDef? GetProfession(string id)

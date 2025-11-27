@@ -45,6 +45,22 @@
     <EmbeddedResource Include="Config\buffs\debuffs.json" LogicalName="BlazorIdle.Shared.Config.buffs.debuffs.json" />
     <EmbeddedResource Include="Config\buffs\consumable.json" LogicalName="BlazorIdle.Shared.Config.buffs.consumable.json" />
     <EmbeddedResource Include="Config\buffs\monster.json" LogicalName="BlazorIdle.Shared.Config.buffs.monster.json" />
+    
+    <!-- 战斗配置文件 / Battle config files -->
+    <EmbeddedResource Include="Config\battles\battleConfigs.json" LogicalName="BlazorIdle.Shared.Config.battles.battleConfigs.json" />
+    <EmbeddedResource Include="Config\battles\battleScenarios.json" LogicalName="BlazorIdle.Shared.Config.battles.battleScenarios.json" />
+    
+    <!-- 怪物配置文件 / Monster config files -->
+    <EmbeddedResource Include="Config\monsters\monsters.json" LogicalName="BlazorIdle.Shared.Config.monsters.monsters.json" />
+    
+    <!-- 副本配置文件 / Dungeon config files -->
+    <EmbeddedResource Include="Config\dungeons\dungeons.json" LogicalName="BlazorIdle.Shared.Config.dungeons.dungeons.json" />
+    
+    <!-- 职业配置文件 / Profession config files -->
+    <EmbeddedResource Include="Config\professions\professions.json" LogicalName="BlazorIdle.Shared.Config.professions.professions.json" />
+    <EmbeddedResource Include="Config\professions\attributes.json" LogicalName="BlazorIdle.Shared.Config.professions.attributes.json" />
+    <EmbeddedResource Include="Config\professions\limits.json" LogicalName="BlazorIdle.Shared.Config.professions.limits.json" />
+    <EmbeddedResource Include="Config\professions\experience.json" LogicalName="BlazorIdle.Shared.Config.professions.experience.json" />
   </ItemGroup>
 
 </Project>

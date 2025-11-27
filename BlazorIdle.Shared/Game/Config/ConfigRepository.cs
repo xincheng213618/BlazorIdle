@@ -209,6 +209,173 @@ namespace BlazorIdle.Game.Config
             return result;
         }
 
+        #region 战斗配置加载 / Battle Config Loading
+
+        /// <summary>
+        /// 加载战斗配置列表
+        /// Load battle configurations list
+        /// </summary>
+        /// <returns>战斗配置列表，加载失败时返回空列表</returns>
+        public static List<BattleConfigDef> LoadBattleConfigs()
+        {
+            var result = TryLoadConfig<List<BattleConfigDef>>("battles.battleConfigs.json");
+            if (result != null && result.Count > 0)
+            {
+                Console.WriteLine($"[ConfigRepository] 已加载战斗配置: battles.battleConfigs.json ({result.Count} 个配置)");
+                return result;
+            }
+            Console.WriteLine("[ConfigRepository] 战斗配置未找到或为空，使用空列表");
+            return new List<BattleConfigDef>();
+        }
+
+        /// <summary>
+        /// 加载战斗场景列表
+        /// Load battle scenarios list
+        /// </summary>
+        /// <returns>战斗场景列表，加载失败时返回空列表</returns>
+        public static List<BattleScenarioDef> LoadBattleScenarios()
+        {
+            var result = TryLoadConfig<List<BattleScenarioDef>>("battles.battleScenarios.json");
+            if (result != null && result.Count > 0)
+            {
+                Console.WriteLine($"[ConfigRepository] 已加载战斗场景: battles.battleScenarios.json ({result.Count} 个场景)");
+                return result;
+            }
+            Console.WriteLine("[ConfigRepository] 战斗场景未找到或为空，使用空列表");
+            return new List<BattleScenarioDef>();
+        }
+
+        #endregion
+
+        #region 怪物配置加载 / Monster Config Loading
+
+        /// <summary>
+        /// 加载怪物配置列表
+        /// Load monster definitions list
+        /// </summary>
+        /// <returns>怪物列表，加载失败时返回默认列表</returns>
+        public static List<MonsterDef> LoadMonsters()
+        {
+            var result = TryLoadConfig<List<MonsterDef>>("monsters.monsters.json");
+            if (result != null && result.Count > 0)
+            {
+                Console.WriteLine($"[ConfigRepository] 已加载怪物配置: monsters.monsters.json ({result.Count} 个怪物)");
+                return result;
+            }
+            Console.WriteLine("[ConfigRepository] 怪物配置未找到或为空，使用默认怪物配置");
+            return DefaultGameConfig.DefaultMonsters();
+        }
+
+        #endregion
+
+        #region 副本配置加载 / Dungeon Config Loading
+
+        /// <summary>
+        /// 加载副本配置列表
+        /// Load dungeon definitions list
+        /// </summary>
+        /// <returns>副本列表，加载失败时返回空列表</returns>
+        public static List<DungeonDef> LoadDungeons()
+        {
+            var result = TryLoadConfig<List<DungeonDef>>("dungeons.dungeons.json");
+            if (result != null && result.Count > 0)
+            {
+                Console.WriteLine($"[ConfigRepository] 已加载副本配置: dungeons.dungeons.json ({result.Count} 个副本)");
+                return result;
+            }
+            Console.WriteLine("[ConfigRepository] 副本配置未找到或为空，使用空列表");
+            return new List<DungeonDef>();
+        }
+
+        #endregion
+
+        #region 职业配置加载 / Profession Config Loading
+
+        /// <summary>
+        /// 加载职业定义列表
+        /// Load profession definitions list
+        /// </summary>
+        /// <returns>职业列表，加载失败时返回默认列表</returns>
+        public static List<ProfessionDef> LoadProfessions()
+        {
+            var result = TryLoadConfig<List<ProfessionDef>>("professions.professions.json");
+            if (result != null && result.Count > 0)
+            {
+                Console.WriteLine($"[ConfigRepository] 已加载职业配置: professions.professions.json ({result.Count} 个职业)");
+                return result;
+            }
+            Console.WriteLine("[ConfigRepository] 职业配置未找到或为空，使用默认职业配置");
+            return DefaultGameConfig.DefaultProfessions();
+        }
+
+        /// <summary>
+        /// 加载职业属性配置
+        /// Load profession attribute configurations
+        /// </summary>
+        /// <returns>职业属性配置字典，加载失败时返回空字典</returns>
+        public static Dictionary<string, ProfessionAttributeConfig> LoadProfessionAttributes()
+        {
+            var result = TryLoadConfig<Dictionary<string, ProfessionAttributeConfig>>("professions.attributes.json");
+            if (result != null && result.Count > 0)
+            {
+                Console.WriteLine($"[ConfigRepository] 已加载职业属性配置: professions.attributes.json ({result.Count} 个职业)");
+                return result;
+            }
+            Console.WriteLine("[ConfigRepository] 职业属性配置未找到或为空，使用空字典");
+            return new Dictionary<string, ProfessionAttributeConfig>();
+        }
+
+        /// <summary>
+        /// 加载经验曲线配置
+        /// Load experience curve configuration
+        /// </summary>
+        /// <returns>经验曲线列表，加载失败时返回默认曲线</returns>
+        public static List<LevelExperienceRequirement> LoadExperienceCurve()
+        {
+            var result = TryLoadConfig<List<LevelExperienceRequirement>>("professions.experience.json");
+            if (result != null && result.Count > 0)
+            {
+                Console.WriteLine($"[ConfigRepository] 已加载经验曲线: professions.experience.json ({result.Count} 个等级)");
+                return result;
+            }
+            Console.WriteLine("[ConfigRepository] 经验曲线未找到或为空，使用默认经验曲线");
+            return CreateDefaultExperienceCurve();
+        }
+
+        /// <summary>
+        /// 加载职业限制配置（最大等级等）
+        /// Load profession limits configuration (max level etc.)
+        /// </summary>
+        /// <returns>经验配置，加载失败时返回默认配置</returns>
+        public static ExperienceConfig LoadProfessionLimits()
+        {
+            var result = TryLoadConfig<ExperienceConfig>("professions.limits.json");
+            if (result != null)
+            {
+                Console.WriteLine($"[ConfigRepository] 已加载职业限制配置: professions.limits.json (最大等级: {result.MaxProfessionLevel})");
+                return result;
+            }
+            Console.WriteLine("[ConfigRepository] 职业限制配置未找到，使用默认配置 (最大等级: 100)");
+            return new ExperienceConfig { MaxProfessionLevel = 100 };
+        }
+
+        /// <summary>
+        /// 创建默认经验曲线
+        /// Create default experience curve
+        /// </summary>
+        private static List<LevelExperienceRequirement> CreateDefaultExperienceCurve()
+        {
+            var curve = new List<LevelExperienceRequirement>();
+            for (int level = 1; level <= 20; level++)
+            {
+                long expRequired = level == 1 ? 0 : (long)(100 * Math.Pow(1.5, level - 2));
+                curve.Add(new LevelExperienceRequirement { Level = level, ExperienceRequired = expRequired });
+            }
+            return curve;
+        }
+
+        #endregion
+
         /// <summary>
         /// 安全加载配置（不抛出异常）
         /// Load configuration safely (no exception)
