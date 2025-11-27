@@ -173,17 +173,28 @@ namespace BlazorIdle.Shared.Models
             // Use ThreadPool to delay trigger, combining multiple changes
             _ = Task.Run(async () =>
             {
-                // 等待一小段时间，让连续的变化合并
-                // Wait a short time to combine consecutive changes
-                await Task.Delay(16); // ~1 frame at 60fps
-                
-                lock (_notificationLock)
+                try
                 {
-                    _pendingChanges = 0;
-                    _notificationScheduled = false;
+                    // 等待一小段时间，让连续的变化合并
+                    // Wait a short time to combine consecutive changes
+                    await Task.Delay(16); // ~1 frame at 60fps
+                    
+                    lock (_notificationLock)
+                    {
+                        _pendingChanges = 0;
+                        _notificationScheduled = false;
+                    }
+                    
+                    Changed?.Invoke();
                 }
-                
-                Changed?.Invoke();
+                catch (TaskCanceledException)
+                {
+                    // Ignore cancellation
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Ignore disposal
+                }
             });
         }
     }

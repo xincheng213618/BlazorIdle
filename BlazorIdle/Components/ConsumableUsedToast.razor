@@ -1,0 +1,229 @@
+@* 消耗品使用提示组件 - 显示消耗品使用的浮动提示 *@
+@* Consumable used toast component - displays floating toast for consumable usage *@
+@implements IDisposable
+
+<div class="consumable-toast-container">
+    @foreach (var toast in _toasts)
+    {
+        <div class="consumable-toast @toast.TypeClass @(toast.IsExiting ? "exiting" : "")"
+             @key="toast.Id">
+            <div class="toast-icon">@toast.Icon</div>
+            <div class="toast-content">
+                <div class="toast-title">@toast.ItemName</div>
+                <div class="toast-message">@toast.Message</div>
+            </div>
+            <div class="toast-quantity">剩余: @toast.RemainingCount</div>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<ToastData> _toasts = new();
+    private int _nextId = 0;
+    private CancellationTokenSource _cts = new();
+    private bool _disposed = false;
+
+    /// <summary>
+    /// 显示消耗品使用提示
+    /// Show consumable used toast
+    /// </summary>
+    /// <param name="itemName">物品名称 / Item name</param>
+    /// <param name="isPotion">是否为药水 / Is potion</param>
+    /// <param name="remainingCount">剩余数量 / Remaining count</param>
+    /// <param name="message">可选消息 / Optional message</param>
+    public void ShowUsed(string itemName, bool isPotion, int remainingCount, string? message = null)
+    {
+        var toast = new ToastData
+        {
+            Id = _nextId++,
+            ItemName = itemName,
+            IsPotion = isPotion,
+            RemainingCount = remainingCount,
+            Message = message ?? (isPotion ? "增益效果已激活" : "恢复效果已激活"),
+            Icon = isPotion ? "💪" : "🍖",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _toasts.Add(toast);
+        StateHasChanged();
+
+        // 自动消失 / Auto dismiss
+        _ = AutoDismiss(toast.Id, 2500);
+    }
+
+    /// <summary>
+    /// 显示库存不足提示
+    /// Show out of stock toast
+    /// </summary>
+    /// <param name="itemName">物品名称 / Item name</param>
+    /// <param name="isPotion">是否为药水 / Is potion</param>
+    public void ShowOutOfStock(string itemName, bool isPotion)
+    {
+        var toast = new ToastData
+        {
+            Id = _nextId++,
+            ItemName = itemName,
+            IsPotion = isPotion,
+            RemainingCount = 0,
+            Message = "库存已耗尽！",
+            Icon = "⚠️",
+            IsWarning = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _toasts.Add(toast);
+        StateHasChanged();
+
+        _ = AutoDismiss(toast.Id, 3000);
+    }
+
+    private async Task AutoDismiss(int toastId, int delayMs)
+    {
+        try
+        {
+            await Task.Delay(delayMs, _cts.Token);
+            
+            if (_disposed) return;
+            
+            var toast = _toasts.FirstOrDefault(t => t.Id == toastId);
+            if (toast != null)
+            {
+                toast.IsExiting = true;
+                StateHasChanged();
+                
+                await Task.Delay(300, _cts.Token); // Animation duration
+                if (_disposed) return;
+                
+                _toasts.RemoveAll(t => t.Id == toastId);
+                StateHasChanged();
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Expected when component is disposed
+        }
+        catch (ObjectDisposedException)
+        {
+            // Expected when component is disposed
+        }
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _cts.Cancel();
+        _cts.Dispose();
+        _toasts.Clear();
+    }
+
+    private class ToastData
+    {
+        public int Id { get; set; }
+        public string ItemName { get; set; } = "";
+        public bool IsPotion { get; set; }
+        public int RemainingCount { get; set; }
+        public string Message { get; set; } = "";
+        public string Icon { get; set; } = "";
+        public bool IsWarning { get; set; }
+        public bool IsExiting { get; set; }
+        public DateTime CreatedAt { get; set; }
+
+        public string TypeClass => IsWarning ? "warning" : (IsPotion ? "potion" : "food");
+    }
+}
+
+<style>
+    .consumable-toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        pointer-events: none;
+    }
+
+    .consumable-toast {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        animation: slideIn 0.3s ease-out;
+        pointer-events: auto;
+        min-width: 200px;
+        max-width: 300px;
+    }
+
+    .consumable-toast.exiting {
+        animation: slideOut 0.3s ease-in forwards;
+    }
+
+    .consumable-toast.potion {
+        background: linear-gradient(135deg, #6c63ff 0%, #a855f7 100%);
+        color: white;
+    }
+
+    .consumable-toast.food {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        color: white;
+    }
+
+    .consumable-toast.warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+
+    .toast-icon {
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .toast-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .toast-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        line-height: 1.2;
+    }
+
+    .toast-message {
+        font-size: 0.75rem;
+        opacity: 0.9;
+    }
+
+    .toast-quantity {
+        font-size: 0.75rem;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 2px 8px;
+        border-radius: 4px;
+        white-space: nowrap;
+    }
+
+    @@keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @@keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+</style>

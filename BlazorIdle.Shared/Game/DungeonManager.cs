@@ -64,6 +64,9 @@ namespace BlazorIdle.Game
         public event Action<Buffs.BuffRemoveEvent>? BuffRemoved;
         public event Action<Buffs.BuffTickEvent>? BuffTicked;
         public event Action<Buffs.HealEvent>? Healed;
+        // 消耗品事件 / Consumable events
+        public event Action<ConsumableUsedEvent>? ConsumableUsed;
+        public event Action<ConsumableOutOfStockEvent>? ConsumableOutOfStock;
 
         /// <summary>
         /// 构造函数
@@ -717,6 +720,9 @@ namespace BlazorIdle.Game
             _currentBattle.BuffRemoved += OnBuffRemoved;
             _currentBattle.BuffTicked += OnBuffTicked;
             _currentBattle.Healed += OnHealed;
+            // 消耗品事件 / Consumable events
+            _currentBattle.ConsumableUsed += OnConsumableUsed;
+            _currentBattle.ConsumableOutOfStock += OnConsumableOutOfStock;
         }
 
         /// <summary>
@@ -736,6 +742,9 @@ namespace BlazorIdle.Game
             _currentBattle.BuffRemoved -= OnBuffRemoved;
             _currentBattle.BuffTicked -= OnBuffTicked;
             _currentBattle.Healed -= OnHealed;
+            // 消耗品事件 / Consumable events
+            _currentBattle.ConsumableUsed -= OnConsumableUsed;
+            _currentBattle.ConsumableOutOfStock -= OnConsumableOutOfStock;
         }
 
         /// <summary>
@@ -825,6 +834,16 @@ namespace BlazorIdle.Game
         private void OnHealed(Buffs.HealEvent ev)
         {
             Healed?.Invoke(ev);
+        }
+
+        private void OnConsumableUsed(ConsumableUsedEvent ev)
+        {
+            ConsumableUsed?.Invoke(ev);
+        }
+
+        private void OnConsumableOutOfStock(ConsumableOutOfStockEvent ev)
+        {
+            ConsumableOutOfStock?.Invoke(ev);
         }
 
         /// <summary>
