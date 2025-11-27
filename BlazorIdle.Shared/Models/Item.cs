@@ -94,6 +94,22 @@ namespace BlazorIdle.Shared.Models
         /// </summary>
         [JsonPropertyName("metadata")]
         public ItemMetadata? Metadata { get; set; }
+
+        /// <summary>
+        /// 消耗品配置 - 定义消耗品的战斗行为（药水与食物系统）
+        /// Consumable configuration - defines consumable battle behavior
+        /// 
+        /// 仅当 Type == ItemType.Consumable 时有效
+        /// Only valid when Type == ItemType.Consumable
+        /// 
+        /// 包含：
+        /// - category: 消耗品类别 (potion/food)
+        /// - skillId: 触发的技能ID
+        /// - triggerConditions: 自动触发条件
+        /// - cooldownSec: 使用冷却时间
+        /// </summary>
+        [JsonPropertyName("consumableConfig")]
+        public ConsumableConfig? ConsumableConfig { get; set; }
     }
 
     /// <summary>

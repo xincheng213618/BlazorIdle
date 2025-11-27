@@ -23,7 +23,10 @@ namespace BlazorIdle.Game.Skills
             // Try to load monster skills from embedded JSON
             bool monsterSkillsLoaded = TryLoadFromEmbeddedJson("monsterskills.json");
             
-            if (playerSkillsLoaded || monsterSkillsLoaded)
+            // Try to load consumable skills from embedded JSON
+            bool consumableSkillsLoaded = TryLoadFromEmbeddedJson("consumableSkills.json");
+            
+            if (playerSkillsLoaded || monsterSkillsLoaded || consumableSkillsLoaded)
             {
                 // Validate configuration after loading
                 ValidateSkillConfigurations();

@@ -364,6 +364,66 @@ namespace BlazorIdle.Components
         private string? _lastSkillConfigKey = null; // 用于检测技能配置变化 / Used to detect skill config changes
 
         /// <summary>
+        /// 获取玩家装备的消耗品列表（药水/食物）
+        /// Get player equipped consumables list (potions/food)
+        /// </summary>
+        private List<CharacterPanel.EquippedConsumableData>? playerEquippedConsumables
+        {
+            get
+            {
+                if (SelectedCharacter?.EquippedConsumables == null)
+                    return null;
+
+                var result = new List<CharacterPanel.EquippedConsumableData>();
+                var consumableConfig = SelectedCharacter.EquippedConsumables;
+
+                // 药水槽位 / Potion slots
+                foreach (var kvp in consumableConfig.PotionSlots.OrderBy(x => x.Key))
+                {
+                    if (!string.IsNullOrEmpty(kvp.Value.ItemId))
+                    {
+                        var itemDef = GameConfig.Items.FirstOrDefault(i => i.Id == kvp.Value.ItemId);
+                        var remainingCooldown = battle?.GetConsumableRemainingCooldown(SelectedCharacter.Id, kvp.Value.ItemId) ?? 0;
+                        var maxCooldown = battle?.GetConsumableMaxCooldown(kvp.Value.ItemId) ?? 0;
+                        result.Add(new CharacterPanel.EquippedConsumableData
+                        {
+                            ItemId = kvp.Value.ItemId,
+                            ItemName = itemDef?.Name ?? kvp.Value.ItemId,
+                            SlotId = kvp.Key,
+                            Quantity = SelectedCharacter.Inventory.GetItemQuantity(kvp.Value.ItemId),
+                            IsPotion = true,
+                            RemainingCooldown = remainingCooldown,
+                            MaxCooldown = maxCooldown
+                        });
+                    }
+                }
+
+                // 食物槽位 / Food slots
+                foreach (var kvp in consumableConfig.FoodSlots.OrderBy(x => x.Key))
+                {
+                    if (!string.IsNullOrEmpty(kvp.Value.ItemId))
+                    {
+                        var itemDef = GameConfig.Items.FirstOrDefault(i => i.Id == kvp.Value.ItemId);
+                        var remainingCooldown = battle?.GetConsumableRemainingCooldown(SelectedCharacter.Id, kvp.Value.ItemId) ?? 0;
+                        var maxCooldown = battle?.GetConsumableMaxCooldown(kvp.Value.ItemId) ?? 0;
+                        result.Add(new CharacterPanel.EquippedConsumableData
+                        {
+                            ItemId = kvp.Value.ItemId,
+                            ItemName = itemDef?.Name ?? kvp.Value.ItemId,
+                            SlotId = kvp.Key,
+                            Quantity = SelectedCharacter.Inventory.GetItemQuantity(kvp.Value.ItemId),
+                            IsPotion = false,
+                            RemainingCooldown = remainingCooldown,
+                            MaxCooldown = maxCooldown
+                        });
+                    }
+                }
+
+                return result.Count > 0 ? result : null;
+            }
+        }
+
+        /// <summary>
         /// Phase 10.6: 检查技能资源是否充足 / Check if skill has sufficient resources
         /// </summary>
         private bool CheckSkillResourceSufficient(Game.Skills.SkillDef skill, string characterId)
@@ -697,7 +757,8 @@ namespace BlazorIdle.Components
             }
 
             // 创建战斗实例并订阅事件
-            battle = new MultiBattleInstance(clock, rng, playerTeam, enemyTeam, config, null, professionResourceConfigs, characterDataMap);
+            // Pass GameConfig for consumable system to work
+            battle = new MultiBattleInstance(clock, rng, playerTeam, enemyTeam, config, null, professionResourceConfigs, characterDataMap, GameConfig);
             battle.CombatEventFired += OnCombatEvent;
             battle.LootDropped += OnLootDropped;
             battle.ExperienceGained += OnExperienceGained;

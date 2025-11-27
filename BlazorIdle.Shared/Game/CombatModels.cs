@@ -17,7 +17,8 @@ namespace BlazorIdle.Game
         Skill = 5,          // 通用技能 / Generic skill
         Trigger = 6,        // 触发技能 / Triggered skill
         PostAttack = 7,     // PostAttack 窗口技能 / PostAttack window skill
-        PostCast = 8        // PostCast 窗口技能 / PostCast window skill
+        PostCast = 8,       // PostCast 窗口技能 / PostCast window skill
+        Consumable = 9      // 消耗品技能 / Consumable skill
     }
 
     public class CombatEvent
@@ -197,6 +198,80 @@ namespace BlazorIdle.Game
         /// Elapsed cast time in seconds
         /// </summary>
         public double ElapsedSec { get; init; }
+    }
+
+    /// <summary>
+    /// 消耗品使用事件 - 战斗中消耗品被使用时触发
+    /// Consumable used event - triggered when consumable is used in battle
+    /// </summary>
+    public sealed class ConsumableUsedEvent
+    {
+        /// <summary>
+        /// 事件发生时间（毫秒）
+        /// Event time in milliseconds
+        /// </summary>
+        public int TimeMs { get; init; }
+
+        /// <summary>
+        /// 使用消耗品的角色ID
+        /// Character ID that used the consumable
+        /// </summary>
+        public string CharacterId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 使用的物品ID
+        /// Used item ID
+        /// </summary>
+        public string ItemId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 触发的技能ID
+        /// Triggered skill ID
+        /// </summary>
+        public string SkillId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 槽位ID (potion_1, potion_2, food_1, food_2)
+        /// Slot ID
+        /// </summary>
+        public string SlotId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 使用后剩余数量
+        /// Remaining quantity after use
+        /// </summary>
+        public int RemainingCount { get; init; }
+    }
+
+    /// <summary>
+    /// 消耗品库存耗尽事件 - 战斗中消耗品库存为0时触发
+    /// Consumable out of stock event - triggered when consumable inventory is 0 in battle
+    /// </summary>
+    public sealed class ConsumableOutOfStockEvent
+    {
+        /// <summary>
+        /// 事件发生时间（毫秒）
+        /// Event time in milliseconds
+        /// </summary>
+        public int TimeMs { get; init; }
+
+        /// <summary>
+        /// 角色ID
+        /// Character ID
+        /// </summary>
+        public string CharacterId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 耗尽的物品ID
+        /// Depleted item ID
+        /// </summary>
+        public string ItemId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 槽位ID (potion_1, potion_2, food_1, food_2)
+        /// Slot ID
+        /// </summary>
+        public string SlotId { get; init; } = string.Empty;
     }
 
     public sealed class CombatSegment

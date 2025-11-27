@@ -79,6 +79,25 @@
         </div>
     }
 
+    <!-- 消耗品槽位显示 / Consumable slot display -->
+    @if (EquippedConsumables != null && EquippedConsumables.Count > 0)
+    {
+        <div class="mb-2">
+            <div class="consumable-container">
+                @foreach (var consumable in EquippedConsumables)
+                {
+                    <ConsumableIcon ItemId="@consumable.ItemId"
+                                    ItemName="@consumable.ItemName"
+                                    SlotId="@consumable.SlotId"
+                                    Quantity="@consumable.Quantity"
+                                    IsPotion="@consumable.IsPotion"
+                                    RemainingCooldown="@consumable.RemainingCooldown"
+                                    MaxCooldown="@consumable.MaxCooldown" />
+                }
+            </div>
+        </div>
+    }
+
     <!-- Phase 8: Attack 进度 / 施法进度 -->
     <div class="mb-2">
         @if (IsCasting)
@@ -149,6 +168,9 @@
     // Phase 10.3: 装备的技能列表（用于显示技能图标）/ Equipped skills list (for displaying skill icons)
     [Parameter] public List<EquippedSkillData>? EquippedSkills { get; set; }
 
+    // 消耗品槽位列表（用于显示药水/食物）/ Consumable slots list (for displaying potions/food)
+    [Parameter] public List<EquippedConsumableData>? EquippedConsumables { get; set; }
+
     // Phase 8: 施法状态 / Casting state
     [Parameter] public bool IsCasting { get; set; }
     [Parameter] public double CastingProgress01 { get; set; }
@@ -190,6 +212,21 @@
         public bool IsConditionNotMet { get; set; }
         public bool JustTriggered { get; set; }
     }
+    
+    /// <summary>
+    /// 消耗品数据结构（用于传递药水/食物显示信息）
+    /// Consumable data structure (for passing potion/food display information)
+    /// </summary>
+    public class EquippedConsumableData
+    {
+        public string ItemId { get; set; } = "";
+        public string ItemName { get; set; } = "";
+        public string SlotId { get; set; } = "";
+        public int Quantity { get; set; }
+        public bool IsPotion { get; set; }
+        public double RemainingCooldown { get; set; }
+        public double MaxCooldown { get; set; }
+    }
 }
 
 <style>
@@ -222,6 +259,18 @@
         flex-wrap: wrap;
         gap: 4px;
         min-height: 44px;
+        align-items: flex-start;
+        padding: 4px;
+        background-color: rgba(0, 0, 0, 0.1);
+        border-radius: 6px;
+    }
+
+    /* 消耗品容器样式 / Consumable container styles */
+    .character-panel .consumable-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        min-height: 40px;
         align-items: flex-start;
         padding: 4px;
         background-color: rgba(0, 0, 0, 0.1);
