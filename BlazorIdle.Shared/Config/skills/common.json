@@ -1,0 +1,57 @@
+// 通用技能配置文件 - Common Skill Configuration File
+// 
+// 注意 / Note:
+// - 这里包含不属于任何特定职业的技能
+// - This file contains skills that don't belong to any specific profession
+//
+[
+  {
+    "id": "health_potion_skill",
+    "name": "治疗药水",
+    "description": "生命值低于50%时自动使用，恢复100点生命值（效果有30秒冷却）",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "self",
+    "cooldownSec": 0,
+    "purchase": {
+      "enabled": true,
+      "canBuyInShop": true,
+      "currencyType": "Gold",
+      "basePrice": 500,
+      "discountPercent": 10,
+      "limits": { "perCharacter": 1 }
+    },
+    "allowedProfessions": [],
+    "unlock": {
+      "minLevel": 1
+    },
+    "triggers": [
+      {
+        "when": "OnPeriodic",
+        "procChance": 1.0,
+        "fireSkillId": "health_potion_effect",
+        "priority": 10,
+        "conditions": {
+          "hpBelowPct": 50.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "health_potion_effect",
+    "name": "治疗药水效果",
+    "description": "立即恢复100点生命值",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "self",
+    "cooldownSec": 30.0,
+    "allowedProfessions": [],
+    "instantHeal": 100
+  }
+]

@@ -84,61 +84,133 @@ namespace BlazorIdle.Game.Config
         }
 
         /// <summary>
-        /// 加载消耗品商店配置
-        /// Load consumable shop configuration
+        /// 商店配置文件列表 - 按类型分类存储在 shops 文件夹中
+        /// Shop config files - stored in shops folder by type
+        /// 注意：这些常量目前用于文档目的，方便了解配置文件结构
+        /// Note: These constants are currently for documentation purposes
+        /// </summary>
+        internal static readonly string[] ShopConfigFiles = new[]
+        {
+            "shops.potion.json",      // 药水商店
+            "shops.food.json",        // 食物商店
+            "shops.consumable.json"   // 消耗品商店（技能书等）
+        };
+
+        /// <summary>
+        /// 技能配置文件列表 - 按职业/类型分类存储在 skills 文件夹中
+        /// Skill config files - stored in skills folder by profession/type
+        /// 注意：这些常量目前用于文档目的，方便了解配置文件结构
+        /// Note: These constants are currently for documentation purposes
+        /// </summary>
+        internal static readonly string[] SkillConfigFiles = new[]
+        {
+            "skills.warrior.json",    // 战士技能
+            "skills.mage.json",       // 法师技能
+            "skills.rogue.json",      // 盗贼技能
+            "skills.ranger.json",     // 游侠技能
+            "skills.common.json",     // 通用技能
+            "skills.consumable.json", // 消耗品技能
+            "skills.monster.json"     // 怪物技能
+        };
+
+        /// <summary>
+        /// 加载消耗品商店配置 - 从分类文件加载，保留旧版兼容
+        /// Load consumable shop configuration - load from categorized files with legacy fallback
         /// </summary>
         /// <returns>商店配置列表，加载失败时抛出异常</returns>
         /// <exception cref="InvalidOperationException">配置加载失败</exception>
         public static List<ShopItemConfig> LoadConsumableShop()
         {
-            var result = LoadConfig<List<ShopItemConfig>>("consumableShop.json");
-            if (result == null || result.Count == 0)
+            // 尝试从新的分类文件加载
+            var result = TryLoadConfig<List<ShopItemConfig>>("shops.consumable.json");
+            if (result != null && result.Count > 0)
             {
-                throw new InvalidOperationException("消耗品商店配置加载失败或为空。请检查 consumableShop.json 文件是否正确配置。");
+                Console.WriteLine($"[ConfigRepository] 已加载消耗品商店: shops.consumable.json ({result.Count} 个物品)");
+                return result;
             }
-            return result;
+
+            // 尝试旧版文件
+            result = TryLoadConfig<List<ShopItemConfig>>("consumableShop.json");
+            if (result != null && result.Count > 0)
+            {
+                Console.WriteLine($"[ConfigRepository] 从 consumableShop.json 加载了 {result.Count} 个物品");
+                return result;
+            }
+
+            throw new InvalidOperationException("消耗品商店配置加载失败或为空。");
         }
 
         /// <summary>
-        /// 加载药水商店配置
-        /// Load potion shop configuration
+        /// 加载药水商店配置 - 从分类文件加载，保留旧版兼容
+        /// Load potion shop configuration - load from categorized files with legacy fallback
         /// </summary>
         /// <returns>商店配置列表，加载失败时抛出异常</returns>
         /// <exception cref="InvalidOperationException">配置加载失败</exception>
         public static List<ShopItemConfig> LoadPotionShop()
         {
-            var result = LoadConfig<List<ShopItemConfig>>("potionShop.json");
-            if (result == null || result.Count == 0)
+            // 尝试从新的分类文件加载
+            var result = TryLoadConfig<List<ShopItemConfig>>("shops.potion.json");
+            if (result != null && result.Count > 0)
             {
-                throw new InvalidOperationException("药水商店配置加载失败或为空。请检查 potionShop.json 文件是否正确配置。");
+                Console.WriteLine($"[ConfigRepository] 已加载药水商店: shops.potion.json ({result.Count} 个物品)");
+                return result;
             }
-            return result;
+
+            // 尝试旧版文件
+            result = TryLoadConfig<List<ShopItemConfig>>("potionShop.json");
+            if (result != null && result.Count > 0)
+            {
+                Console.WriteLine($"[ConfigRepository] 从 potionShop.json 加载了 {result.Count} 个物品");
+                return result;
+            }
+
+            throw new InvalidOperationException("药水商店配置加载失败或为空。");
         }
 
         /// <summary>
-        /// 加载食品商店配置
-        /// Load food shop configuration
+        /// 加载食品商店配置 - 从分类文件加载，保留旧版兼容
+        /// Load food shop configuration - load from categorized files with legacy fallback
         /// </summary>
         /// <returns>商店配置列表，加载失败时抛出异常</returns>
         /// <exception cref="InvalidOperationException">配置加载失败</exception>
         public static List<ShopItemConfig> LoadFoodShop()
         {
-            var result = LoadConfig<List<ShopItemConfig>>("foodShop.json");
-            if (result == null || result.Count == 0)
+            // 尝试从新的分类文件加载
+            var result = TryLoadConfig<List<ShopItemConfig>>("shops.food.json");
+            if (result != null && result.Count > 0)
             {
-                throw new InvalidOperationException("食品商店配置加载失败或为空。请检查 foodShop.json 文件是否正确配置。");
+                Console.WriteLine($"[ConfigRepository] 已加载食品商店: shops.food.json ({result.Count} 个物品)");
+                return result;
             }
-            return result;
+
+            // 尝试旧版文件
+            result = TryLoadConfig<List<ShopItemConfig>>("foodShop.json");
+            if (result != null && result.Count > 0)
+            {
+                Console.WriteLine($"[ConfigRepository] 从 foodShop.json 加载了 {result.Count} 个物品");
+                return result;
+            }
+
+            throw new InvalidOperationException("食品商店配置加载失败或为空。");
         }
 
         /// <summary>
-        /// 加载系统商店配置
-        /// Load system shop configuration
+        /// 加载系统商店配置 - 从分类文件加载，保留旧版兼容
+        /// Load system shop configuration - load from categorized files with legacy fallback
         /// </summary>
         /// <returns>系统商店配置，加载失败时返回默认配置</returns>
         public static SystemShopConfig LoadSystemShop()
         {
-            var result = TryLoadConfig<SystemShopConfig>("systemShop.json");
+            // 尝试从新的分类文件加载
+            var result = TryLoadConfig<SystemShopConfig>("shops.system.json");
+            if (result != null)
+            {
+                Console.WriteLine("[ConfigRepository] 已加载系统商店: shops.system.json");
+                return result;
+            }
+
+            // 尝试旧版文件
+            result = TryLoadConfig<SystemShopConfig>("systemShop.json");
             if (result == null)
             {
                 // 返回默认配置

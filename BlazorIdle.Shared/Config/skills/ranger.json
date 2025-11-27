@@ -1,0 +1,266 @@
+// 游侠技能配置文件 - Ranger Skill Configuration File
+// 
+// 注意 / Note:
+// - AOE 判定由 targetPolicy 属性决定（例如 "enemies_all" 表示 AOE）
+// - AOE is determined by targetPolicy (e.g., "enemies_all" means AOE)
+//
+[
+  {
+    "id": "ranger_attack_basic",
+    "name": "精准射击",
+    "description": "游侠的基础射击攻击",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "targetPolicy": "current_target",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "damage": {
+      "coefAtk": 1.0,
+      "flat": 0
+    },
+    "gains": [
+      {
+        "bucketId": "energy",
+        "amount": 1
+      }
+    ]
+  },
+  {
+    "id": "ranger_special_pulse",
+    "name": "集中瞄准",
+    "description": "进入集中状态，提升暴击率和攻击速度",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "targetPolicy": "self",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "ranger_focus",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "ranger_arcane_shot",
+    "name": "奥术射击",
+    "description": "稳定的远程伤害技能",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 4.0,
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "unlock": {
+      "minLevel": 1
+    },
+    "costs": [
+      {
+        "bucketId": "energy",
+        "amount": 2
+      }
+    ],
+    "damage": {
+      "coefAtk": 1.2,
+      "flat": 15
+    }
+  },
+  {
+    "id": "ranger_multi_shot",
+    "name": "多重射击",
+    "description": "对多个敌人造成伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "enemies_all",
+    "cooldownSec": 8.0,
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "unlock": {
+      "minLevel": 3
+    },
+    "costs": [
+      {
+        "bucketId": "energy",
+        "amount": 3
+      }
+    ],
+    "damage": {
+      "coefAtk": 0.9,
+      "flat": 10
+    }
+  },
+  {
+    "id": "ranger_snake_trap",
+    "name": "毒蛇陷阱",
+    "description": "放置陷阱，对敌人造成持续毒素伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "enemies_all",
+    "cooldownSec": 15.0,
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "unlock": {
+      "minLevel": 5
+    },
+    "onHitBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "ranger_poison_dot",
+        "targetOverride": "AllEnemies"
+      }
+    ]
+  },
+  {
+    "id": "ranger_aimed_shot",
+    "name": "瞄准射击",
+    "description": "施法1.5秒，造成巨大伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "cast",
+    "castTimeSec": 1.5,
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 10.0,
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "unlock": {
+      "minLevel": 6
+    },
+    "costs": [
+      {
+        "bucketId": "energy",
+        "amount": 3
+      }
+    ],
+    "damage": {
+      "coefAtk": 2.2,
+      "flat": 40
+    }
+  },
+  {
+    "id": "ranger_feign_death",
+    "name": "假死",
+    "description": "短暂无敌，恢复生命值",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 30.0,
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "unlock": {
+      "minLevel": 7
+    },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "ranger_heal_over_time",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "ranger_aspect_of_cheetah",
+    "name": "猎豹守护",
+    "description": "大幅提升攻击速度",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 25.0,
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "unlock": {
+      "minLevel": 8
+    },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "ranger_haste_buff",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "ranger_kill_command",
+    "name": "杀戮命令",
+    "description": "强力攻击，对血量低于30%的敌人额外伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 6.0,
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "unlock": {
+      "minLevel": 9
+    },
+    "costs": [
+      {
+        "bucketId": "energy",
+        "amount": 3
+      }
+    ],
+    "damage": {
+      "coefAtk": 1.6,
+      "flat": 28
+    }
+  },
+  {
+    "id": "ranger_bestial_wrath",
+    "name": "狂野怒火",
+    "description": "进入狂野状态，大幅提升所有伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 45.0,
+    "allowedProfessions": [
+      "ranger"
+    ],
+    "unlock": {
+      "minLevel": 10
+    },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "ranger_berserk_buff",
+        "targetOverride": "Self"
+      }
+    ]
+  }
+]

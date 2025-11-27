@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- 旧版配置文件（保留兼容） / Legacy config files (for compatibility) -->
     <EmbeddedResource Include="Config\buffs.json" />
     <EmbeddedResource Include="Config\skills.json" />
     <EmbeddedResource Include="Config\monsterskills.json" />
@@ -22,11 +23,27 @@
     <EmbeddedResource Include="Config\userConfig.json" />
     <EmbeddedResource Include="Config\potionShop.json" />
     <EmbeddedResource Include="Config\foodShop.json" />
+    
     <!-- 物品分类配置文件 / Item category config files -->
     <EmbeddedResource Include="Config\items\currency.json" LogicalName="BlazorIdle.Shared.Config.items.currency.json" />
     <EmbeddedResource Include="Config\items\potions.json" LogicalName="BlazorIdle.Shared.Config.items.potions.json" />
     <EmbeddedResource Include="Config\items\food.json" LogicalName="BlazorIdle.Shared.Config.items.food.json" />
     <EmbeddedResource Include="Config\items\special.json" LogicalName="BlazorIdle.Shared.Config.items.special.json" />
+    
+    <!-- 商店分类配置文件 / Shop category config files -->
+    <EmbeddedResource Include="Config\shops\potion.json" LogicalName="BlazorIdle.Shared.Config.shops.potion.json" />
+    <EmbeddedResource Include="Config\shops\food.json" LogicalName="BlazorIdle.Shared.Config.shops.food.json" />
+    <EmbeddedResource Include="Config\shops\consumable.json" LogicalName="BlazorIdle.Shared.Config.shops.consumable.json" />
+    <EmbeddedResource Include="Config\shops\system.json" LogicalName="BlazorIdle.Shared.Config.shops.system.json" />
+    
+    <!-- 技能分类配置文件 / Skill category config files -->
+    <EmbeddedResource Include="Config\skills\warrior.json" LogicalName="BlazorIdle.Shared.Config.skills.warrior.json" />
+    <EmbeddedResource Include="Config\skills\mage.json" LogicalName="BlazorIdle.Shared.Config.skills.mage.json" />
+    <EmbeddedResource Include="Config\skills\rogue.json" LogicalName="BlazorIdle.Shared.Config.skills.rogue.json" />
+    <EmbeddedResource Include="Config\skills\ranger.json" LogicalName="BlazorIdle.Shared.Config.skills.ranger.json" />
+    <EmbeddedResource Include="Config\skills\common.json" LogicalName="BlazorIdle.Shared.Config.skills.common.json" />
+    <EmbeddedResource Include="Config\skills\consumable.json" LogicalName="BlazorIdle.Shared.Config.skills.consumable.json" />
+    <EmbeddedResource Include="Config\skills\monster.json" LogicalName="BlazorIdle.Shared.Config.skills.monster.json" />
   </ItemGroup>
 
 </Project>

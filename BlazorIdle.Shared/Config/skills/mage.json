@@ -1,0 +1,359 @@
+// 法师技能配置文件 - Mage Skill Configuration File
+// 
+// 注意 / Note:
+// - AOE 判定由 targetPolicy 属性决定（例如 "enemies_all" 表示 AOE）
+// - AOE is determined by targetPolicy (e.g., "enemies_all" means AOE)
+//
+[
+  {
+    "id": "mage_attack_basic",
+    "name": "火球术",
+    "description": "法师的基础攻击，消耗少量法力",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "isGcd": false,
+    "releaseType": "instant",
+    "targetPolicy": "current_target",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "mage"
+    ],
+    "damage": {
+      "coefAtk": 0.9,
+      "flat": 5
+    },
+    "gains": [
+      {
+        "bucketId": "mana",
+        "amount": 1
+      }
+    ]
+  },
+  {
+    "id": "mage_special_pulse",
+    "name": "奥术脉冲",
+    "description": "释放奥术能量，获得奥术充能buff",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "targetPolicy": "self",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "mage"
+    ],
+    "damage": {
+      "coefAtk": 0.5,
+      "flat": 3
+    },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "mage_arcane_power",
+        "targetOverride": "Self"
+      }
+    ],
+    "gains": [
+      {
+        "bucketId": "mana",
+        "amount": 2
+      }
+    ]
+  },
+  {
+    "id": "mage_frostbolt",
+    "name": "寒冰箭",
+    "description": "射出寒冰箭，减缓敌人速度",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 4.0,
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 1
+    },
+    "costs": [
+      {
+        "bucketId": "mana",
+        "amount": 2
+      }
+    ],
+    "damage": {
+      "coefAtk": 1.1,
+      "flat": 15
+    },
+    "onHitBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "mage_frost_slow",
+        "targetOverride": "Target"
+      }
+    ]
+  },
+  {
+    "id": "mage_arcane_missiles",
+    "name": "奥术飞弹",
+    "description": "快速施放奥术飞弹",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 3.0,
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 3
+    },
+    "costs": [
+      {
+        "bucketId": "mana",
+        "amount": 3
+      }
+    ],
+    "damage": {
+      "coefAtk": 1.3,
+      "flat": 20
+    }
+  },
+  {
+    "id": "mage_pyroblast",
+    "name": "炎爆术",
+    "description": "施法2.5秒，造成大量火焰伤害并施加燃烧",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "_comment_releaseType": "Phase 8: 'cast' 表示施法技能，需要 castTimeSec。在 PreAttack 窗口选择，施法期间暂停攻击轨道。",
+    "releaseType": "cast",
+    "castTimeSec": 2.5,
+    "isGcd": true,
+    "_comment_allowCoTriggerAfterCast": "Phase 8: 施法技能也可以有此标志。完成后可以触发 PostCast 窗口的其他瞬发技能。",
+    "allowCoTriggerAfterCast": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 8.0,
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 5
+    },
+    "costs": [
+      {
+        "bucketId": "mana",
+        "amount": 4
+      }
+    ],
+    "damage": {
+      "coefAtk": 2.0,
+      "flat": 50
+    },
+    "onHitBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "burning",
+        "targetOverride": "Target"
+      }
+    ]
+  },
+  {
+    "id": "mage_frostbolt_cast",
+    "name": "冰霜箭",
+    "description": "施法1.8秒，射出强力冰霜箭减速并造成伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "_comment_releaseType": "Phase 8: 'cast' 施法技能。施法时间受急速加成影响: actualTime = castTimeSec / (1 + hastePercent)。",
+    "releaseType": "cast",
+    "castTimeSec": 1.8,
+    "isGcd": true,
+    "allowCoTriggerAfterCast": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 6.0,
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 3
+    },
+    "costs": [
+      {
+        "bucketId": "mana",
+        "amount": 3
+      }
+    ],
+    "damage": {
+      "coefAtk": 1.6,
+      "flat": 30
+    },
+    "onHitBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "mage_frost_slow",
+        "targetOverride": "Target"
+      }
+    ]
+  },
+  {
+    "id": "mage_blizzard",
+    "name": "暴风雪",
+    "description": "召唤暴风雪，对所有敌人造成持续伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "enemies_all",
+    "cooldownSec": 12.0,
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 6
+    },
+    "costs": [
+      {
+        "bucketId": "mana",
+        "amount": 5
+      }
+    ],
+    "damage": {
+      "coefAtk": 0.7,
+      "flat": 10
+    },
+    "onHitBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "mage_blizzard_dot",
+        "targetOverride": "AllEnemies"
+      }
+    ]
+  },
+  {
+    "id": "mage_arcane_blast",
+    "name": "奥术冲击",
+    "description": "快速奥术攻击，非GCD",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "_comment_allowCoTriggerAfterCast": "Phase 8: 必须设置为 true 才能在 PostCast 窗口触发。施法技能完成后，WindowExecutor 会过滤只有此标志的瞬发技能。",
+    "allowCoTriggerAfterCast": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 5.0,
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 7
+    },
+    "costs": [
+      {
+        "bucketId": "mana",
+        "amount": 1
+      }
+    ],
+    "damage": {
+      "coefAtk": 0.9,
+      "flat": 12
+    }
+  },
+  {
+    "id": "mage_mana_shield",
+    "name": "法力护盾",
+    "description": "为自己施加护盾，吸收伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 20.0,
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 8
+    },
+    "costs": [
+      {
+        "bucketId": "mana",
+        "amount": 3
+      }
+    ],
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "mage_shield",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "mage_fire_blast",
+    "name": "火焰冲击",
+    "description": "瞬发火焰伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 6.0,
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 9
+    },
+    "costs": [
+      {
+        "bucketId": "mana",
+        "amount": 3
+      }
+    ],
+    "damage": {
+      "coefAtk": 1.4,
+      "flat": 25
+    }
+  },
+  {
+    "id": "mage_time_warp",
+    "name": "时间扭曲",
+    "description": "大幅提升急速，持续10秒",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 40.0,
+    "allowedProfessions": [
+      "mage"
+    ],
+    "unlock": {
+      "minLevel": 10
+    },
+    "costs": [
+      {
+        "bucketId": "mana",
+        "amount": 8
+      }
+    ],
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "mage_haste_buff",
+        "targetOverride": "Self"
+      }
+    ]
+  }
+]

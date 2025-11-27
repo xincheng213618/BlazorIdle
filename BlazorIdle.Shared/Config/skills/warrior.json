@@ -1,0 +1,410 @@
+// 战士技能配置文件 - Warrior Skill Configuration File
+// 
+// 注意 / Note:
+// - AOE 判定由 targetPolicy 属性决定（例如 "enemies_all" 表示 AOE）
+// - AOE is determined by targetPolicy (e.g., "enemies_all" means AOE)
+//
+[
+  {
+    "id": "warrior_attack_basic",
+    "name": "战士普通攻击",
+    "description": "战士的基础攻击，产生怒气",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "current_target",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "damage": {
+      "coefAtk": 1.0,
+      "flat": 0
+    },
+    "gains": [
+      {
+        "bucketId": "rage",
+        "amount": 1
+      }
+    ]
+  },
+  {
+    "id": "warrior_special_pulse",
+    "name": "战士战吼",
+    "description": "发出战吼，积累架势。满3层架势时获得必定暴击buff",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "targetPolicy": "self",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "warrior_stance",
+        "targetOverride": "Self"
+      }
+    ],
+    "triggers": [
+      {
+        "when": "OnPostAttackWindow",
+        "procChance": 1.0,
+        "fireSkillId": "warrior_check_stance",
+        "priority": 1
+      }
+    ]
+  },
+  {
+    "id": "warrior_check_stance",
+    "name": "架势检查",
+    "description": "检查架势层数，满3层时获得必暴buff",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "self",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "conditions": {
+      "requireBuffStacks": {
+        "warrior_stance": 3
+      }
+    },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "warrior_guaranteed_crit",
+        "targetOverride": "Self"
+      },
+      {
+        "op": "Remove",
+        "target": "Self",
+        "buffIdToRemove": "warrior_stance",
+        "StacksToRemove": 3
+      }
+    ]
+  },
+  {
+    "id": "warrior_slam",
+    "name": "猛击",
+    "description": "用力打击敌人，造成伤害并产生怒气",
+    "type": "active",
+    "slotType": "active",
+    "fixed": true,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 10.0,
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "unlock": {
+      "minLevel": 1
+    },
+    "damage": {
+      "coefAtk": 1.2,
+      "flat": 20
+    },
+    "gains": [
+      {
+        "bucketId": "rage",
+        "amount": 2
+      }
+    ]
+  },
+  {
+    "id": "warrior_mortal_strike",
+    "name": "致死打击",
+    "description": "消耗怒气进行强力一击",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 3.0,
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "unlock": {
+      "minLevel": 3
+    },
+    "costs": [
+      {
+        "bucketId": "rage",
+        "amount": 3
+      }
+    ],
+    "damage": {
+      "coefAtk": 1.5,
+      "flat": 30
+    }
+  },
+  {
+    "id": "warrior_rend",
+    "name": "撕裂",
+    "description": "撕裂敌人，造成持续流血伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 10.0,
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "unlock": {
+      "minLevel": 5
+    },
+    "costs": [
+      {
+        "bucketId": "rage",
+        "amount": 1
+      }
+    ],
+    "damage": {
+      "coefAtk": 0.3,
+      "flat": 5
+    },
+    "onHitBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "warrior_rend_dot",
+        "targetOverride": "Target"
+      }
+    ]
+  },
+  {
+    "id": "warrior_thunderclap",
+    "name": "雷霆一击",
+    "description": "对所有敌人造成伤害，非GCD技能",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "enemies_all",
+    "cooldownSec": 10.0,
+    "purchase": {
+      "enabled": true,
+      "canBuyInShop": true,
+      "currencyType": "Gold",
+      "basePrice": 300,
+      "discountPercent": 10,
+      "limits": { "perCharacter": 1 }
+    },
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "unlock": {
+      "minLevel": 7
+    },
+    "damage": {
+      "coefAtk": 0.8,
+      "flat": 10
+    }
+  },
+  {
+    "id": "warrior_battle_shout",
+    "name": "战吼",
+    "description": "提升自身攻击力",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 30.0,
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "unlock": {
+      "minLevel": 8
+    },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "warrior_power_boost",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "warrior_cleave",
+    "name": "顺劈斩",
+    "description": "对前方敌人造成AoE伤害，消耗怒气",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "enemies_all",
+    "cooldownSec": 6.0,
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "unlock": {
+      "minLevel": 9
+    },
+    "costs": [
+      {
+        "bucketId": "rage",
+        "amount": 2
+      }
+    ],
+    "damage": {
+      "coefAtk": 1.0,
+      "flat": 15
+    }
+  },
+  {
+    "id": "warrior_desperate_strike",
+    "name": "破釜沉舟",
+    "description": "血量低于50%时可用，必定暴击的强力一击",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 15.0,
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "unlock": {
+      "minLevel": 10
+    },
+    "conditions": {
+      "hpBelowPct": 50
+    },
+    "costs": [
+      {
+        "bucketId": "rage",
+        "amount": 5
+      }
+    ],
+    "damage": {
+      "coefAtk": 2.5,
+      "flat": 50
+    },
+    "canCrit": true,
+    "alwaysHits": true
+  },
+  {
+    "id": "warrior_bloodlust",
+    "name": "嗜血",
+    "description": "被动技能：攻击命中时有20%概率触发，造成10点额外伤害",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "current_target",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "unlock": {
+      "minLevel": 1
+    },
+    "triggers": [
+      {
+        "when": "OnAttackHit",
+        "procChance": 0.20,
+        "fireSkillId": "warrior_bloodlust_proc",
+        "priority": 5,
+        "ignoreRequirements": true
+      }
+    ]
+  },
+  {
+    "id": "warrior_bloodlust_proc",
+    "name": "嗜血触发",
+    "description": "嗜血触发效果，造成额外伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "current_target",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "damage": {
+      "coefAtk": 0.0,
+      "flat": 10
+    },
+    "canCrit": false,
+    "alwaysHits": true
+  },
+  {
+    "id": "warrior_strength_aura_passive",
+    "name": "力量光环",
+    "description": "战士光环，持续为全队提供攻击力加成",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "allies_all",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "purchase": {
+      "enabled": true,
+      "canBuyInShop": true,
+      "currencyType": "Gold",
+      "basePrice": 500,
+      "discountPercent": 10,
+      "limits": { "perCharacter": 1 }
+    },
+    "unlock": {
+      "minLevel": 1
+    },
+    "triggers": [
+      {
+        "when": "OnPeriodic",
+        "procChance": 1.0,
+        "fireSkillId": "warrior_strength_aura_effect",
+        "priority": 10,
+        "conditions": {
+          "buffTimeCheckId": "strength_aura_buff",
+          "buffTimeRemainingSec": 5.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "warrior_strength_aura_effect",
+    "name": "力量光环效果",
+    "description": "施加力量光环Buff",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "allies_all",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "warrior"
+    ],
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "strength_aura_buff",
+        "targetOverride": "AllAllies"
+      }
+    ]
+  }
+]
