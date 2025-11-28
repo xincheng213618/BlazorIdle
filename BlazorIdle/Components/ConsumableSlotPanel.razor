@@ -192,6 +192,20 @@
     [Parameter]
     public bool StartCollapsed { get; set; }
 
+    /// <summary>
+    /// 冷却时间回调函数 - 用于获取消耗品剩余冷却时间
+    /// Cooldown time callback - used to get consumable remaining cooldown time
+    /// </summary>
+    [Parameter]
+    public Func<string, double>? GetCooldownRemaining { get; set; }
+
+    /// <summary>
+    /// 最大冷却时间回调函数 - 用于获取消耗品最大冷却时间
+    /// Max cooldown time callback - used to get consumable max cooldown time
+    /// </summary>
+    [Parameter]
+    public Func<string, double>? GetMaxCooldown { get; set; }
+
     private ConsumableManager? _manager;
     private bool isCollapsed;
     private bool showItemSelector;
@@ -199,6 +213,7 @@
     private string? statusMessage;
     private string statusAlertClass = "alert-info";
     private Inventory? _subscribedInventory;
+    private CancellationTokenSource? _clearStatusCts;
 
     protected override async Task OnInitializedAsync()
     {
@@ -237,9 +252,20 @@
         var itemDef = isEquipped ? GameConfig.GetItem(slot!.ItemId!) : null;
         var isOutOfStock = isEquipped && quantity == 0;
         var slotNumber = slotId.EndsWith("_1") ? "1" : "2";
+        
+        // 获取冷却时间信息 / Get cooldown info
+        double cooldownRemaining = 0;
+        double maxCooldown = 0;
+        bool isOnCooldown = false;
+        if (IsInBattle && isEquipped && slot?.ItemId != null)
+        {
+            cooldownRemaining = GetCooldownRemaining?.Invoke(slot.ItemId) ?? 0;
+            maxCooldown = GetMaxCooldown?.Invoke(slot.ItemId) ?? 0;
+            isOnCooldown = cooldownRemaining > 0;
+        }
 
         builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "class", $"consumable-slot {(isEquipped ? "equipped" : "empty")} {(isOutOfStock ? "out-of-stock" : "")} {(IsInBattle ? "locked" : "")}");
+        builder.AddAttribute(1, "class", $"consumable-slot {(isEquipped ? "equipped" : "empty")} {(isOutOfStock ? "out-of-stock" : "")} {(IsInBattle ? "locked" : "")} {(isOnCooldown ? "on-cooldown" : "")}");
         builder.AddAttribute(2, "role", "button");
         if (!IsInBattle)
         {
@@ -273,36 +299,52 @@
             builder.AddAttribute(16, "class", $"slot-quantity {(isOutOfStock ? "empty" : "")}");
             builder.AddContent(17, $"×{quantity}");
             builder.CloseElement();
+            
+            // 战斗中显示冷却状态 / Display cooldown status during battle
+            if (IsInBattle)
+            {
+                builder.OpenElement(18, "div");
+                builder.AddAttribute(19, "class", $"slot-cooldown {(isOnCooldown ? "cooling" : "ready")}");
+                if (isOnCooldown)
+                {
+                    builder.AddContent(20, $"CD: {cooldownRemaining:F1}s");
+                }
+                else
+                {
+                    builder.AddContent(21, "✓ 就绪");
+                }
+                builder.CloseElement();
+            }
 
             builder.CloseElement();
 
             // 卸载按钮
             if (!IsInBattle)
             {
-                builder.OpenElement(18, "button");
-                builder.AddAttribute(19, "class", "btn-unequip-slot");
-                builder.AddAttribute(20, "onclick", EventCallback.Factory.Create(this, async () =>
+                builder.OpenElement(22, "button");
+                builder.AddAttribute(23, "class", "btn-unequip-slot");
+                builder.AddAttribute(24, "onclick", EventCallback.Factory.Create(this, async () =>
                 {
                     await UnequipSlot(slotId);
                 }));
-                builder.AddAttribute(21, "title", "卸载");
-                builder.AddEventStopPropagationAttribute(22, "onclick", true);
-                builder.AddContent(23, "×");
+                builder.AddAttribute(25, "title", "卸载");
+                builder.AddEventStopPropagationAttribute(26, "onclick", true);
+                builder.AddContent(27, "×");
                 builder.CloseElement();
             }
         }
         else
         {
             // 空槽位
-            builder.OpenElement(24, "div");
-            builder.AddAttribute(25, "class", "slot-empty");
+            builder.OpenElement(28, "div");
+            builder.AddAttribute(29, "class", "slot-empty");
             if (IsInBattle)
             {
-                builder.AddContent(26, "🔒 战斗中无法修改");
+                builder.AddContent(30, "🔒 战斗中无法修改");
             }
             else
             {
-                builder.AddContent(27, $"点击装备{(category == "potion" ? "药水" : "食物")}");
+                builder.AddContent(31, $"点击装备{(category == "potion" ? "药水" : "食物")}");
             }
             builder.CloseElement();
         }
@@ -310,9 +352,9 @@
         // 锁定图标
         if (IsInBattle)
         {
-            builder.OpenElement(28, "div");
-            builder.AddAttribute(29, "class", "lock-overlay");
-            builder.AddContent(30, "🔒");
+            builder.OpenElement(32, "div");
+            builder.AddAttribute(33, "class", "lock-overlay");
+            builder.AddContent(34, "🔒");
             builder.CloseElement();
         }
 
@@ -463,11 +505,26 @@
 
     private void ClearStatusAfterDelay()
     {
-        _ = Task.Delay(2000).ContinueWith(async _ =>
+        _clearStatusCts?.Cancel();
+        _clearStatusCts = new CancellationTokenSource();
+        _ = ClearStatusWithCancellation(_clearStatusCts.Token);
+    }
+
+    private async Task ClearStatusWithCancellation(CancellationToken ct)
+    {
+        try
         {
-            statusMessage = null;
-            await InvokeAsync(StateHasChanged);
-        }, TaskScheduler.Default);
+            await Task.Delay(2000, ct);
+            if (!ct.IsCancellationRequested)
+            {
+                statusMessage = null;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Expected when component is disposed or new message shown
+        }
     }
 
     private string GetResultMessage(ConsumableOperationResult result) => result switch
@@ -495,6 +552,8 @@
 
     public void Dispose()
     {
+        _clearStatusCts?.Cancel();
+        _clearStatusCts?.Dispose();
         if (_subscribedInventory != null)
             _subscribedInventory.Changed -= OnInventoryChanged;
     }
@@ -653,6 +712,29 @@
     .slot-quantity.empty {
         color: #dc3545;
         font-weight: 600;
+    }
+
+    .slot-cooldown {
+        font-size: 0.75rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-top: 2px;
+    }
+
+    .slot-cooldown.cooling {
+        background: #fff3cd;
+        color: #856404;
+        font-weight: 600;
+    }
+
+    .slot-cooldown.ready {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .consumable-slot.on-cooldown {
+        opacity: 0.8;
+        border-color: #ffc107;
     }
 
     .slot-empty {

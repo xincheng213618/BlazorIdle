@@ -5,6 +5,7 @@
 @inject IUserService UserService
 
 <div class="system-shop-panel">
+    <ShopPurchaseToast @ref="purchaseToast" />
     <div class="shop-header"
          role="button"
          @onclick="ToggleCollapse"
@@ -31,15 +32,6 @@
     </div>
 
     <div class="shop-body" style="@(isCollapsed ? "display:none" : null)">
-        @if (!string.IsNullOrEmpty(successMessage))
-        {
-            <div class="alert alert-success mb-3">@successMessage</div>
-        }
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="alert alert-danger mb-3">@errorMessage</div>
-        }
-
         @if (Character == null)
         {
             <div class="empty-state">
@@ -328,9 +320,8 @@
     private bool isCollapsed;
     private bool isLoading = true;
     private bool isPurchasing = false;
-    private string? errorMessage = null;
-    private string? successMessage = null;
 
+    private ShopPurchaseToast? purchaseToast;
     private CharacterSlotShopInfo? shopInfo;
 
     protected override async Task OnInitializedAsync()
@@ -381,12 +372,10 @@
 
         if (!CanAffordSlot())
         {
-            errorMessage = $"金币不足，需要 {shopInfo.Price:N0} 金币";
+            purchaseToast?.ShowInsufficientGold("角色槽位 +1", shopInfo.Price);
             return;
         }
 
-        errorMessage = null;
-        successMessage = null;
         isPurchasing = true;
 
         try
@@ -395,7 +384,7 @@
 
             if (result?.Success == true)
             {
-                successMessage = result.Message;
+                purchaseToast?.ShowSuccess("角色槽位 +1", shopInfo.Price, result.Message);
                 Character.Inventory?.RemoveItem(ItemIds.GoldCoin, shopInfo.Price);
                 await LoadShopInfoAsync();
 
@@ -403,21 +392,10 @@
                 {
                     await OnSlotPurchased.InvokeAsync();
                 }
-
-                _ = Task.Delay(3000).ContinueWith(async _ =>
-                {
-                    successMessage = null;
-                    await InvokeAsync(StateHasChanged);
-                }, TaskScheduler.Default);
             }
             else
             {
-                errorMessage = result?.Message ?? "购买失败";
-                _ = Task.Delay(3000).ContinueWith(async _ =>
-                {
-                    errorMessage = null;
-                    await InvokeAsync(StateHasChanged);
-                }, TaskScheduler.Default);
+                purchaseToast?.ShowError("角色槽位 +1", result?.Message ?? "购买失败");
             }
         }
         finally

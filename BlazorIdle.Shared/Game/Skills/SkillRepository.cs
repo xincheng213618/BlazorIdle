@@ -13,24 +13,75 @@ namespace BlazorIdle.Game.Skills
     {
         private readonly Dictionary<string, SkillDef> _skills = new();
 
+        /// <summary>
+        /// 技能配置文件列表 - 按职业/类型分类存储在 skills 文件夹中
+        /// Skill config files - stored in skills folder by profession/type
+        /// </summary>
+        private static readonly string[] SkillConfigFiles = new[]
+        {
+            "skills.warrior.json",    // 战士技能
+            "skills.mage.json",       // 法师技能
+            "skills.rogue.json",      // 盗贼技能
+            "skills.ranger.json",     // 游侠技能
+            "skills.common.json",     // 通用技能
+            "skills.consumable.json", // 消耗品技能
+            "skills.monster.json"     // 怪物技能
+        };
+
         public SkillRepository()
         {
             InitializeDefaultSkills();
             
-            // Try to load player skills from embedded JSON
-            bool playerSkillsLoaded = TryLoadFromEmbeddedJson("skills.json");
+            // 从分类文件加载技能
+            bool loaded = TryLoadFromCategorizedFiles();
             
-            // Try to load monster skills from embedded JSON
-            bool monsterSkillsLoaded = TryLoadFromEmbeddedJson("monsterskills.json");
-            
-            // Try to load consumable skills from embedded JSON
-            bool consumableSkillsLoaded = TryLoadFromEmbeddedJson("consumableSkills.json");
-            
-            if (playerSkillsLoaded || monsterSkillsLoaded || consumableSkillsLoaded)
+            if (loaded)
             {
                 // Validate configuration after loading
                 ValidateSkillConfigurations();
             }
+        }
+
+        /// <summary>
+        /// 尝试从分类文件加载技能配置
+        /// Attempts to load skill configurations from categorized files.
+        /// </summary>
+        /// <returns>True if at least one file was successfully loaded, false otherwise.</returns>
+        private bool TryLoadFromCategorizedFiles()
+        {
+            var loadedFiles = new List<string>();
+            var failedFiles = new List<string>();
+            int totalSkills = 0;
+
+            foreach (var filename in SkillConfigFiles)
+            {
+                try
+                {
+                    bool loaded = TryLoadFromEmbeddedJson(filename);
+                    if (loaded)
+                    {
+                        loadedFiles.Add(filename);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failedFiles.Add($"{filename}: {ex.Message}");
+                    Console.Error.WriteLine($"[SkillRepository] 加载技能分类失败: {filename} - {ex.Message}");
+                }
+            }
+
+            if (loadedFiles.Count > 0)
+            {
+                Console.WriteLine($"[SkillRepository] ✅ 成功从分类文件加载技能，来自 {loadedFiles.Count} 个文件");
+                return true;
+            }
+
+            if (failedFiles.Count > 0)
+            {
+                Console.WriteLine($"[SkillRepository] 警告: 所有分类文件加载失败。失败详情: {string.Join("; ", failedFiles)}");
+            }
+
+            return false;
         }
 
         /// <summary>

@@ -12,16 +12,55 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Config\buffs.json" />
-    <EmbeddedResource Include="Config\skills.json" />
-    <EmbeddedResource Include="Config\monsterskills.json" />
-    <EmbeddedResource Include="Config\consumableSkills.json" />
-    <EmbeddedResource Include="Config\items.json" />
-    <EmbeddedResource Include="Config\consumableShop.json" />
-    <EmbeddedResource Include="Config\systemShop.json" />
+    <!-- 用户配置文件 / User config file -->
     <EmbeddedResource Include="Config\userConfig.json" />
-    <EmbeddedResource Include="Config\potionShop.json" />
-    <EmbeddedResource Include="Config\foodShop.json" />
+    
+    <!-- 物品分类配置文件 / Item category config files -->
+    <EmbeddedResource Include="Config\items\currency.json" LogicalName="BlazorIdle.Shared.Config.items.currency.json" />
+    <EmbeddedResource Include="Config\items\potions.json" LogicalName="BlazorIdle.Shared.Config.items.potions.json" />
+    <EmbeddedResource Include="Config\items\food.json" LogicalName="BlazorIdle.Shared.Config.items.food.json" />
+    <EmbeddedResource Include="Config\items\special.json" LogicalName="BlazorIdle.Shared.Config.items.special.json" />
+    
+    <!-- 商店分类配置文件 / Shop category config files -->
+    <EmbeddedResource Include="Config\shops\potion.json" LogicalName="BlazorIdle.Shared.Config.shops.potion.json" />
+    <EmbeddedResource Include="Config\shops\food.json" LogicalName="BlazorIdle.Shared.Config.shops.food.json" />
+    <EmbeddedResource Include="Config\shops\consumable.json" LogicalName="BlazorIdle.Shared.Config.shops.consumable.json" />
+    <EmbeddedResource Include="Config\shops\system.json" LogicalName="BlazorIdle.Shared.Config.shops.system.json" />
+    
+    <!-- 技能分类配置文件 / Skill category config files -->
+    <EmbeddedResource Include="Config\skills\warrior.json" LogicalName="BlazorIdle.Shared.Config.skills.warrior.json" />
+    <EmbeddedResource Include="Config\skills\mage.json" LogicalName="BlazorIdle.Shared.Config.skills.mage.json" />
+    <EmbeddedResource Include="Config\skills\rogue.json" LogicalName="BlazorIdle.Shared.Config.skills.rogue.json" />
+    <EmbeddedResource Include="Config\skills\ranger.json" LogicalName="BlazorIdle.Shared.Config.skills.ranger.json" />
+    <EmbeddedResource Include="Config\skills\common.json" LogicalName="BlazorIdle.Shared.Config.skills.common.json" />
+    <EmbeddedResource Include="Config\skills\consumable.json" LogicalName="BlazorIdle.Shared.Config.skills.consumable.json" />
+    <EmbeddedResource Include="Config\skills\monster.json" LogicalName="BlazorIdle.Shared.Config.skills.monster.json" />
+    
+    <!-- Buff分类配置文件 / Buff category config files -->
+    <EmbeddedResource Include="Config\buffs\warrior.json" LogicalName="BlazorIdle.Shared.Config.buffs.warrior.json" />
+    <EmbeddedResource Include="Config\buffs\mage.json" LogicalName="BlazorIdle.Shared.Config.buffs.mage.json" />
+    <EmbeddedResource Include="Config\buffs\rogue.json" LogicalName="BlazorIdle.Shared.Config.buffs.rogue.json" />
+    <EmbeddedResource Include="Config\buffs\ranger.json" LogicalName="BlazorIdle.Shared.Config.buffs.ranger.json" />
+    <EmbeddedResource Include="Config\buffs\common.json" LogicalName="BlazorIdle.Shared.Config.buffs.common.json" />
+    <EmbeddedResource Include="Config\buffs\debuffs.json" LogicalName="BlazorIdle.Shared.Config.buffs.debuffs.json" />
+    <EmbeddedResource Include="Config\buffs\consumable.json" LogicalName="BlazorIdle.Shared.Config.buffs.consumable.json" />
+    <EmbeddedResource Include="Config\buffs\monster.json" LogicalName="BlazorIdle.Shared.Config.buffs.monster.json" />
+    
+    <!-- 战斗配置文件 / Battle config files -->
+    <EmbeddedResource Include="Config\battles\battleConfigs.json" LogicalName="BlazorIdle.Shared.Config.battles.battleConfigs.json" />
+    <EmbeddedResource Include="Config\battles\battleScenarios.json" LogicalName="BlazorIdle.Shared.Config.battles.battleScenarios.json" />
+    
+    <!-- 怪物配置文件 / Monster config files -->
+    <EmbeddedResource Include="Config\monsters\monsters.json" LogicalName="BlazorIdle.Shared.Config.monsters.monsters.json" />
+    
+    <!-- 副本配置文件 / Dungeon config files -->
+    <EmbeddedResource Include="Config\dungeons\dungeons.json" LogicalName="BlazorIdle.Shared.Config.dungeons.dungeons.json" />
+    
+    <!-- 职业配置文件 / Profession config files -->
+    <EmbeddedResource Include="Config\professions\professions.json" LogicalName="BlazorIdle.Shared.Config.professions.professions.json" />
+    <EmbeddedResource Include="Config\professions\attributes.json" LogicalName="BlazorIdle.Shared.Config.professions.attributes.json" />
+    <EmbeddedResource Include="Config\professions\limits.json" LogicalName="BlazorIdle.Shared.Config.professions.limits.json" />
+    <EmbeddedResource Include="Config\professions\experience.json" LogicalName="BlazorIdle.Shared.Config.professions.experience.json" />
   </ItemGroup>
 
 </Project>

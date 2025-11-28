@@ -1,21 +1,9 @@
 [
   {
-    "id": "gold_coin",
-    "name": "金币",
-    "icon": "🪙",
-    "description": "通用货币",
-    "type": 1,
-    "stackable": true,
-    "maxStack": 999999,
-    "rarity": 1,
-    "sellPrice": 1,
-    "buyPrice": 0
-  },
-  {
     "id": "health_potion",
-    "name": "生命药水",
+    "name": "治愈药剂",
     "icon": "🧪",
-    "description": "恢复50点生命值",
+    "description": "恢复50点生命值（食物类消耗品）",
     "type": 3,
     "stackable": true,
     "maxStack": 99,
@@ -32,52 +20,6 @@
         "hpBelowPct": 50.0
       },
       "cooldownSec": 30.0
-    }
-  },
-  {
-    "id": "strength_potion",
-    "name": "力量药水",
-    "icon": "💪",
-    "description": "临时增加10%攻击力，持续60秒",
-    "type": 3,
-    "stackable": true,
-    "maxStack": 99,
-    "rarity": 2,
-    "sellPrice": 25,
-    "buyPrice": 50,
-    "metadata": {
-      "effectDescription": "使用后增加10%攻击力，持续60秒"
-    },
-    "consumableConfig": {
-      "category": "potion",
-      "skillId": "consumable_strength_potion",
-      "triggerConditions": {
-        "combatStarted": true
-      },
-      "cooldownSec": 120.0
-    }
-  },
-  {
-    "id": "speed_potion",
-    "name": "敏捷药水",
-    "icon": "⚡",
-    "description": "临时增加15%速度，持续60秒",
-    "type": 3,
-    "stackable": true,
-    "maxStack": 99,
-    "rarity": 2,
-    "sellPrice": 30,
-    "buyPrice": 60,
-    "metadata": {
-      "effectDescription": "使用后增加15%速度，持续60秒"
-    },
-    "consumableConfig": {
-      "category": "potion",
-      "skillId": "consumable_speed_potion",
-      "triggerConditions": {
-        "combatStarted": true
-      },
-      "cooldownSec": 120.0
     }
   },
   {
@@ -193,49 +135,6 @@
         "hpBelowPct": 30.0
       },
       "cooldownSec": 60.0
-    }
-  },
-  {
-    "id": "exp_scroll",
-    "name": "经验卷轴",
-    "icon": "📜",
-    "description": "获得100点经验值",
-    "type": 3,
-    "stackable": true,
-    "maxStack": 99,
-    "rarity": 2,
-    "sellPrice": 50,
-    "buyPrice": 100,
-    "metadata": {
-      "effectDescription": "使用后获得100点经验值"
-    }
-  },
-  {
-    "id": "skill_book_warrior_rend",
-    "name": "撕裂技能书",
-    "icon": "📕",
-    "description": "战士专用技能书",
-    "type": 4,
-    "stackable": true,
-    "maxStack": 99,
-    "metadata": {
-      "skillId": "warrior_rend",
-      "accountFlag": "used_warrior_rend_book",
-      "effectDescription": "学习技能：撕裂"
-    }
-  },
-  {
-    "id": "skill_book_mage_fireball",
-    "name": "火球术技能书",
-    "icon": "📗",
-    "description": "法师专用技能书",
-    "type": 4,
-    "stackable": true,
-    "maxStack": 99,
-    "metadata": {
-      "skillId": "mage_fireball",
-      "accountFlag": "used_mage_fireball_book",
-      "effectDescription": "学习技能：火球术"
     }
   }
 ]

@@ -1,0 +1,62 @@
+// 通用Debuff配置文件 - Common Debuff Configuration File
+// 
+// 注意 / Note:
+// - 包含不属于特定职业的通用负面效果
+// - Contains generic debuff effects not specific to any profession
+//
+[
+  {
+    "id": "weakness",
+    "name": "虚弱",
+    "description": "降低攻击伤害",
+    "icon": "😰",
+    "kind": "Debuff",
+    "durationSec": 8.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "Target",
+    "effects": [
+      {
+        "type": "StatReduction",
+        "target": "DamagePerAttack",
+        "value": 0.20
+      }
+    ]
+  },
+  {
+    "id": "poison",
+    "name": "中毒",
+    "description": "持续受到毒素伤害",
+    "icon": "☠️",
+    "kind": "Debuff",
+    "durationSec": 10.0,
+    "tickIntervalSec": 2.0,
+    "stackingPolicy": "Stack",
+    "maxStacks": 3,
+    "defaultTarget": "Target",
+    "effects": [
+      {
+        "type": "DamageOverTime",
+        "amountPerTick": 4
+      }
+    ]
+  },
+  {
+    "id": "weakened",
+    "name": "虚弱",
+    "description": "降低敌人伤害",
+    "icon": "😰",
+    "kind": "Debuff",
+    "durationSec": 8.0,
+    "stackingPolicy": "Refresh",
+    "maxStacks": 1,
+    "defaultTarget": "AllEnemies",
+    "effects": [
+      {
+        "type": "StatReduction",
+        "target": "DamagePerHit",
+        "value": 0.20
+      }
+    ]
+  }
+]

@@ -61,22 +61,31 @@ namespace BlazorIdle.Game.Consumables
         private readonly IGameConfigService _configService;
 
         /// <summary>
-        /// 有效的药水槽位ID列表
-        /// Valid potion slot IDs
+        /// 有效的药水槽位ID列表 - 引用自 ConsumableEquipmentConfig
+        /// Valid potion slot IDs - referenced from ConsumableEquipmentConfig
         /// </summary>
-        public static readonly string[] PotionSlotIds = { "potion_1", "potion_2" };
+        public static string[] PotionSlotIds => ConsumableEquipmentConfig.PotionSlotIds;
 
         /// <summary>
-        /// 有效的食物槽位ID列表
-        /// Valid food slot IDs
+        /// 有效的食物槽位ID列表 - 引用自 ConsumableEquipmentConfig
+        /// Valid food slot IDs - referenced from ConsumableEquipmentConfig
         /// </summary>
-        public static readonly string[] FoodSlotIds = { "food_1", "food_2" };
+        public static string[] FoodSlotIds => ConsumableEquipmentConfig.FoodSlotIds;
+
+        /// <summary>
+        /// 所有有效的槽位ID列表 - 缓存以避免重复分配
+        /// All valid slot IDs - cached to avoid repeated allocations
+        /// </summary>
+        private static readonly string[] _allSlotIds = 
+            ConsumableEquipmentConfig.PotionSlotIds
+                .Concat(ConsumableEquipmentConfig.FoodSlotIds)
+                .ToArray();
 
         /// <summary>
         /// 所有有效的槽位ID列表
         /// All valid slot IDs
         /// </summary>
-        public static readonly string[] AllSlotIds = { "potion_1", "potion_2", "food_1", "food_2" };
+        public static string[] AllSlotIds => _allSlotIds;
 
         /// <summary>
         /// 构造函数

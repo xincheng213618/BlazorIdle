@@ -1,13 +1,16 @@
-﻿using System.Text.Json;
-using BlazorIdle.Game.Config;
+﻿using BlazorIdle.Game.Config;
 using BlazorIdle.Shared.Models;
 using Microsoft.Extensions.Hosting;
 
 namespace BlazorIdle.Server.Services
 {
+    /// <summary>
+    /// Server-side game configuration provider.
+    /// Now loads all configurations from Shared ConfigRepository (embedded resources).
+    /// 服务端游戏配置提供者 - 现在从共享的 ConfigRepository（嵌入资源）加载所有配置。
+    /// </summary>
     public sealed class GameConfigProvider : IGameConfigProvider
     {
-        private readonly IHostEnvironment _env;
         private readonly List<ProfessionDef> _professions = new();
         private readonly List<MonsterDef> _monsters = new();
         private readonly List<ItemDefinition> _items = new();
@@ -19,9 +22,10 @@ namespace BlazorIdle.Server.Services
         private int _maxProfessionLevel = 100;
         private volatile bool _loaded;
 
-        public GameConfigProvider(IHostEnvironment env)
+        public GameConfigProvider(IHostEnvironment _)
         {
-            _env = env;
+            // IHostEnvironment no longer needed for file loading, but kept for DI compatibility
+            // IHostEnvironment 不再需要用于文件加载，但保留用于 DI 兼容性
         }
 
         public IReadOnlyList<ProfessionDef> Professions => _professions;
@@ -39,120 +43,35 @@ namespace BlazorIdle.Server.Services
         {
             if (_loaded) return;
 
-            var contentRoot = _env.ContentRootPath;
-            var profPath = Path.Combine(contentRoot, "Config", "professions.json");
-            var monPath = Path.Combine(contentRoot, "Config", "monsters.json");
-            var dungeonsPath = Path.Combine(contentRoot, "Config", "dungeons.json");
-            var battleScenariosPath = Path.Combine(contentRoot, "Config", "battleScenarios.json");
-            var battleConfigsPath = Path.Combine(contentRoot, "Config", "battleConfigs.json");
-            var experienceCurvePath = Path.Combine(contentRoot, "Config", "experienceCurve.json");
-            var professionLimitsPath = Path.Combine(contentRoot, "Config", "professionLimits.json");
-            var professionAttributesPath = Path.Combine(contentRoot, "Config", "professionAttributes.json");
+            // Load all configurations from Shared ConfigRepository (embedded resources)
+            // 从共享的 ConfigRepository（嵌入资源）加载所有配置
 
-            List<ProfessionDef>? profs = null;
-            List<MonsterDef>? mons = null;
-            List<DungeonDef>? dungeons = null;
-            List<BattleScenarioDef>? battleScenarios = null;
-            List<BattleConfigDef>? battleConfigs = null;
-            List<LevelExperienceRequirement>? experienceCurve = null;
-            ExperienceConfig? professionLimits = null;
-            Dictionary<string, ProfessionAttributeConfig>? professionAttributes = null;
+            // Load professions
+            var profs = ConfigRepository.LoadProfessions();
 
-            try
-            {
-                if (File.Exists(profPath))
-                {
-                    await using var s = File.OpenRead(profPath);
-                    profs = await JsonSerializer.DeserializeAsync<List<ProfessionDef>>(s, cancellationToken: ct);
-                }
-            }
-            catch { /* ignore to fallback */ }
+            // Load monsters
+            var mons = ConfigRepository.LoadMonsters();
 
-            try
-            {
-                if (File.Exists(monPath))
-                {
-                    await using var s = File.OpenRead(monPath);
-                    mons = await JsonSerializer.DeserializeAsync<List<MonsterDef>>(s, cancellationToken: ct);
-                }
-            }
-            catch { /* ignore to fallback */ }
+            // Load items
+            var items = ConfigRepository.LoadItems();
 
-            // 加载副本配置
-            try
-            {
-                if (File.Exists(dungeonsPath))
-                {
-                    await using var s = File.OpenRead(dungeonsPath);
-                    dungeons = await JsonSerializer.DeserializeAsync<List<DungeonDef>>(s, cancellationToken: ct);
-                }
-            }
-            catch { /* ignore to fallback */ }
+            // Load dungeons
+            var dungeons = ConfigRepository.LoadDungeons();
 
-            // 加载战斗场景配置
-            try
-            {
-                if (File.Exists(battleScenariosPath))
-                {
-                    await using var s = File.OpenRead(battleScenariosPath);
-                    battleScenarios = await JsonSerializer.DeserializeAsync<List<BattleScenarioDef>>(s, cancellationToken: ct);
-                }
-            }
-            catch { /* ignore to fallback */ }
+            // Load battle scenarios
+            var battleScenarios = ConfigRepository.LoadBattleScenarios();
 
-            // 加载战斗配置
-            try
-            {
-                if (File.Exists(battleConfigsPath))
-                {
-                    await using var s = File.OpenRead(battleConfigsPath);
-                    battleConfigs = await JsonSerializer.DeserializeAsync<List<BattleConfigDef>>(s, cancellationToken: ct);
-                }
-            }
-            catch { /* ignore to fallback */ }
+            // Load battle configs
+            var battleConfigs = ConfigRepository.LoadBattleConfigs();
 
-            // 加载经验曲线配置
-            try
-            {
-                if (File.Exists(experienceCurvePath))
-                {
-                    await using var s = File.OpenRead(experienceCurvePath);
-                    experienceCurve = await JsonSerializer.DeserializeAsync<List<LevelExperienceRequirement>>(s, cancellationToken: ct);
-                }
-            }
-            catch { /* ignore to fallback */ }
+            // Load experience curve
+            var experienceCurve = ConfigRepository.LoadExperienceCurve();
 
-            // 加载职业限制配置
-            try
-            {
-                if (File.Exists(professionLimitsPath))
-                {
-                    await using var s = File.OpenRead(professionLimitsPath);
-                    professionLimits = await JsonSerializer.DeserializeAsync<ExperienceConfig>(s, cancellationToken: ct);
-                }
-            }
-            catch { /* ignore to fallback */ }
+            // Load profession limits
+            var professionLimits = ConfigRepository.LoadProfessionLimits();
 
-            // Phase 2.7: 加载职业属性配置（包含资源配置）
-            // Phase 2.7: Load profession attribute configuration (includes resource configuration)
-            try
-            {
-                if (File.Exists(professionAttributesPath))
-                {
-                    await using var s = File.OpenRead(professionAttributesPath);
-                    professionAttributes = await JsonSerializer.DeserializeAsync<Dictionary<string, ProfessionAttributeConfig>>(s, cancellationToken: ct);
-                }
-            }
-            catch { /* ignore to fallback */ }
-
-            // fallback to shared defaults
-            profs ??= DefaultGameConfig.DefaultProfessions();
-            mons ??= DefaultGameConfig.DefaultMonsters();
-            dungeons ??= new List<DungeonDef>();
-            battleScenarios ??= new List<BattleScenarioDef>();
-            battleConfigs ??= new List<BattleConfigDef>();
-            experienceCurve ??= CreateDefaultExperienceCurve();
-            professionAttributes ??= new Dictionary<string, ProfessionAttributeConfig>();
+            // Load profession attributes
+            var professionAttributes = ConfigRepository.LoadProfessionAttributes();
 
             _professions.Clear();
             _professions.AddRange(profs.Where(p => !string.IsNullOrWhiteSpace(p.Id)));
@@ -160,8 +79,8 @@ namespace BlazorIdle.Server.Services
             _monsters.Clear();
             _monsters.AddRange(mons.Where(m => !string.IsNullOrWhiteSpace(m.Id)));
 
-            // Items are now loaded from Shared/Config via ConfigRepository on client side
-            // No need to load or populate _items on server side
+            _items.Clear();
+            _items.AddRange(items.Where(i => !string.IsNullOrWhiteSpace(i.Id)));
 
             _dungeons.Clear();
             _dungeons.AddRange(dungeons.Where(d => !string.IsNullOrWhiteSpace(d.Id)));
@@ -182,21 +101,14 @@ namespace BlazorIdle.Server.Services
             }
 
             // 设置职业最大等级
-            _maxProfessionLevel = professionLimits?.MaxProfessionLevel ?? 100;
+            _maxProfessionLevel = professionLimits.MaxProfessionLevel;
 
-            Version = $"p:{_professions.Count}-m:{_monsters.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-exp:{_experienceCurve.Count}-maxLvl:{_maxProfessionLevel}-profAttrs:{_professionAttributes.Count}";
+            Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-exp:{_experienceCurve.Count}-maxLvl:{_maxProfessionLevel}-profAttrs:{_professionAttributes.Count}";
             _loaded = true;
-        }
 
-        private static List<LevelExperienceRequirement> CreateDefaultExperienceCurve()
-        {
-            var curve = new List<LevelExperienceRequirement>();
-            for (int level = 1; level <= 20; level++)
-            {
-                long expRequired = level == 1 ? 0 : (long)(100 * Math.Pow(1.5, level - 2));
-                curve.Add(new LevelExperienceRequirement { Level = level, ExperienceRequired = expRequired });
-            }
-            return curve;
+            // Note: We no longer read from file system - all configs are loaded from embedded resources
+            // 注意：不再从文件系统读取 - 所有配置都从嵌入资源加载
+            await Task.CompletedTask; // Keep async signature for backward compatibility
         }
 
         public ProfessionDef? GetProfession(string id) => _professions.FirstOrDefault(p => p.Id == id);

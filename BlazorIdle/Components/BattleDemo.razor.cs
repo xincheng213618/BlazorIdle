@@ -363,6 +363,9 @@ namespace BlazorIdle.Components
         private List<CharacterPanel.EquippedSkillData>? _cachedPlayerSkills = null;
         private string? _lastSkillConfigKey = null; // 用于检测技能配置变化 / Used to detect skill config changes
 
+        // 消耗品使用提示组件 / Consumable usage toast component
+        private ConsumableUsedToast? consumableToast;
+
         /// <summary>
         /// 获取玩家装备的消耗品列表（药水/食物）
         /// Get player equipped consumables list (potions/food)
@@ -767,6 +770,9 @@ namespace BlazorIdle.Components
             battle.BuffRemoved += OnBuffRemoved;
             battle.BuffTicked += OnBuffTicked;
             battle.Healed += OnHealed;
+            // 消耗品事件 / Consumable events
+            battle.ConsumableUsed += OnConsumableUsed;
+            battle.ConsumableOutOfStock += OnConsumableOutOfStock;
 
             digest = null;
         }
@@ -791,6 +797,8 @@ namespace BlazorIdle.Components
                 dungeonManager.BuffRemoved -= OnBuffRemoved;
                 dungeonManager.BuffTicked -= OnBuffTicked;
                 dungeonManager.Healed -= OnHealed;
+                dungeonManager.ConsumableUsed -= OnConsumableUsed;
+                dungeonManager.ConsumableOutOfStock -= OnConsumableOutOfStock;
             }
 
             var clock = new SimClock();
@@ -866,6 +874,9 @@ namespace BlazorIdle.Components
             dungeonManager.BuffRemoved += OnBuffRemoved;
             dungeonManager.BuffTicked += OnBuffTicked;
             dungeonManager.Healed += OnHealed;
+            // 消耗品事件 / Consumable events
+            dungeonManager.ConsumableUsed += OnConsumableUsed;
+            dungeonManager.ConsumableOutOfStock += OnConsumableOutOfStock;
 
             dungeonSnapshot = null;
         }
@@ -1555,6 +1566,59 @@ namespace BlazorIdle.Components
             _ = InvokeAsync(StateHasChanged);
         }
 
+        /// <summary>
+        /// 消耗品使用事件处理 - 显示浮动提示
+        /// Consumable used event handler - display floating toast
+        /// </summary>
+        private void OnConsumableUsed(ConsumableUsedEvent ev)
+        {
+            var itemDef = GameConfig.Items.FirstOrDefault(i => i.Id == ev.ItemId);
+            var isPotion = itemDef?.ConsumableConfig?.Category?.Equals("potion", StringComparison.OrdinalIgnoreCase) ?? false;
+            
+            var sec = ev.TimeMs / 1000.0;
+            var line = $"[{sec:0.00}s] [消耗品] 🧪 使用了 {itemDef?.Name ?? ev.ItemId}，剩余 {ev.RemainingCount}";
+            
+            logs.Add(line);
+            if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
+            
+            // 显示浮动提示 / Show toast
+            _ = InvokeAsync(() =>
+            {
+                consumableToast?.ShowUsed(
+                    itemDef?.Name ?? ev.ItemId,
+                    isPotion,
+                    ev.RemainingCount
+                );
+                StateHasChanged();
+            });
+        }
+
+        /// <summary>
+        /// 消耗品库存耗尽事件处理
+        /// Consumable out of stock event handler
+        /// </summary>
+        private void OnConsumableOutOfStock(ConsumableOutOfStockEvent ev)
+        {
+            var itemDef = GameConfig.Items.FirstOrDefault(i => i.Id == ev.ItemId);
+            var isPotion = itemDef?.ConsumableConfig?.Category?.Equals("potion", StringComparison.OrdinalIgnoreCase) ?? false;
+            
+            var sec = ev.TimeMs / 1000.0;
+            var line = $"[{sec:0.00}s] [消耗品] ⚠️ {itemDef?.Name ?? ev.ItemId} 库存已耗尽！";
+            
+            logs.Add(line);
+            if (logs.Count > MaxLogEntries) logs.RemoveRange(0, logs.Count - MaxLogEntries);
+            
+            // 显示警告浮动提示 / Show warning toast
+            _ = InvokeAsync(() =>
+            {
+                consumableToast?.ShowOutOfStock(
+                    itemDef?.Name ?? ev.ItemId,
+                    isPotion
+                );
+                StateHasChanged();
+            });
+        }
+
         public void Dispose()
         {
             _cts?.Cancel();
@@ -1569,6 +1633,8 @@ namespace BlazorIdle.Components
                 battle.BuffRemoved -= OnBuffRemoved;
                 battle.BuffTicked -= OnBuffTicked;
                 battle.Healed -= OnHealed;
+                battle.ConsumableUsed -= OnConsumableUsed;
+                battle.ConsumableOutOfStock -= OnConsumableOutOfStock;
             }
 
             if (dungeonManager is not null)
@@ -1582,6 +1648,8 @@ namespace BlazorIdle.Components
                 dungeonManager.BuffRemoved -= OnBuffRemoved;
                 dungeonManager.BuffTicked -= OnBuffTicked;
                 dungeonManager.Healed -= OnHealed;
+                dungeonManager.ConsumableUsed -= OnConsumableUsed;
+                dungeonManager.ConsumableOutOfStock -= OnConsumableOutOfStock;
             }
         }
 

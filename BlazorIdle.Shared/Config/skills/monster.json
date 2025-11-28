@@ -119,7 +119,7 @@
     "allowedProfessions": [],
     "onCastBuffs": [
       {
-        "type": "Apply",
+        "op": "Apply",
         "buffConfigId": "monster_fire_shield_buff",
         "targetOverride": "Self"
       }

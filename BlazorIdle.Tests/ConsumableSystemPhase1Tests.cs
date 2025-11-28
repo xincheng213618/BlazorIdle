@@ -413,5 +413,77 @@ namespace BlazorIdle.Tests
         }
 
         #endregion
+
+        #region ConsumableCategory Enum Tests
+
+        [Fact]
+        public void ConsumableConfig_CategoryType_ReturnsPotionForPotionCategory()
+        {
+            // Arrange
+            var config = new ConsumableConfig { Category = "potion" };
+
+            // Assert
+            Assert.Equal(ConsumableCategory.Potion, config.CategoryType);
+            Assert.True(config.IsPotion);
+            Assert.False(config.IsFood);
+        }
+
+        [Fact]
+        public void ConsumableConfig_CategoryType_ReturnsFoodForFoodCategory()
+        {
+            // Arrange
+            var config = new ConsumableConfig { Category = "food" };
+
+            // Assert
+            Assert.Equal(ConsumableCategory.Food, config.CategoryType);
+            Assert.False(config.IsPotion);
+            Assert.True(config.IsFood);
+        }
+
+        [Fact]
+        public void ConsumableConfig_CategoryType_ReturnsUnknownForInvalidCategory()
+        {
+            // Arrange
+            var config = new ConsumableConfig { Category = "invalid" };
+
+            // Assert
+            Assert.Equal(ConsumableCategory.Unknown, config.CategoryType);
+            Assert.False(config.IsPotion);
+            Assert.False(config.IsFood);
+        }
+
+        [Fact]
+        public void ConsumableConfig_CategoryType_IsCaseInsensitive()
+        {
+            // Arrange
+            var configUpperPotion = new ConsumableConfig { Category = "POTION" };
+            var configMixedFood = new ConsumableConfig { Category = "FoOd" };
+
+            // Assert
+            Assert.Equal(ConsumableCategory.Potion, configUpperPotion.CategoryType);
+            Assert.Equal(ConsumableCategory.Food, configMixedFood.CategoryType);
+        }
+
+        #endregion
+
+        #region Slot Constants Tests
+
+        [Fact]
+        public void ConsumableEquipmentConfig_SlotConstants_AreCorrect()
+        {
+            // Assert - PotionSlotIds should match hardcoded values
+            Assert.Equal(new[] { "potion_1", "potion_2" }, ConsumableEquipmentConfig.PotionSlotIds);
+            Assert.Equal(new[] { "food_1", "food_2" }, ConsumableEquipmentConfig.FoodSlotIds);
+        }
+
+        [Fact]
+        public void ConsumableManager_SlotConstants_ReferenceConsumableEquipmentConfig()
+        {
+            // Assert - ConsumableManager slot IDs should match ConsumableEquipmentConfig
+            Assert.Equal(ConsumableEquipmentConfig.PotionSlotIds, BlazorIdle.Game.Consumables.ConsumableManager.PotionSlotIds);
+            Assert.Equal(ConsumableEquipmentConfig.FoodSlotIds, BlazorIdle.Game.Consumables.ConsumableManager.FoodSlotIds);
+        }
+
+        #endregion
     }
 }

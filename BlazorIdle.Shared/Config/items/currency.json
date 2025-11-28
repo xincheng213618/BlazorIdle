@@ -1,0 +1,14 @@
+[
+  {
+    "id": "gold_coin",
+    "name": "金币",
+    "icon": "🪙",
+    "description": "通用货币",
+    "type": 1,
+    "stackable": true,
+    "maxStack": 999999,
+    "rarity": 1,
+    "sellPrice": 1,
+    "buyPrice": 0
+  }
+]

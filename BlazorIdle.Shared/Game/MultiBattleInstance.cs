@@ -69,6 +69,10 @@ namespace BlazorIdle.Game
         // Consumable system: Game config service for item configuration
         private readonly Config.IGameConfigService? _gameConfigService;
         
+        // 消耗品系统: 已通知耗尽的物品跟踪（防止重复通知）
+        // Consumable system: Track items that have been notified as out of stock (prevent duplicate notifications)
+        private readonly Dictionary<string, HashSet<string>> _outOfStockNotified = new();
+        
         // Step3: Periodic skill check system / 定期技能检查系统
         // Accumulator for periodic skill checks (every 1 second)
         // 定期技能检查累积器（每秒检查一次）
@@ -1998,16 +2002,36 @@ namespace BlazorIdle.Game
             int currentCount = characterData.Inventory.GetItemQuantity(slotData.ItemId);
             if (currentCount <= 0)
             {
-                // 库存不足，触发库存耗尽事件（UI可据此显示特殊样式）
-                // Out of stock, trigger event (UI can show special style)
-                ConsumableOutOfStock?.Invoke(new ConsumableOutOfStockEvent
+                // 检查是否已通知耗尽（防止重复通知）- 使用 GetOrAdd 模式避免双重查找
+                // Check if already notified as out of stock (prevent duplicate notifications) - use GetOrAdd pattern to avoid double lookup
+                if (!_outOfStockNotified.TryGetValue(characterId, out var notifiedItems))
                 {
-                    TimeMs = nowMs,
-                    CharacterId = characterId,
-                    ItemId = slotData.ItemId,
-                    SlotId = slotId
-                });
+                    notifiedItems = new HashSet<string>();
+                    _outOfStockNotified[characterId] = notifiedItems;
+                }
+                
+                // 只在首次耗尽时触发事件
+                // Only trigger event on first out of stock occurrence
+                if (notifiedItems.Add(slotData.ItemId))
+                {
+                    // 库存不足，触发库存耗尽事件（UI可据此显示特殊样式）
+                    // Out of stock, trigger event (UI can show special style)
+                    ConsumableOutOfStock?.Invoke(new ConsumableOutOfStockEvent
+                    {
+                        TimeMs = nowMs,
+                        CharacterId = characterId,
+                        ItemId = slotData.ItemId,
+                        SlotId = slotId
+                    });
+                }
                 return;
+            }
+            
+            // 如果库存已补充，清除耗尽通知标记
+            // If inventory is replenished, clear the out of stock notification flag
+            if (_outOfStockNotified.TryGetValue(characterId, out var notified))
+            {
+                notified.Remove(slotData.ItemId);
             }
 
             // 扣除背包库存

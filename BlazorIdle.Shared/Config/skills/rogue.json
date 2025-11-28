@@ -1,0 +1,322 @@
+// 盗贼技能配置文件 - Rogue Skill Configuration File
+// 
+// 注意 / Note:
+// - AOE 判定由 targetPolicy 属性决定（例如 "enemies_all" 表示 AOE）
+// - AOE is determined by targetPolicy (e.g., "enemies_all" means AOE)
+//
+[
+  {
+    "id": "rogue_attack_basic",
+    "name": "邪恶攻击",
+    "description": "盗贼的基础攻击，有几率获得连击点",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "targetPolicy": "current_target",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "damage": {
+      "coefAtk": 0.95,
+      "flat": 0
+    },
+    "gains": [
+      {
+        "bucketId": "energy",
+        "amount": 1
+      }
+    ],
+    "triggers": [
+      {
+        "when": "OnAttackHit",
+        "procChance": 0.4,
+        "fireSkillId": "rogue_gain_combo",
+        "priority": 10
+      }
+    ]
+  },
+  {
+    "id": "rogue_special_pulse",
+    "name": "切割",
+    "description": "快速切割敌人，获得连击点",
+    "type": "passive",
+    "slotType": "passive",
+    "fixed": true,
+    "releaseType": "instant",
+    "targetPolicy": "current_target",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "damage": {
+      "coefAtk": 0.8,
+      "flat": 5
+    },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "rogue_combo",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "rogue_gain_combo",
+    "name": "连击点获得",
+    "description": "获得连击点",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "self",
+    "cooldownSec": 0,
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "rogue_combo",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "rogue_backstab",
+    "name": "背刺",
+    "description": "高暴击率的背后攻击",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 5.0,
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "unlock": {
+      "minLevel": 1
+    },
+    "costs": [
+      {
+        "bucketId": "energy",
+        "amount": 2
+      }
+    ],
+    "damage": {
+      "coefAtk": 1.3,
+      "flat": 18
+    },
+    "canCrit": true
+  },
+  {
+    "id": "rogue_eviscerate",
+    "name": "剔骨",
+    "description": "消耗连击点数造成伤害，连击点越多伤害越高",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 0.0,
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "unlock": {
+      "minLevel": 3
+    },
+    "conditions": {
+      "requireBuffId": "rogue_combo"
+    },
+    "costs": [
+      {
+        "bucketId": "energy",
+        "amount": 3
+      }
+    ],
+    "damage": {
+      "coefAtk": 1.8,
+      "flat": 30
+    },
+    "onCastBuffs": [
+      {
+        "op": "Remove",
+        "buffIdToRemove": "rogue_combo"
+      }
+    ]
+  },
+  {
+    "id": "rogue_envenom",
+    "name": "毒刃",
+    "description": "涂毒的刀刃，造成持续毒素伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "current_target",
+    "cooldownSec": 8.0,
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "unlock": {
+      "minLevel": 5
+    },
+    "costs": [
+      {
+        "bucketId": "energy",
+        "amount": 2
+      }
+    ],
+    "damage": {
+      "coefAtk": 0.8,
+      "flat": 10
+    },
+    "onHitBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "rogue_poison_dot",
+        "targetOverride": "Target"
+      }
+    ]
+  },
+  {
+    "id": "rogue_fan_of_knives",
+    "name": "刀扇",
+    "description": "向所有敌人投掷飞刀",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "enemies_all",
+    "cooldownSec": 10.0,
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "unlock": {
+      "minLevel": 6
+    },
+    "costs": [
+      {
+        "bucketId": "energy",
+        "amount": 3
+      }
+    ],
+    "damage": {
+      "coefAtk": 0.9,
+      "flat": 12
+    }
+  },
+  {
+    "id": "rogue_vanish",
+    "name": "消失",
+    "description": "进入隐身，下次攻击必定暴击",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 25.0,
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "unlock": {
+      "minLevel": 7
+    },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "rogue_stealth_crit",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "rogue_deadly_poison",
+    "name": "致命药膏",
+    "description": "为武器涂毒，攻击附带额外毒素伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 30.0,
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "unlock": {
+      "minLevel": 8
+    },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "rogue_deadly_poison_buff",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "rogue_sprint",
+    "name": "疾跑",
+    "description": "大幅提升攻击速度",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": false,
+    "targetPolicy": "self",
+    "cooldownSec": 20.0,
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "unlock": {
+      "minLevel": 9
+    },
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "rogue_sprint_buff",
+        "targetOverride": "Self"
+      }
+    ]
+  },
+  {
+    "id": "rogue_shadow_dance",
+    "name": "暗影之舞",
+    "description": "进入暗影形态，大幅提升暴击率和暴击伤害",
+    "type": "active",
+    "slotType": "active",
+    "fixed": false,
+    "releaseType": "instant",
+    "isGcd": true,
+    "targetPolicy": "self",
+    "cooldownSec": 40.0,
+    "allowedProfessions": [
+      "rogue"
+    ],
+    "unlock": {
+      "minLevel": 10
+    },
+    "costs": [
+      {
+        "bucketId": "energy",
+        "amount": 4
+      }
+    ],
+    "onCastBuffs": [
+      {
+        "op": "Apply",
+        "buffConfigId": "rogue_shadow_dance_buff",
+        "targetOverride": "Self"
+      }
+    ]
+  }
+]

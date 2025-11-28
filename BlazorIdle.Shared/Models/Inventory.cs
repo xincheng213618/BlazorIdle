@@ -36,7 +36,13 @@ namespace BlazorIdle.Shared.Models
         [JsonPropertyName("lastUpdated")]
         public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 
-        public event Action? Changed;  // 新增
+        public event Action? Changed;
+        
+        // 防抖动机制：批量通知库存变化
+        // Debounce mechanism: batch notify inventory changes
+        private int _pendingChanges = 0;
+        private bool _notificationScheduled = false;
+        private readonly object _notificationLock = new object();
 
         /// <summary>
         /// 添加物品到库存
@@ -68,7 +74,7 @@ namespace BlazorIdle.Shared.Models
             }
 
             LastUpdated = DateTime.UtcNow;
-            Changed?.Invoke(); // 通知
+            NotifyChangedDebounced();
         }
 
         /// <summary>
@@ -98,7 +104,7 @@ namespace BlazorIdle.Shared.Models
             }
 
             LastUpdated = DateTime.UtcNow;
-            Changed?.Invoke(); // 通知
+            NotifyChangedDebounced();
             return true;
         }
 
@@ -143,8 +149,53 @@ namespace BlazorIdle.Shared.Models
             }
 
             LastUpdated = DateTime.UtcNow;
-            Changed?.Invoke();
+            NotifyChangedDebounced();
             return true;
+        }
+
+        /// <summary>
+        /// 防抖动通知机制 - 在短时间内多次变化只触发一次事件
+        /// Debounced notification - triggers only once for multiple changes in short time
+        /// </summary>
+        private void NotifyChangedDebounced()
+        {
+            lock (_notificationLock)
+            {
+                _pendingChanges++;
+                
+                if (_notificationScheduled)
+                    return;
+                
+                _notificationScheduled = true;
+            }
+
+            // 使用 ThreadPool 延迟触发，合并多次变化
+            // Use ThreadPool to delay trigger, combining multiple changes
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    // 等待一小段时间，让连续的变化合并
+                    // Wait a short time to combine consecutive changes
+                    await Task.Delay(16); // ~1 frame at 60fps
+                    
+                    lock (_notificationLock)
+                    {
+                        _pendingChanges = 0;
+                        _notificationScheduled = false;
+                    }
+                    
+                    Changed?.Invoke();
+                }
+                catch (TaskCanceledException)
+                {
+                    // Ignore cancellation
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Ignore disposal
+                }
+            });
         }
     }
 }
