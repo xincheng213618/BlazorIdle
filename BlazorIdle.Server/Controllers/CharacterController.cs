@@ -438,6 +438,13 @@ public class CharacterController : ControllerBase
             character.PurchaseState = request.PurchaseState;
         }
 
+        // 更新消耗品装备数据 (药水与食物系统)
+        // Update consumable equipment data
+        if (request.EquippedConsumablesByProfession != null)
+        {
+            character.EquippedConsumablesByProfession = request.EquippedConsumablesByProfession;
+        }
+
         try
         {
             // 保存更改到数据库
