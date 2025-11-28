@@ -152,6 +152,113 @@
                     </div>
                 </div>
             }
+
+            <!-- 触发条件编辑弹窗 -->
+            @if (showTriggerEditor && !string.IsNullOrEmpty(editingSlotId))
+            {
+                <div class="item-selector-overlay" @onclick="CloseTriggerEditor">
+                    <div class="item-selector-modal trigger-editor-modal" @onclick:stopPropagation="true">
+                        <div class="selector-header">
+                            <h6 class="mb-0">⚙️ 触发条件设置</h6>
+                            <button class="btn-close" @onclick="CloseTriggerEditor"></button>
+                        </div>
+                        <div class="selector-body">
+                            @{
+                                var editingSlot = GetSlotData(editingSlotId);
+                                var editingItem = editingSlot?.ItemId != null ? GameConfig.GetItem(editingSlot.ItemId) : null;
+                            }
+                            @if (editingSlot != null && editingItem != null)
+                            {
+                                <div class="trigger-info mb-3">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <span class="item-icon">@(editingItem.Icon ?? "📦")</span>
+                                        <strong>@editingItem.Name</strong>
+                                    </div>
+                                </div>
+
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" 
+                                           id="useCustomTrigger" 
+                                           checked="@editingSlot.UseCustomTrigger"
+                                           @onchange="@(e => OnUseCustomTriggerChanged((bool)(e.Value ?? false)))" />
+                                    <label class="form-check-label" for="useCustomTrigger">
+                                        使用自定义触发条件
+                                    </label>
+                                </div>
+
+                                @if (!editingSlot.UseCustomTrigger)
+                                {
+                                    <div class="alert alert-info small">
+                                        <strong>当前使用物品默认条件：</strong>
+                                        @if (editingItem.ConsumableConfig?.TriggerConditions != null)
+                                        {
+                                            <br/>@GetConditionDescription(editingItem.ConsumableConfig.TriggerConditions)
+                                        }
+                                        else
+                                        {
+                                            <br/><text>无条件(立即触发)</text>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="condition-editor">
+                                        <!-- HP低于阈值 -->
+                                        <div class="condition-row">
+                                            <label class="form-label small">HP低于百分比触发</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" class="form-control" 
+                                                       min="0" max="100" step="5"
+                                                       value="@GetHpBelowPctValue()"
+                                                       @onchange="@(e => OnHpBelowPctChanged(e.Value?.ToString()))" 
+                                                       placeholder="例: 50" />
+                                                <span class="input-group-text">%</span>
+                                            </div>
+                                            <small class="text-muted">例如: 50 表示HP低于50%时触发</small>
+                                        </div>
+
+                                        <!-- HP高于阈值 -->
+                                        <div class="condition-row mt-2">
+                                            <label class="form-label small">HP高于百分比触发</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" class="form-control"
+                                                       min="0" max="100" step="5"
+                                                       value="@GetHpAbovePctValue()"
+                                                       @onchange="@(e => OnHpAbovePctChanged(e.Value?.ToString()))"
+                                                       placeholder="例: 80" />
+                                                <span class="input-group-text">%</span>
+                                            </div>
+                                            <small class="text-muted">例如: 80 表示HP高于80%时触发</small>
+                                        </div>
+
+                                        @if (editingConditions != null)
+                                        {
+                                            <div class="alert alert-secondary small mt-3">
+                                                <strong>当前自定义条件：</strong>
+                                                <br/>@GetConditionDescription(editingConditions)
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="alert alert-warning small mt-3">
+                                                未设置条件，将立即触发（冷却好就使用）
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            }
+                        </div>
+                        <div class="selector-footer">
+                            <button class="btn btn-primary btn-sm" @onclick="SaveTriggerConditions">
+                                保存
+                            </button>
+                            <button class="btn btn-secondary btn-sm" @onclick="CloseTriggerEditor">
+                                取消
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
         }
     </div>
 </div>
@@ -222,6 +329,12 @@
     private Inventory? _subscribedInventory;
     private CancellationTokenSource? _clearStatusCts;
     private string _previousProfessionId = string.Empty;
+
+    // 触发条件编辑器相关变量
+    // Trigger condition editor related variables
+    private bool showTriggerEditor;
+    private string? editingSlotId;
+    private BlazorIdle.Game.Skills.SkillConditions? editingConditions;
 
     /// <summary>
     /// 获取当前职业的消耗品装备配置
@@ -361,6 +474,15 @@
                 builder.AddAttribute(25, "title", "卸载");
                 builder.AddEventStopPropagationAttribute(26, "onclick", true);
                 builder.AddContent(27, "×");
+                builder.CloseElement();
+
+                // 触发条件设置按钮
+                builder.OpenElement(35, "button");
+                builder.AddAttribute(36, "class", $"btn-trigger-settings {(slot?.UseCustomTrigger == true ? "custom" : "")}");
+                builder.AddAttribute(37, "onclick", EventCallback.Factory.Create(this, () => OpenTriggerEditor(slotId)));
+                builder.AddAttribute(38, "title", slot?.UseCustomTrigger == true ? "自定义触发条件" : "触发条件设置");
+                builder.AddEventStopPropagationAttribute(39, "onclick", true);
+                builder.AddContent(40, "⚙");
                 builder.CloseElement();
             }
         }
@@ -571,6 +693,170 @@
         ConsumableOperationResult.InvalidCharacterData => "角色数据无效",
         _ => "未知错误"
     };
+
+    #region 触发条件编辑器 / Trigger Condition Editor
+
+    private void OpenTriggerEditor(string slotId)
+    {
+        editingSlotId = slotId;
+        var slot = GetSlotData(slotId);
+        if (slot?.UseCustomTrigger == true && slot.CustomTriggerConditions != null)
+        {
+            // 复制现有自定义条件以便编辑
+            editingConditions = new BlazorIdle.Game.Skills.SkillConditions
+            {
+                HpBelowPct = slot.CustomTriggerConditions.HpBelowPct,
+                HpAbovePct = slot.CustomTriggerConditions.HpAbovePct,
+                RequireBuffId = slot.CustomTriggerConditions.RequireBuffId,
+                ForbidBuffId = slot.CustomTriggerConditions.ForbidBuffId
+            };
+        }
+        else
+        {
+            editingConditions = null;
+        }
+        showTriggerEditor = true;
+    }
+
+    private void CloseTriggerEditor()
+    {
+        showTriggerEditor = false;
+        editingSlotId = null;
+        editingConditions = null;
+    }
+
+    private void OnUseCustomTriggerChanged(bool useCustom)
+    {
+        if (string.IsNullOrEmpty(editingSlotId)) return;
+        var slot = GetSlotData(editingSlotId);
+        if (slot == null) return;
+
+        slot.UseCustomTrigger = useCustom;
+        if (useCustom && editingConditions == null)
+        {
+            editingConditions = new BlazorIdle.Game.Skills.SkillConditions();
+        }
+        StateHasChanged();
+    }
+
+    private void OnHpBelowPctChanged(string? value)
+    {
+        EnsureEditingConditions();
+        if (double.TryParse(value, out var pct) && pct >= 0 && pct <= 100)
+        {
+            editingConditions!.HpBelowPct = pct;
+        }
+        else
+        {
+            editingConditions!.HpBelowPct = null;
+        }
+        StateHasChanged();
+    }
+
+    private void OnHpAbovePctChanged(string? value)
+    {
+        EnsureEditingConditions();
+        if (double.TryParse(value, out var pct) && pct >= 0 && pct <= 100)
+        {
+            editingConditions!.HpAbovePct = pct;
+        }
+        else
+        {
+            editingConditions!.HpAbovePct = null;
+        }
+        StateHasChanged();
+    }
+
+    private void EnsureEditingConditions()
+    {
+        if (editingConditions == null)
+        {
+            editingConditions = new BlazorIdle.Game.Skills.SkillConditions();
+        }
+    }
+
+    private string GetHpBelowPctValue()
+    {
+        return editingConditions?.HpBelowPct?.ToString() ?? "";
+    }
+
+    private string GetHpAbovePctValue()
+    {
+        return editingConditions?.HpAbovePct?.ToString() ?? "";
+    }
+
+    private async Task SaveTriggerConditions()
+    {
+        if (string.IsNullOrEmpty(editingSlotId) || Character == null) return;
+
+        var slot = GetSlotData(editingSlotId);
+        if (slot == null) return;
+
+        // 更新槽位的自定义条件
+        if (slot.UseCustomTrigger)
+        {
+            // 检查是否有有效条件，如果所有条件都为空则设为null
+            if (editingConditions != null && 
+                !editingConditions.HpBelowPct.HasValue &&
+                !editingConditions.HpAbovePct.HasValue &&
+                string.IsNullOrEmpty(editingConditions.RequireBuffId) &&
+                string.IsNullOrEmpty(editingConditions.ForbidBuffId))
+            {
+                slot.CustomTriggerConditions = null;
+            }
+            else
+            {
+                slot.CustomTriggerConditions = editingConditions;
+            }
+        }
+        else
+        {
+            slot.CustomTriggerConditions = null;
+        }
+
+        // 触发保存回调
+        if (OnConsumableEquipped.HasDelegate)
+        {
+            await OnConsumableEquipped.InvokeAsync();
+        }
+
+        ShowStatus("触发条件已保存", "alert-success");
+        ClearStatusAfterDelay();
+        CloseTriggerEditor();
+    }
+
+    private string GetConditionDescription(BlazorIdle.Game.Skills.SkillConditions? conditions)
+    {
+        if (conditions == null)
+            return "无条件（冷却好就触发）";
+
+        var parts = new List<string>();
+
+        if (conditions.HpBelowPct.HasValue)
+            parts.Add($"HP < {conditions.HpBelowPct.Value}%");
+
+        if (conditions.HpAbovePct.HasValue)
+            parts.Add($"HP > {conditions.HpAbovePct.Value}%");
+
+        if (!string.IsNullOrEmpty(conditions.RequireBuffId))
+            parts.Add($"需要Buff: {conditions.RequireBuffId}");
+
+        if (!string.IsNullOrEmpty(conditions.ForbidBuffId))
+            parts.Add($"禁止Buff: {conditions.ForbidBuffId}");
+
+        if (conditions.EnemyCountAbove.HasValue)
+            parts.Add($"敌人数 ≥ {conditions.EnemyCountAbove.Value}");
+
+        if (conditions.EnemyCountBelow.HasValue)
+            parts.Add($"敌人数 ≤ {conditions.EnemyCountBelow.Value}");
+
+        if (conditions.AllyHpBelowPct.HasValue)
+            parts.Add($"队友HP < {conditions.AllyHpBelowPct.Value}%");
+
+        return parts.Count > 0 ? string.Join(" 且 ", parts) : "无条件（冷却好就触发）";
+    }
+
+    #endregion
 
     /// <summary>
     /// 公共刷新方法 - 用于外部触发UI更新
@@ -980,5 +1266,82 @@
             width: 95%;
             max-height: 90vh;
         }
+    }
+
+    /* 触发条件设置按钮 */
+    .btn-trigger-settings {
+        position: absolute;
+        top: 6px;
+        right: 34px;
+        width: 24px;
+        height: 24px;
+        border: none;
+        background: #6c757d;
+        color: #fff;
+        border-radius: 50%;
+        font-size: 12px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background .15s;
+    }
+
+    .btn-trigger-settings:hover {
+        background: #5a6268;
+    }
+
+    .btn-trigger-settings.custom {
+        background: #17a2b8;
+    }
+
+    .btn-trigger-settings.custom:hover {
+        background: #138496;
+    }
+
+    /* 触发条件编辑器弹窗 */
+    .trigger-editor-modal {
+        max-width: 400px;
+    }
+
+    .trigger-info {
+        background: #f8f9fa;
+        padding: 10px 12px;
+        border-radius: 6px;
+    }
+
+    .trigger-info .item-icon {
+        font-size: 1.5em;
+    }
+
+    .condition-editor {
+        background: #f8f9fa;
+        padding: 12px;
+        border-radius: 6px;
+    }
+
+    .condition-row {
+        margin-bottom: 8px;
+    }
+
+    .condition-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .condition-row .form-label {
+        margin-bottom: 4px;
+        font-weight: 500;
+        color: #495057;
+    }
+
+    .condition-row .text-muted {
+        display: block;
+        margin-top: 2px;
+        font-size: 0.75rem;
+    }
+
+    .condition-row .input-group {
+        max-width: 200px;
     }
 </style>
