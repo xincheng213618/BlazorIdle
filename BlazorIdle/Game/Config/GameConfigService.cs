@@ -17,6 +17,9 @@ namespace BlazorIdle.Game.Config
         private readonly List<BattleConfigDef> _battleConfigs = new();
         private readonly Dictionary<string, ProfessionAttributeConfig> _professionAttributes = new();
         private readonly List<LevelExperienceRequirement> _experienceCurve = new();
+        private readonly List<ShopItemConfig> _consumableShopItems = new();
+        private readonly List<ShopItemConfig> _potionShopItems = new();
+        private readonly List<ShopItemConfig> _foodShopItems = new();
         private int _maxProfessionLevel = 100;
 
         public GameConfigService(HttpClient http, ApiConfiguration apiConfig)
@@ -33,6 +36,9 @@ namespace BlazorIdle.Game.Config
         public IReadOnlyList<BattleConfigDef> BattleConfigs => _battleConfigs;
         public IReadOnlyDictionary<string, ProfessionAttributeConfig> ProfessionAttributes => _professionAttributes;
         public int MaxProfessionLevel => _maxProfessionLevel;
+        public IReadOnlyList<ShopItemConfig> ConsumableShopItems => _consumableShopItems;
+        public IReadOnlyList<ShopItemConfig> PotionShopItems => _potionShopItems;
+        public IReadOnlyList<ShopItemConfig> FoodShopItems => _foodShopItems;
 
         public string Version { get; private set; } = "unloaded";
         public bool IsLoaded => _loaded;
@@ -71,6 +77,12 @@ namespace BlazorIdle.Game.Config
             // Load profession limits
             var professionLimits = ConfigRepository.LoadProfessionLimits();
 
+            // Load shop configurations
+            // 加载商店配置
+            var consumableShop = ConfigRepository.LoadConsumableShop();
+            var potionShop = ConfigRepository.LoadPotionShop();
+            var foodShop = ConfigRepository.LoadFoodShop();
+
             _professions.Clear();
             _professions.AddRange(profs.Where(p => !string.IsNullOrWhiteSpace(p.Id)));
 
@@ -99,6 +111,15 @@ namespace BlazorIdle.Game.Config
             _experienceCurve.AddRange(experienceCurve.OrderBy(e => e.Level));
 
             _maxProfessionLevel = professionLimits.MaxProfessionLevel;
+
+            _consumableShopItems.Clear();
+            _consumableShopItems.AddRange(consumableShop.Where(s => !string.IsNullOrWhiteSpace(s.ItemId)));
+
+            _potionShopItems.Clear();
+            _potionShopItems.AddRange(potionShop.Where(s => !string.IsNullOrWhiteSpace(s.ItemId)));
+
+            _foodShopItems.Clear();
+            _foodShopItems.AddRange(foodShop.Where(s => !string.IsNullOrWhiteSpace(s.ItemId)));
 
             Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-profAttrs:{_professionAttributes.Count}-exp:{_experienceCurve.Count}-maxLvl:{_maxProfessionLevel}";
             _loaded = true;
