@@ -121,7 +121,7 @@ namespace BlazorIdle.Game.Config
             _foodShopItems.Clear();
             _foodShopItems.AddRange(foodShop.Where(s => !string.IsNullOrWhiteSpace(s.ItemId)));
 
-            Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-profAttrs:{_professionAttributes.Count}-exp:{_experienceCurve.Count}-maxLvl:{_maxProfessionLevel}";
+            Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-profAttrs:{_professionAttributes.Count}-exp:{_experienceCurve.Count}-maxLvl:{_maxProfessionLevel}-cs:{_consumableShopItems.Count}-ps:{_potionShopItems.Count}-fs:{_foodShopItems.Count}";
             _loaded = true;
 
             // Note: We no longer fetch from API - all configs are loaded from embedded resources
