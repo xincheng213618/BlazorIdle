@@ -165,6 +165,13 @@
     public CharacterData? Character { get; set; }
 
     /// <summary>
+    /// 当前职业ID - 用于按职业保存消耗品配置
+    /// Current profession ID - used to save consumable config per profession
+    /// </summary>
+    [Parameter]
+    public string ProfessionId { get; set; } = string.Empty;
+
+    /// <summary>
     /// 是否在战斗中
     /// Whether currently in battle
     /// </summary>
@@ -214,6 +221,21 @@
     private string statusAlertClass = "alert-info";
     private Inventory? _subscribedInventory;
     private CancellationTokenSource? _clearStatusCts;
+    private string _previousProfessionId = string.Empty;
+
+    /// <summary>
+    /// 获取当前职业的消耗品装备配置
+    /// Get consumable equipment config for current profession
+    /// </summary>
+    private ConsumableEquipmentConfig? CurrentConsumableConfig => 
+        Character?.GetConsumablesForProfession(GetEffectiveProfessionId());
+
+    /// <summary>
+    /// 获取有效的职业ID（如果参数为空则使用角色的当前战斗职业）
+    /// Get effective profession ID (use character's active combat profession if parameter is empty)
+    /// </summary>
+    private string GetEffectiveProfessionId() => 
+        !string.IsNullOrEmpty(ProfessionId) ? ProfessionId : Character?.ActiveCombatProfessionId ?? "warrior";
 
     protected override async Task OnInitializedAsync()
     {
@@ -234,6 +256,15 @@
                 Character.Inventory.Changed += OnInventoryChanged;
             
             _subscribedInventory = Character?.Inventory;
+        }
+
+        // 检测职业切换
+        var currentProfessionId = GetEffectiveProfessionId();
+        if (_previousProfessionId != currentProfessionId)
+        {
+            _previousProfessionId = currentProfessionId;
+            // 职业切换时，UI会自动使用新职业的消耗品配置
+            StateHasChanged();
         }
     }
 
@@ -365,7 +396,7 @@
     {
         if (Character == null || _manager == null)
             return null;
-        return _manager.GetEquippedConsumable(Character, slotId);
+        return _manager.GetEquippedConsumable(Character, slotId, GetEffectiveProfessionId());
     }
 
     private int GetItemQuantity(string itemId)
@@ -379,7 +410,7 @@
     {
         if (_manager == null || Character == null)
             return true;
-        return _manager.IsSlotEmpty(Character, slotId);
+        return _manager.IsSlotEmpty(Character, slotId, GetEffectiveProfessionId());
     }
 
     private bool IsItemEquippedInSlot(string itemId, string slotId)
@@ -390,10 +421,10 @@
 
     private bool IsItemEquippedElsewhere(string itemId, string currentSlotId)
     {
-        if (Character?.EquippedConsumables == null)
+        if (CurrentConsumableConfig == null)
             return false;
         
-        var equippedSlotId = Character.EquippedConsumables.GetEquippedSlotId(itemId);
+        var equippedSlotId = CurrentConsumableConfig.GetEquippedSlotId(itemId);
         return equippedSlotId != null && equippedSlotId != currentSlotId;
     }
 
@@ -402,7 +433,7 @@
         if (_manager == null || Character == null)
             return new List<(ItemDefinition, int)>();
         
-        return _manager.GetAvailableConsumables(Character, category);
+        return _manager.GetAvailableConsumables(Character, category, GetEffectiveProfessionId());
     }
 
     private void OpenSelector(string slotId)
@@ -439,7 +470,7 @@
             return;
         }
 
-        var result = _manager.EquipConsumable(Character, selectedSlotId, itemId, IsInBattle);
+        var result = _manager.EquipConsumable(Character, selectedSlotId, itemId, IsInBattle, GetEffectiveProfessionId());
         
         if (result == ConsumableOperationResult.Success)
         {
@@ -464,7 +495,7 @@
         if (IsInBattle || _manager == null || Character == null)
             return;
 
-        var result = _manager.UnequipConsumable(Character, slotId, IsInBattle);
+        var result = _manager.UnequipConsumable(Character, slotId, IsInBattle, GetEffectiveProfessionId());
         
         if (result == ConsumableOperationResult.Success)
         {

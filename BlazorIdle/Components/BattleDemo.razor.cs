@@ -374,11 +374,11 @@ namespace BlazorIdle.Components
         {
             get
             {
-                if (SelectedCharacter?.EquippedConsumables == null)
+                if (SelectedCharacter == null)
                     return null;
 
                 var result = new List<CharacterPanel.EquippedConsumableData>();
-                var consumableConfig = SelectedCharacter.EquippedConsumables;
+                var consumableConfig = SelectedCharacter.GetConsumablesForProfession(SelectedCharacter.ActiveCombatProfessionId);
 
                 // 药水槽位 / Potion slots
                 foreach (var kvp in consumableConfig.PotionSlots.OrderBy(x => x.Key))

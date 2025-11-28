@@ -1912,9 +1912,9 @@ namespace BlazorIdle.Game
             if (_gameConfigService == null)
                 return;
 
-            // 获取角色的消耗品配置
-            // Get character's consumable configuration
-            var consumableConfig = characterData.EquippedConsumables;
+            // 获取角色当前职业的消耗品配置
+            // Get character's consumable configuration for current profession
+            var consumableConfig = characterData.GetConsumablesForProfession(characterData.ActiveCombatProfessionId);
             if (consumableConfig == null)
                 return;
 

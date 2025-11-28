@@ -265,7 +265,7 @@ namespace BlazorIdle.Tests
 
             // Assert
             Assert.Equal(ConsumableOperationResult.Success, result);
-            var slot = characterData.EquippedConsumables!.GetSlot("food_1");
+            var slot = characterData.GetConsumablesForProfession(characterData.ActiveCombatProfessionId).GetSlot("food_1");
             Assert.NotNull(slot);
             Assert.Equal("apple", slot.ItemId);
             Assert.Equal("consumable_apple", slot.SkillId);
@@ -465,7 +465,8 @@ namespace BlazorIdle.Tests
             return new CharacterData
             {
                 Id = "test_char",
-                EquippedConsumables = new ConsumableEquipmentConfig()
+                ActiveCombatProfessionId = "warrior"
+                // Note: EquippedConsumablesByProfession is now auto-created by GetConsumablesForProfession
             };
         }
 
