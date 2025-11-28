@@ -6,6 +6,7 @@
 @inject IUserService UserService
 
 <div class="consumable-shop-panel">
+    <ShopPurchaseToast @ref="purchaseToast" />
     <div class="shop-header"
          role="button"
          @onclick="ToggleCollapse"
@@ -32,15 +33,6 @@
     </div>
 
     <div class="shop-body" style="@(isCollapsed ? "display:none" : null)">
-        @if (!string.IsNullOrEmpty(successMessage))
-        {
-            <div class="alert alert-success mb-3">@successMessage</div>
-        }
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="alert alert-danger mb-3">@errorMessage</div>
-        }
-
         @if (Character == null)
         {
             <div class="empty-state">
@@ -132,8 +124,8 @@
     private bool isCollapsed;
     private bool isPurchasing = false;
     private string? currentPurchasingItemId = null;
-    private string? errorMessage = null;
-    private string? successMessage = null;
+
+    private ShopPurchaseToast? purchaseToast;
 
     private PurchaseService? _purchaseService;
     private AccountPurchaseState? _accountPurchaseState;
@@ -226,8 +218,6 @@
         if (itemDef == null)
             return;
 
-        errorMessage = null;
-        successMessage = null;
         isPurchasing = true;
         currentPurchasingItemId = shopItem.ItemId;
 
@@ -256,7 +246,8 @@
 
             if (result.Success)
             {
-                successMessage = $"成功购买 {itemDef.Name}（消耗 {result.SpentAmount} 🪙）";
+                // 显示购买成功提示
+                purchaseToast?.ShowSuccess(itemDef.Name, result.SpentAmount);
 
                 // 保存账号级购买状态 (Step 4 Phase 2)
                 if (_accountPurchaseState != null && shopItem.Limits?.PerAccount > 0)
@@ -269,24 +260,11 @@
                 {
                     await OnItemPurchased.InvokeAsync();
                 }
-
-                // 2秒后清除成功消息
-                _ = Task.Delay(2000).ContinueWith(async _ =>
-                {
-                    successMessage = null;
-                    await InvokeAsync(StateHasChanged);
-                }, TaskScheduler.Default);
             }
             else
             {
-                errorMessage = result.Message;
-
-                // 3秒后清除错误消息
-                _ = Task.Delay(3000).ContinueWith(async _ =>
-                {
-                    errorMessage = null;
-                    await InvokeAsync(StateHasChanged);
-                }, TaskScheduler.Default);
+                // 显示购买失败提示
+                purchaseToast?.ShowError(itemDef.Name, result.Message ?? "购买失败");
             }
         }
         finally

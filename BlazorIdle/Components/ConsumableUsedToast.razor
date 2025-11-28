@@ -5,14 +5,21 @@
 <div class="consumable-toast-container">
     @foreach (var toast in _toasts)
     {
-        <div class="consumable-toast @toast.TypeClass @(toast.IsExiting ? "exiting" : "")"
+        <div class="consumable-toast @toast.TypeClass @(toast.IsExiting ? "exiting" : "") @(toast.IsPersistent ? "persistent" : "")"
              @key="toast.Id">
             <div class="toast-icon">@toast.Icon</div>
             <div class="toast-content">
                 <div class="toast-title">@toast.ItemName</div>
                 <div class="toast-message">@toast.Message</div>
             </div>
-            <div class="toast-quantity">剩余: @toast.RemainingCount</div>
+            @if (toast.IsPersistent)
+            {
+                <button class="toast-close-btn" @onclick="() => DismissToast(toast.Id)" title="关闭">✕</button>
+            }
+            else
+            {
+                <div class="toast-quantity">剩余: @toast.RemainingCount</div>
+            }
         </div>
     }
 </div>
@@ -52,29 +59,68 @@
     }
 
     /// <summary>
-    /// 显示库存不足提示
-    /// Show out of stock toast
+    /// 显示库存不足提示（持久显示，需手动关闭或60秒后自动消失）
+    /// Show out of stock toast (persistent, requires manual close or auto-dismiss after 60s)
     /// </summary>
     /// <param name="itemName">物品名称 / Item name</param>
     /// <param name="isPotion">是否为药水 / Is potion</param>
     public void ShowOutOfStock(string itemName, bool isPotion)
     {
+        // 检查是否已有相同物品的耗尽提示，避免重复
+        // Check if there's already an out-of-stock toast for the same item to avoid duplicates
+        if (_toasts.Any(t => t.ItemName == itemName && t.IsWarning && !t.IsExiting))
+        {
+            return;
+        }
+        
         var toast = new ToastData
         {
             Id = _nextId++,
             ItemName = itemName,
             IsPotion = isPotion,
             RemainingCount = 0,
-            Message = "库存已耗尽！",
+            Message = "库存已耗尽！点击关闭或60秒后自动消失",
             Icon = "⚠️",
             IsWarning = true,
+            IsPersistent = true,
             CreatedAt = DateTime.UtcNow
         };
 
         _toasts.Add(toast);
         StateHasChanged();
 
-        _ = AutoDismiss(toast.Id, 3000);
+        // 60秒后自动消失 / Auto dismiss after 60 seconds
+        _ = AutoDismiss(toast.Id, 60000);
+    }
+    
+    /// <summary>
+    /// 手动关闭提示
+    /// Manually dismiss toast
+    /// </summary>
+    private void DismissToast(int toastId)
+    {
+        var toast = _toasts.FirstOrDefault(t => t.Id == toastId);
+        if (toast != null && !toast.IsExiting)
+        {
+            toast.IsExiting = true;
+            StateHasChanged();
+            
+            _ = RemoveAfterAnimation(toastId);
+        }
+    }
+    
+    private async Task RemoveAfterAnimation(int toastId)
+    {
+        try
+        {
+            await Task.Delay(300, _cts.Token); // Animation duration
+            if (_disposed) return;
+            
+            _toasts.RemoveAll(t => t.Id == toastId);
+            StateHasChanged();
+        }
+        catch (TaskCanceledException) { }
+        catch (ObjectDisposedException) { }
     }
 
     private async Task AutoDismiss(int toastId, int delayMs)
@@ -86,7 +132,7 @@
             if (_disposed) return;
             
             var toast = _toasts.FirstOrDefault(t => t.Id == toastId);
-            if (toast != null)
+            if (toast != null && !toast.IsExiting)
             {
                 toast.IsExiting = true;
                 StateHasChanged();
@@ -125,6 +171,7 @@
         public string Message { get; set; } = "";
         public string Icon { get; set; } = "";
         public bool IsWarning { get; set; }
+        public bool IsPersistent { get; set; }
         public bool IsExiting { get; set; }
         public DateTime CreatedAt { get; set; }
 
@@ -154,7 +201,7 @@
         animation: slideIn 0.3s ease-out;
         pointer-events: auto;
         min-width: 200px;
-        max-width: 300px;
+        max-width: 320px;
     }
 
     .consumable-toast.exiting {
@@ -174,6 +221,11 @@
     .consumable-toast.warning {
         background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
         color: white;
+    }
+    
+    .consumable-toast.warning.persistent {
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        box-shadow: 0 4px 16px rgba(245, 158, 11, 0.4);
     }
 
     .toast-icon {
@@ -203,6 +255,27 @@
         padding: 2px 8px;
         border-radius: 4px;
         white-space: nowrap;
+    }
+    
+    .toast-close-btn {
+        background: rgba(255, 255, 255, 0.25);
+        border: none;
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        font-weight: bold;
+        transition: background 0.2s ease;
+        flex-shrink: 0;
+    }
+    
+    .toast-close-btn:hover {
+        background: rgba(255, 255, 255, 0.4);
     }
 
     @@keyframes slideIn {
