@@ -2002,8 +2002,8 @@ namespace BlazorIdle.Game
             int currentCount = characterData.Inventory.GetItemQuantity(slotData.ItemId);
             if (currentCount <= 0)
             {
-                // 检查是否已通知耗尽（防止重复通知）
-                // Check if already notified as out of stock (prevent duplicate notifications)
+                // 检查是否已通知耗尽（防止重复通知）- 使用 GetOrAdd 模式避免双重查找
+                // Check if already notified as out of stock (prevent duplicate notifications) - use GetOrAdd pattern to avoid double lookup
                 if (!_outOfStockNotified.TryGetValue(characterId, out var notifiedItems))
                 {
                     notifiedItems = new HashSet<string>();
