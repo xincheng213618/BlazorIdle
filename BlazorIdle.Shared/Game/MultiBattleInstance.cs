@@ -1981,11 +1981,12 @@ namespace BlazorIdle.Game
             if (itemConfig?.ConsumableConfig == null)
                 return;
 
-            // 检查触发条件
-            // Check trigger conditions
-            if (itemConfig.ConsumableConfig.TriggerConditions != null)
+            // 检查触发条件（优先使用自定义条件，否则使用物品默认条件）
+            // Check trigger conditions (prefer custom conditions, otherwise use item default)
+            var effectiveConditions = slotData.GetEffectiveTriggerConditions(itemConfig.ConsumableConfig.TriggerConditions);
+            if (effectiveConditions != null)
             {
-                var tempSkill = new SkillDef { Conditions = itemConfig.ConsumableConfig.TriggerConditions };
+                var tempSkill = new SkillDef { Conditions = effectiveConditions };
                 if (!_conditionChecker.CheckConditions(tempSkill, context, isCasterPlayer: true, characterId))
                     return;
             }
