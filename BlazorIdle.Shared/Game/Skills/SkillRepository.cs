@@ -8,9 +8,50 @@ namespace BlazorIdle.Game.Skills
     /// <summary>
     /// Repository of skill definitions (Step 2 Phase 1).
     /// Provides centralized skill configuration with JSON loading support.
+    /// Uses singleton pattern to avoid repeated JSON loading.
+    /// 使用单例模式避免重复加载JSON文件。
     /// </summary>
     public sealed class SkillRepository
     {
+        #region Singleton Pattern / 单例模式
+
+        private static SkillRepository? _instance;
+        private static readonly object _lock = new();
+
+        /// <summary>
+        /// 获取共享的技能仓库实例（单例模式）
+        /// Gets the shared skill repository instance (singleton pattern)
+        /// </summary>
+        public static SkillRepository Shared
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    lock (_lock)
+                    {
+                        _instance ??= new SkillRepository();
+                    }
+                }
+                return _instance;
+            }
+        }
+
+        /// <summary>
+        /// 清除缓存的单例实例 - 主要用于测试
+        /// Clears the cached singleton instance - mainly for testing
+        /// </summary>
+        public static void ClearSharedInstance()
+        {
+            lock (_lock)
+            {
+                _instance = null;
+                Console.WriteLine("[SkillRepository] 已清除缓存的单例实例");
+            }
+        }
+
+        #endregion
+
         private readonly Dictionary<string, SkillDef> _skills = new();
 
         /// <summary>

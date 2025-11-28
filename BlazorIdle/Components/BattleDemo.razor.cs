@@ -13,8 +13,8 @@ namespace BlazorIdle.Components
 {
     public partial class BattleDemo
     {
-        // Phase 9: SkillRepository for skill name lookup
-        private readonly SkillRepository _skillRepository = new SkillRepository();
+        // Phase 9: SkillRepository for skill name lookup (using shared singleton)
+        private readonly SkillRepository _skillRepository = SkillRepository.Shared;
         // ===== 可配置常量 - Configurable Constants =====
 
         // 战斗循环间隔（毫秒）- 控制游戏更新频率

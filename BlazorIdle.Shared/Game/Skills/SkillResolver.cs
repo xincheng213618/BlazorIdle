@@ -30,7 +30,7 @@ namespace BlazorIdle.Game.Skills
         public SkillResolver(Config.CombatConfig? config = null, SkillRepository? skillRepository = null, TargetSelector? targetSelector = null)
         {
             _config = config;
-            _skillRepository = skillRepository ?? new SkillRepository();
+            _skillRepository = skillRepository ?? SkillRepository.Shared;
             _targetSelector = targetSelector ?? new TargetSelector();
         }
 

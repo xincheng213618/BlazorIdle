@@ -172,7 +172,7 @@ namespace BlazorIdle.Game
 
             // Phase 7: 初始化新技能系统组件 / Initialize new skill system components
             _combatConfig = new CombatConfig();
-            _skillRepository = new SkillRepository();
+            _skillRepository = SkillRepository.Shared;
             _skillResolver = new SkillResolver(_combatConfig, _skillRepository);
             _castingController = new CastingController();
             

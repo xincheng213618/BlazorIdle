@@ -499,7 +499,7 @@
     private string errorMessage = string.Empty;
     private string successMessage = string.Empty;
 
-    private readonly SkillRepository _skillRepository = new SkillRepository();
+    private readonly SkillRepository _skillRepository = SkillRepository.Shared;
     private SkillLearningManager? _learningManager;
     private List<SkillDef> learnableSkills = new();
     private List<SkillDef> learnedSkills = new();

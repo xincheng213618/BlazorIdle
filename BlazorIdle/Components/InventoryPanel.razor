@@ -152,7 +152,7 @@
     private string? errorMessage = null;
     private string? successMessage = null;
 
-    private readonly SkillRepository _skillRepository = new SkillRepository();
+    private readonly SkillRepository _skillRepository = SkillRepository.Shared;
     private SkillLearningManager? _learningManager;
     private ItemUsageHelper? _itemUsageHelper;
 
