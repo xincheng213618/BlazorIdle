@@ -1,10 +1,13 @@
 @using BlazorIdle.Shared.Models
 @namespace BlazorIdle.Components
+@implements IDisposable
 
 @* 消耗品图标组件 - 用于战斗面板显示药水/食物 *@
 @* Consumable icon component - for displaying potions/food in battle panel *@
 <div class="consumable-icon @TypeClass @DisabledClass @CooldownClass"
-     title="@TooltipText">
+     @onmouseenter="OnMouseEnter"
+     @onmouseleave="OnMouseLeave"
+     @key="@TooltipId">
 
     <div class="consumable-icon-inner">
         @* 槽位类型标识 / Slot type indicator *@
@@ -32,6 +35,14 @@
         @* 库存数量 / Inventory count *@
         <div class="consumable-quantity @(Quantity <= 0 ? "out-of-stock" : "")">@Quantity</div>
     </div>
+
+    @* 悬停工具提示 / Hover tooltip *@
+    @if (_showTooltip && !string.IsNullOrEmpty(ItemId))
+    {
+        <div class="consumable-tooltip" @onmouseenter="OnMouseEnter" @onmouseleave="OnMouseLeave">
+            @((MarkupString)TooltipHtml)
+        </div>
+    }
 </div>
 
 @code {
@@ -55,6 +66,78 @@
 
     [Parameter]
     public double MaxCooldown { get; set; } = 0;
+    
+    [Parameter]
+    public string Description { get; set; } = "";
+    
+    [Parameter]
+    public string TriggerConditionText { get; set; } = "";
+    
+    [Parameter]
+    public bool UseCustomTrigger { get; set; }
+
+    private bool _showTooltip = false;
+    private bool _lastShowTooltip = false;
+    private double _lastCooldown = -1;
+    private string? _lastItemId = null;
+
+    private string TooltipId => $"consumable_{ItemId ?? "empty"}_{SlotId}";
+
+    public void Dispose()
+    {
+        _showTooltip = false;
+    }
+
+    protected override void OnParametersSet()
+    {
+        // If item changed, hide tooltip
+        if (_lastItemId != ItemId && _showTooltip)
+        {
+            _showTooltip = false;
+        }
+        _lastItemId = ItemId;
+    }
+
+    private void OnMouseEnter()
+    {
+        _showTooltip = true;
+        StateHasChanged();
+    }
+
+    private void OnMouseLeave()
+    {
+        _showTooltip = false;
+        StateHasChanged();
+    }
+
+    protected override bool ShouldRender()
+    {
+        // Always render when tooltip state changes
+        if (_showTooltip != _lastShowTooltip)
+        {
+            _lastShowTooltip = _showTooltip;
+            return true;
+        }
+
+        // Only re-render if meaningful properties have changed
+        bool shouldRender = false;
+
+        // Check cooldown change (only care about 0.1s level changes)
+        if (IsOnCooldown && _lastCooldown > 0)
+        {
+            var currentDecisecond = (int)(RemainingCooldown * 10);
+            var lastDecisecond = (int)(_lastCooldown * 10);
+            shouldRender = (currentDecisecond != lastDecisecond);
+        }
+        else if (Math.Abs(_lastCooldown - RemainingCooldown) > 0.001)
+        {
+            shouldRender = true;
+        }
+
+        _lastCooldown = RemainingCooldown;
+
+        return shouldRender;
+    }
 
     private string SlotLabel => IsPotion ? "药" : "食";
 
@@ -80,14 +163,54 @@
         }
     }
 
-    private string TooltipText
+    private string TooltipHtml
     {
         get
         {
-            var type = IsPotion ? "药水" : "食物";
-            var cooldownInfo = IsOnCooldown ? $" (冷却: {RemainingCooldown:F1}s)" : "";
-            var stockInfo = Quantity <= 0 ? " [库存不足]" : "";
-            return $"{ItemName} ({type}) - 剩余: {Quantity}{cooldownInfo}{stockInfo}";
+            var html = new System.Text.StringBuilder();
+            html.Append("<div class='tooltip-content'>");
+
+            // 物品名称 / Item name
+            html.Append($"<div class='tooltip-title'>{ItemName}</div>");
+
+            // 物品类型 / Item type
+            var typeText = IsPotion ? "药水" : "食物";
+            html.Append($"<div class='tooltip-kind'>{typeText}</div>");
+
+            // 物品描述/效果 / Item description/effect
+            if (!string.IsNullOrEmpty(Description))
+            {
+                html.Append($"<div class='tooltip-desc'>{Description}</div>");
+            }
+
+            // 冷却时间 / Cooldown
+            if (MaxCooldown > 0)
+            {
+                html.Append($"<div class='tooltip-info'>冷却: <strong>{MaxCooldown}秒</strong>");
+                if (IsOnCooldown)
+                {
+                    html.Append($" (剩余 {RemainingCooldown:F1}s)");
+                }
+                html.Append("</div>");
+            }
+
+            // 库存数量 / Stock quantity
+            html.Append($"<div class='tooltip-info'>库存: <strong>{Quantity}</strong>");
+            if (Quantity <= 0)
+            {
+                html.Append(" <span style='color:#e74c3c'>[库存不足]</span>");
+            }
+            html.Append("</div>");
+
+            // 触发条件 / Trigger conditions
+            if (!string.IsNullOrEmpty(TriggerConditionText))
+            {
+                var conditionPrefix = UseCustomTrigger ? "⚙️ 自定义条件: " : "触发条件: ";
+                html.Append($"<div class='tooltip-trigger'>{conditionPrefix}<strong>{TriggerConditionText}</strong></div>");
+            }
+
+            html.Append("</div>");
+            return html.ToString();
         }
     }
 }
@@ -101,8 +224,13 @@
         border: 2px solid #444;
         display: inline-block;
         margin: 2px;
-        cursor: default;
+        cursor: pointer;
         transition: all 0.2s ease;
+    }
+
+    .consumable-icon:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     }
 
     .consumable-icon-inner {
@@ -217,5 +345,86 @@
     .consumable-quantity.out-of-stock {
         background-color: #c0392b;
         color: white;
+    }
+
+    /* 工具提示样式 / Tooltip styles */
+    .consumable-tooltip {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        margin-bottom: 8px;
+        background-color: rgba(0, 0, 0, 0.95);
+        color: white;
+        padding: 10px 14px;
+        border-radius: 6px;
+        white-space: nowrap;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        font-size: 12px;
+        min-width: 160px;
+        max-width: 280px;
+        animation: tooltipFadeIn 0.15s ease;
+    }
+
+    @@keyframes tooltipFadeIn {
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(5px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    }
+
+    .consumable-tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 6px solid transparent;
+        border-top-color: rgba(0, 0, 0, 0.95);
+    }
+
+    .consumable-tooltip .tooltip-content {
+        text-align: left;
+        white-space: normal;
+    }
+
+    .consumable-tooltip .tooltip-title {
+        font-weight: bold;
+        font-size: 14px;
+        margin-bottom: 4px;
+        color: #ffd700;
+    }
+
+    .consumable-tooltip .tooltip-kind {
+        font-size: 11px;
+        color: #aaa;
+        margin-bottom: 6px;
+    }
+
+    .consumable-tooltip .tooltip-desc {
+        font-size: 11px;
+        color: #ddd;
+        margin-bottom: 6px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .consumable-tooltip .tooltip-info {
+        margin: 3px 0;
+        font-size: 11px;
+    }
+
+    .consumable-tooltip .tooltip-trigger {
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        font-size: 11px;
+        color: #8be9fd;
     }
 </style>

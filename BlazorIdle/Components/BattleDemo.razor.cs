@@ -396,7 +396,10 @@ namespace BlazorIdle.Components
                             Quantity = SelectedCharacter.Inventory.GetItemQuantity(kvp.Value.ItemId),
                             IsPotion = true,
                             RemainingCooldown = remainingCooldown,
-                            MaxCooldown = maxCooldown
+                            MaxCooldown = maxCooldown,
+                            Description = itemDef?.Description ?? "",
+                            TriggerConditionText = GetTriggerConditionText(kvp.Value, itemDef),
+                            UseCustomTrigger = kvp.Value.UseCustomTrigger
                         });
                     }
                 }
@@ -417,13 +420,53 @@ namespace BlazorIdle.Components
                             Quantity = SelectedCharacter.Inventory.GetItemQuantity(kvp.Value.ItemId),
                             IsPotion = false,
                             RemainingCooldown = remainingCooldown,
-                            MaxCooldown = maxCooldown
+                            MaxCooldown = maxCooldown,
+                            Description = itemDef?.Description ?? "",
+                            TriggerConditionText = GetTriggerConditionText(kvp.Value, itemDef),
+                            UseCustomTrigger = kvp.Value.UseCustomTrigger
                         });
                     }
                 }
 
                 return result.Count > 0 ? result : null;
             }
+        }
+
+        /// <summary>
+        /// 获取触发条件的文本描述
+        /// Get text description of trigger conditions
+        /// </summary>
+        private string GetTriggerConditionText(ConsumableSlotData slot, ItemDefinition? itemDef)
+        {
+            var conditions = slot.GetEffectiveTriggerConditions(itemDef?.ConsumableConfig?.TriggerConditions);
+            
+            if (conditions == null)
+                return "无条件(冷却好就触发)";
+            
+            var parts = new List<string>();
+            
+            if (conditions.HpBelowPct.HasValue)
+                parts.Add($"HP < {conditions.HpBelowPct.Value}%");
+            
+            if (conditions.HpAbovePct.HasValue)
+                parts.Add($"HP > {conditions.HpAbovePct.Value}%");
+            
+            if (!string.IsNullOrEmpty(conditions.RequireBuffId))
+                parts.Add($"需要Buff: {conditions.RequireBuffId}");
+            
+            if (!string.IsNullOrEmpty(conditions.ForbidBuffId))
+                parts.Add($"禁止Buff: {conditions.ForbidBuffId}");
+            
+            if (conditions.EnemyCountAbove.HasValue)
+                parts.Add($"敌人数 >= {conditions.EnemyCountAbove.Value}");
+            
+            if (conditions.EnemyCountBelow.HasValue)
+                parts.Add($"敌人数 <= {conditions.EnemyCountBelow.Value}");
+            
+            if (conditions.AllyHpBelowPct.HasValue)
+                parts.Add($"队友HP < {conditions.AllyHpBelowPct.Value}%");
+            
+            return parts.Count > 0 ? string.Join(" 且 ", parts) : "无条件(冷却好就触发)";
         }
 
         /// <summary>
