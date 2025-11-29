@@ -140,6 +140,15 @@ public class GameDbContext : DbContext
                     v => System.Text.Json.JsonSerializer.Deserialize<ConsumableEquipmentConfig>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new ConsumableEquipmentConfig()
                 )
                 .HasColumnType("TEXT");
+
+            // 配置按职业分组的消耗品装备为 JSON 列 (药水与食物系统)
+            // Configure equipped consumables by profession as JSON column - store Dictionary<string, ConsumableEquipmentConfig>
+            entity.Property(e => e.EquippedConsumablesByProfession)
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, ConsumableEquipmentConfig>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<string, ConsumableEquipmentConfig>()
+                )
+                .HasColumnType("TEXT");
         });
     }
 }

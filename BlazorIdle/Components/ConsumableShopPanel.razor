@@ -130,16 +130,18 @@
     private PurchaseService? _purchaseService;
     private AccountPurchaseState? _accountPurchaseState;
 
-    // 商店商品列表 - 实际项目中应该从配置文件加载
-    private List<ShopItemConfig> shopItems = new();
+    // 商店商品列表 - 从GameConfig缓存获取
+    // Shop items list - retrieved from GameConfig cache
+    private IReadOnlyList<ShopItemConfig> shopItems = Array.Empty<ShopItemConfig>();
 
     protected override async Task OnInitializedAsync()
     {
         await GameConfig.EnsureLoadedAsync();
         isCollapsed = StartCollapsed;
 
-        // 初始化商店商品列表
-        InitializeShopItems();
+        // 从GameConfig获取已缓存的商店商品列表
+        // Get cached shop items from GameConfig
+        shopItems = GameConfig.ConsumableShopItems;
 
         // 加载账号级购买状态 (Step 4 Phase 2)
         _accountPurchaseState = await UserService.GetAccountPurchaseStateAsync();
@@ -162,27 +164,6 @@
     }
 
     private void ToggleCollapse() => isCollapsed = !isCollapsed;
-
-    /// <summary>
-    /// 初始化商店商品列表 - 从配置文件加载
-    /// Initialize shop items list - load from configuration file
-    /// 
-    /// 配置文件位置：BlazorIdle.Shared/Config/consumableShop.json
-    /// Configuration file location: BlazorIdle.Shared/Config/consumableShop.json
-    /// 
-    /// 配置包括：
-    /// Configuration includes:
-    /// - ItemId: 物品ID（对应 items.json）/ Item ID (corresponds to items.json)
-    /// - Price: 金币价格 / Gold price
-    /// - Limits: 限购规则 / Purchase limits
-    ///   - PerDay: 每日限购次数 / Daily purchase limit
-    ///   - PerCharacter: 每角色限购次数 / Per-character limit
-    ///   - PerAccount: 每账号限购次数 / Per-account limit
-    /// </summary>
-    private void InitializeShopItems()
-    {
-        shopItems = ConfigRepository.LoadConsumableShop();
-    }
 
     private int GetGoldBalance()
     {

@@ -13,8 +13,8 @@ namespace BlazorIdle.Components
 {
     public partial class BattleDemo
     {
-        // Phase 9: SkillRepository for skill name lookup
-        private readonly SkillRepository _skillRepository = new SkillRepository();
+        // Phase 9: SkillRepository for skill name lookup (using shared singleton)
+        private readonly SkillRepository _skillRepository = SkillRepository.Shared;
         // ===== 可配置常量 - Configurable Constants =====
 
         // 战斗循环间隔（毫秒）- 控制游戏更新频率
@@ -374,11 +374,11 @@ namespace BlazorIdle.Components
         {
             get
             {
-                if (SelectedCharacter?.EquippedConsumables == null)
+                if (SelectedCharacter == null)
                     return null;
 
                 var result = new List<CharacterPanel.EquippedConsumableData>();
-                var consumableConfig = SelectedCharacter.EquippedConsumables;
+                var consumableConfig = SelectedCharacter.GetConsumablesForProfession(SelectedCharacter.ActiveCombatProfessionId);
 
                 // 药水槽位 / Potion slots
                 foreach (var kvp in consumableConfig.PotionSlots.OrderBy(x => x.Key))
@@ -396,7 +396,10 @@ namespace BlazorIdle.Components
                             Quantity = SelectedCharacter.Inventory.GetItemQuantity(kvp.Value.ItemId),
                             IsPotion = true,
                             RemainingCooldown = remainingCooldown,
-                            MaxCooldown = maxCooldown
+                            MaxCooldown = maxCooldown,
+                            Description = itemDef?.Description ?? "",
+                            TriggerConditionText = GetTriggerConditionText(kvp.Value, itemDef),
+                            UseCustomTrigger = kvp.Value.UseCustomTrigger
                         });
                     }
                 }
@@ -417,13 +420,53 @@ namespace BlazorIdle.Components
                             Quantity = SelectedCharacter.Inventory.GetItemQuantity(kvp.Value.ItemId),
                             IsPotion = false,
                             RemainingCooldown = remainingCooldown,
-                            MaxCooldown = maxCooldown
+                            MaxCooldown = maxCooldown,
+                            Description = itemDef?.Description ?? "",
+                            TriggerConditionText = GetTriggerConditionText(kvp.Value, itemDef),
+                            UseCustomTrigger = kvp.Value.UseCustomTrigger
                         });
                     }
                 }
 
                 return result.Count > 0 ? result : null;
             }
+        }
+
+        /// <summary>
+        /// 获取触发条件的文本描述
+        /// Get text description of trigger conditions
+        /// </summary>
+        private string GetTriggerConditionText(ConsumableSlotData slot, ItemDefinition? itemDef)
+        {
+            var conditions = slot.GetEffectiveTriggerConditions(itemDef?.ConsumableConfig?.TriggerConditions);
+            
+            if (conditions == null)
+                return "无条件(冷却好就触发)";
+            
+            var parts = new List<string>();
+            
+            if (conditions.HpBelowPct.HasValue)
+                parts.Add($"HP < {conditions.HpBelowPct.Value}%");
+            
+            if (conditions.HpAbovePct.HasValue)
+                parts.Add($"HP > {conditions.HpAbovePct.Value}%");
+            
+            if (!string.IsNullOrEmpty(conditions.RequireBuffId))
+                parts.Add($"需要Buff: {conditions.RequireBuffId}");
+            
+            if (!string.IsNullOrEmpty(conditions.ForbidBuffId))
+                parts.Add($"禁止Buff: {conditions.ForbidBuffId}");
+            
+            if (conditions.EnemyCountAbove.HasValue)
+                parts.Add($"敌人数 >= {conditions.EnemyCountAbove.Value}");
+            
+            if (conditions.EnemyCountBelow.HasValue)
+                parts.Add($"敌人数 <= {conditions.EnemyCountBelow.Value}");
+            
+            if (conditions.AllyHpBelowPct.HasValue)
+                parts.Add($"队友HP < {conditions.AllyHpBelowPct.Value}%");
+            
+            return parts.Count > 0 ? string.Join(" 且 ", parts) : "无条件(冷却好就触发)";
         }
 
         /// <summary>

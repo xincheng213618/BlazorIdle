@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using BlazorIdle.Game.Skills;
 
 namespace BlazorIdle.Shared.Models
 {
@@ -10,11 +11,13 @@ namespace BlazorIdle.Shared.Models
     /// - 槽位只保存物品ID引用（引用模式）
     /// - 每次战斗使用时，实时从背包（Inventory）扣除物品
     /// - 配置界面显示的数量是背包中该物品的实时库存
+    /// - 支持自定义触发条件，覆盖物品默认配置
     /// 
     /// Design notes:
     /// - Slot only stores item ID reference (reference mode)
     /// - Each battle use deducts from Inventory in real-time
     /// - Config UI shows real-time stock from inventory
+    /// - Supports custom trigger conditions that override item defaults
     /// </summary>
     public sealed class ConsumableSlotData
     {
@@ -37,6 +40,43 @@ namespace BlazorIdle.Shared.Models
         /// </summary>
         [JsonPropertyName("skillId")]
         public string? SkillId { get; set; }
+
+        /// <summary>
+        /// 是否使用自定义触发条件
+        /// Whether to use custom trigger conditions
+        /// 
+        /// true: 使用 CustomTriggerConditions（即使为 null 也不使用默认条件）
+        /// false: 使用物品默认的 triggerConditions
+        /// 
+        /// true: Use CustomTriggerConditions (even if null, won't use default)
+        /// false: Use item's default triggerConditions
+        /// </summary>
+        [JsonPropertyName("useCustomTrigger")]
+        public bool UseCustomTrigger { get; set; }
+
+        /// <summary>
+        /// 自定义触发条件 - 覆盖物品默认配置
+        /// Custom trigger conditions - overrides item's default config
+        /// 
+        /// 当 UseCustomTrigger 为 true 时使用此条件
+        /// When UseCustomTrigger is true, this condition is used
+        /// 
+        /// 支持的条件包括：
+        /// - HpBelowPct: 生命值低于百分比
+        /// - HpAbovePct: 生命值高于百分比
+        /// - RequireBuffId: 需要拥有某个Buff
+        /// - ForbidBuffId: 禁止拥有某个Buff
+        /// - 等等...
+        /// 
+        /// Supported conditions include:
+        /// - HpBelowPct: HP below percentage
+        /// - HpAbovePct: HP above percentage  
+        /// - RequireBuffId: Requires a buff
+        /// - ForbidBuffId: Forbids a buff
+        /// - etc...
+        /// </summary>
+        [JsonPropertyName("customTriggerConditions")]
+        public SkillConditions? CustomTriggerConditions { get; set; }
 
         /// <summary>
         /// 检查槽位是否已装备物品
@@ -62,7 +102,9 @@ namespace BlazorIdle.Shared.Models
             return new ConsumableSlotData
             {
                 ItemId = itemId,
-                SkillId = skillId
+                SkillId = skillId,
+                UseCustomTrigger = false,
+                CustomTriggerConditions = null
             };
         }
 
@@ -74,6 +116,19 @@ namespace BlazorIdle.Shared.Models
         {
             ItemId = null;
             SkillId = null;
+            UseCustomTrigger = false;
+            CustomTriggerConditions = null;
+        }
+
+        /// <summary>
+        /// 获取有效的触发条件（自定义或默认）
+        /// Get effective trigger conditions (custom or default)
+        /// </summary>
+        /// <param name="defaultConditions">物品默认条件</param>
+        /// <returns>应使用的触发条件</returns>
+        public SkillConditions? GetEffectiveTriggerConditions(SkillConditions? defaultConditions)
+        {
+            return UseCustomTrigger ? CustomTriggerConditions : defaultConditions;
         }
     }
 }

@@ -326,7 +326,10 @@ namespace BlazorIdle.Services
                     EquippedSkillsByProfession = character.EquippedSkillsByProfession,
                     // 购买状态 (Step 4 Phase 1)
                     // Purchase state
-                    PurchaseState = character.PurchaseState
+                    PurchaseState = character.PurchaseState,
+                    // 消耗品装备数据 (药水与食物系统)
+                    // Consumable equipment data
+                    EquippedConsumablesByProfession = character.EquippedConsumablesByProfession
                 };
 
                 var response = await _httpClient.PutAsJsonAsync(

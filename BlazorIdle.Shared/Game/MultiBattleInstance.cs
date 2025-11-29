@@ -172,7 +172,7 @@ namespace BlazorIdle.Game
 
             // Phase 7: 初始化新技能系统组件 / Initialize new skill system components
             _combatConfig = new CombatConfig();
-            _skillRepository = new SkillRepository();
+            _skillRepository = SkillRepository.Shared;
             _skillResolver = new SkillResolver(_combatConfig, _skillRepository);
             _castingController = new CastingController();
             
@@ -1912,9 +1912,9 @@ namespace BlazorIdle.Game
             if (_gameConfigService == null)
                 return;
 
-            // 获取角色的消耗品配置
-            // Get character's consumable configuration
-            var consumableConfig = characterData.EquippedConsumables;
+            // 获取角色当前职业的消耗品配置
+            // Get character's consumable configuration for current profession
+            var consumableConfig = characterData.GetConsumablesForProfession(characterData.ActiveCombatProfessionId);
             if (consumableConfig == null)
                 return;
 
@@ -1981,11 +1981,12 @@ namespace BlazorIdle.Game
             if (itemConfig?.ConsumableConfig == null)
                 return;
 
-            // 检查触发条件
-            // Check trigger conditions
-            if (itemConfig.ConsumableConfig.TriggerConditions != null)
+            // 检查触发条件（优先使用自定义条件，否则使用物品默认条件）
+            // Check trigger conditions (prefer custom conditions, otherwise use item default)
+            var effectiveConditions = slotData.GetEffectiveTriggerConditions(itemConfig.ConsumableConfig.TriggerConditions);
+            if (effectiveConditions != null)
             {
-                var tempSkill = new SkillDef { Conditions = itemConfig.ConsumableConfig.TriggerConditions };
+                var tempSkill = new SkillDef { Conditions = effectiveConditions };
                 if (!_conditionChecker.CheckConditions(tempSkill, context, isCasterPlayer: true, characterId))
                     return;
             }

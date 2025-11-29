@@ -1,15 +1,24 @@
 # 药水与食物系统扩展 - PR 总结
 
 **PR 标题：** Implement potion and food system expansion  
-**完成日期：** 2025-11-26  
-**实际工时：** 8.5 小时（预估 13.5 小时）  
-**测试结果：** 817 个测试全部通过  
+**初始完成日期：** 2025-11-26  
+**最新更新日期：** 2025-11-29  
+**实际工时：** 8.5 小时（初始） + 4 小时（优化）  
+**测试结果：** 840 个测试全部通过  
 
 ---
 
 ## 📋 功能概述
 
 本 PR 实现了独立的药水和食物消耗品栏位系统，支持战斗中自动触发、物品真实消耗、配置化管理。
+
+### 2025-11-29 更新：系统优化
+
+1. **商店配置缓存优化**：通过 `GameConfigService` 统一加载商店配置，避免重复读取 JSON 文件
+2. **技能配置单例模式**：`SkillRepository.Shared` 单例防止多组件重复加载技能 JSON
+3. **按职业保存消耗品配置**：类似技能装备，每个职业独立保存消耗品装备配置
+4. **自定义触发条件**：玩家可自定义每个槽位的触发条件，覆盖物品默认条件
+5. **战斗消耗品悬停提示**：显示物品效果、冷却时间、库存数量、触发条件
 
 ### 核心功能
 
@@ -124,11 +133,19 @@
 ### 1. 数据模型
 
 ```csharp
-// ConsumableSlotData - 槽位数据
+// ConsumableSlotData - 槽位数据（已扩展）
 public class ConsumableSlotData
 {
-    public string? ItemId { get; set; }    // 物品ID
-    public string? SkillId { get; set; }   // 技能ID
+    public string? ItemId { get; set; }                              // 物品ID
+    public string? SkillId { get; set; }                             // 技能ID
+    public bool UseCustomTrigger { get; set; }                       // 是否使用自定义触发条件
+    public SkillConditions? CustomTriggerConditions { get; set; }    // 自定义触发条件
+    
+    // 获取有效的触发条件（自定义优先，否则使用默认）
+    public SkillConditions? GetEffectiveTriggerConditions(SkillConditions? defaultConditions)
+    {
+        return UseCustomTrigger ? CustomTriggerConditions : defaultConditions;
+    }
 }
 
 // ConsumableEquipmentConfig - 装备配置
@@ -136,6 +153,18 @@ public class ConsumableEquipmentConfig
 {
     public Dictionary<string, ConsumableSlotData> PotionSlots { get; set; }  // 药水槽
     public Dictionary<string, ConsumableSlotData> FoodSlots { get; set; }    // 食物槽
+}
+
+// CharacterData - 角色数据（已扩展）
+public class CharacterData
+{
+    // ... 其他字段 ...
+    
+    // 按职业保存的消耗品装备配置（类似技能装备）
+    public Dictionary<string, ConsumableEquipmentConfig> EquippedConsumablesByProfession { get; set; }
+    
+    // 获取指定职业的消耗品配置（自动创建默认配置）
+    public ConsumableEquipmentConfig GetConsumablesForProfession(string professionId)
 }
 
 // ConsumableConfig - 物品消耗品配置（在items.json中）
@@ -156,6 +185,7 @@ ProcessPeriodicSkillChecks (每秒)
         ├── 处理药水槽位 (potion_1 → potion_2)
         │   └── ProcessConsumableSlot
         │       ├── 检查槽位是否装备
+        │       ├── 获取有效触发条件（自定义或默认）
         │       ├── 检查触发条件
         │       ├── 检查冷却 (按物品ID)
         │       ├── 检查背包库存
@@ -172,11 +202,11 @@ ProcessPeriodicSkillChecks (每秒)
 ```csharp
 public class ConsumableManager
 {
-    // 装备消耗品
-    ConsumableOperationResult EquipConsumable(CharacterData, slotId, itemId, isInBattle)
+    // 装备消耗品（支持职业ID）
+    ConsumableOperationResult EquipConsumable(CharacterData, slotId, itemId, isInBattle, professionId)
     
-    // 卸载消耗品
-    ConsumableOperationResult UnequipConsumable(CharacterData, slotId, isInBattle)
+    // 卸载消耗品（支持职业ID）
+    ConsumableOperationResult UnequipConsumable(CharacterData, slotId, isInBattle, professionId)
     
     // 获取可装备的消耗品
     List<ItemDefinition> GetAvailableConsumables(CharacterData, category)
@@ -282,32 +312,163 @@ public enum ConsumableOperationResult
 | 冷却追踪 | 按物品ID（同类物品共享冷却） |
 | 槽位唯一性 | 禁止同一物品装备多个槽位 |
 | 战斗中修改 | 禁止配置修改，允许商店购买补充 |
-| 角色配置 | 每个角色独立 |
+| 角色配置 | 按职业独立配置（切换职业自动加载对应配置） |
 | UI交互 | 点击选择（非拖拽） |
+| 触发条件 | 支持自定义条件覆盖默认条件 |
 
 ---
 
 ## 🔮 后续优化建议
 
 ### 1. 功能增强
+- [x] 消耗品效果浮动提示（悬停工具提示）
+- [x] 自定义触发条件（玩家可覆盖默认条件）
 - [ ] 消耗品使用日志显示
-- [ ] 消耗品效果浮动提示
 - [ ] 手动使用消耗品按钮
 - [ ] 消耗品使用统计
 
 ### 2. UI 优化
+- [x] 战斗面板消耗品悬停提示（显示效果、冷却、触发条件）
 - [ ] 消耗品冷却动画效果
 - [ ] 触发时闪烁效果
 - [ ] 更丰富的物品图标
 
 ### 3. 配置扩展
-- [ ] 更多触发条件类型
+- [x] 自定义触发条件（HP 百分比）
+- [ ] 更多触发条件类型（MP、Buff等）
 - [ ] 条件组合（AND/OR）
 - [ ] 职业专属消耗品
 
 ### 4. 性能优化
+- [x] 商店配置缓存优化（GameConfigService）
+- [x] 技能配置单例模式（SkillRepository.Shared）
 - [ ] 消耗品检查频率优化
-- [ ] 缓存优化
+
+---
+
+## 📝 2025-11-29 更新详情
+
+### 新增/修改文件
+
+#### 接口与服务
+| 文件 | 变更内容 |
+|------|----------|
+| `BlazorIdle.Shared/Game/Config/IGameConfigService.cs` | 添加 `ConsumableShopItems`, `PotionShopItems`, `FoodShopItems` 属性 |
+| `BlazorIdle/Game/Config/GameConfigService.cs` | 实现商店配置加载，在 `EnsureLoadedAsync()` 中统一加载 |
+
+#### 数据模型
+| 文件 | 变更内容 |
+|------|----------|
+| `BlazorIdle.Shared/Models/ConsumableSlotData.cs` | 添加 `UseCustomTrigger`, `CustomTriggerConditions`, `GetEffectiveTriggerConditions()` |
+| `BlazorIdle.Shared/Models/CharacterData.cs` | 添加 `EquippedConsumablesByProfession` 字典和 `GetConsumablesForProfession()` 方法 |
+| `BlazorIdle.Shared/Game/DTOs/UpdateCharacterRequest.cs` | 添加 `EquippedConsumablesByProfession` 属性 |
+| `BlazorIdle/Components/CharacterPanel.razor` | `EquippedConsumableData` 添加 `Description`, `TriggerConditionText`, `UseCustomTrigger` |
+
+#### 业务逻辑
+| 文件 | 变更内容 |
+|------|----------|
+| `BlazorIdle.Shared/Game/Skills/SkillRepository.cs` | 添加 `Shared` 单例属性 |
+| `BlazorIdle.Shared/Game/MultiBattleInstance.cs` | 使用 `GetEffectiveTriggerConditions()` 获取触发条件 |
+| `BlazorIdle.Shared/Game/Consumables/ConsumableManager.cs` | 所有方法添加 `professionId` 参数支持 |
+
+#### 服务端
+| 文件 | 变更内容 |
+|------|----------|
+| `BlazorIdle.Server/Controllers/CharacterController.cs` | 处理 `EquippedConsumablesByProfession` 更新 |
+| `BlazorIdle.Server/Data/GameDbContext.cs` | 添加 `EquippedConsumablesByProfession` JSON 列配置 |
+
+#### UI 组件
+| 文件 | 变更内容 |
+|------|----------|
+| `BlazorIdle/Components/ConsumableSlotPanel.razor` | 添加 `ProfessionId` 参数、触发条件编辑器UI |
+| `BlazorIdle/Components/ConsumableIcon.razor` | 添加悬停工具提示、`Description`, `TriggerConditionText`, `UseCustomTrigger` 参数 |
+| `BlazorIdle/Components/ConsumableShopPanel.razor` | 使用 `GameConfigService` 加载配置 |
+| `BlazorIdle/Components/PotionShopPanel.razor` | 使用 `GameConfigService` 加载配置 |
+| `BlazorIdle/Components/FoodShopPanel.razor` | 使用 `GameConfigService` 加载配置 |
+| `BlazorIdle/Components/SkillLearningPanel.razor` | 添加 `HideHeader` 参数、使用 `SkillRepository.Shared` |
+| `BlazorIdle/Components/ShopPanel.razor` | 传递 `HideHeader="true"` 给嵌入的组件 |
+| `BlazorIdle/Components/BattleDemo.razor.cs` | 添加 `GetTriggerConditionText()` 方法 |
+
+#### 其他组件更新
+| 文件 | 变更内容 |
+|------|----------|
+| `BlazorIdle/Components/InventoryPanel.razor` | 使用 `SkillRepository.Shared` |
+| `BlazorIdle/Components/SkillEquipmentPanel.razor` | 使用 `SkillRepository.Shared` |
+| `BlazorIdle.Shared/Game/Skills/SkillResolver.cs` | 使用 `SkillRepository.Shared` |
+
+### 核心功能实现
+
+#### 1. 自定义触发条件
+
+```csharp
+// ConsumableSlotData 扩展
+public class ConsumableSlotData
+{
+    public bool UseCustomTrigger { get; set; }                       // 开关
+    public SkillConditions? CustomTriggerConditions { get; set; }    // 自定义条件
+    
+    public SkillConditions? GetEffectiveTriggerConditions(SkillConditions? defaultConditions)
+    {
+        return UseCustomTrigger ? CustomTriggerConditions : defaultConditions;
+    }
+}
+
+// MultiBattleInstance 中使用
+var effectiveConditions = slotData.GetEffectiveTriggerConditions(itemDef?.ConsumableConfig?.TriggerConditions);
+```
+
+#### 2. 按职业保存消耗品配置
+
+```csharp
+// CharacterData 扩展
+public Dictionary<string, ConsumableEquipmentConfig> EquippedConsumablesByProfession { get; set; }
+
+public ConsumableEquipmentConfig GetConsumablesForProfession(string professionId)
+{
+    if (!EquippedConsumablesByProfession.TryGetValue(professionId, out var config))
+    {
+        config = new ConsumableEquipmentConfig();
+        EquippedConsumablesByProfession[professionId] = config;
+    }
+    return config;
+}
+```
+
+#### 3. 战斗面板消耗品工具提示
+
+```csharp
+// EquippedConsumableData 扩展
+public class EquippedConsumableData
+{
+    // ... 原有字段 ...
+    public string Description { get; set; }           // 物品描述
+    public string TriggerConditionText { get; set; }  // 触发条件文本
+    public bool UseCustomTrigger { get; set; }        // 是否自定义条件
+}
+
+// 工具提示显示内容
+- 物品名称和类型（药水/食物）
+- 物品描述/效果
+- 冷却时间（总冷却和剩余冷却）
+- 库存数量
+- 触发条件（自定义条件显示 ⚙️ 标识）
+```
+
+#### 4. 商店配置缓存优化
+
+```csharp
+// IGameConfigService 扩展
+public interface IGameConfigService
+{
+    // ... 原有属性 ...
+    ShopConfig? ConsumableShopItems { get; }
+    ShopConfig? PotionShopItems { get; }
+    ShopConfig? FoodShopItems { get; }
+}
+
+// GameConfigService 实现
+// 在 EnsureLoadedAsync() 中统一加载，避免重复读取 JSON
+```
 
 ---
 
@@ -320,4 +481,4 @@ public enum ConsumableOperationResult
 
 **文档状态：** ✅ 已完成  
 **维护者：** @copilot  
-**最后更新：** 2025-11-26
+**最后更新：** 2025-11-29

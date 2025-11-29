@@ -71,6 +71,24 @@ namespace BlazorIdle.Game.Config
         /// </summary>
         int MaxProfessionLevel { get; }
 
+        /// <summary>
+        /// 消耗品商店配置 - 用于技能书等消耗品
+        /// Consumable shop configuration - for skill books and other consumables
+        /// </summary>
+        IReadOnlyList<ShopItemConfig> ConsumableShopItems { get; }
+
+        /// <summary>
+        /// 药水商店配置 - 用于各类药水
+        /// Potion shop configuration - for various potions
+        /// </summary>
+        IReadOnlyList<ShopItemConfig> PotionShopItems { get; }
+
+        /// <summary>
+        /// 食物商店配置 - 用于食物类消耗品
+        /// Food shop configuration - for food consumables
+        /// </summary>
+        IReadOnlyList<ShopItemConfig> FoodShopItems { get; }
+
         string Version { get; }
         bool IsLoaded { get; }
     }

@@ -107,12 +107,14 @@ namespace BlazorIdle.Game.Consumables
         /// <param name="slotId">槽位ID (potion_1, potion_2, food_1, food_2)</param>
         /// <param name="itemId">物品ID</param>
         /// <param name="isInBattle">是否在战斗中</param>
+        /// <param name="professionId">职业ID（可选，默认使用当前战斗职业）</param>
         /// <returns>操作结果</returns>
         public ConsumableOperationResult EquipConsumable(
             CharacterData characterData,
             string slotId,
             string itemId,
-            bool isInBattle = false)
+            bool isInBattle = false,
+            string? professionId = null)
         {
             // 战斗中禁止修改
             if (isInBattle)
@@ -139,12 +141,11 @@ namespace BlazorIdle.Game.Consumables
             if (!IsCategoryMatchingSlot(itemDef.ConsumableConfig.Category, slotId))
                 return ConsumableOperationResult.CategoryMismatch;
 
-            // 确保角色有消耗品配置
-            if (characterData.EquippedConsumables == null)
-                characterData.EquippedConsumables = new ConsumableEquipmentConfig();
+            // 获取当前职业的消耗品配置
+            var consumableConfig = characterData.GetConsumablesForProfession(professionId ?? characterData.ActiveCombatProfessionId);
 
             // 验证物品没有装备在其他槽位
-            var existingSlot = characterData.EquippedConsumables.GetEquippedSlotId(itemId);
+            var existingSlot = consumableConfig.GetEquippedSlotId(itemId);
             if (existingSlot != null && existingSlot != slotId)
                 return ConsumableOperationResult.AlreadyEquipped;
 
@@ -154,7 +155,7 @@ namespace BlazorIdle.Game.Consumables
                 return ConsumableOperationResult.InsufficientInventory;
 
             // 获取槽位并更新
-            var slot = characterData.EquippedConsumables.GetSlot(slotId);
+            var slot = consumableConfig.GetSlot(slotId);
             if (slot == null)
                 return ConsumableOperationResult.InvalidSlotId;
 
@@ -171,11 +172,13 @@ namespace BlazorIdle.Game.Consumables
         /// <param name="characterData">角色数据</param>
         /// <param name="slotId">槽位ID</param>
         /// <param name="isInBattle">是否在战斗中</param>
+        /// <param name="professionId">职业ID（可选，默认使用当前战斗职业）</param>
         /// <returns>操作结果</returns>
         public ConsumableOperationResult UnequipConsumable(
             CharacterData characterData,
             string slotId,
-            bool isInBattle = false)
+            bool isInBattle = false,
+            string? professionId = null)
         {
             // 战斗中禁止修改
             if (isInBattle)
@@ -189,12 +192,11 @@ namespace BlazorIdle.Game.Consumables
             if (!IsValidSlotId(slotId))
                 return ConsumableOperationResult.InvalidSlotId;
 
-            // 确保角色有消耗品配置
-            if (characterData.EquippedConsumables == null)
-                return ConsumableOperationResult.Success; // 没有配置，视为已卸载
+            // 获取当前职业的消耗品配置
+            var consumableConfig = characterData.GetConsumablesForProfession(professionId ?? characterData.ActiveCombatProfessionId);
 
             // 获取槽位并清空
-            var slot = characterData.EquippedConsumables.GetSlot(slotId);
+            var slot = consumableConfig.GetSlot(slotId);
             if (slot == null)
                 return ConsumableOperationResult.InvalidSlotId;
 
@@ -213,13 +215,15 @@ namespace BlazorIdle.Game.Consumables
         /// </summary>
         /// <param name="characterData">角色数据</param>
         /// <param name="slotId">槽位ID</param>
+        /// <param name="professionId">职业ID（可选，默认使用当前战斗职业）</param>
         /// <returns>槽位数据，如果不存在返回null</returns>
-        public ConsumableSlotData? GetEquippedConsumable(CharacterData characterData, string slotId)
+        public ConsumableSlotData? GetEquippedConsumable(CharacterData characterData, string slotId, string? professionId = null)
         {
-            if (characterData?.EquippedConsumables == null)
+            if (characterData == null)
                 return null;
 
-            return characterData.EquippedConsumables.GetSlot(slotId);
+            var consumableConfig = characterData.GetConsumablesForProfession(professionId ?? characterData.ActiveCombatProfessionId);
+            return consumableConfig.GetSlot(slotId);
         }
 
         /// <summary>
@@ -228,15 +232,20 @@ namespace BlazorIdle.Game.Consumables
         /// </summary>
         /// <param name="characterData">角色数据</param>
         /// <param name="category">类别 (potion/food)</param>
+        /// <param name="professionId">职业ID（可选，默认使用当前战斗职业）</param>
         /// <returns>可装备的消耗品列表（包含物品定义和库存数量）</returns>
         public List<(ItemDefinition Item, int Quantity)> GetAvailableConsumables(
             CharacterData characterData,
-            string category)
+            string category,
+            string? professionId = null)
         {
             var result = new List<(ItemDefinition, int)>();
 
             if (characterData == null)
                 return result;
+
+            // 获取当前职业的消耗品配置
+            var consumableConfig = characterData.GetConsumablesForProfession(professionId ?? characterData.ActiveCombatProfessionId);
 
             // 获取所有消耗品类物品
             foreach (var itemDef in _configService.Items)
@@ -252,7 +261,7 @@ namespace BlazorIdle.Game.Consumables
                 int quantity = characterData.Inventory.GetItemQuantity(itemDef.Id);
                 
                 // 只返回有库存或已装备的物品
-                bool isEquipped = characterData.EquippedConsumables?.IsItemEquipped(itemDef.Id) ?? false;
+                bool isEquipped = consumableConfig.IsItemEquipped(itemDef.Id);
                 if (quantity > 0 || isEquipped)
                 {
                     result.Add((itemDef, quantity));
@@ -268,10 +277,11 @@ namespace BlazorIdle.Game.Consumables
         /// </summary>
         /// <param name="characterData">角色数据</param>
         /// <param name="slotId">槽位ID</param>
+        /// <param name="professionId">职业ID（可选，默认使用当前战斗职业）</param>
         /// <returns>如果为空返回true</returns>
-        public bool IsSlotEmpty(CharacterData characterData, string slotId)
+        public bool IsSlotEmpty(CharacterData characterData, string slotId, string? professionId = null)
         {
-            var slot = GetEquippedConsumable(characterData, slotId);
+            var slot = GetEquippedConsumable(characterData, slotId, professionId);
             return slot == null || !slot.IsEquipped;
         }
 
@@ -281,10 +291,11 @@ namespace BlazorIdle.Game.Consumables
         /// </summary>
         /// <param name="characterData">角色数据</param>
         /// <param name="slotId">槽位ID</param>
+        /// <param name="professionId">职业ID（可选，默认使用当前战斗职业）</param>
         /// <returns>库存数量，如果槽位为空返回0</returns>
-        public int GetEquippedItemQuantity(CharacterData characterData, string slotId)
+        public int GetEquippedItemQuantity(CharacterData characterData, string slotId, string? professionId = null)
         {
-            var slot = GetEquippedConsumable(characterData, slotId);
+            var slot = GetEquippedConsumable(characterData, slotId, professionId);
             if (slot == null || string.IsNullOrEmpty(slot.ItemId))
                 return 0;
 

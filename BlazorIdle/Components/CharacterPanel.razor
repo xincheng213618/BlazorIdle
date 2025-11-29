@@ -92,7 +92,10 @@
                                     Quantity="@consumable.Quantity"
                                     IsPotion="@consumable.IsPotion"
                                     RemainingCooldown="@consumable.RemainingCooldown"
-                                    MaxCooldown="@consumable.MaxCooldown" />
+                                    MaxCooldown="@consumable.MaxCooldown"
+                                    Description="@consumable.Description"
+                                    TriggerConditionText="@consumable.TriggerConditionText"
+                                    UseCustomTrigger="@consumable.UseCustomTrigger" />
                 }
             </div>
         </div>
@@ -226,6 +229,24 @@
         public bool IsPotion { get; set; }
         public double RemainingCooldown { get; set; }
         public double MaxCooldown { get; set; }
+        
+        /// <summary>
+        /// 物品描述/效果说明
+        /// Item description/effect text
+        /// </summary>
+        public string Description { get; set; } = "";
+        
+        /// <summary>
+        /// 触发条件描述文本
+        /// Trigger condition description text
+        /// </summary>
+        public string TriggerConditionText { get; set; } = "";
+        
+        /// <summary>
+        /// 是否使用自定义触发条件
+        /// Whether using custom trigger conditions
+        /// </summary>
+        public bool UseCustomTrigger { get; set; }
     }
 }
 

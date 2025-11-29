@@ -457,6 +457,15 @@ namespace BlazorIdle.Tests
         public DungeonDef? GetDungeon(string id) => null;
         
         public BattleConfigDef? GetBattleConfig(string id) => null;
+
+        public System.Collections.Generic.IReadOnlyList<ShopItemConfig> ConsumableShopItems => 
+            Array.Empty<ShopItemConfig>();
+        
+        public System.Collections.Generic.IReadOnlyList<ShopItemConfig> PotionShopItems => 
+            Array.Empty<ShopItemConfig>();
+        
+        public System.Collections.Generic.IReadOnlyList<ShopItemConfig> FoodShopItems => 
+            Array.Empty<ShopItemConfig>();
     }
     
     public class DungeonResourceResetTests

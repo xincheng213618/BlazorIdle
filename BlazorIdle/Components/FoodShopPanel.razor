@@ -126,14 +126,18 @@
     private PurchaseService? _purchaseService;
     private AccountPurchaseState? _accountPurchaseState;
 
-    private List<ShopItemConfig> shopItems = new();
+    // 商店商品列表 - 从GameConfig缓存获取
+    // Shop items list - retrieved from GameConfig cache
+    private IReadOnlyList<ShopItemConfig> shopItems = Array.Empty<ShopItemConfig>();
 
     protected override async Task OnInitializedAsync()
     {
         await GameConfig.EnsureLoadedAsync();
         isCollapsed = StartCollapsed;
 
-        InitializeShopItems();
+        // 从GameConfig获取已缓存的商店商品列表
+        // Get cached shop items from GameConfig
+        shopItems = GameConfig.FoodShopItems;
 
         _accountPurchaseState = await UserService.GetAccountPurchaseStateAsync();
     }
@@ -154,15 +158,6 @@
     }
 
     private void ToggleCollapse() => isCollapsed = !isCollapsed;
-
-    /// <summary>
-    /// 初始化商店商品列表 - 从配置文件加载
-    /// Initialize shop items list - load from configuration file
-    /// </summary>
-    private void InitializeShopItems()
-    {
-        shopItems = ConfigRepository.LoadFoodShop();
-    }
 
     private int GetGoldBalance()
     {

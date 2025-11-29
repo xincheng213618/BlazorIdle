@@ -137,19 +137,49 @@ namespace BlazorIdle.Shared.Models
         /// 角色装备的消耗品配置 - 药水和食物槽位 (药水与食物系统)
         /// Equipped consumables configuration - potion and food slots
         /// 
-        /// 设计说明：
-        /// - 每个角色独立配置
-        /// - 槽位只保存物品ID引用（引用模式）
-        /// - 每次战斗使用时，实时从 Inventory 扣除物品
-        /// - 配置界面显示的数量是背包中该物品的实时库存
-        /// 
-        /// Design notes:
-        /// - Each character has independent configuration
-        /// - Slots store item ID reference (reference mode)
-        /// - Each battle use deducts from Inventory in real-time
-        /// - Config UI shows real-time stock from inventory
+        /// @deprecated 使用 EquippedConsumablesByProfession 代替
+        /// @deprecated Use EquippedConsumablesByProfession instead
         /// </summary>
         [JsonPropertyName("equippedConsumables")]
         public ConsumableEquipmentConfig EquippedConsumables { get; set; } = new ConsumableEquipmentConfig();
+
+        /// <summary>
+        /// 角色装备的消耗品配置 - 按职业分组（类似技能装备）
+        /// Equipped consumables configuration - grouped by profession (similar to skill equipment)
+        /// Key: professionId, Value: 该职业的消耗品装备配置
+        /// 
+        /// 设计说明：
+        /// - 每个角色的每个职业独立配置
+        /// - 切换职业时自动加载该职业的消耗品配置
+        /// - 槽位只保存物品ID引用（引用模式）
+        /// - 每次战斗使用时，实时从 Inventory 扣除物品
+        /// 
+        /// Design notes:
+        /// - Each character's each profession has independent configuration
+        /// - Auto-load consumable config when switching profession
+        /// - Slots store item ID reference (reference mode)
+        /// - Each battle use deducts from Inventory in real-time
+        /// </summary>
+        [JsonPropertyName("equippedConsumablesByProfession")]
+        public Dictionary<string, ConsumableEquipmentConfig> EquippedConsumablesByProfession { get; set; } = new Dictionary<string, ConsumableEquipmentConfig>();
+
+        /// <summary>
+        /// 获取指定职业的消耗品装备配置（如果不存在则创建）
+        /// Get consumable equipment config for a profession (create if not exists)
+        /// </summary>
+        /// <param name="professionId">职业ID</param>
+        /// <returns>该职业的消耗品装备配置</returns>
+        public ConsumableEquipmentConfig GetConsumablesForProfession(string professionId)
+        {
+            if (string.IsNullOrEmpty(professionId))
+                professionId = ActiveCombatProfessionId;
+
+            if (!EquippedConsumablesByProfession.TryGetValue(professionId, out var config))
+            {
+                config = new ConsumableEquipmentConfig();
+                EquippedConsumablesByProfession[professionId] = config;
+            }
+            return config;
+        }
     }
 }

@@ -129,6 +129,12 @@ public class UpdateCharacterRequest
     /// Purchase state - tracks shop purchase limits and reset times
     /// </summary>
     public BlazorIdle.Game.Purchase.PurchaseState? PurchaseState { get; set; }
+
+    /// <summary>
+    /// 已装备的消耗品配置 - 按职业分组 (药水与食物系统)
+    /// Equipped consumables configuration - grouped by profession
+    /// </summary>
+    public Dictionary<string, BlazorIdle.Shared.Models.ConsumableEquipmentConfig>? EquippedConsumablesByProfession { get; set; }
 }
 
 /// <summary>

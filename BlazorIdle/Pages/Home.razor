@@ -84,6 +84,7 @@
                     <div class="section-frame mb-3">
                         <ConsumableSlotPanel @ref="consumableSlotPanel"
                                              Character="@selectedCharacter"
+                                             ProfessionId="@selectedCharacter.ActiveCombatProfessionId"
                                              IsInBattle="false"
                                              StartCollapsed="true"
                                              OnConsumableEquipped="OnConsumableEquipped"

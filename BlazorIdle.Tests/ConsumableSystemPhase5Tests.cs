@@ -119,6 +119,9 @@ namespace BlazorIdle.Tests
             public BattleScenarioDef? GetBattleScenario(string id) => null;
             public BattleConfigDef? GetBattleConfig(string id) => null;
             public int MaxProfessionLevel => 100;
+            public IReadOnlyList<ShopItemConfig> ConsumableShopItems => Array.Empty<ShopItemConfig>();
+            public IReadOnlyList<ShopItemConfig> PotionShopItems => Array.Empty<ShopItemConfig>();
+            public IReadOnlyList<ShopItemConfig> FoodShopItems => Array.Empty<ShopItemConfig>();
             public string Version => "1.0";
             public bool IsLoaded => true;
         }

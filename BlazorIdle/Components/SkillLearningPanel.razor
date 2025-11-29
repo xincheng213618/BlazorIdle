@@ -3,31 +3,34 @@
 @implements IDisposable
 
 <div class="skill-learning-card">
-    <div class="sl-header d-flex align-items-center justify-content-between"
-         role="button"
-         @onclick="ToggleCollapse"
-         aria-expanded="@(!isCollapsed)">
-        <h5 class="mb-0 text-white d-flex align-items-center">
-            <span class="me-2">📖</span>
-            技能学习 (Skill Learning) - @ProfessionName
-        </h5>
-        <div class="d-flex align-items-center gap-3">
-            @if (Character != null)
-            {
-                <div class="gold-balance">
-                    <span class="gold-icon">🪙</span>
-                    <span class="gold-amount">@GetGoldBalance().ToString("N0")</span>
-                </div>
-            }
-            <button class="btn btn-sm btn-outline-light"
-                    @onclick:stopPropagation="true"
-                    @onclick="ToggleCollapse">
-                @(isCollapsed ? "展开" : "收起")
-            </button>
+    @if (!HideHeader)
+    {
+        <div class="sl-header d-flex align-items-center justify-content-between"
+             role="button"
+             @onclick="ToggleCollapse"
+             aria-expanded="@(!isCollapsed)">
+            <h5 class="mb-0 text-white d-flex align-items-center">
+                <span class="me-2">📖</span>
+                技能学习 (Skill Learning) - @ProfessionName
+            </h5>
+            <div class="d-flex align-items-center gap-3">
+                @if (Character != null)
+                {
+                    <div class="gold-balance">
+                        <span class="gold-icon">🪙</span>
+                        <span class="gold-amount">@GetGoldBalance().ToString("N0")</span>
+                    </div>
+                }
+                <button class="btn btn-sm btn-outline-light"
+                        @onclick:stopPropagation="true"
+                        @onclick="ToggleCollapse">
+                    @(isCollapsed ? "展开" : "收起")
+                </button>
+            </div>
         </div>
-    </div>
+    }
 
-    <div class="sl-body" style="@(isCollapsed ? "display:none" : null)">
+    <div class="sl-body" style="@(isCollapsed && !HideHeader ? "display:none" : null)">
         @if (Character == null)
         {
             <div class="text-muted">请先选择角色...</div>
@@ -491,6 +494,9 @@
     public bool StartCollapsed { get; set; }
 
     [Parameter]
+    public bool HideHeader { get; set; }
+
+    [Parameter]
     public EventCallback OnSkillLearned { get; set; }
 
     private bool isCollapsed;
@@ -499,7 +505,7 @@
     private string errorMessage = string.Empty;
     private string successMessage = string.Empty;
 
-    private readonly SkillRepository _skillRepository = new SkillRepository();
+    private readonly SkillRepository _skillRepository = SkillRepository.Shared;
     private SkillLearningManager? _learningManager;
     private List<SkillDef> learnableSkills = new();
     private List<SkillDef> learnedSkills = new();
