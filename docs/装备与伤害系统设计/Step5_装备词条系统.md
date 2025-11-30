@@ -1,23 +1,10 @@
 # Step5 装备词条系统（GBF / 怪猎风格“技能化词条”）详细设计
 
-版本：v2.1  
-日期：2025-11-29  
-作者：@copilot  
-本次更新：与 v2.0 相比，按后续讨论的 v1.4 初期词条设计做规范化调整（双攻击系 Attack% / SpecialAttack%，新增单独 HP% 词条，移除“技能输出专属”概念、明确暴击基础倍率、统一“Lv1收益最大”成长模型、精简互斥/限量规则、保留唯一固定追击）。
+版本：v2.2  
+日期：2025-11-30  
+作者：@copilot
 
---------------------------------
-更新摘要（v2.1 相对 v2.0 必要改动）
---------------------------------
-需更新原因：
-1. 原 v2.0 文档中还保留了“mastery / special 技能专精”概念，现在所有伤害都走技能管线，不再需要“技能专精”独立乘区；改为纯第二攻击系（SpecialAttack%）。
-2. 新增单独“hp（生命%）”词条；原“神威/valor”平加形式已被替换为百分比混合词条“vital_force”（Attack%+HP%）。
-3. 明确暴击基础倍率为 1.2；“终结(crit_damage_bonus)”仅提供额外暴击伤害加成%，总额受 CritDamageBonusCap（50%）限制 → 最大暴击乘区 ~1.8。
-4. 成长曲线统一为：Lv1 最大、后续递减（之前有部分线性或均匀增长的描述需修正）。
-5. 强化 +n 只提升词条等级（Lv1→Lv4），不再提及词条随机等级与其他路径。
-6. 互斥与限制规则更新： assault 与 vital_force / crit_damage_bonus 互斥；fortify_boost / backwater_boost 各唯一；chase_pct / ken_chase 有 equipLimit；同件限制仅一个追击类型（百分比或固定）。
-7. 删除“mastery”与“skillDamage%”在词条层的说明；伤害管线主体乘区现在是 Attack% × SpecialAttack% × Stance%。
-8. 文档内所有示例与伪代码需替换为新的字段名（CritDamageBonusPercent、SpecialAttackPercent、HPPercent、KenChasePercent、ChasePercent、ChaseFlat 等）。
-9. Caps 列表更新并与 Step6 文档一致。
+本次增量（基于 v2.1）：补充“元素限定生效”与“作用域（scope）”机制，明确输出类词条仅在装备元素与主元素一致时激活；保留 v2.1 的双攻击系（Attack%/SpecialAttack%）、HP%、暴击基础倍率（1.2）与加成%、Lv1收益最大的成长模型、互斥/限量规则、与伤害管线的映射关系。
 
 --------------------------------
 目录
@@ -29,37 +16,38 @@
 5. 等级成长模型（Lv1 最大递减）  
 6. 强化机制与词条同步提升 (+3)  
 7. 互斥 / 限量 / 唯一规则（affixRules）  
-8. 词条详细定义（示例 JSON）  
-9. 与伤害管线的映射关系  
-10. 构筑与平衡：堆叠安全性分析  
-11. UI 展示与提示（上限 / 递减 / 无效）  
-12. 数据校验与自动化测试建议  
-13. 上线阶段与迭代计划  
-14. 未来扩展预留（分支 / 真伤 / 穿透 / 洗练）  
-15. 变更风险与缓解  
-16. 总结
+8. 元素与作用域（scope）机制（新增）  
+9. 主元素确定与匹配规则（新增）  
+10. 生效矩阵（新增）  
+11. 聚合与过滤流程（新增伪代码）  
+12. 备用池（reserve）与主手切换（新增）  
+13. 词条详细定义（示例 JSON，含 scope）  
+14. 与伤害管线的映射关系  
+15. 构筑与平衡：堆叠安全性分析  
+16. UI 展示与提示（上限 / 递减 / 未激活标识）  
+17. 数据校验与自动化测试建议  
+18. 上线阶段与迭代计划  
+19. 未来扩展预留（分支 / 真伤 / 穿透 / 洗练 / 错配折损）  
+20. 变更风险与缓解  
+21. 总结
 
 --------------------------------
 1. 设计目标与定位
 --------------------------------
-在“主手+9副槽”装备框架内，以固定词条序列（橙品质完整，低品质截取前 N 条）+ 小幅强化(+3) 构筑早期数值生态：
-- 低心智：无随机词条池选择，玩家只判断留/拆 → 强化 → 替换可全额回收。
-- 多路线：双攻击系（Attack% / SpecialAttack%）、暴击（Crit% / CritDamageBonus%）、混合（vital_force / assault）、态势（盛体 / 背水）、追击（百分比 / 克制 / 固定）、元素共鸣、生存（HP% / DamageReduction%）。
-- 可控上限：全部百分比属性进入统一 Caps；固定追击单独监控。
-- 强化线性：词条等级同步 +1，不额外乘区，防止爆炸。
-- Lv1 大头：提升第一步显著，后续递减鼓励“先获得装备”再优化而非无限刷极端强化。
+在“主手+9副槽”的装备框架内，采用固定词条序列（橙品质完整、低品质截取前 N 条）+ 小幅强化（+3）构筑早期数值生态。新增“元素限定生效”使输出类词条的收益聚焦于玩家当前主元素，促进元素一致的构筑选择，同时保留通用生存与暴击类词条的全局有效性。
 
 --------------------------------
 2. 词条体系核心原则（更新）
 --------------------------------
 - 仅百分比（固定追击除外）：简化公式与展示。
-- 两攻击系并行：Attack% 与 SpecialAttack% 独立乘入主体层，构筑差异。
-- 暴击基础保障：没有暴击伤害词条时仍有基础 1.2× 暴击倍率。
-- 盛体 / 背水互斥区间：触发血量不重叠，不需 max 判定逻辑。
-- 追击尾部加法：所有追击（包括克制追击）在元素层之后加成，防止乘区放大。
-- 上限裁剪：所有百分比在汇总后裁剪，再进入伤害管线。
-- 互斥 / 限量：预防多个爆发类或态势类词条堆满导致失衡。
-- 强化无损回收：降低尝试成本，提升替换频率与流通。
+- 双攻击系并行：Attack% 与 SpecialAttack% 独立乘入主体层（管线中的 Attack 与 SpecialAttack 乘区）。
+- 暴击基础保障：无暴击伤害词条时，暴击倍率=1.2；词条仅提供额外暴击伤害加成%（总上限 50%）。
+- 盛体 / 背水互斥区间：HP≥75% 触发盛体；HP≤50% 触发背水；区间不重叠。
+- 追击尾部加法：追击%、克制追击%、固定追击在元素层后以加法形式叠加。
+- 上限裁剪：所有百分比在汇总后裁剪至 Caps，再进入伤害管线。
+- 互斥 / 限量：防止爆发或态势类词条堆满导致失衡。
+- 元素限定生效（新增）：输出类词条仅在“装备元素 == 主元素”时激活；通用生存/暴击类词条不受元素限制。
+- 强化无损回收：分解返还全部强化材料，降低尝试成本。
 
 --------------------------------
 3. 属性与全局上限（Caps）
@@ -79,41 +67,38 @@
     "DamageReductionPct": 90.0,
     "ChaseFlatCap": 9999
   },
-  "crit": {
-    "baseMultiplier": 1.2
-  }
+  "crit": { "baseMultiplier": 1.2 }
 }
 ```
 
 --------------------------------
-4. 词条分类与当前初始清单
+4. 词条分类与当前初始清单（v1.4 规范）
 --------------------------------
 输出：attack / special_attack / crit / crit_damage_bonus / assault  
 混合：vital_force / element_resonance  
 生存：hp / mitigation  
 态势：fortify_boost / backwater_boost  
 追击：chase_pct / chase_flat / ken_chase  
-元素：element_resonance（条件触发攻% + 克制追击%）
+元素：element_resonance（元素匹配时提供 Attack% 与 KenChase%）
 
 --------------------------------
 5. 等级成长模型（Lv1 最大递减）
 --------------------------------
-模式举例（单一百分比型）：
-- Lv1：基线（显著）
-- Lv2：基线增幅中等（+50%~+60% 相对 Lv1 增量）
-- Lv3：小幅增量
-- Lv4：收尾增量（微提升）
+- Lv1：显著提升（大头）
+- Lv2：中等提升（约为 Lv1 增量的 50~60%）
+- Lv3：小幅提升
+- Lv4：收尾微增
 
-示例 attack：4 / 6 / 7 / 8（Lv1→Lv2 +2，后续 +1 / +1）  
-特殊攻击：3 / 4.5 / 5.5 / 6（Lv1→Lv2 +1.5，后续 +1 / +0.5）  
-态势类 FortifyMaxPct：10 / 14 / 18 / 20（后两级减小）
+示例：  
+- attack：4 / 6 / 7 / 8  
+- special_attack：3 / 4.5 / 5.5 / 6  
+- fortify_max：10 / 14 / 18 / 20
 
 --------------------------------
 6. 强化机制与词条同步提升 (+3)
 --------------------------------
-- 强化等级 0→+3：把装备内所有词条等级从基准 Lv1 提升到 Lv4。
-- 成本与材料参考强化系统文档（仅通用材料消耗，分层 Tier）。
-- 分解返还全部强化投入材料：无强化损耗，无需额外“锁位”逻辑。
+- 强化 0→+3：将装备内所有词条等级从 Lv1 提升至 Lv4。
+- 仅消耗分层通用材料；分解返还全部强化投入材料（不含基础分解收益）。
 
 --------------------------------
 7. 互斥 / 限量 / 唯一规则（affixRules）
@@ -140,249 +125,241 @@
 ```
 
 --------------------------------
-8. 词条详细定义（核心示例 JSON）
+8. 元素与作用域（scope）机制（新增）
 --------------------------------
-```json
-{
-  "affixes": [
-    {
-      "id": "attack",
-      "name": "攻击",
-      "levels": [
-        { "AttackPercent": 4.0 },
-        { "AttackPercent": 6.0 },
-        { "AttackPercent": 7.0 },
-        { "AttackPercent": 8.0 }
-      ],
-      "tags": ["offense"]
-    },
-    {
-      "id": "special_attack",
-      "name": "特攻",
-      "levels": [
-        { "SpecialAttackPercent": 3.0 },
-        { "SpecialAttackPercent": 4.5 },
-        { "SpecialAttackPercent": 5.5 },
-        { "SpecialAttackPercent": 6.0 }
-      ],
-      "tags": ["offense"]
-    },
-    {
-      "id": "hp",
-      "name": "生命",
-      "levels": [
-        { "HPPercent": 6.0 },
-        { "HPPercent": 8.0 },
-        { "HPPercent": 9.0 },
-        { "HPPercent": 10.0 }
-      ],
-      "tags": ["defense","core"]
-    },
-    {
-      "id": "vital_force",
-      "name": "盛能",
-      "levels": [
-        { "AttackPercent": 2.0, "HPPercent": 4.0 },
-        { "AttackPercent": 3.0, "HPPercent": 6.0 },
-        { "AttackPercent": 3.5, "HPPercent": 7.0 },
-        { "AttackPercent": 4.0, "HPPercent": 8.0 }
-      ],
-      "tags": ["hybrid","core"]
-    },
-    {
-      "id": "crit",
-      "name": "会心",
-      "levels": [
-        { "CritChancePercent": 4.0 },
-        { "CritChancePercent": 6.0 },
-        { "CritChancePercent": 7.0 },
-        { "CritChancePercent": 8.0 }
-      ],
-      "tags": ["offense"]
-    },
-    {
-      "id": "crit_damage_bonus",
-      "name": "终结",
-      "levels": [
-        { "CritDamageBonusPercent": 3.0 },
-        { "CritDamageBonusPercent": 4.0 },
-        { "CritDamageBonusPercent": 4.5 },
-        { "CritDamageBonusPercent": 5.0 }
-      ],
-      "tags": ["offense","burst"]
-    },
-    {
-      "id": "assault",
-      "name": "神击",
-      "levels": [
-        { "AttackPercent": 2.0, "CritChancePercent": 2.0 },
-        { "AttackPercent": 3.0, "CritChancePercent": 3.0 },
-        { "AttackPercent": 3.5, "CritChancePercent": 3.5 },
-        { "AttackPercent": 4.0, "CritChancePercent": 4.0 }
-      ],
-      "tags": ["hybrid","burst"]
-    },
-    {
-      "id": "fortify_boost",
-      "name": "盛体增幅",
-      "levels": [
-        { "FortifyMaxPct": 10.0 },
-        { "FortifyMaxPct": 14.0 },
-        { "FortifyMaxPct": 18.0 },
-        { "FortifyMaxPct": 20.0 }
-      ],
-      "tags": ["stance"],
-      "uniqueGroup": "fortify_unique"
-    },
-    {
-      "id": "backwater_boost",
-      "name": "背水意志",
-      "levels": [
-        { "BackwaterMaxPct": 10.0 },
-        { "BackwaterMaxPct": 14.0 },
-        { "BackwaterMaxPct": 18.0 },
-        { "BackwaterMaxPct": 20.0 }
-      ],
-      "tags": ["stance"],
-      "uniqueGroup": "backwater_unique"
-    },
-    {
-      "id": "chase_pct",
-      "name": "追击",
-      "levels": [
-        { "ChasePercent": 1.8 },
-        { "ChasePercent": 2.4 },
-        { "ChasePercent": 2.8 },
-        { "ChasePercent": 3.2 }
-      ],
-      "tags": ["chase"]
-    },
-    {
-      "id": "chase_flat",
-      "name": "固定追击",
-      "levels": [
-        { "ChaseFlat": 30 },
-        { "ChaseFlat": 45 },
-        { "ChaseFlat": 55 },
-        { "ChaseFlat": 60 }
-      ],
-      "tags": ["chase"]
-    },
-    {
-      "id": "ken_chase",
-      "name": "克制追击",
-      "levels": [
-        { "KenChasePercent": 1.2 },
-        { "KenChasePercent": 1.8 },
-        { "KenChasePercent": 2.4 },
-        { "KenChasePercent": 3.0 }
-      ],
-      "tags": ["chase","element"]
-    },
-    {
-      "id": "mitigation",
-      "name": "坚韧",
-      "levels": [
-        { "DamageReductionPercent": 2.0 },
-        { "DamageReductionPercent": 3.0 },
-        { "DamageReductionPercent": 3.6 },
-        { "DamageReductionPercent": 4.0 }
-      ],
-      "tags": ["defense"]
-    },
-    {
-      "id": "element_resonance",
-      "name": "元素共鸣",
-      "levels": [
-        { "AttackPercent": 2.0, "KenChasePercent": 1.0 },
-        { "AttackPercent": 3.0, "KenChasePercent": 1.5 },
-        { "AttackPercent": 3.5, "KenChasePercent": 1.75 },
-        { "AttackPercent": 4.0, "KenChasePercent": 2.0 }
-      ],
-      "tags": ["element","hybrid"]
+- scope 类型：
+  - global：不做元素匹配，始终生效（HP%、减伤%、暴击率%、暴击伤害加成%、盛体/背水上限、固定追击）。
+  - element：仅在“装备元素 == 主元素”时生效（Attack%、SpecialAttack%、Chase%、KenChase%、ElementResonance 的 Attack/Ken 部分）。
+  - hybrid：同一词条内字段分属不同作用域（例如 assault：Attack%→element；Crit%→global）。
+- 设计意图：鼓励统一元素构筑，同时避免通用生存/暴击属性在错配时完全失效。
+
+--------------------------------
+9. 主元素确定与匹配规则（新增）
+--------------------------------
+- 主元素 = 主手（slot 0）装备的元素；若主手为空或元素为 Neutral → 主元素=Neutral。
+- 激活条件（element-scope）：equip.element == 主元素。
+- Neutral 主元素：
+  - 激活 Neutral 元素的 element-scope 字段与所有 global 字段；
+  - 非 Neutral 的 element-scope 字段不激活（进入 reserve）。
+
+--------------------------------
+10. 生效矩阵（新增）
+--------------------------------
+| 字段 | 作用域 | 生效条件 |
+|------|--------|----------|
+| AttackPercent | element | 装备元素==主元素 |
+| SpecialAttackPercent | element | 装备元素==主元素 |
+| ChasePercent | element | 装备元素==主元素 |
+| KenChasePercent | element | 装备元素==主元素 且元素克制成立 |
+| HPPercent | global | 始终生效 |
+| DamageReductionPercent | global | 始终生效 |
+| CritChancePercent | global | 始终生效 |
+| CritDamageBonusPercent | global | 始终生效（叠加到基础 1.2 倍） |
+| FortifyMaxPct / BackwaterMaxPct | global | 始终生效 |
+| ChaseFlat | global | 始终生效 |
+| ElementResonance.AttackPercent | element | 装备元素==主元素 |
+| ElementResonance.KenChasePercent | element | 装备元素==主元素 且克制成立 |
+
+--------------------------------
+11. 聚合与过滤流程（新增伪代码）
+--------------------------------
+```csharp
+AggregatedStats Aggregate(List<Equipment> equips, Element main) {
+  var active = new StatBag();
+  var reserve = new StatBag();
+
+  foreach (var eq in equips) {
+    foreach (var affix in eq.affixes) {
+      var lvl = GetLevelData(affix.id, affix.level);
+      foreach (var (field, value) in lvl.Fields) {
+        var fieldScope = ResolveScope(affix.id, field); // global / element
+        bool isActive = fieldScope == "global" || eq.element == main;
+        (isActive ? active : reserve).Add(field, value);
+      }
     }
-  ]
+  }
+
+  // Caps 仅对 active 生效
+  active["AttackPercent"] = Clamp(active["AttackPercent"], 0, Caps.AttackPct);
+  active["SpecialAttackPercent"] = Clamp(active["SpecialAttackPercent"], 0, Caps.SpecialAttackPct);
+  active["CritChancePercent"] = Clamp(active["CritChancePercent"], 0, Caps.CritChancePct);
+  active["CritDamageBonusPercent"] = Clamp(active["CritDamageBonusPercent"], 0, Caps.CritDamageBonusPct);
+  active["ChasePercent"] = Clamp(active["ChasePercent"], 0, Caps.ChasePct);
+  active["KenChasePercent"] = Clamp(active["KenChasePercent"], 0, Caps.KenChasePct);
+  active["DamageReductionPercent"] = Clamp(active["DamageReductionPercent"], 0, Caps.DamageReductionPct);
+  // HPPercent、Fortify/Backwater 上限等同理
+
+  return new AggregatedStats { Active = active, Reserve = reserve };
 }
 ```
 
 --------------------------------
-9. 与伤害管线的映射关系
+12. 备用池（reserve）与主手切换（新增）
 --------------------------------
-主体乘区：AttackPercent, SpecialAttackPercent, StancePct(Fortify/Backwater映射)  
-暴击层：CritChancePercent, CritDamageBonusPercent（作用于基础 1.2×）  
-元素层：ElementMult（1.5/1.0/0.75）  
-追击层：ChasePercent, KenChasePercent(仅克制), ChaseFlat, ElementResonance(附带 KenChase%)  
-减伤层：DamageReductionPercent（与 ArmorCurve）  
-生命面板：HPPercent 仅影响最大生命，不入伤害乘区。
+- reserve：保存未激活的元素限定字段（用于预览与构筑参考）。
+- 主手切换：重新聚合；部分 reserve 值迁入 active。
+- UI：展示“未激活（因元素不匹配）”的数值与“切换主手后可激活”的提示。
 
 --------------------------------
-10. 构筑与平衡：堆叠安全性分析
+13. 词条详细定义（示例 JSON，含 scope）
 --------------------------------
-极端满配（10 件 Lv4）：
-- Attack% = 80% (<100)  
-- SpecialAttack% = 60% (<80)  
-- HP% = 100% (=Cap)  
-- CritChance% = 80% (=Cap)  
-- CritDamageBonus% = 50% (=Cap) → 最大暴击倍率 1.8  
-- ChasePct（限制8件）= 25.6% (<30)  
-- KenChasePct（限制6件 + 元素共鸣）最大 ≈ 18% + 2% = 20% (=Cap)  
-- Fortify / Backwater = 20% (=Cap, 不共存)  
-- DamageReduction% = 40% (<90)  
-→ 全部在安全范围，有余量给临时 Buff / 活动增益。
+attack（元素限定）：
+```json
+{
+  "id": "attack",
+  "name": "攻击",
+  "scope": "element",
+  "levels": [
+    { "AttackPercent": 4.0 },
+    { "AttackPercent": 6.0 },
+    { "AttackPercent": 7.0 },
+    { "AttackPercent": 8.0 }
+  ],
+  "tags": ["offense"]
+}
+```
+
+special_attack（元素限定）：
+```json
+{
+  "id": "special_attack",
+  "name": "特攻",
+  "scope": "element",
+  "levels": [
+    { "SpecialAttackPercent": 3.0 },
+    { "SpecialAttackPercent": 4.5 },
+    { "SpecialAttackPercent": 5.5 },
+    { "SpecialAttackPercent": 6.0 }
+  ],
+  "tags": ["offense"]
+}
+```
+
+hp（全局）：
+```json
+{
+  "id": "hp",
+  "name": "生命",
+  "scope": "global",
+  "levels": [
+    { "HPPercent": 6.0 },
+    { "HPPercent": 8.0 },
+    { "HPPercent": 9.0 },
+    { "HPPercent": 10.0 }
+  ],
+  "tags": ["defense","core"]
+}
+```
+
+assault（混合：Attack% 元素限定 / Crit% 全局）：
+```json
+{
+  "id": "assault",
+  "name": "神击",
+  "scope": "hybrid",
+  "perFieldScope": {
+    "AttackPercent": "element",
+    "CritChancePercent": "global"
+  },
+  "levels": [
+    { "AttackPercent": 2.0, "CritChancePercent": 2.0 },
+    { "AttackPercent": 3.0, "CritChancePercent": 3.0 },
+    { "AttackPercent": 3.5, "CritChancePercent": 3.5 },
+    { "AttackPercent": 4.0, "CritChancePercent": 4.0 }
+  ],
+  "tags": ["hybrid","burst"]
+}
+```
+
+element_resonance（元素共鸣，元素限定）：
+```json
+{
+  "id": "element_resonance",
+  "name": "元素共鸣",
+  "scope": "element",
+  "levels": [
+    { "AttackPercent": 2.0, "KenChasePercent": 1.0 },
+    { "AttackPercent": 3.0, "KenChasePercent": 1.5 },
+    { "AttackPercent": 3.5, "KenChasePercent": 1.75 },
+    { "AttackPercent": 4.0, "KenChasePercent": 2.0 }
+  ],
+  "tags": ["element","hybrid"]
+}
+```
+
+其余词条（crit、crit_damage_bonus、fortify_boost、backwater_boost、mitigation、chase_pct、ken_chase、chase_flat）按 v2.1 定义，scope 根据“生效矩阵”设置为 global 或 element。
 
 --------------------------------
-11. UI 展示与提示
+14. 与伤害管线的映射关系
 --------------------------------
-- 词条行：名称 / 等级 / 当前百分比 / 下一等级增量（递减标识）  
-- 属性达到上限：显示“已达上限”徽记 + 阴影数值（不再提升）  
-- 强化预览：整件装备 Lv1→Lv4 聚合变化  
-- 追击占比统计：战斗日志末尾显示“追击贡献比”以监控平衡
+- 主体乘区：AfterMain = AfterVariance × (1 + AttackPctActive) × (1 + SpecialAttackPctActive) × (1 + StancePct)  
+  - AttackPctActive / SpecialAttackPctActive：由聚合器过滤后输出的“已激活”值。  
+- 暴击层：基础 1.2 × (1 + CritDamageBonus%Active)，暴击率使用 CritChance%Active。  
+- 元素层：克制 1.5 / 被克制 0.75 / 其他 1.0。  
+- 追击层：Chase%Active、KenChase%Active（仅克制时）、ChaseFlatActive（固定值）。  
+- 减伤层：DamageReduction%Active 与 ArmorCurve。  
+- HPPercentActive：仅影响最大生命面板，不入伤害乘区。
 
 --------------------------------
-12. 数据校验与自动化测试建议
+15. 构筑与平衡：堆叠安全性分析
 --------------------------------
-自动校验脚本：
-1. 随机生成 10 件橙装（全 4 词条）  
-2. 模拟强化 +3（全部 Lv4）  
-3. 汇总各属性 → 检查是否超过 Caps 或违反 equipLimit / uniqueGroup。  
-4. 输出“超限字段”列表（若为空则通过）。
-
-关键测试：
-- Lv1→Lv4 每级增量衰减性断言  
-- 互斥词条同一装备组合拒绝  
-- 同件 chase_pct 与 chase_flat 互斥  
-- fortify / backwater 各最多 1 件  
-- 克制场景下 ken_chase 与 element_resonance 叠加不突破上限  
-- 强化回收正确（词条等级回退不保留，重新获取新装备后再强化）
+极端满配（10 件 Lv4，元素匹配下）：
+- Attack%Active = 80%（<100）  
+- SpecialAttack%Active = 60%（<80）  
+- HP%Active = 100%（=Cap）  
+- CritChance%Active = 80%（=Cap）  
+- CritDamageBonus%Active = 50%（=Cap） → 最大暴击倍率 1.8  
+- ChasePctActive（限制8件）= 25.6%（<30）  
+- KenChasePctActive（限制6件 + 元素共鸣）最大 ≈ 18% + 2% = 20%（=Cap）  
+- Fortify/Backwater = 20%（=Cap，互斥）  
+- DamageReduction%Active = 40%（<<90）
 
 --------------------------------
-13. 上线阶段与迭代计划
+16. UI 展示与提示（上限 / 递减 / 未激活标识）
 --------------------------------
-Phase A：落地基础词条（attack / special_attack / hp / crit / fortify / backwater / chase_pct / mitigation / crit_damage_bonus）  
-Phase B：开放混合/元素（vital_force / assault / ken_chase / element_resonance / chase_flat）  
-Phase C：数据采样与平衡微调（若某属性平均利用率 >80% 长期）  
-Phase D：扩展分支词条 / 词条替换系统 / 真伤或穿透
+- 词条行：显示当前等级、百分比值与下一等级增量（标注“Lv1收益最大”）。  
+- 上限提示：达上限时显示徽记与“提升无效”说明。  
+- 元素未激活：以元素图标与灰显标示，并提示“当前主元素：Water（装备元素：Fire），此词条未激活”。  
+- 主手切换预览：快速预览不同主元素下的“Active/Reserve”合计与伤害预估差异。
 
 --------------------------------
-14. 未来扩展预留
+17. 数据校验与自动化测试建议
 --------------------------------
-- 分支：元素共鸣可二选一（攻% 或 防御穿透%）  
-- 真伤追击（TrueChasePercent）独立 Cap（≤5%）  
-- ArmorPenetrationPercent（穿透词条）进入防御层前修正  
-- 词条洗练：消耗材料替换第4词条  
-- 强化继承：新装备耗特殊材料继承旧强化等级（旧装备不返还材料）
+- Caps 校验：Active 值不越过上限；Reserve 不裁剪，仅展示。  
+- 互斥/限量：assault 与 vital_force/crit_damage_bonus 互斥；chase_pct/ken_chase equipLimit；同件最多一个追击类型。  
+- 元素过滤：主元素 Fire → Fire 的 Attack%Active 生效、Water 的进入 Reserve；主元素切换后迁移正确。  
+- 态势互斥：HPRatio 边界（0.50、0.75）映射正确。  
+- 强化与分解：+3 等级同步提升；分解返还材料与激活状态无关。
 
 --------------------------------
-15. 变更风险与缓解
+18. 上线阶段与迭代计划
+--------------------------------
+Phase A：实现聚合器（scope 过滤、Active/Reserve 统计、Caps 裁剪）  
+Phase B：接入伤害管线（读取 Active 值）；UI 未激活标识与主手预览  
+Phase C：数据采样与平衡微调（掉落与词条出现频率）  
+Phase D：扩展分支词条 / 洗练 / 错配折损模式（可选）
+
+--------------------------------
+19. 未来扩展预留（分支 / 真伤 / 穿透 / 洗练 / 错配折损）
+--------------------------------
+- 错配折损：element-scope 在不匹配下按 25% 生效（配置开关）。  
+- 真伤追击（TrueChase%）：不受减伤层，严格 Cap（≤5%）。  
+- 穿透（ArmorPenetration%）：进入防御层前修正。  
+- 分支选择：元素共鸣可在 Attack% 与 防穿透% 中二选一。  
+- 词条洗练：消耗材料替换第 4 词条或变更 perFieldScope。
+
+--------------------------------
+20. 变更风险与缓解
 --------------------------------
 | 风险 | 缓解 |
 |------|------|
-| 攻% 与 特攻% 路线差异度不足 | 后期加入分支（特攻对特定标签技能增幅）保持初期简单 |
-| 生命% 满配过高影响生存 | 活动/副本伤害按 HP% 规模设定，或下调 Lv4 增量 |
-| 追击伤害占比过高 | 降 chase_pct Lv4 值或收紧 equipLimit |
-| 暴击过度稳定 | 引入暴击期望衰减（溢出部分转化为精准/压制） |
+| 多元素副槽输出失效挫败 | 提供 Reserve 展示与前期提升 global 词条占比 |
+| 玩家不理解元素限定 | 明确 UI 标识与教学弹窗 |
+| 构筑过度单一 | 后期加入错配折损/双主元素机制 |
+| 数值爆炸 | 严格 Caps + 互斥/限量 + 追击尾部加法 |
 
 --------------------------------
-16. 总结
+21. 总结
 --------------------------------
-v2.1 对原 v2.0 装备词条系统进行了必要修订以对齐最新讨论结果：双攻击系、纯百分比化、HP% 独立、暴击基础倍率明确、Lv1 最大收益、强化线性无爆炸、互斥限量控制安全堆叠。该版本与 Step6 伤害管线保持一致，可直接用于实现与测试。后续若需自动校验脚本或代码骨架，请继续指示。  
+v2.2 在 v2.1 的基础上补齐“元素限定生效”机制，通过 scope（global/element/hybrid）与 Active/Reserve 聚合过滤，使输出类词条仅在元素匹配时激活，通用生存与暴击类词条始终有效。该更新不改变伤害管线结构，只影响聚合输入，便于实现与测试，并进一步鼓励元素一致的构筑路线。  
+如需，我可以继续输出 ElementScopedAggregator 的代码骨架与测试用例模板。  
