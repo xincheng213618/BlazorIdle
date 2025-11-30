@@ -1,0 +1,16 @@
+// 战斗属性上限配置 - Combat Attribute Caps Configuration
+// 所有百分比属性的全局上限
+// Global caps for all percentage attributes
+{
+  "attackPct": 100.0,
+  "specialAttackPct": 80.0,
+  "hpPercent": 100.0,
+  "critChancePct": 80.0,
+  "critDamageBonusPct": 50.0,
+  "fortifyMaxPct": 20.0,
+  "backwaterMaxPct": 20.0,
+  "chasePct": 30.0,
+  "kenChasePct": 20.0,
+  "damageReductionPct": 90.0,
+  "chaseFlatCap": 9999
+}

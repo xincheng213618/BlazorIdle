@@ -1,0 +1,12 @@
+// 元素类型定义 - Element Type Definitions
+// 包含所有元素类型的ID、名称和图标
+// Contains all element types with ID, name and icon
+[
+  { "id": "fire", "name": "火", "icon": "🔥" },
+  { "id": "water", "name": "水", "icon": "💧" },
+  { "id": "wind", "name": "风", "icon": "🌪️" },
+  { "id": "earth", "name": "地", "icon": "🪨" },
+  { "id": "light", "name": "光", "icon": "☀️" },
+  { "id": "dark", "name": "暗", "icon": "🌙" },
+  { "id": "neutral", "name": "无", "icon": "⚪" }
+]
