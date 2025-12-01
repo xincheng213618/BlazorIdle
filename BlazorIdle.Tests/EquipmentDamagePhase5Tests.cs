@@ -477,7 +477,7 @@ namespace BlazorIdle.Tests
             // 怪物属性
             var monsterStats = CombatStats.CreateDefault();
 
-            // 怪物血量低于50%，触发背水
+            // 怪物血量低于50%（实际30%），触发背水
             var ctx = DamageContext.CreateSimple(
                 attackFinal: 100,
                 skillCoef: 1.0,
