@@ -685,8 +685,10 @@ namespace BlazorIdle.Tests
             // Assert
             Assert.NotNull(rules);
             Assert.True(rules.AreMutuallyExclusive("assault", "vital_force"));
-            Assert.Equal(8, rules.GetEquipLimit("chase_pct"));
-            Assert.Equal(6, rules.GetEquipLimit("ken_chase"));
+            // Note: equipLimit is now commented out in rules.json for flexibility
+            // The functionality is preserved for future use
+            Assert.Null(rules.GetEquipLimit("chase_pct")); // Currently no limit configured
+            Assert.Null(rules.GetEquipLimit("ken_chase")); // Currently no limit configured
         }
 
         [Fact]
@@ -702,14 +704,16 @@ namespace BlazorIdle.Tests
         }
 
         [Fact]
-        public void AffixRepository_GetEquipLimit_CombinesDefinitionAndRules()
+        public void AffixRepository_GetEquipLimit_UnifiedInRules()
         {
             // Arrange
             var repo = AffixRepository.Shared;
 
             // Assert
-            Assert.Equal(8, repo.GetEquipLimit("chase_pct"));
-            Assert.Equal(6, repo.GetEquipLimit("ken_chase"));
+            // Equipment limits are now unified in rules.json only
+            // Currently commented out for flexibility
+            Assert.Null(repo.GetEquipLimit("chase_pct")); // No limit configured
+            Assert.Null(repo.GetEquipLimit("ken_chase")); // No limit configured
             Assert.Null(repo.GetEquipLimit("attack")); // No limit
         }
 

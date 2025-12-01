@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using BlazorIdle.Game.Combat;
 
 namespace BlazorIdle.Game.Items.Equipment
 {
@@ -43,6 +44,19 @@ namespace BlazorIdle.Game.Items.Equipment
         }
 
         /// <summary>
+        /// 检查元素是否匹配
+        /// Check if elements match
+        /// Uses ElementIds constants for comparison
+        /// </summary>
+        private static bool ElementsMatch(string element1, string element2)
+        {
+            // Normalize: treat null/empty as neutral
+            var e1 = string.IsNullOrEmpty(element1) ? ElementIds.Neutral : element1;
+            var e2 = string.IsNullOrEmpty(element2) ? ElementIds.Neutral : element2;
+            return string.Equals(e1, e2, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
         /// 获取当前等级的效果（带元素过滤）
         /// Get effects for current level with element filtering
         /// </summary>
@@ -56,7 +70,7 @@ namespace BlazorIdle.Game.Items.Equipment
 
             var allEffects = Definition.GetLevelEffects(Level);
             var activeEffects = new Dictionary<string, double>();
-            bool elementMatch = string.Equals(equipmentElement, mainElement, StringComparison.OrdinalIgnoreCase);
+            bool elementMatch = ElementsMatch(equipmentElement, mainElement);
 
             foreach (var kvp in allEffects)
             {
@@ -86,7 +100,7 @@ namespace BlazorIdle.Game.Items.Equipment
 
             var allEffects = Definition.GetLevelEffects(Level);
             var inactiveEffects = new Dictionary<string, double>();
-            bool elementMatch = string.Equals(equipmentElement, mainElement, StringComparison.OrdinalIgnoreCase);
+            bool elementMatch = ElementsMatch(equipmentElement, mainElement);
 
             foreach (var kvp in allEffects)
             {

@@ -106,11 +106,30 @@ namespace BlazorIdle.Game.Items.Equipment
         /// </summary>
         /// <param name="level">等级（1-4）/ Level (1-4)</param>
         /// <returns>该等级的属性字典 / Attribute dictionary for this level</returns>
+        /// <remarks>
+        /// Returns empty dictionary if:
+        /// - Levels list is empty (warning: affix has no level data)
+        /// - Level is out of range (clamped to valid range)
+        /// </remarks>
         public Dictionary<string, double> GetLevelEffects(int level)
         {
+            if (Levels.Count == 0)
+            {
+                // Note: In production, consider using ILogger for proper logging
+                System.Diagnostics.Debug.WriteLine($"[Warning] Affix '{Id}' has no level data defined.");
+                return new Dictionary<string, double>();
+            }
+
             int index = Math.Clamp(level - 1, 0, Levels.Count - 1);
-            return Levels.Count > index ? Levels[index] : new Dictionary<string, double>();
+            return Levels[index];
         }
+
+        /// <summary>
+        /// 检查词条是否有效（包含等级数据）
+        /// Check if affix is valid (has level data)
+        /// </summary>
+        [JsonIgnore]
+        public bool IsValid => !string.IsNullOrEmpty(Id) && Levels.Count > 0;
 
         /// <summary>
         /// 获取最大等级

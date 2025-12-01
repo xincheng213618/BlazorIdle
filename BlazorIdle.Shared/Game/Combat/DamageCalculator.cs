@@ -1,8 +1,8 @@
 namespace BlazorIdle.Game.Combat
 {
     /// <summary>
-    /// 伤害计算器 - 实现6层伤害计算管线
-    /// Damage calculator - implements 6-layer damage calculation pipeline
+    /// 伤害计算器 - 实现7层伤害计算管线
+    /// Damage calculator - implements 7-layer damage calculation pipeline
     /// 
     /// 计算管线：
     /// Pipeline:
@@ -16,28 +16,30 @@ namespace BlazorIdle.Game.Combat
     /// </summary>
     public sealed class DamageCalculator
     {
-        private readonly CombatCapsConfig _caps;
-        private readonly CritConfig _critConfig;
-        private readonly VarianceConfig _varianceConfig;
-        private readonly StanceConfig _stanceConfig;
-        private readonly ElementMatrix _elementMatrix;
+        private readonly CombatConfigs _configs;
 
         /// <summary>
-        /// 创建伤害计算器
-        /// Create damage calculator
+        /// 创建伤害计算器（使用配置容器）
+        /// Create damage calculator (using config container)
         /// </summary>
+        public DamageCalculator(CombatConfigs configs)
+        {
+            _configs = configs ?? throw new ArgumentNullException(nameof(configs));
+        }
+
+        /// <summary>
+        /// 创建伤害计算器（兼容旧接口）
+        /// Create damage calculator (legacy interface compatibility)
+        /// </summary>
+        [Obsolete("Use DamageCalculator(CombatConfigs) constructor instead")]
         public DamageCalculator(
             CombatCapsConfig caps,
             CritConfig critConfig,
             VarianceConfig varianceConfig,
             StanceConfig stanceConfig,
             ElementMatrix elementMatrix)
+            : this(new CombatConfigs(caps, critConfig, varianceConfig, stanceConfig, elementMatrix))
         {
-            _caps = caps ?? throw new ArgumentNullException(nameof(caps));
-            _critConfig = critConfig ?? throw new ArgumentNullException(nameof(critConfig));
-            _varianceConfig = varianceConfig ?? throw new ArgumentNullException(nameof(varianceConfig));
-            _stanceConfig = stanceConfig ?? throw new ArgumentNullException(nameof(stanceConfig));
-            _elementMatrix = elementMatrix ?? throw new ArgumentNullException(nameof(elementMatrix));
         }
 
         /// <summary>
@@ -59,16 +61,16 @@ namespace BlazorIdle.Game.Combat
 
             // 2. 浮动层：AfterVariance = Base × Variance
             // Layer 2: AfterVariance = Base × Variance
-            double variance = _varianceConfig.GetVariance(ctx.Rng);
+            double variance = _configs.Variance.GetVariance(ctx.Rng);
             result.AfterVariance = result.BaseDamage * variance;
 
             // 3. 主体层：AfterMain = AfterVariance × (1+Atk%) × (1+SpAtk%) × (1+Stance%)
             // Layer 3: AfterMain = AfterVariance × (1+Atk%) × (1+SpAtk%) × (1+Stance%)
-            double atkPct = _caps.ClampAttackPct(stats.AttackPercent);
-            double spAtkPct = _caps.ClampSpecialAttackPct(stats.SpecialAttackPercent);
-            double fortifyMaxPct = _caps.ClampFortifyMaxPct(stats.FortifyMaxPercent);
-            double backwaterMaxPct = _caps.ClampBackwaterMaxPct(stats.BackwaterMaxPercent);
-            double stancePct = _stanceConfig.CalcStancePercent(ctx.AttackerHPRatio, fortifyMaxPct, backwaterMaxPct);
+            double atkPct = _configs.Caps.ClampAttackPct(stats.AttackPercent);
+            double spAtkPct = _configs.Caps.ClampSpecialAttackPct(stats.SpecialAttackPercent);
+            double fortifyMaxPct = _configs.Caps.ClampFortifyMaxPct(stats.FortifyMaxPercent);
+            double backwaterMaxPct = _configs.Caps.ClampBackwaterMaxPct(stats.BackwaterMaxPercent);
+            double stancePct = _configs.Stance.CalcStancePercent(ctx.AttackerHPRatio, fortifyMaxPct, backwaterMaxPct);
             result.StancePercent = stancePct;
 
             result.AfterMain = result.AfterVariance 
@@ -78,14 +80,14 @@ namespace BlazorIdle.Game.Combat
 
             // 4. 暴击层：AfterCrit = AfterMain × (isCrit ? BaseMultiplier × (1+CritBonus%) : 1)
             // Layer 4: AfterCrit = AfterMain × (isCrit ? BaseMultiplier × (1+CritBonus%) : 1)
-            double critChance = _caps.ClampCritChancePct(stats.CritChancePercent);
-            double critBonus = _caps.ClampCritDamageBonusPct(stats.CritDamageBonusPercent);
+            double critChance = _configs.Caps.ClampCritChancePct(stats.CritChancePercent);
+            double critBonus = _configs.Caps.ClampCritDamageBonusPct(stats.CritDamageBonusPercent);
             bool isCrit = ctx.Rng.NextDouble() * 100 < critChance;
             result.IsCrit = isCrit;
 
             if (isCrit)
             {
-                result.CritMultiplier = _critConfig.BaseMultiplier * (1 + critBonus / 100.0);
+                result.CritMultiplier = _configs.Crit.BaseMultiplier * (1 + critBonus / 100.0);
                 result.AfterCrit = result.AfterMain * result.CritMultiplier;
             }
             else
@@ -96,15 +98,15 @@ namespace BlazorIdle.Game.Combat
 
             // 5. 元素层：AfterElement = AfterCrit × ElementMult
             // Layer 5: AfterElement = AfterCrit × ElementMult
-            result.ElementMultiplier = _elementMatrix.GetMultiplier(ctx.AttackerElement, ctx.DefenderElement);
-            result.HasElementAdvantage = _elementMatrix.HasAdvantage(ctx.AttackerElement, ctx.DefenderElement);
+            result.ElementMultiplier = _configs.Elements.GetMultiplier(ctx.AttackerElement, ctx.DefenderElement);
+            result.HasElementAdvantage = _configs.Elements.HasAdvantage(ctx.AttackerElement, ctx.DefenderElement);
             result.AfterElement = result.AfterCrit * result.ElementMultiplier;
 
             // 6. 追击层：AfterChase = AfterElement + AfterElement×Chase% + AfterElement×KenChase% + ChaseFlat
             // Layer 6: AfterChase = AfterElement + AfterElement×Chase% + AfterElement×KenChase% + ChaseFlat
-            double chasePct = _caps.ClampChasePct(stats.ChasePercent);
-            double kenChasePct = result.HasElementAdvantage ? _caps.ClampKenChasePct(stats.KenChasePercent) : 0;
-            int chaseFlat = _caps.ClampChaseFlat(stats.ChaseFlat);
+            double chasePct = _configs.Caps.ClampChasePct(stats.ChasePercent);
+            double kenChasePct = result.HasElementAdvantage ? _configs.Caps.ClampKenChasePct(stats.KenChasePercent) : 0;
+            int chaseFlat = _configs.Caps.ClampChaseFlat(stats.ChaseFlat);
 
             result.AfterChase = result.AfterElement 
                 + result.AfterElement * (chasePct / 100.0)
@@ -113,7 +115,7 @@ namespace BlazorIdle.Game.Combat
 
             // 7. 减伤层：Final = AfterChase × (1-DR%)
             // Layer 7: Final = AfterChase × (1-DR%)
-            double drPct = _caps.ClampDamageReductionPct(ctx.DefenderDRPct);
+            double drPct = _configs.Caps.ClampDamageReductionPct(ctx.DefenderDRPct);
             result.AfterDefense = result.AfterChase * (1 - drPct / 100.0);
 
             // 最终取整（最小为1）
@@ -141,15 +143,15 @@ namespace BlazorIdle.Game.Combat
             result.BaseDamage = ctx.AttackFinal * ctx.SkillCoef + ctx.SkillFlat;
 
             // 2. 浮动层（使用中间值）
-            double variance = (_varianceConfig.DefaultMin + _varianceConfig.DefaultMax) / 2.0;
+            double variance = (_configs.Variance.DefaultMin + _configs.Variance.DefaultMax) / 2.0;
             result.AfterVariance = result.BaseDamage * variance;
 
             // 3. 主体层
-            double atkPct = _caps.ClampAttackPct(stats.AttackPercent);
-            double spAtkPct = _caps.ClampSpecialAttackPct(stats.SpecialAttackPercent);
-            double fortifyMaxPct = _caps.ClampFortifyMaxPct(stats.FortifyMaxPercent);
-            double backwaterMaxPct = _caps.ClampBackwaterMaxPct(stats.BackwaterMaxPercent);
-            double stancePct = _stanceConfig.CalcStancePercent(ctx.AttackerHPRatio, fortifyMaxPct, backwaterMaxPct);
+            double atkPct = _configs.Caps.ClampAttackPct(stats.AttackPercent);
+            double spAtkPct = _configs.Caps.ClampSpecialAttackPct(stats.SpecialAttackPercent);
+            double fortifyMaxPct = _configs.Caps.ClampFortifyMaxPct(stats.FortifyMaxPercent);
+            double backwaterMaxPct = _configs.Caps.ClampBackwaterMaxPct(stats.BackwaterMaxPercent);
+            double stancePct = _configs.Stance.CalcStancePercent(ctx.AttackerHPRatio, fortifyMaxPct, backwaterMaxPct);
             result.StancePercent = stancePct;
 
             result.AfterMain = result.AfterVariance 
@@ -158,12 +160,12 @@ namespace BlazorIdle.Game.Combat
                 * (1 + stancePct / 100.0);
 
             // 4. 暴击层
-            double critBonus = _caps.ClampCritDamageBonusPct(stats.CritDamageBonusPercent);
+            double critBonus = _configs.Caps.ClampCritDamageBonusPct(stats.CritDamageBonusPercent);
             result.IsCrit = forceCrit;
 
             if (forceCrit)
             {
-                result.CritMultiplier = _critConfig.BaseMultiplier * (1 + critBonus / 100.0);
+                result.CritMultiplier = _configs.Crit.BaseMultiplier * (1 + critBonus / 100.0);
                 result.AfterCrit = result.AfterMain * result.CritMultiplier;
             }
             else
@@ -173,14 +175,14 @@ namespace BlazorIdle.Game.Combat
             }
 
             // 5. 元素层
-            result.ElementMultiplier = _elementMatrix.GetMultiplier(ctx.AttackerElement, ctx.DefenderElement);
-            result.HasElementAdvantage = _elementMatrix.HasAdvantage(ctx.AttackerElement, ctx.DefenderElement);
+            result.ElementMultiplier = _configs.Elements.GetMultiplier(ctx.AttackerElement, ctx.DefenderElement);
+            result.HasElementAdvantage = _configs.Elements.HasAdvantage(ctx.AttackerElement, ctx.DefenderElement);
             result.AfterElement = result.AfterCrit * result.ElementMultiplier;
 
             // 6. 追击层
-            double chasePct = _caps.ClampChasePct(stats.ChasePercent);
-            double kenChasePct = result.HasElementAdvantage ? _caps.ClampKenChasePct(stats.KenChasePercent) : 0;
-            int chaseFlat = _caps.ClampChaseFlat(stats.ChaseFlat);
+            double chasePct = _configs.Caps.ClampChasePct(stats.ChasePercent);
+            double kenChasePct = result.HasElementAdvantage ? _configs.Caps.ClampKenChasePct(stats.KenChasePercent) : 0;
+            int chaseFlat = _configs.Caps.ClampChaseFlat(stats.ChaseFlat);
 
             result.AfterChase = result.AfterElement 
                 + result.AfterElement * (chasePct / 100.0)
@@ -188,7 +190,7 @@ namespace BlazorIdle.Game.Combat
                 + chaseFlat;
 
             // 7. 减伤层
-            double drPct = _caps.ClampDamageReductionPct(ctx.DefenderDRPct);
+            double drPct = _configs.Caps.ClampDamageReductionPct(ctx.DefenderDRPct);
             result.AfterDefense = result.AfterChase * (1 - drPct / 100.0);
 
             // 最终取整
@@ -203,13 +205,7 @@ namespace BlazorIdle.Game.Combat
         /// </summary>
         public static DamageCalculator CreateDefault()
         {
-            return new DamageCalculator(
-                CombatCapsConfig.CreateDefault(),
-                CritConfig.CreateDefault(),
-                VarianceConfig.CreateDefault(),
-                StanceConfig.CreateDefault(),
-                ElementMatrix.CreateDefault()
-            );
+            return new DamageCalculator(CombatConfigs.CreateDefault());
         }
 
         /// <summary>
@@ -218,13 +214,7 @@ namespace BlazorIdle.Game.Combat
         /// </summary>
         public static DamageCalculator CreateFromRepository()
         {
-            return new DamageCalculator(
-                CombatConfigRepository.LoadCombatCaps(),
-                CombatConfigRepository.LoadCritConfig(),
-                CombatConfigRepository.LoadVarianceConfig(),
-                CombatConfigRepository.LoadStanceConfig(),
-                CombatConfigRepository.LoadElementMatrix()
-            );
+            return new DamageCalculator(CombatConfigs.LoadFromRepository());
         }
     }
 }

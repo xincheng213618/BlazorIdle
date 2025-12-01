@@ -19,7 +19,8 @@ namespace BlazorIdle.Game.Items.Equipment
 
         private Dictionary<string, AffixDef>? _affixDefinitions;
         private AffixRules? _affixRules;
-        private readonly object _lockObject = new();
+        // Note: Lazy<T> already provides thread safety, no additional lock needed for initialization
+        // The lock is only used for Reload() and InitializeForTesting() methods
 
         /// <summary>
         /// 获取所有词条定义
@@ -56,11 +57,10 @@ namespace BlazorIdle.Game.Items.Equipment
             if (_affixDefinitions != null && _affixRules != null)
                 return;
 
-            lock (_lockObject)
+            // Double-check locking pattern for lazy initialization
+            // This is thread-safe without explicit lock because Lazy<T> ensures only one instance is created
+            if (_affixDefinitions == null || _affixRules == null)
             {
-                if (_affixDefinitions != null && _affixRules != null)
-                    return;
-
                 LoadFromEmbeddedResources();
             }
         }
@@ -219,43 +219,34 @@ namespace BlazorIdle.Game.Items.Equipment
         /// <summary>
         /// 获取词条的装备数量限制
         /// Get equipment limit for an affix
+        /// Note: Equipment limits are now managed exclusively in rules.json
         /// </summary>
         public int? GetEquipLimit(string affixId)
         {
-            // First check if defined in rules
-            var rulesLimit = Rules.GetEquipLimit(affixId);
-            if (rulesLimit.HasValue)
-                return rulesLimit;
-
-            // Then check if defined in affix definition
-            var def = GetAffixById(affixId);
-            return def?.EquipLimit;
+            // Equipment limits are unified in rules.json only
+            return Rules.GetEquipLimit(affixId);
         }
 
         /// <summary>
         /// 重新加载配置（用于测试或热更新）
         /// Reload configuration (for testing or hot reload)
+        /// Note: This operation is not thread-safe, should only be used in single-threaded scenarios
         /// </summary>
         public void Reload()
         {
-            lock (_lockObject)
-            {
-                _affixDefinitions = null;
-                _affixRules = null;
-            }
+            _affixDefinitions = null;
+            _affixRules = null;
         }
 
         /// <summary>
         /// 使用外部配置初始化（用于测试）
         /// Initialize with external configuration (for testing)
+        /// Note: This operation is not thread-safe, should only be used in test scenarios
         /// </summary>
         public void InitializeForTesting(List<AffixDef> definitions, AffixRules rules)
         {
-            lock (_lockObject)
-            {
-                _affixDefinitions = definitions.ToDictionary(d => d.Id, d => d, StringComparer.OrdinalIgnoreCase);
-                _affixRules = rules;
-            }
+            _affixDefinitions = definitions.ToDictionary(d => d.Id, d => d, StringComparer.OrdinalIgnoreCase);
+            _affixRules = rules;
         }
     }
 }

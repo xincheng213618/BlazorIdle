@@ -136,7 +136,6 @@
     "id": "chase_pct",
     "name": "追击",
     "scope": "element",
-    "equipLimit": 8,
     "levels": [
       { "ChasePercent": 1.8 },
       { "ChasePercent": 2.4 },
@@ -161,7 +160,6 @@
     "id": "ken_chase",
     "name": "克制追击",
     "scope": "element",
-    "equipLimit": 6,
     "levels": [
       { "KenChasePercent": 1.2 },
       { "KenChasePercent": 1.8 },

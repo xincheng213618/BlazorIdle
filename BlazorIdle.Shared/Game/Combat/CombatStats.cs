@@ -144,5 +144,19 @@ namespace BlazorIdle.Game.Combat
                 DamageReductionPercent = 0
             };
         }
+
+        /// <summary>
+        /// 应用属性上限裁剪
+        /// Apply attribute caps clipping
+        /// </summary>
+        /// <param name="caps">属性上限配置 / Combat caps configuration</param>
+        /// <returns>裁剪后的新实例 / New clipped instance</returns>
+        public CombatStats Clamp(CombatCapsConfig caps)
+        {
+            if (caps == null)
+                return this;
+
+            return caps.ApplyCaps(this);
+        }
     }
 }
