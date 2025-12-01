@@ -1,0 +1,35 @@
+// 火属性匕首类武器 - Fire Element Dagger Weapons
+[
+  {
+    "id": "dagger_fire_t1",
+    "name": "火焰短刃",
+    "weaponType": "dagger",
+    "element": "fire",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "haste", "assault"]
+  },
+  {
+    "id": "dagger_fire_t2",
+    "name": "烈焰刺客",
+    "weaponType": "dagger",
+    "element": "fire",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "haste", "crit_damage_bonus"]
+  },
+  {
+    "id": "dagger_fire_t3",
+    "name": "焚天暗刃",
+    "weaponType": "dagger",
+    "element": "fire",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "haste", "backwater_boost"]
+  },
+  {
+    "id": "dagger_fire_t4",
+    "name": "炎魔之牙",
+    "weaponType": "dagger",
+    "element": "fire",
+    "tier": 4,
+    "affixSequence": ["crit", "crit_damage_bonus", "haste", "element_resonance"]
+  }
+]

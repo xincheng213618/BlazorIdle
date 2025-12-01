@@ -1,0 +1,35 @@
+// 火属性乐器类武器 - Fire Element Harp Weapons
+[
+  {
+    "id": "harp_fire_t1",
+    "name": "炎之竖琴",
+    "weaponType": "harp",
+    "element": "fire",
+    "tier": 1,
+    "affixSequence": ["special_attack", "hp", "haste", "vital_force"]
+  },
+  {
+    "id": "harp_fire_t2",
+    "name": "焚天之歌",
+    "weaponType": "harp",
+    "element": "fire",
+    "tier": 2,
+    "affixSequence": ["special_attack", "hp", "vital_force", "haste"]
+  },
+  {
+    "id": "harp_fire_t3",
+    "name": "炎魔乐章",
+    "weaponType": "harp",
+    "element": "fire",
+    "tier": 3,
+    "affixSequence": ["special_attack", "vital_force", "haste", "crit_damage_bonus"]
+  },
+  {
+    "id": "harp_fire_t4",
+    "name": "灭世炎歌",
+    "weaponType": "harp",
+    "element": "fire",
+    "tier": 4,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "vital_force", "element_resonance"]
+  }
+]

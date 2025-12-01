@@ -1,0 +1,35 @@
+// 火属性刀类武器 - Fire Element Katana Weapons
+[
+  {
+    "id": "katana_fire_t1",
+    "name": "火炎太刀",
+    "weaponType": "katana",
+    "element": "fire",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "assault"]
+  },
+  {
+    "id": "katana_fire_t2",
+    "name": "焚天斩月",
+    "weaponType": "katana",
+    "element": "fire",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "backwater_boost"]
+  },
+  {
+    "id": "katana_fire_t3",
+    "name": "炎魔妖刀",
+    "weaponType": "katana",
+    "element": "fire",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "backwater_boost", "element_resonance"]
+  },
+  {
+    "id": "katana_fire_t4",
+    "name": "灭世炎刀",
+    "weaponType": "katana",
+    "element": "fire",
+    "tier": 4,
+    "affixSequence": ["crit", "crit_damage_bonus", "backwater_boost", "element_resonance"]
+  }
+]

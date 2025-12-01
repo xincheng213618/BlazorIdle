@@ -1,0 +1,35 @@
+// 火属性枪类武器 - Fire Element Spear Weapons
+[
+  {
+    "id": "spear_fire_t1",
+    "name": "烈炎长枪",
+    "weaponType": "spear",
+    "element": "fire",
+    "tier": 1,
+    "affixSequence": ["attack", "hp", "chase_pct", "ken_chase"]
+  },
+  {
+    "id": "spear_fire_t2",
+    "name": "焚天之枪",
+    "weaponType": "spear",
+    "element": "fire",
+    "tier": 2,
+    "affixSequence": ["attack", "chase_pct", "ken_chase", "vital_force"]
+  },
+  {
+    "id": "spear_fire_t3",
+    "name": "炎龙之枪",
+    "weaponType": "spear",
+    "element": "fire",
+    "tier": 3,
+    "affixSequence": ["attack", "chase_pct", "ken_chase", "element_resonance"]
+  },
+  {
+    "id": "spear_fire_t4",
+    "name": "灭世炎枪",
+    "weaponType": "spear",
+    "element": "fire",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "chase_pct", "element_resonance"]
+  }
+]

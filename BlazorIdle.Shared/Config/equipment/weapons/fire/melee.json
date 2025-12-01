@@ -1,0 +1,35 @@
+// 火属性拳套类武器 - Fire Element Melee Weapons
+[
+  {
+    "id": "melee_fire_t1",
+    "name": "烈焰拳套",
+    "weaponType": "melee",
+    "element": "fire",
+    "tier": 1,
+    "affixSequence": ["attack", "haste", "hp", "crit"]
+  },
+  {
+    "id": "melee_fire_t2",
+    "name": "焚天铁拳",
+    "weaponType": "melee",
+    "element": "fire",
+    "tier": 2,
+    "affixSequence": ["attack", "haste", "crit", "assault"]
+  },
+  {
+    "id": "melee_fire_t3",
+    "name": "炎魔拳刃",
+    "weaponType": "melee",
+    "element": "fire",
+    "tier": 3,
+    "affixSequence": ["attack", "haste", "crit_damage_bonus", "vital_force"]
+  },
+  {
+    "id": "melee_fire_t4",
+    "name": "灭世炎拳",
+    "weaponType": "melee",
+    "element": "fire",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "haste", "element_resonance"]
+  }
+]
