@@ -30,7 +30,7 @@ namespace BlazorIdle.Game.Items.Equipment
             get
             {
                 EnsureLoaded();
-                return _affixDefinitions!;
+                return _affixDefinitions ?? new Dictionary<string, AffixDef>();
             }
         }
 
@@ -43,7 +43,7 @@ namespace BlazorIdle.Game.Items.Equipment
             get
             {
                 EnsureLoaded();
-                return _affixRules!;
+                return _affixRules ?? AffixRules.CreateEmpty();
             }
         }
 
@@ -98,9 +98,6 @@ namespace BlazorIdle.Game.Items.Equipment
             using var reader = new StreamReader(stream);
             var json = reader.ReadToEnd();
             
-            // Remove comments for JSON parsing
-            json = RemoveJsonComments(json);
-            
             var options = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
@@ -131,9 +128,6 @@ namespace BlazorIdle.Game.Items.Equipment
             using var reader = new StreamReader(stream);
             var json = reader.ReadToEnd();
             
-            // Remove comments for JSON parsing
-            json = RemoveJsonComments(json);
-            
             var options = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
@@ -144,30 +138,14 @@ namespace BlazorIdle.Game.Items.Equipment
         }
 
         /// <summary>
-        /// 移除 JSON 中的注释
-        /// Remove comments from JSON
-        /// </summary>
-        private static string RemoveJsonComments(string json)
-        {
-            // Simple comment removal for single-line // comments
-            var lines = json.Split('\n');
-            var cleanedLines = lines
-                .Select(line =>
-                {
-                    var commentIndex = line.IndexOf("//");
-                    return commentIndex >= 0 ? line[..commentIndex] : line;
-                });
-            return string.Join('\n', cleanedLines);
-        }
-
-        /// <summary>
         /// 通过ID获取词条定义
         /// Get affix definition by ID
         /// </summary>
         public AffixDef? GetAffixById(string affixId)
         {
             EnsureLoaded();
-            return _affixDefinitions!.TryGetValue(affixId, out var def) ? def : null;
+            var definitions = _affixDefinitions ?? new Dictionary<string, AffixDef>();
+            return definitions.TryGetValue(affixId, out var def) ? def : null;
         }
 
         /// <summary>
@@ -177,7 +155,8 @@ namespace BlazorIdle.Game.Items.Equipment
         public IReadOnlyList<AffixDef> GetAllAffixes()
         {
             EnsureLoaded();
-            return _affixDefinitions!.Values.ToList();
+            var definitions = _affixDefinitions ?? new Dictionary<string, AffixDef>();
+            return definitions.Values.ToList();
         }
 
         /// <summary>
@@ -187,7 +166,8 @@ namespace BlazorIdle.Game.Items.Equipment
         public IReadOnlyList<AffixDef> GetAffixesByTag(string tag)
         {
             EnsureLoaded();
-            return _affixDefinitions!.Values
+            var definitions = _affixDefinitions ?? new Dictionary<string, AffixDef>();
+            return definitions.Values
                 .Where(d => d.HasTag(tag))
                 .ToList();
         }
@@ -199,7 +179,8 @@ namespace BlazorIdle.Game.Items.Equipment
         public IReadOnlyList<AffixDef> GetAffixesByScope(AffixScope scope)
         {
             EnsureLoaded();
-            return _affixDefinitions!.Values
+            var definitions = _affixDefinitions ?? new Dictionary<string, AffixDef>();
+            return definitions.Values
                 .Where(d => d.Scope == scope)
                 .ToList();
         }

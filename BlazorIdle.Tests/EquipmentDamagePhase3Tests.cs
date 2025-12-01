@@ -568,9 +568,21 @@ namespace BlazorIdle.Tests
             // Act
             var affixes = repo.GetAllAffixes();
 
-            // Assert
+            // Assert - Verify all expected core affixes are present
             Assert.NotEmpty(affixes);
-            Assert.True(affixes.Count >= 15); // We defined 15 affixes + haste
+            
+            // Verify key affixes exist (more maintainable than checking exact count)
+            var expectedAffixIds = new[]
+            {
+                "attack", "special_attack", "hp", "haste", "crit", "crit_damage_bonus",
+                "assault", "vital_force", "fortify_boost", "backwater_boost",
+                "chase_pct", "chase_flat", "ken_chase", "mitigation", "element_resonance"
+            };
+            
+            foreach (var expectedId in expectedAffixIds)
+            {
+                Assert.Contains(affixes, a => a.Id == expectedId);
+            }
         }
 
         [Fact]
