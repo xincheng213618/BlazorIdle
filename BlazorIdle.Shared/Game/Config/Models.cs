@@ -49,6 +49,24 @@ namespace BlazorIdle.Game.Config
         // 敌人攻击（第三轨）
         [JsonPropertyName("attackIntervalSec")] public double AttackIntervalSec { get; set; } = 1.5;
         [JsonPropertyName("damagePerHit")] public int DamagePerHit { get; set; } = 12;
+        
+        /// <summary>
+        /// 基础攻击力 - 用于新伤害系统计算
+        /// Base attack power - used in new damage system calculation
+        /// </summary>
+        [JsonPropertyName("baseAttack")] public double BaseAttack { get; set; } = 100;
+        
+        /// <summary>
+        /// 减伤百分比 - 用于新伤害系统计算
+        /// Damage reduction percentage - used in new damage system calculation
+        /// </summary>
+        [JsonPropertyName("damageReductionPercent")] public double DamageReductionPercent { get; set; } = 0;
+        
+        /// <summary>
+        /// 元素属性 - 用于元素克制计算
+        /// Element attribute - used for element advantage calculation
+        /// </summary>
+        [JsonPropertyName("element")] public string Element { get; set; } = "neutral";
 
         // 伤害浮动
         [JsonPropertyName("variancePct")] public double VariancePct { get; set; } = 0.05;
