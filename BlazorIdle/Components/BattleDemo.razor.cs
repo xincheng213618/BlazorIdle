@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BlazorIdle.Game;
+using BlazorIdle.Game.Combat;
 using BlazorIdle.Game.Config;
 using BlazorIdle.Game.Skills;
 using BlazorIdle.Shared.Models;
@@ -15,6 +16,64 @@ namespace BlazorIdle.Components
     {
         // Phase 9: SkillRepository for skill name lookup (using shared singleton)
         private readonly SkillRepository _skillRepository = SkillRepository.Shared;
+        
+        // ===== Phase 5 测试: 临时战斗属性配置 =====
+        // ===== Phase 5 Testing: Temporary Combat Stats Configuration =====
+        
+        /// <summary>
+        /// 是否使用新的装备伤害系统进行测试
+        /// Whether to use new equipment damage system for testing
+        /// </summary>
+        private bool useNewDamageSystem = true;
+        
+        /// <summary>
+        /// 测试用基础攻击力
+        /// Test base attack power
+        /// </summary>
+        private int testAttackFinal = 100;
+        
+        /// <summary>
+        /// 测试用攻击力百分比加成
+        /// Test attack percentage bonus
+        /// </summary>
+        private double testAttackPercent = 0;
+        
+        /// <summary>
+        /// 测试用暴击率
+        /// Test critical chance
+        /// </summary>
+        private double testCritChancePercent = 15;
+        
+        /// <summary>
+        /// 测试用暴击伤害加成百分比
+        /// Test critical damage bonus percentage
+        /// </summary>
+        private double testCritDamageBonusPercent = 20;
+        
+        /// <summary>
+        /// 测试用玩家元素属性
+        /// Test player element attribute
+        /// </summary>
+        private string testPlayerElement = ElementIds.Fire;
+        
+        /// <summary>
+        /// 测试用最大生命值
+        /// Test max HP
+        /// </summary>
+        private int testMaxHp = 500;
+        
+        /// <summary>
+        /// 测试用盛体态势上限
+        /// Test fortify stance max
+        /// </summary>
+        private double testFortifyMaxPercent = 0;
+        
+        /// <summary>
+        /// 测试用背水态势上限
+        /// Test backwater stance max
+        /// </summary>
+        private double testBackwaterMaxPercent = 0;
+        
         // ===== 可配置常量 - Configurable Constants =====
 
         // 战斗循环间隔（毫秒）- 控制游戏更新频率
@@ -609,10 +668,14 @@ namespace BlazorIdle.Components
             var rng = new RngContext(seed);
 
             // 构造角色实体
+            // Phase 5 Test: 如果启用新伤害系统，使用测试属性
+            // Phase 5 Test: If new damage system enabled, use test attributes
+            int characterMaxHp = useNewDamageSystem ? testMaxHp : Math.Max(1, SelectedCharacter.MaxHp);
+            
             var character = new Character
             {
-                MaxHp = Math.Max(1, SelectedCharacter.MaxHp),
-                Hp = Math.Max(1, SelectedCharacter.MaxHp),
+                MaxHp = characterMaxHp,
+                Hp = characterMaxHp,
                 AttackRateAPS = SelectedCharacter.AttackRateAPS,
                 DamagePerAttack = SelectedCharacter.DamagePerAttack,
                 HastePercent = SelectedCharacter.HastePercent,
@@ -628,7 +691,19 @@ namespace BlazorIdle.Components
                 NormalAttackSkillId = SelectedCharacter.FixedSkillsByProfession.TryGetValue(SelectedCharacter.ActiveCombatProfessionId, out var fixedSkills) 
                     ? fixedSkills.NormalAttack : null,
                 SpecialAttackSkillId = SelectedCharacter.FixedSkillsByProfession.TryGetValue(SelectedCharacter.ActiveCombatProfessionId, out var fixedSkills2) 
-                    ? fixedSkills2.SpecialAttack : null
+                    ? fixedSkills2.SpecialAttack : null,
+                // Phase 5 Test: 设置测试用元素属性和战斗属性
+                // Phase 5 Test: Set test element and combat stats
+                Element = useNewDamageSystem ? testPlayerElement : ElementIds.Neutral,
+                CombatStats = useNewDamageSystem ? new CombatStats
+                {
+                    AttackFinal = testAttackFinal,
+                    AttackPercent = testAttackPercent,
+                    CritChancePercent = testCritChancePercent,
+                    CritDamageBonusPercent = testCritDamageBonusPercent,
+                    FortifyMaxPercent = testFortifyMaxPercent,
+                    BackwaterMaxPercent = testBackwaterMaxPercent
+                } : null
             };
 
             // 玩家队伍
@@ -848,10 +923,14 @@ namespace BlazorIdle.Components
             int seed = HashSeed(SelectedCharacter.Id, currentDungeon.Id, configVersion);
             var rng = new RngContext(seed);
 
+            // Phase 5 Test: 如果启用新伤害系统，使用测试属性
+            // Phase 5 Test: If new damage system enabled, use test attributes
+            int characterMaxHp = useNewDamageSystem ? testMaxHp : Math.Max(1, SelectedCharacter.MaxHp);
+            
             var character = new Character
             {
-                MaxHp = Math.Max(1, SelectedCharacter.MaxHp),
-                Hp = Math.Max(1, SelectedCharacter.MaxHp),
+                MaxHp = characterMaxHp,
+                Hp = characterMaxHp,
                 AttackRateAPS = SelectedCharacter.AttackRateAPS,
                 DamagePerAttack = SelectedCharacter.DamagePerAttack,
                 HastePercent = SelectedCharacter.HastePercent,
@@ -867,7 +946,19 @@ namespace BlazorIdle.Components
                 NormalAttackSkillId = SelectedCharacter.FixedSkillsByProfession.TryGetValue(SelectedCharacter.ActiveCombatProfessionId, out var fixedSkills) 
                     ? fixedSkills.NormalAttack : null,
                 SpecialAttackSkillId = SelectedCharacter.FixedSkillsByProfession.TryGetValue(SelectedCharacter.ActiveCombatProfessionId, out var fixedSkills2) 
-                    ? fixedSkills2.SpecialAttack : null
+                    ? fixedSkills2.SpecialAttack : null,
+                // Phase 5 Test: 设置测试用元素属性和战斗属性
+                // Phase 5 Test: Set test element and combat stats
+                Element = useNewDamageSystem ? testPlayerElement : ElementIds.Neutral,
+                CombatStats = useNewDamageSystem ? new CombatStats
+                {
+                    AttackFinal = testAttackFinal,
+                    AttackPercent = testAttackPercent,
+                    CritChancePercent = testCritChancePercent,
+                    CritDamageBonusPercent = testCritDamageBonusPercent,
+                    FortifyMaxPercent = testFortifyMaxPercent,
+                    BackwaterMaxPercent = testBackwaterMaxPercent
+                } : null
             };
 
             playerTeam = new BattleTeam<Character>("player_team", "玩家队伍", TeamType.Player);
