@@ -1,4 +1,6 @@
-﻿namespace BlazorIdle.Game
+using BlazorIdle.Game.Combat;
+
+namespace BlazorIdle.Game
 {
     // 玩家角色
     public sealed class Character
@@ -9,15 +11,18 @@
 
         // 基础输出（Attack，受急速影响）
         public double AttackRateAPS { get; set; } = 2.0; // 次/秒
+        [Obsolete("将在新伤害系统中移除，使用 CombatStats.AttackFinal 替代")]
         public int DamagePerAttack { get; set; } = 15;
         public double HastePercent { get; set; } = 0.0;  // 仅影响 Attack 轨
 
         // Special（不受急速）
         public double SpecialIntervalSec { get; set; } = 5.0;
+        [Obsolete("将在新伤害系统中移除，统一使用 AttackFinal × SkillCoef")]
         public int SpecialDamage { get; set; } = 120;
 
         // 暴击
         public double CritChancePercent { get; set; } = 15.0;
+        [Obsolete("将在新伤害系统中移除，使用 CritConfig.BaseMultiplier + CombatStats.CritDamageBonusPercent 替代")]
         public double CritMultiplier { get; set; } = 1.5;
 
         // 浮动
@@ -25,6 +30,22 @@
 
         // 新增：复活时间（毫秒）
         public int ReviveMs { get; set; } = 5000;
+
+        #region 新伤害系统属性 / New Damage System Properties
+
+        /// <summary>
+        /// 角色元素属性（默认无属性）
+        /// Character element attribute (default neutral)
+        /// </summary>
+        public string Element { get; set; } = ElementIds.Neutral;
+
+        /// <summary>
+        /// 汇总后的战斗属性（由装备词条计算）
+        /// Aggregated combat stats (calculated from equipment affixes)
+        /// </summary>
+        public CombatStats? CombatStats { get; set; }
+
+        #endregion
 
         // 职业系统
         /// <summary>
@@ -81,6 +102,22 @@
 
         // 新增：刷新时间（毫秒）
         public int RespawnMs { get; set; } = 3000;
+
+        #region 新伤害系统属性 / New Damage System Properties
+
+        /// <summary>
+        /// 敌人元素属性（默认无属性）
+        /// Enemy element attribute (default neutral)
+        /// </summary>
+        public string Element { get; set; } = Combat.ElementIds.Neutral;
+
+        /// <summary>
+        /// 减伤百分比（最终伤害 × (1 - 减伤%)）
+        /// Damage reduction percentage (FinalDamage × (1 - DamageReduction%))
+        /// </summary>
+        public double DamageReductionPercent { get; set; } = 0;
+
+        #endregion
 
         /// <summary>
         /// 掉落物列表 - 敌人死亡时掉落的物品配置

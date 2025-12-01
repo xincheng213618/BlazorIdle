@@ -1,0 +1,6 @@
+// 暴击系统配置 - Critical Hit System Configuration
+// 基础暴击倍率，暴击伤害加成上限在 caps.json 的 critDamageBonusPct 定义
+// Base crit multiplier, crit damage bonus cap is defined in caps.json critDamageBonusPct
+{
+  "baseMultiplier": 1.2
+}

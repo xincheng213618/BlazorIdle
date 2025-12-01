@@ -1,0 +1,22 @@
+// 词条规则配置 - Affix Rules Configuration
+// 词条互斥、限量、唯一组规则
+// Affix mutual exclusion, limit, and unique group rules
+{
+  "mutuallyExclusive": {
+    "assault": ["vital_force", "crit_damage_bonus"]
+  },
+  "uniqueGroup": {
+    "fortify_unique": 1,
+    "backwater_unique": 1
+  },
+  // 装备数量限制 - 暂时注释掉，功能保留供后续使用
+  // Equipment limit - temporarily commented out, functionality preserved for future use
+  // "equipLimit": {
+  //   "chase_pct": 8,
+  //   "ken_chase": 6
+  // },
+  "equipLimit": {},
+  "perItemConstraint": {
+    "maxChaseTypePerItem": 1
+  }
+}

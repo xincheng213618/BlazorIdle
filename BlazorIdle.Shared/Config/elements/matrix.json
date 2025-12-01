@@ -1,0 +1,16 @@
+// 元素克制矩阵配置 - Element Advantage Matrix Configuration
+// 定义元素克制关系和倍率
+// Defines element advantage relations and multipliers
+{
+  "advantageMultiplier": 1.5,
+  "disadvantageMultiplier": 0.75,
+  "neutralMultiplier": 1.0,
+  "relations": [
+    { "attacker": "fire", "defender": "wind", "result": "advantage" },
+    { "attacker": "wind", "defender": "earth", "result": "advantage" },
+    { "attacker": "earth", "defender": "water", "result": "advantage" },
+    { "attacker": "water", "defender": "fire", "result": "advantage" },
+    { "attacker": "light", "defender": "dark", "result": "advantage" },
+    { "attacker": "dark", "defender": "light", "result": "advantage" }
+  ]
+}
