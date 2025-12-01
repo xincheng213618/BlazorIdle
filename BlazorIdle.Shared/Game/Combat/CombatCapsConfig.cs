@@ -172,7 +172,6 @@ namespace BlazorIdle.Game.Combat
                 ChasePercent = ClampChasePct(stats.ChasePercent),
                 KenChasePercent = ClampKenChasePct(stats.KenChasePercent),
                 ChaseFlat = ClampChaseFlat(stats.ChaseFlat),
-                Armor = stats.Armor,
                 DamageReductionPercent = ClampDamageReductionPct(stats.DamageReductionPercent)
             };
         }

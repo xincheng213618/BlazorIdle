@@ -112,14 +112,8 @@ namespace BlazorIdle.Game
         public string Element { get; set; } = Combat.ElementIds.Neutral;
 
         /// <summary>
-        /// 护甲值（用于减伤计算）
-        /// Armor value (used for damage reduction calculation)
-        /// </summary>
-        public int Armor { get; set; } = 0;
-
-        /// <summary>
-        /// 减伤百分比
-        /// Damage reduction percentage
+        /// 减伤百分比（最终伤害 × (1 - 减伤%)）
+        /// Damage reduction percentage (FinalDamage × (1 - DamageReduction%))
         /// </summary>
         public double DamageReductionPercent { get; set; } = 0;
 

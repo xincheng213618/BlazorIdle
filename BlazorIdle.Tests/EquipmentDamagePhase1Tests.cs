@@ -29,7 +29,6 @@ namespace BlazorIdle.Tests
             Assert.Equal(0, stats.ChasePercent);
             Assert.Equal(0, stats.KenChasePercent);
             Assert.Equal(0, stats.ChaseFlat);
-            Assert.Equal(0, stats.Armor);
             Assert.Equal(0, stats.DamageReductionPercent);
         }
 
@@ -50,7 +49,6 @@ namespace BlazorIdle.Tests
                 ChasePercent = 25,
                 KenChasePercent = 15,
                 ChaseFlat = 100,
-                Armor = 50,
                 DamageReductionPercent = 30
             };
 
@@ -66,7 +64,6 @@ namespace BlazorIdle.Tests
             Assert.Equal(25, stats.ChasePercent);
             Assert.Equal(15, stats.KenChasePercent);
             Assert.Equal(100, stats.ChaseFlat);
-            Assert.Equal(50, stats.Armor);
             Assert.Equal(30, stats.DamageReductionPercent);
         }
 
@@ -178,7 +175,6 @@ namespace BlazorIdle.Tests
                 ChasePercent = 40,           // Over cap (30)
                 KenChasePercent = 25,        // Over cap (20)
                 ChaseFlat = 15000,           // Over cap (9999)
-                Armor = 100,
                 DamageReductionPercent = 95  // Over cap (90)
             };
 
@@ -197,7 +193,6 @@ namespace BlazorIdle.Tests
             Assert.Equal(30, clamped.ChasePercent);
             Assert.Equal(20, clamped.KenChasePercent);
             Assert.Equal(9999, clamped.ChaseFlat);
-            Assert.Equal(100, clamped.Armor); // Not clamped
             Assert.Equal(90, clamped.DamageReductionPercent);
         }
 
@@ -523,29 +518,6 @@ namespace BlazorIdle.Tests
 
             // Assert
             Assert.Equal(ElementIds.Water, enemy.Element);
-        }
-
-        [Fact]
-        public void Enemy_Armor_DefaultIsZero()
-        {
-            // Arrange & Act
-            var enemy = new BlazorIdle.Game.Enemy();
-
-            // Assert
-            Assert.Equal(0, enemy.Armor);
-        }
-
-        [Fact]
-        public void Enemy_Armor_CanBeSet()
-        {
-            // Arrange
-            var enemy = new BlazorIdle.Game.Enemy();
-
-            // Act
-            enemy.Armor = 50;
-
-            // Assert
-            Assert.Equal(50, enemy.Armor);
         }
 
         [Fact]

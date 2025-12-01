@@ -104,15 +104,8 @@ namespace BlazorIdle.Game.Combat
         #region 防御属性 / Defense Attributes
 
         /// <summary>
-        /// 护甲值
-        /// Armor value
-        /// </summary>
-        [JsonPropertyName("armor")]
-        public int Armor { get; set; }
-
-        /// <summary>
-        /// 减伤百分比
-        /// Damage reduction percentage
+        /// 减伤百分比（最终伤害 × (1 - 减伤%)）
+        /// Damage reduction percentage (FinalDamage × (1 - DamageReduction%))
         /// </summary>
         [JsonPropertyName("damageReductionPercent")]
         public double DamageReductionPercent { get; set; }
@@ -138,7 +131,6 @@ namespace BlazorIdle.Game.Combat
                 ChasePercent = 0,
                 KenChasePercent = 0,
                 ChaseFlat = 0,
-                Armor = 0,
                 DamageReductionPercent = 0
             };
         }
