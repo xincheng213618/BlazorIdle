@@ -1,0 +1,35 @@
+// 暗属性杖类武器 - Dark Element Staff Weapons
+[
+  {
+    "id": "staff_dark_t1",
+    "name": "暗黑法杖",
+    "weaponType": "staff",
+    "element": "dark",
+    "tier": 1,
+    "affixSequence": ["special_attack", "crit", "crit_damage_bonus", "backwater_boost"]
+  },
+  {
+    "id": "staff_dark_t2",
+    "name": "暗黑权杖",
+    "weaponType": "staff",
+    "element": "dark",
+    "tier": 2,
+    "affixSequence": ["special_attack", "crit", "backwater_boost", "crit_damage_bonus"]
+  },
+  {
+    "id": "staff_dark_t3",
+    "name": "暗影法典",
+    "weaponType": "staff",
+    "element": "dark",
+    "tier": 3,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "backwater_boost", "element_resonance"]
+  },
+  {
+    "id": "staff_dark_t4",
+    "name": "灭世魔杖",
+    "weaponType": "staff",
+    "element": "dark",
+    "tier": 4,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "element_resonance", "haste"]
+  }
+]

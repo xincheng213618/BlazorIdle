@@ -1,0 +1,35 @@
+// 风属性乐器类武器 - Wind Element Harp Weapons
+[
+  {
+    "id": "harp_wind_t1",
+    "name": "风之竖琴",
+    "weaponType": "harp",
+    "element": "wind",
+    "tier": 1,
+    "affixSequence": ["special_attack", "hp", "haste", "vital_force"]
+  },
+  {
+    "id": "harp_wind_t2",
+    "name": "苍穹之歌",
+    "weaponType": "harp",
+    "element": "wind",
+    "tier": 2,
+    "affixSequence": ["special_attack", "haste", "vital_force", "crit"]
+  },
+  {
+    "id": "harp_wind_t3",
+    "name": "风暴乐章",
+    "weaponType": "harp",
+    "element": "wind",
+    "tier": 3,
+    "affixSequence": ["special_attack", "vital_force", "haste", "crit_damage_bonus"]
+  },
+  {
+    "id": "harp_wind_t4",
+    "name": "天风灭歌",
+    "weaponType": "harp",
+    "element": "wind",
+    "tier": 4,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "haste", "element_resonance"]
+  }
+]

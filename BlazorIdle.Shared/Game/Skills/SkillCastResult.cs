@@ -51,5 +51,35 @@ namespace BlazorIdle.Game.Skills
         /// List of target IDs resolved by target selector
         /// </summary>
         public List<string> TargetIds { get; set; } = new();
+
+        #region Phase 5: 新伤害系统属性 / New Damage System Properties
+
+        /// <summary>
+        /// 是否有元素克制优势（Phase 5）
+        /// Whether attacker has element advantage (Phase 5)
+        /// </summary>
+        public bool HasElementAdvantage { get; set; }
+
+        /// <summary>
+        /// 元素倍率（Phase 5）
+        /// Element multiplier (Phase 5)
+        /// </summary>
+        public double ElementMultiplier { get; set; } = 1.0;
+
+        /// <summary>
+        /// 态势加成百分比（Phase 5）- 盛体或背水
+        /// Stance bonus percentage (Phase 5) - Fortify or Backwater
+        /// </summary>
+        public double StancePercent { get; set; }
+
+        /// <summary>
+        /// 详细伤害结果（Phase 5，可选）
+        /// Detailed damage result (Phase 5, optional)
+        /// 当使用新伤害系统时填充，包含各层中间值
+        /// Populated when using new damage system, contains intermediate values for each layer
+        /// </summary>
+        public Combat.DamageResult? DetailedDamageResult { get; set; }
+
+        #endregion
     }
 }

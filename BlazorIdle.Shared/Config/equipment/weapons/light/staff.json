@@ -1,0 +1,35 @@
+// 光属性杖类武器 - Light Element Staff Weapons
+[
+  {
+    "id": "staff_light_t1",
+    "name": "圣光法杖",
+    "weaponType": "staff",
+    "element": "light",
+    "tier": 1,
+    "affixSequence": ["special_attack", "crit", "hp", "vital_force"]
+  },
+  {
+    "id": "staff_light_t2",
+    "name": "天使权杖",
+    "weaponType": "staff",
+    "element": "light",
+    "tier": 2,
+    "affixSequence": ["special_attack", "crit", "vital_force", "fortify_boost"]
+  },
+  {
+    "id": "staff_light_t3",
+    "name": "圣域法典",
+    "weaponType": "staff",
+    "element": "light",
+    "tier": 3,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "vital_force", "element_resonance"]
+  },
+  {
+    "id": "staff_light_t4",
+    "name": "圣典法杖",
+    "weaponType": "staff",
+    "element": "light",
+    "tier": 4,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "element_resonance", "fortify_boost"]
+  }
+]

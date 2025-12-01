@@ -1,0 +1,35 @@
+// 风属性杖类武器 - Wind Element Staff Weapons
+[
+  {
+    "id": "staff_wind_t1",
+    "name": "风晶法杖",
+    "weaponType": "staff",
+    "element": "wind",
+    "tier": 1,
+    "affixSequence": ["special_attack", "crit", "haste", "assault"]
+  },
+  {
+    "id": "staff_wind_t2",
+    "name": "风暴法杖",
+    "weaponType": "staff",
+    "element": "wind",
+    "tier": 2,
+    "affixSequence": ["special_attack", "crit", "haste", "crit_damage_bonus"]
+  },
+  {
+    "id": "staff_wind_t3",
+    "name": "苍穹法典",
+    "weaponType": "staff",
+    "element": "wind",
+    "tier": 3,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "haste", "element_resonance"]
+  },
+  {
+    "id": "staff_wind_t4",
+    "name": "天风灭杖",
+    "weaponType": "staff",
+    "element": "wind",
+    "tier": 4,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "element_resonance", "haste"]
+  }
+]

@@ -85,6 +85,75 @@
             }
         }
 
+        <!-- Phase 5 测试: 临时战斗属性配置 / Phase 5 Test: Temporary Combat Stats Configuration -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>⚔️ Phase 5 测试 - 新伤害系统</span>
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="useNewDamageSystem" 
+                           @bind="useNewDamageSystem" disabled="@isRunning">
+                    <label class="form-check-label" for="useNewDamageSystem">启用</label>
+                </div>
+            </div>
+            @if (useNewDamageSystem)
+            {
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small">基础攻击力</label>
+                            <input type="number" class="form-control form-control-sm" 
+                                   @bind="testAttackFinal" disabled="@isRunning" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small">攻击力加成%</label>
+                            <input type="number" class="form-control form-control-sm" 
+                                   @bind="testAttackPercent" step="0.1" disabled="@isRunning" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small">最大HP</label>
+                            <input type="number" class="form-control form-control-sm" 
+                                   @bind="testMaxHp" disabled="@isRunning" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small">玩家元素</label>
+                            <select class="form-select form-select-sm" @bind="testPlayerElement" disabled="@isRunning">
+                                <option value="neutral">无属性</option>
+                                <option value="fire">火</option>
+                                <option value="water">水</option>
+                                <option value="wind">风</option>
+                                <option value="earth">地</option>
+                                <option value="light">光</option>
+                                <option value="dark">暗</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small">暴击率%</label>
+                            <input type="number" class="form-control form-control-sm" 
+                                   @bind="testCritChancePercent" step="0.1" disabled="@isRunning" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small">暴击伤害加成%</label>
+                            <input type="number" class="form-control form-control-sm" 
+                                   @bind="testCritDamageBonusPercent" step="0.1" disabled="@isRunning" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small">盛体态势上限%</label>
+                            <input type="number" class="form-control form-control-sm" 
+                                   @bind="testFortifyMaxPercent" step="0.1" disabled="@isRunning" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small">背水态势上限%</label>
+                            <input type="number" class="form-control form-control-sm" 
+                                   @bind="testBackwaterMaxPercent" step="0.1" disabled="@isRunning" />
+                        </div>
+                    </div>
+                    <div class="small text-muted mt-2">
+                        💡 提示：启用后将使用测试属性替代旧属性系统。怪物属性从 monsters.json 读取（baseAttack, element, damageReductionPercent）。
+                    </div>
+                </div>
+            }
+        </div>
+
         <div class="small text-muted mb-3">
             预估玩家输出 DPS：@($"{theoreticalDps:N1}") · 配置版本：@configVersion
             @if (!configReady)

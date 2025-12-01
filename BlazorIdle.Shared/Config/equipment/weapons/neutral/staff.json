@@ -1,0 +1,35 @@
+// 无属性杖类武器 - Neutral Element Staff Weapons
+[
+  {
+    "id": "staff_neutral_t1",
+    "name": "木杖",
+    "weaponType": "staff",
+    "element": "neutral",
+    "tier": 1,
+    "affixSequence": ["special_attack", "hp", "crit", "vital_force"]
+  },
+  {
+    "id": "staff_neutral_t2",
+    "name": "铁杖",
+    "weaponType": "staff",
+    "element": "neutral",
+    "tier": 2,
+    "affixSequence": ["special_attack", "crit", "vital_force", "assault"]
+  },
+  {
+    "id": "staff_neutral_t3",
+    "name": "精金法杖",
+    "weaponType": "staff",
+    "element": "neutral",
+    "tier": 3,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "vital_force", "fortify_boost"]
+  },
+  {
+    "id": "staff_neutral_t4",
+    "name": "神铸法杖",
+    "weaponType": "staff",
+    "element": "neutral",
+    "tier": 4,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "fortify_boost", "haste"]
+  }
+]

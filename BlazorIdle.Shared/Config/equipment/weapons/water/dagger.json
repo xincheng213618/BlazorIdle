@@ -1,0 +1,35 @@
+// 水属性匕首类武器 - Water Element Dagger Weapons
+[
+  {
+    "id": "dagger_water_t1",
+    "name": "寒霜短刃",
+    "weaponType": "dagger",
+    "element": "water",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "haste", "assault"]
+  },
+  {
+    "id": "dagger_water_t2",
+    "name": "碧波刺客",
+    "weaponType": "dagger",
+    "element": "water",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "haste", "vital_force"]
+  },
+  {
+    "id": "dagger_water_t3",
+    "name": "深海暗刃",
+    "weaponType": "dagger",
+    "element": "water",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "haste", "vital_force"]
+  },
+  {
+    "id": "dagger_water_t4",
+    "name": "沧海之牙",
+    "weaponType": "dagger",
+    "element": "water",
+    "tier": 4,
+    "affixSequence": ["crit", "crit_damage_bonus", "haste", "element_resonance"]
+  }
+]

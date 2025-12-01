@@ -98,6 +98,35 @@ namespace BlazorIdle.Game.Combat
             };
         }
 
+        /// <summary>
+        /// 创建完整的伤害上下文（用于测试和战斗计算）
+        /// Create a complete damage context (for testing and battle calculation)
+        /// </summary>
+        public static DamageContext CreateSimple(
+            double attackFinal,
+            double skillCoef,
+            int skillFlat,
+            CombatStats attackerStats,
+            double attackerHPRatio,
+            string attackerElement,
+            string defenderElement,
+            double defenderDRPct,
+            RngContext rng)
+        {
+            return new DamageContext
+            {
+                AttackFinal = (int)attackFinal,
+                SkillCoef = skillCoef,
+                SkillFlat = skillFlat,
+                AttackerStats = attackerStats,
+                AttackerHPRatio = attackerHPRatio,
+                AttackerElement = attackerElement,
+                DefenderElement = defenderElement,
+                DefenderDRPct = defenderDRPct,
+                Rng = new Random(rng.Seed)
+            };
+        }
+
         #endregion
     }
 }

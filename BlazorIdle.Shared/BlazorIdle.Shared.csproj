@@ -75,6 +75,95 @@
     <!-- 词条系统配置文件 / Affix system config files -->
     <EmbeddedResource Include="Config\affixes\definitions.json" LogicalName="BlazorIdle.Shared.Config.affixes.definitions.json" />
     <EmbeddedResource Include="Config\affixes\rules.json" LogicalName="BlazorIdle.Shared.Config.affixes.rules.json" />
+    
+    <!-- 装备系统配置文件 / Equipment system config files -->
+    <EmbeddedResource Include="Config\equipment\quality.json" LogicalName="BlazorIdle.Shared.Config.equipment.quality.json" />
+    <EmbeddedResource Include="Config\equipment\slots.json" LogicalName="BlazorIdle.Shared.Config.equipment.slots.json" />
+    <EmbeddedResource Include="Config\equipment\tiers.json" LogicalName="BlazorIdle.Shared.Config.equipment.tiers.json" />
+    
+    <!-- 火属性武器 / Fire element weapons -->
+    <EmbeddedResource Include="Config\equipment\weapons\fire\sword.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.fire.sword.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\fire\dagger.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.fire.dagger.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\fire\spear.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.fire.spear.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\fire\axe.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.fire.axe.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\fire\staff.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.fire.staff.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\fire\gun.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.fire.gun.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\fire\melee.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.fire.melee.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\fire\bow.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.fire.bow.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\fire\harp.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.fire.harp.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\fire\katana.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.fire.katana.json" />
+    
+    <!-- 水属性武器 / Water element weapons -->
+    <EmbeddedResource Include="Config\equipment\weapons\water\sword.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.water.sword.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\water\dagger.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.water.dagger.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\water\spear.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.water.spear.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\water\axe.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.water.axe.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\water\staff.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.water.staff.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\water\gun.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.water.gun.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\water\melee.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.water.melee.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\water\bow.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.water.bow.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\water\harp.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.water.harp.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\water\katana.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.water.katana.json" />
+    
+    <!-- 风属性武器 / Wind element weapons -->
+    <EmbeddedResource Include="Config\equipment\weapons\wind\sword.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.wind.sword.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\wind\dagger.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.wind.dagger.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\wind\spear.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.wind.spear.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\wind\axe.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.wind.axe.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\wind\staff.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.wind.staff.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\wind\gun.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.wind.gun.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\wind\melee.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.wind.melee.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\wind\bow.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.wind.bow.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\wind\harp.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.wind.harp.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\wind\katana.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.wind.katana.json" />
+    
+    <!-- 地属性武器 / Earth element weapons -->
+    <EmbeddedResource Include="Config\equipment\weapons\earth\sword.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.earth.sword.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\earth\dagger.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.earth.dagger.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\earth\spear.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.earth.spear.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\earth\axe.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.earth.axe.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\earth\staff.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.earth.staff.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\earth\gun.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.earth.gun.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\earth\melee.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.earth.melee.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\earth\bow.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.earth.bow.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\earth\harp.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.earth.harp.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\earth\katana.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.earth.katana.json" />
+    
+    <!-- 光属性武器 / Light element weapons -->
+    <EmbeddedResource Include="Config\equipment\weapons\light\sword.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.light.sword.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\light\dagger.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.light.dagger.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\light\spear.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.light.spear.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\light\axe.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.light.axe.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\light\staff.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.light.staff.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\light\gun.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.light.gun.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\light\melee.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.light.melee.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\light\bow.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.light.bow.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\light\harp.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.light.harp.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\light\katana.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.light.katana.json" />
+    
+    <!-- 暗属性武器 / Dark element weapons -->
+    <EmbeddedResource Include="Config\equipment\weapons\dark\sword.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.dark.sword.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\dark\dagger.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.dark.dagger.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\dark\spear.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.dark.spear.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\dark\axe.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.dark.axe.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\dark\staff.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.dark.staff.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\dark\gun.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.dark.gun.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\dark\melee.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.dark.melee.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\dark\bow.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.dark.bow.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\dark\harp.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.dark.harp.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\dark\katana.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.dark.katana.json" />
+    
+    <!-- 无属性武器 / Neutral element weapons -->
+    <EmbeddedResource Include="Config\equipment\weapons\neutral\sword.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.neutral.sword.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\neutral\dagger.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.neutral.dagger.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\neutral\spear.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.neutral.spear.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\neutral\axe.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.neutral.axe.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\neutral\staff.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.neutral.staff.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\neutral\gun.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.neutral.gun.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\neutral\melee.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.neutral.melee.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\neutral\bow.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.neutral.bow.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\neutral\harp.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.neutral.harp.json" />
+    <EmbeddedResource Include="Config\equipment\weapons\neutral\katana.json" LogicalName="BlazorIdle.Shared.Config.equipment.weapons.neutral.katana.json" />
   </ItemGroup>
 
 </Project>

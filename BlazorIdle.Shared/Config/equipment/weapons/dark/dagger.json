@@ -1,0 +1,35 @@
+// 暗属性匕首类武器 - Dark Element Dagger Weapons
+[
+  {
+    "id": "dagger_dark_t1",
+    "name": "暗黑短刃",
+    "weaponType": "dagger",
+    "element": "dark",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "haste", "crit_damage_bonus"]
+  },
+  {
+    "id": "dagger_dark_t2",
+    "name": "恶魔刺客",
+    "weaponType": "dagger",
+    "element": "dark",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "backwater_boost"]
+  },
+  {
+    "id": "dagger_dark_t3",
+    "name": "暗影暗刃",
+    "weaponType": "dagger",
+    "element": "dark",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "haste", "backwater_boost"]
+  },
+  {
+    "id": "dagger_dark_t4",
+    "name": "暗影之牙",
+    "weaponType": "dagger",
+    "element": "dark",
+    "tier": 4,
+    "affixSequence": ["crit", "crit_damage_bonus", "backwater_boost", "element_resonance"]
+  }
+]

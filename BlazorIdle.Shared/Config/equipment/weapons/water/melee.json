@@ -1,0 +1,35 @@
+// 水属性拳套类武器 - Water Element Melee Weapons
+[
+  {
+    "id": "melee_water_t1",
+    "name": "寒冰拳套",
+    "weaponType": "melee",
+    "element": "water",
+    "tier": 1,
+    "affixSequence": ["attack", "haste", "hp", "vital_force"]
+  },
+  {
+    "id": "melee_water_t2",
+    "name": "深海铁拳",
+    "weaponType": "melee",
+    "element": "water",
+    "tier": 2,
+    "affixSequence": ["attack", "haste", "vital_force", "assault"]
+  },
+  {
+    "id": "melee_water_t3",
+    "name": "海神拳刃",
+    "weaponType": "melee",
+    "element": "water",
+    "tier": 3,
+    "affixSequence": ["attack", "haste", "vital_force", "fortify_boost"]
+  },
+  {
+    "id": "melee_water_t4",
+    "name": "沧海灭拳",
+    "weaponType": "melee",
+    "element": "water",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "haste", "element_resonance"]
+  }
+]

@@ -460,7 +460,11 @@ namespace BlazorIdle.Game
                         CastSkillIds = monsterDef.CastSkillIds,
                         InstantSkillIds = monsterDef.InstantSkillIds,
                         // Step3 Phase 1: Copy periodic skill list
-                        PeriodicSkillIds = monsterDef.PeriodicSkillIds
+                        PeriodicSkillIds = monsterDef.PeriodicSkillIds,
+                        // Phase 5: New damage system properties
+                        Element = monsterDef.Element,
+                        BaseAttack = monsterDef.BaseAttack * monsterGroup.DamageMultiplier,
+                        DamageReductionPercent = monsterDef.DamageReductionPercent
                     };
 
                     // 生成敌人ID - 使用更有意义的名称

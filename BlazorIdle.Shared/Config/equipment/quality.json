@@ -1,0 +1,11 @@
+// 装备品质配置 - Equipment Quality Configuration
+// 定义装备品质等级、颜色和词条数量
+// Defines equipment quality tiers, colors, and affix counts
+// 白装=0词条, 绿装=1词条, 蓝装=2词条, 紫装=3词条, 橙装=4词条
+[
+  { "id": "white", "name": "普通", "color": "#FFFFFF", "affixCount": 0 },
+  { "id": "green", "name": "优良", "color": "#00FF00", "affixCount": 1 },
+  { "id": "blue", "name": "精良", "color": "#0088FF", "affixCount": 2 },
+  { "id": "purple", "name": "史诗", "color": "#AA00FF", "affixCount": 3 },
+  { "id": "orange", "name": "传说", "color": "#FF8800", "affixCount": 4 }
+]

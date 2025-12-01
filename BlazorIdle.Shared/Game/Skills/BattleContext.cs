@@ -1,3 +1,5 @@
+using BlazorIdle.Game.Combat;
+
 namespace BlazorIdle.Game.Skills
 {
     /// <summary>
@@ -72,6 +74,46 @@ namespace BlazorIdle.Game.Skills
         /// Current target ID (for CurrentTarget policy)
         /// </summary>
         public string? CurrentTargetId { get; init; }
+
+        #region Phase 5: 新伤害系统属性 / New Damage System Properties
+
+        /// <summary>
+        /// 伤害计算器（Phase 5）
+        /// Damage calculator (Phase 5)
+        /// </summary>
+        public DamageCalculator? DamageCalculator { get; init; }
+
+        /// <summary>
+        /// 攻击者战斗属性（Phase 5）- 用于新伤害计算
+        /// Attacker combat stats (Phase 5) - for new damage calculation
+        /// </summary>
+        public CombatStats? AttackerCombatStats { get; init; }
+
+        /// <summary>
+        /// 攻击者元素（Phase 5）- 用于元素克制计算
+        /// Attacker element (Phase 5) - for element advantage calculation
+        /// </summary>
+        public string? AttackerElement { get; init; }
+
+        /// <summary>
+        /// 防御者元素（Phase 5）- 用于元素克制计算
+        /// Defender element (Phase 5) - for element advantage calculation
+        /// </summary>
+        public string? DefenderElement { get; init; }
+
+        /// <summary>
+        /// 攻击者HP比例（Phase 5）- 用于态势计算（盛体/背水）
+        /// Attacker HP ratio (Phase 5) - for stance calculation (fortify/backwater)
+        /// </summary>
+        public double AttackerHPRatio { get; init; } = 1.0;
+
+        /// <summary>
+        /// 防御者减伤百分比（Phase 5）- 用于减伤层计算
+        /// Defender damage reduction percentage (Phase 5) - for damage reduction layer
+        /// </summary>
+        public double DefenderDamageReductionPercent { get; init; } = 0;
+
+        #endregion
 
         // 预留其他上下文字段
         // Reserved for other context fields

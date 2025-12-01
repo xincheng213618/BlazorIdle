@@ -1,0 +1,35 @@
+// 暗属性剑类武器 - Dark Element Sword Weapons
+[
+  {
+    "id": "sword_dark_t1",
+    "name": "暗黑之剑",
+    "weaponType": "sword",
+    "element": "dark",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "backwater_boost"]
+  },
+  {
+    "id": "sword_dark_t2",
+    "name": "恶魔之剑",
+    "weaponType": "sword",
+    "element": "dark",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "backwater_boost", "crit_damage_bonus"]
+  },
+  {
+    "id": "sword_dark_t3",
+    "name": "暗黑魔剑",
+    "weaponType": "sword",
+    "element": "dark",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "backwater_boost", "element_resonance"]
+  },
+  {
+    "id": "sword_dark_t4",
+    "name": "灭世魔剑",
+    "weaponType": "sword",
+    "element": "dark",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "element_resonance", "ken_chase"]
+  }
+]

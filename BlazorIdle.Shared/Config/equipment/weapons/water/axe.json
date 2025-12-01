@@ -1,0 +1,35 @@
+// 水属性斧类武器 - Water Element Axe Weapons
+[
+  {
+    "id": "axe_water_t1",
+    "name": "寒冰战斧",
+    "weaponType": "axe",
+    "element": "water",
+    "tier": 1,
+    "affixSequence": ["attack", "hp", "mitigation", "fortify_boost"]
+  },
+  {
+    "id": "axe_water_t2",
+    "name": "深海重斧",
+    "weaponType": "axe",
+    "element": "water",
+    "tier": 2,
+    "affixSequence": ["attack", "hp", "fortify_boost", "vital_force"]
+  },
+  {
+    "id": "axe_water_t3",
+    "name": "海神巨斧",
+    "weaponType": "axe",
+    "element": "water",
+    "tier": 3,
+    "affixSequence": ["attack", "fortify_boost", "vital_force", "mitigation"]
+  },
+  {
+    "id": "axe_water_t4",
+    "name": "沧海灭斧",
+    "weaponType": "axe",
+    "element": "water",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "fortify_boost", "element_resonance"]
+  }
+]

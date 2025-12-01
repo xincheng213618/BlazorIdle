@@ -1,0 +1,23 @@
+// 装备槽位配置 - Equipment Slot Configuration
+// 定义主手槽位和9个副槽
+// Defines main hand slot and 9 sub slots
+{
+  "mainHand": {
+    "index": 0,
+    "name": "主手",
+    "description": "决定角色主元素",
+    "allowedItemTypes": ["weapon"]
+  },
+  "subSlots": [
+    { "index": 1, "name": "副槽1" },
+    { "index": 2, "name": "副槽2" },
+    { "index": 3, "name": "副槽3" },
+    { "index": 4, "name": "副槽4" },
+    { "index": 5, "name": "副槽5" },
+    { "index": 6, "name": "副槽6" },
+    { "index": 7, "name": "副槽7" },
+    { "index": 8, "name": "副槽8" },
+    { "index": 9, "name": "副槽9" }
+  ],
+  "totalSlots": 10
+}

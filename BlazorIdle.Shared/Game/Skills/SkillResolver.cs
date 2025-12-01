@@ -1,11 +1,19 @@
 using System;
 using System.Collections.Generic;
+using BlazorIdle.Game.Combat;
 
 namespace BlazorIdle.Game.Skills
 {
     /// <summary>
     /// 技能解析器基础实现 - 统一处理技能效果
     /// Basic skill resolver implementation - unified skill effect processing
+    /// 
+    /// Phase 5 Enhancement: 支持新伤害系统集成
+    /// Phase 5 Enhancement: Supports new damage system integration
+    /// - 当 BattleContext.DamageCalculator 可用时，使用新的 7 层伤害管线
+    /// - When BattleContext.DamageCalculator is available, use new 7-layer damage pipeline
+    /// - 否则回退到旧的简化伤害计算
+    /// - Otherwise fallback to old simplified damage calculation
     /// </summary>
     public sealed class SkillResolver : ISkillResolver
     {
@@ -66,141 +74,189 @@ namespace BlazorIdle.Game.Skills
                 casterBuffOwner = ctx.PlayerBuffOwner;
             }
 
-            // Phase 3+: 使用技能定义的伤害配置计算基础伤害
-            // Phase 3+: Calculate base damage using skill definition's damage config
-            int baseDamage = 0;
-            
-            if (skillDef?.Damage != null)
+            // Phase 5 Enhancement: 使用新伤害系统或旧系统计算伤害
+            // Phase 5 Enhancement: Use new damage system or legacy system for damage calculation
+            bool isMonsterSkill = skillId.StartsWith("enemy_") || skillId.StartsWith("monster_");
+            double dmg = 0;
+            bool isCrit = false;
+            DamageResult? damageResult = null;
+
+            // Phase 5: 优先使用新的 DamageCalculator 系统
+            // Phase 5: Prefer new DamageCalculator system when available
+            if (ctx.DamageCalculator != null && ctx.AttackerCombatStats != null)
             {
-                // 使用新的 DamageDef 系统
-                // Use new DamageDef system
-                var damageDef = skillDef.Damage;
+                // 使用新的 7 层伤害管线
+                // Use new 7-layer damage pipeline
+                var damageDef = skillDef?.Damage;
+                double skillCoef = damageDef?.CoefAtk ?? 1.0;
+                int skillFlat = damageDef?.Flat ?? 0;
                 
-                // 获取施法者的攻击力
-                // Get caster's attack power
-                // Monster Skill System: 检查是否为怪物技能（enemy_ 或 monster_ 前缀）
-                // Monster Skill System: Check if this is a monster skill (enemy_ or monster_ prefix)
-                bool isMonsterSkill = skillId.StartsWith("enemy_") || skillId.StartsWith("monster_");
-                int attackPower = isMonsterSkill
-                    ? (ctx.Enemy?.DamagePerHit ?? 0)
-                    : (ctx.Player?.DamagePerAttack ?? 0);
+                // 获取攻击力：优先使用 CombatStats.AttackFinal，否则使用旧属性
+                // Get attack power: prefer CombatStats.AttackFinal, otherwise use legacy attributes
+                int attackFinal = ctx.AttackerCombatStats.AttackFinal;
+                if (attackFinal == 0)
+                {
+                    // 回退到旧属性
+                    // Fallback to legacy attributes
+                    attackFinal = isMonsterSkill
+                        ? (int)(ctx.Enemy?.BaseAttack ?? ctx.Enemy?.DamagePerHit ?? 0)
+                        : (ctx.Player?.DamagePerAttack ?? 0);
+                }
                 
                 // Phase 8: 应用 Buff 效果到攻击力（仅玩家）
                 // Phase 8: Apply buff effects to attack power (player only)
                 if (casterBuffOwner != null && !isMonsterSkill)
                 {
-                    attackPower = ApplyBuffEffects(attackPower, "DamagePerAttack", casterBuffOwner);
+                    attackFinal = ApplyBuffEffects(attackFinal, "DamagePerAttack", casterBuffOwner);
                 }
                 
-                // 计算伤害：系数 * 攻击力 + 固定值
-                // Calculate damage: coefficient * attack power + flat value
-                baseDamage = (int)(damageDef.CoefAtk * attackPower) + damageDef.Flat;
-            }
-            else
-            {
-                // 向后兼容：使用旧的硬编码方式
-                // Backward compatibility: use old hardcoded method
-                baseDamage = skillId switch
+                // 创建伤害上下文
+                // Create damage context
+                var damageCtx = new DamageContext
                 {
-                    SkillIds.AttackBasic => ctx.Player?.DamagePerAttack ?? 0,
-                    SkillIds.SpecialPulse => ctx.Player?.SpecialDamage ?? 0,
-                    SkillIds.EnemyAttackBasic => ctx.Enemy?.DamagePerHit ?? 0,
-                    _ => 0
+                    AttackFinal = attackFinal,
+                    SkillCoef = skillCoef,
+                    SkillFlat = skillFlat,
+                    AttackerStats = ctx.AttackerCombatStats,
+                    AttackerHPRatio = ctx.AttackerHPRatio,
+                    AttackerElement = ctx.AttackerElement ?? ElementIds.Neutral,
+                    DefenderElement = ctx.DefenderElement ?? ElementIds.Neutral,
+                    DefenderDRPct = ctx.DefenderDamageReductionPercent,
+                    // Create deterministic Random from RngContext using NextRange() to advance state
+                    Rng = new Random(ctx.Rng.NextRange(int.MinValue, int.MaxValue))
                 };
-
-                // Phase 8: 应用 Buff 效果到基础伤害（旧系统）
-                // Phase 8: Apply buff effects to base damage (old system)
-                if (casterBuffOwner != null && skillId == SkillIds.AttackBasic)
+                
+                // Phase 8: 检查 ForceCrit
+                // Phase 8: Check ForceCrit
+                bool hasForceCrit = casterBuffOwner != null && HasForceCritEffect(casterBuffOwner);
+                bool canCrit = skillDef?.CanCrit ?? true;
+                
+                if (hasForceCrit && canCrit && !isMonsterSkill)
                 {
-                    baseDamage = ApplyBuffEffects(baseDamage, "DamagePerAttack", casterBuffOwner);
-                }
-                else if (casterBuffOwner != null && skillId == SkillIds.SpecialPulse)
-                {
-                    baseDamage = ApplyBuffEffects(baseDamage, "SpecialDamage", casterBuffOwner);
-                }
-
-                // Phase 5: 应用技能的伤害倍率（旧系统）
-                // Phase 5: Apply skill damage multiplier (old system)
-                if (skillDef != null)
-                {
-                    baseDamage = (int)(baseDamage * skillDef.DamageMultiplier);
-                }
-            }
-
-            // 应用浮动
-            // Apply variance
-            // Monster Skill System: 检查是否为怪物技能（enemy_ 或 monster_ 前缀）
-            // Monster Skill System: Check if this is a monster skill (enemy_ or monster_ prefix)
-            bool isMonsterSkillForVariance = skillId.StartsWith("enemy_") || skillId.StartsWith("monster_");
-            double variancePct = isMonsterSkillForVariance
-                ? ctx.Enemy?.VariancePct ?? 0.0
-                : ctx.Player?.VariancePct ?? 0.0;
-            double dmg = Math.Floor(ctx.Rng.Jitter(baseDamage, variancePct));
-            if (dmg < 1) dmg = 1;
-
-            // Phase 8: 检查是否有 ForceCrit 效果
-            // Phase 8: Check for ForceCrit effect
-            bool hasForceCrit = casterBuffOwner != null && HasForceCritEffect(casterBuffOwner);
-
-            // 检查暴击（仅玩家攻击有暴击）
-            // Check for critical hit (only player attacks can crit)
-            // Monster Skill System: 怪物技能不能暴击
-            // Monster Skill System: Monster skills cannot crit
-            bool isCrit = false;
-            bool canCrit = skillDef?.CanCrit ?? true;
-            bool isMonsterSkillForCrit = skillId.StartsWith("enemy_") || skillId.StartsWith("monster_");
-            if (!isMonsterSkillForCrit && ctx.Player != null && canCrit)
-            {
-                // Phase 8: ForceCrit 优先级最高
-                // Phase 8: ForceCrit has highest priority
-                if (hasForceCrit)
-                {
-                    isCrit = true;
+                    // 强制暴击
+                    // Force crit
+                    damageResult = ctx.DamageCalculator.CalculateDeterministic(damageCtx, forceCrit: true);
                     
-                    // 消耗 ForceCrit buff（立即移除）
-                    // Consume ForceCrit buff (remove immediately)
-                    // Critical fix: ForceCrit should be one-time effect
+                    // 消耗 ForceCrit buff
+                    // Consume ForceCrit buff
                     var buffsToRemove = new List<string>();
                     foreach (var buff in casterBuffOwner!.Buffs.Values)
                     {
-                        bool hasForceCritEffect = buff.Effects.Any(e => e.Type == Buffs.BuffEffectType.ForceCrit);
-                        if (hasForceCritEffect)
+                        if (buff.Effects.Any(e => e.Type == Buffs.BuffEffectType.ForceCrit))
                         {
                             buffsToRemove.Add(buff.Id);
-                            break; // Only remove one ForceCrit buff per attack
+                            break;
                         }
                     }
-                    
-                    // Remove the buff(s) after iteration to avoid collection modification
                     foreach (var buffId in buffsToRemove)
                     {
                         casterBuffOwner.RemoveBuff(buffId, "consumed_forcecrit");
                     }
                 }
+                else if (opts.ForceCrit && canCrit && !isMonsterSkill)
+                {
+                    damageResult = ctx.DamageCalculator.CalculateDeterministic(damageCtx, forceCrit: true);
+                }
                 else
                 {
-                    // Phase 8: 应用 Buff 效果到暴击率
-                    // Phase 8: Apply buff effects to crit chance
-                    double critChance = ctx.Player.CritChancePercent;
-                    if (casterBuffOwner != null)
-                    {
-                        critChance = ApplyBuffEffectsToDouble(critChance, "CritChancePercent", casterBuffOwner);
-                    }
-                    
-                    isCrit = opts.ForceCrit || ctx.Rng.NextDouble() < (critChance / 100.0);
+                    damageResult = ctx.DamageCalculator.Calculate(damageCtx);
                 }
                 
-                if (isCrit)
+                dmg = damageResult.FinalDamage;
+                isCrit = damageResult.IsCrit;
+            }
+            else
+            {
+                // 旧系统：使用简化的伤害计算
+                // Legacy system: Use simplified damage calculation
+                int baseDamage = 0;
+                
+                if (skillDef?.Damage != null)
                 {
-                    // Phase 8: 应用 Buff 效果到暴击倍率
-                    // Phase 8: Apply buff effects to crit multiplier
-                    double critMultiplier = ctx.Player.CritMultiplier;
-                    if (casterBuffOwner != null)
+                    var damageDef = skillDef.Damage;
+                    int attackPower = isMonsterSkill
+                        ? (ctx.Enemy?.DamagePerHit ?? 0)
+                        : (ctx.Player?.DamagePerAttack ?? 0);
+                    
+                    if (casterBuffOwner != null && !isMonsterSkill)
                     {
-                        critMultiplier = ApplyBuffEffectsToDouble(critMultiplier, "CritMultiplier", casterBuffOwner);
+                        attackPower = ApplyBuffEffects(attackPower, "DamagePerAttack", casterBuffOwner);
                     }
                     
-                    dmg = Math.Floor(dmg * Math.Max(1.0, critMultiplier));
+                    baseDamage = (int)(damageDef.CoefAtk * attackPower) + damageDef.Flat;
+                }
+                else
+                {
+                    baseDamage = skillId switch
+                    {
+                        SkillIds.AttackBasic => ctx.Player?.DamagePerAttack ?? 0,
+                        SkillIds.SpecialPulse => ctx.Player?.SpecialDamage ?? 0,
+                        SkillIds.EnemyAttackBasic => ctx.Enemy?.DamagePerHit ?? 0,
+                        _ => 0
+                    };
+
+                    if (casterBuffOwner != null && skillId == SkillIds.AttackBasic)
+                    {
+                        baseDamage = ApplyBuffEffects(baseDamage, "DamagePerAttack", casterBuffOwner);
+                    }
+                    else if (casterBuffOwner != null && skillId == SkillIds.SpecialPulse)
+                    {
+                        baseDamage = ApplyBuffEffects(baseDamage, "SpecialDamage", casterBuffOwner);
+                    }
+
+                    if (skillDef != null)
+                    {
+                        baseDamage = (int)(baseDamage * skillDef.DamageMultiplier);
+                    }
+                }
+
+                double variancePct = isMonsterSkill
+                    ? ctx.Enemy?.VariancePct ?? 0.0
+                    : ctx.Player?.VariancePct ?? 0.0;
+                dmg = Math.Floor(ctx.Rng.Jitter(baseDamage, variancePct));
+                if (dmg < 1) dmg = 1;
+
+                bool hasForceCrit = casterBuffOwner != null && HasForceCritEffect(casterBuffOwner);
+                bool canCrit = skillDef?.CanCrit ?? true;
+                
+                if (!isMonsterSkill && ctx.Player != null && canCrit)
+                {
+                    if (hasForceCrit)
+                    {
+                        isCrit = true;
+                        var buffsToRemove = new List<string>();
+                        foreach (var buff in casterBuffOwner!.Buffs.Values)
+                        {
+                            if (buff.Effects.Any(e => e.Type == Buffs.BuffEffectType.ForceCrit))
+                            {
+                                buffsToRemove.Add(buff.Id);
+                                break;
+                            }
+                        }
+                        foreach (var buffId in buffsToRemove)
+                        {
+                            casterBuffOwner.RemoveBuff(buffId, "consumed_forcecrit");
+                        }
+                    }
+                    else
+                    {
+                        double critChance = ctx.Player.CritChancePercent;
+                        if (casterBuffOwner != null)
+                        {
+                            critChance = ApplyBuffEffectsToDouble(critChance, "CritChancePercent", casterBuffOwner);
+                        }
+                        isCrit = opts.ForceCrit || ctx.Rng.NextDouble() < (critChance / 100.0);
+                    }
+                    
+                    if (isCrit)
+                    {
+                        double critMultiplier = ctx.Player.CritMultiplier;
+                        if (casterBuffOwner != null)
+                        {
+                            critMultiplier = ApplyBuffEffectsToDouble(critMultiplier, "CritMultiplier", casterBuffOwner);
+                        }
+                        dmg = Math.Floor(dmg * Math.Max(1.0, critMultiplier));
+                    }
                 }
             }
 
@@ -211,7 +267,13 @@ namespace BlazorIdle.Game.Skills
                 DamageDealt = (int)dmg,
                 IsCrit = isCrit,
                 BundleId = opts.BundleId,
-                InstantHeal = skillDef?.InstantHeal ?? 0
+                InstantHeal = skillDef?.InstantHeal ?? 0,
+                // Phase 5: 填充新伤害系统属性
+                // Phase 5: Populate new damage system properties
+                HasElementAdvantage = damageResult?.HasElementAdvantage ?? false,
+                ElementMultiplier = damageResult?.ElementMultiplier ?? 1.0,
+                StancePercent = damageResult?.StancePercent ?? 0,
+                DetailedDamageResult = damageResult
             };
 
             // Phase 3: 解析目标选择策略

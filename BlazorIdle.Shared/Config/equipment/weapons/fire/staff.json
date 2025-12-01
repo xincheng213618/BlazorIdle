@@ -1,0 +1,35 @@
+// 火属性杖类武器 - Fire Element Staff Weapons
+[
+  {
+    "id": "staff_fire_t1",
+    "name": "炎晶法杖",
+    "weaponType": "staff",
+    "element": "fire",
+    "tier": 1,
+    "affixSequence": ["special_attack", "crit", "hp", "assault"]
+  },
+  {
+    "id": "staff_fire_t2",
+    "name": "焚天权杖",
+    "weaponType": "staff",
+    "element": "fire",
+    "tier": 2,
+    "affixSequence": ["special_attack", "crit", "crit_damage_bonus", "assault"]
+  },
+  {
+    "id": "staff_fire_t3",
+    "name": "炎魔法典",
+    "weaponType": "staff",
+    "element": "fire",
+    "tier": 3,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "vital_force", "element_resonance"]
+  },
+  {
+    "id": "staff_fire_t4",
+    "name": "灭世炎杖",
+    "weaponType": "staff",
+    "element": "fire",
+    "tier": 4,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "element_resonance", "haste"]
+  }
+]

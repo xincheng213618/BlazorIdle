@@ -1,0 +1,35 @@
+// 暗属性枪类武器 - Dark Element Spear Weapons
+[
+  {
+    "id": "spear_dark_t1",
+    "name": "暗黑长枪",
+    "weaponType": "spear",
+    "element": "dark",
+    "tier": 1,
+    "affixSequence": ["attack", "hp", "chase_pct", "ken_chase"]
+  },
+  {
+    "id": "spear_dark_t2",
+    "name": "恶魔之枪",
+    "weaponType": "spear",
+    "element": "dark",
+    "tier": 2,
+    "affixSequence": ["attack", "chase_pct", "ken_chase", "backwater_boost"]
+  },
+  {
+    "id": "spear_dark_t3",
+    "name": "暗龙之枪",
+    "weaponType": "spear",
+    "element": "dark",
+    "tier": 3,
+    "affixSequence": ["attack", "chase_pct", "backwater_boost", "element_resonance"]
+  },
+  {
+    "id": "spear_dark_t4",
+    "name": "灭世魔枪",
+    "weaponType": "spear",
+    "element": "dark",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "chase_pct", "element_resonance"]
+  }
+]

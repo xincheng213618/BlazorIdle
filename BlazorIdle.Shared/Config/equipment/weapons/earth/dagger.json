@@ -1,0 +1,35 @@
+// 地属性匕首类武器 - Earth Element Dagger Weapons
+[
+  {
+    "id": "dagger_earth_t1",
+    "name": "岩石短刃",
+    "weaponType": "dagger",
+    "element": "earth",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "hp", "mitigation"]
+  },
+  {
+    "id": "dagger_earth_t2",
+    "name": "山岳刺客",
+    "weaponType": "dagger",
+    "element": "earth",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "mitigation", "fortify_boost"]
+  },
+  {
+    "id": "dagger_earth_t3",
+    "name": "岩山暗刃",
+    "weaponType": "dagger",
+    "element": "earth",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "fortify_boost", "vital_force"]
+  },
+  {
+    "id": "dagger_earth_t4",
+    "name": "崩山之牙",
+    "weaponType": "dagger",
+    "element": "earth",
+    "tier": 4,
+    "affixSequence": ["crit", "crit_damage_bonus", "fortify_boost", "element_resonance"]
+  }
+]

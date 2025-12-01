@@ -1,0 +1,35 @@
+// 光属性枪类武器 - Light Element Spear Weapons
+[
+  {
+    "id": "spear_light_t1",
+    "name": "圣光长枪",
+    "weaponType": "spear",
+    "element": "light",
+    "tier": 1,
+    "affixSequence": ["attack", "hp", "chase_pct", "ken_chase"]
+  },
+  {
+    "id": "spear_light_t2",
+    "name": "天使之枪",
+    "weaponType": "spear",
+    "element": "light",
+    "tier": 2,
+    "affixSequence": ["attack", "chase_pct", "ken_chase", "fortify_boost"]
+  },
+  {
+    "id": "spear_light_t3",
+    "name": "圣龙之枪",
+    "weaponType": "spear",
+    "element": "light",
+    "tier": 3,
+    "affixSequence": ["attack", "chase_pct", "fortify_boost", "element_resonance"]
+  },
+  {
+    "id": "spear_light_t4",
+    "name": "天圣之枪",
+    "weaponType": "spear",
+    "element": "light",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "chase_pct", "element_resonance"]
+  }
+]

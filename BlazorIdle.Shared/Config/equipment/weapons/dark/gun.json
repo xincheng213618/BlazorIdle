@@ -1,0 +1,35 @@
+// 暗属性铳类武器 - Dark Element Gun Weapons
+[
+  {
+    "id": "gun_dark_t1",
+    "name": "暗黑火铳",
+    "weaponType": "gun",
+    "element": "dark",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "haste", "crit_damage_bonus"]
+  },
+  {
+    "id": "gun_dark_t2",
+    "name": "恶魔连发",
+    "weaponType": "gun",
+    "element": "dark",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "backwater_boost"]
+  },
+  {
+    "id": "gun_dark_t3",
+    "name": "暗影狙击",
+    "weaponType": "gun",
+    "element": "dark",
+    "tier": 3,
+    "affixSequence": ["crit", "crit_damage_bonus", "haste", "backwater_boost"]
+  },
+  {
+    "id": "gun_dark_t4",
+    "name": "暗夜魔铳",
+    "weaponType": "gun",
+    "element": "dark",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "backwater_boost", "element_resonance"]
+  }
+]

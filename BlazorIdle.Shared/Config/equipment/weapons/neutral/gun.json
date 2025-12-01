@@ -1,0 +1,35 @@
+// 无属性铳类武器 - Neutral Element Gun Weapons
+[
+  {
+    "id": "gun_neutral_t1",
+    "name": "手枪",
+    "weaponType": "gun",
+    "element": "neutral",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "haste", "assault"]
+  },
+  {
+    "id": "gun_neutral_t2",
+    "name": "钢铁火铳",
+    "weaponType": "gun",
+    "element": "neutral",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "haste"]
+  },
+  {
+    "id": "gun_neutral_t3",
+    "name": "精金连发",
+    "weaponType": "gun",
+    "element": "neutral",
+    "tier": 3,
+    "affixSequence": ["crit", "crit_damage_bonus", "haste", "assault"]
+  },
+  {
+    "id": "gun_neutral_t4",
+    "name": "神铸火铳",
+    "weaponType": "gun",
+    "element": "neutral",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "haste", "chase_pct"]
+  }
+]

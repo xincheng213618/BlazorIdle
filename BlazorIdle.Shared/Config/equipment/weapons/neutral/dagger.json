@@ -1,0 +1,35 @@
+// 无属性匕首类武器 - Neutral Element Dagger Weapons
+[
+  {
+    "id": "dagger_neutral_t1",
+    "name": "小刀",
+    "weaponType": "dagger",
+    "element": "neutral",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "haste", "assault"]
+  },
+  {
+    "id": "dagger_neutral_t2",
+    "name": "钢铁短刃",
+    "weaponType": "dagger",
+    "element": "neutral",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "haste", "crit_damage_bonus"]
+  },
+  {
+    "id": "dagger_neutral_t3",
+    "name": "精金短刃",
+    "weaponType": "dagger",
+    "element": "neutral",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "haste", "assault"]
+  },
+  {
+    "id": "dagger_neutral_t4",
+    "name": "神铸之刃",
+    "weaponType": "dagger",
+    "element": "neutral",
+    "tier": 4,
+    "affixSequence": ["crit", "crit_damage_bonus", "haste", "chase_pct"]
+  }
+]

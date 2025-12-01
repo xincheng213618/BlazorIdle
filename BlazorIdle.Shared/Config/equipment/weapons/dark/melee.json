@@ -1,0 +1,35 @@
+// 暗属性拳套类武器 - Dark Element Melee Weapons
+[
+  {
+    "id": "melee_dark_t1",
+    "name": "暗黑拳套",
+    "weaponType": "melee",
+    "element": "dark",
+    "tier": 1,
+    "affixSequence": ["attack", "haste", "crit", "backwater_boost"]
+  },
+  {
+    "id": "melee_dark_t2",
+    "name": "恶魔铁拳",
+    "weaponType": "melee",
+    "element": "dark",
+    "tier": 2,
+    "affixSequence": ["attack", "haste", "crit_damage_bonus", "backwater_boost"]
+  },
+  {
+    "id": "melee_dark_t3",
+    "name": "暗影拳刃",
+    "weaponType": "melee",
+    "element": "dark",
+    "tier": 3,
+    "affixSequence": ["attack", "haste", "crit_damage_bonus", "backwater_boost"]
+  },
+  {
+    "id": "melee_dark_t4",
+    "name": "灭世魔拳",
+    "weaponType": "melee",
+    "element": "dark",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "backwater_boost", "element_resonance"]
+  }
+]

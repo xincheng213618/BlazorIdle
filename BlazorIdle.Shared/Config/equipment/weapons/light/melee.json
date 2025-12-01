@@ -1,0 +1,35 @@
+// 光属性拳套类武器 - Light Element Melee Weapons
+[
+  {
+    "id": "melee_light_t1",
+    "name": "圣光拳套",
+    "weaponType": "melee",
+    "element": "light",
+    "tier": 1,
+    "affixSequence": ["attack", "haste", "hp", "vital_force"]
+  },
+  {
+    "id": "melee_light_t2",
+    "name": "天使铁拳",
+    "weaponType": "melee",
+    "element": "light",
+    "tier": 2,
+    "affixSequence": ["attack", "haste", "vital_force", "fortify_boost"]
+  },
+  {
+    "id": "melee_light_t3",
+    "name": "圣域拳刃",
+    "weaponType": "melee",
+    "element": "light",
+    "tier": 3,
+    "affixSequence": ["attack", "haste", "crit_damage_bonus", "fortify_boost"]
+  },
+  {
+    "id": "melee_light_t4",
+    "name": "圣光铁拳",
+    "weaponType": "melee",
+    "element": "light",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "fortify_boost", "element_resonance"]
+  }
+]

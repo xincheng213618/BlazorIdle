@@ -1,0 +1,37 @@
+// 火属性剑类武器 - Fire Element Sword Weapons
+// affixSequence: 按顺序配置4个词条，掉落时根据品质取前N个
+// 白装=0词条, 绿装=1词条, 蓝装=2词条, 紫装=3词条, 橙装=4词条
+[
+  {
+    "id": "sword_fire_t1",
+    "name": "烈焰剑",
+    "weaponType": "sword",
+    "element": "fire",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "hp", "assault"]
+  },
+  {
+    "id": "sword_fire_t2",
+    "name": "焚天之剑",
+    "weaponType": "sword",
+    "element": "fire",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "assault"]
+  },
+  {
+    "id": "sword_fire_t3",
+    "name": "炎魔之剑",
+    "weaponType": "sword",
+    "element": "fire",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "assault", "element_resonance"]
+  },
+  {
+    "id": "sword_fire_t4",
+    "name": "灭世炎剑",
+    "weaponType": "sword",
+    "element": "fire",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "element_resonance", "chase_pct"]
+  }
+]

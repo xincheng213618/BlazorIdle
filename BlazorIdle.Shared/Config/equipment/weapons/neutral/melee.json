@@ -1,0 +1,35 @@
+// 无属性拳套类武器 - Neutral Element Melee Weapons
+[
+  {
+    "id": "melee_neutral_t1",
+    "name": "拳套",
+    "weaponType": "melee",
+    "element": "neutral",
+    "tier": 1,
+    "affixSequence": ["attack", "haste", "hp", "crit"]
+  },
+  {
+    "id": "melee_neutral_t2",
+    "name": "钢铁拳套",
+    "weaponType": "melee",
+    "element": "neutral",
+    "tier": 2,
+    "affixSequence": ["attack", "haste", "crit", "assault"]
+  },
+  {
+    "id": "melee_neutral_t3",
+    "name": "精金拳刃",
+    "weaponType": "melee",
+    "element": "neutral",
+    "tier": 3,
+    "affixSequence": ["attack", "haste", "crit_damage_bonus", "vital_force"]
+  },
+  {
+    "id": "melee_neutral_t4",
+    "name": "神铸铁拳",
+    "weaponType": "melee",
+    "element": "neutral",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "haste", "fortify_boost"]
+  }
+]

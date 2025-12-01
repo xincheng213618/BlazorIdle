@@ -1,0 +1,35 @@
+// 风属性铳类武器 - Wind Element Gun Weapons
+[
+  {
+    "id": "gun_wind_t1",
+    "name": "疾风手枪",
+    "weaponType": "gun",
+    "element": "wind",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "haste", "crit_damage_bonus"]
+  },
+  {
+    "id": "gun_wind_t2",
+    "name": "苍穹连发",
+    "weaponType": "gun",
+    "element": "wind",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "haste"]
+  },
+  {
+    "id": "gun_wind_t3",
+    "name": "风暴狙击",
+    "weaponType": "gun",
+    "element": "wind",
+    "tier": 3,
+    "affixSequence": ["crit", "crit_damage_bonus", "haste", "backwater_boost"]
+  },
+  {
+    "id": "gun_wind_t4",
+    "name": "天风灭铳",
+    "weaponType": "gun",
+    "element": "wind",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "haste", "element_resonance"]
+  }
+]

@@ -1,3 +1,19 @@
+// ⚠️ 废弃文件 - DEPRECATED FILE
+// 
+// 此文件包含旧的角色属性系统配置，已不再使用。
+// This file contains the old character attribute system configuration, which is no longer used.
+//
+// 新系统说明 / New System Description:
+// - 玩家升级不再增加属性
+// - 玩家属性完全由10件装备的基础HP、攻击力和词条提供
+// - 详见：docs/装备与伤害系统设计/装备与伤害系统_实施进度追踪.md
+//
+// Player level-up no longer grants stat increases.
+// Player stats are provided entirely by 10 equipment pieces (base HP, attack, and affixes).
+// See: docs/装备与伤害系统设计/装备与伤害系统_实施进度追踪.md
+//
+// 保留此文件仅用于向后兼容和参考。
+// This file is kept only for backward compatibility and reference.
 {
   "warrior": {
     "id": "warrior",

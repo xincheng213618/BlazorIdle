@@ -1,0 +1,35 @@
+// 暗属性斧类武器 - Dark Element Axe Weapons
+[
+  {
+    "id": "axe_dark_t1",
+    "name": "暗黑战斧",
+    "weaponType": "axe",
+    "element": "dark",
+    "tier": 1,
+    "affixSequence": ["attack", "hp", "crit_damage_bonus", "backwater_boost"]
+  },
+  {
+    "id": "axe_dark_t2",
+    "name": "恶魔重斧",
+    "weaponType": "axe",
+    "element": "dark",
+    "tier": 2,
+    "affixSequence": ["attack", "hp", "backwater_boost", "crit_damage_bonus"]
+  },
+  {
+    "id": "axe_dark_t3",
+    "name": "暗影巨斧",
+    "weaponType": "axe",
+    "element": "dark",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "backwater_boost", "mitigation"]
+  },
+  {
+    "id": "axe_dark_t4",
+    "name": "灭世魔斧",
+    "weaponType": "axe",
+    "element": "dark",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "backwater_boost", "element_resonance"]
+  }
+]

@@ -1,0 +1,35 @@
+// 火属性弓类武器 - Fire Element Bow Weapons
+[
+  {
+    "id": "bow_fire_t1",
+    "name": "烈焰之弓",
+    "weaponType": "bow",
+    "element": "fire",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "chase_pct", "ken_chase"]
+  },
+  {
+    "id": "bow_fire_t2",
+    "name": "焚天猎弓",
+    "weaponType": "bow",
+    "element": "fire",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "chase_pct", "crit_damage_bonus"]
+  },
+  {
+    "id": "bow_fire_t3",
+    "name": "炎魔神弓",
+    "weaponType": "bow",
+    "element": "fire",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "chase_pct", "element_resonance"]
+  },
+  {
+    "id": "bow_fire_t4",
+    "name": "灭世炎弓",
+    "weaponType": "bow",
+    "element": "fire",
+    "tier": 4,
+    "affixSequence": ["crit", "crit_damage_bonus", "chase_pct", "element_resonance"]
+  }
+]

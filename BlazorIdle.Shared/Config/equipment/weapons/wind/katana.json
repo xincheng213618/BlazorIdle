@@ -1,0 +1,35 @@
+// 风属性刀类武器 - Wind Element Katana Weapons
+[
+  {
+    "id": "katana_wind_t1",
+    "name": "风月刀",
+    "weaponType": "katana",
+    "element": "wind",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "haste"]
+  },
+  {
+    "id": "katana_wind_t2",
+    "name": "疾风斩月",
+    "weaponType": "katana",
+    "element": "wind",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "backwater_boost"]
+  },
+  {
+    "id": "katana_wind_t3",
+    "name": "风暴妖刀",
+    "weaponType": "katana",
+    "element": "wind",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "backwater_boost", "element_resonance"]
+  },
+  {
+    "id": "katana_wind_t4",
+    "name": "天风灭刀",
+    "weaponType": "katana",
+    "element": "wind",
+    "tier": 4,
+    "affixSequence": ["crit", "crit_damage_bonus", "haste", "element_resonance"]
+  }
+]

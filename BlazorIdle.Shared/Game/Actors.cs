@@ -112,6 +112,12 @@ namespace BlazorIdle.Game
         public string Element { get; set; } = Combat.ElementIds.Neutral;
 
         /// <summary>
+        /// 基础攻击力 - 用于新伤害系统计算
+        /// Base attack power - used in new damage system calculation
+        /// </summary>
+        public double BaseAttack { get; set; } = 100;
+
+        /// <summary>
         /// 减伤百分比（最终伤害 × (1 - 减伤%)）
         /// Damage reduction percentage (FinalDamage × (1 - DamageReduction%))
         /// </summary>

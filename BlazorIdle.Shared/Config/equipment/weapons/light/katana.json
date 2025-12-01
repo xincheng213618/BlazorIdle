@@ -1,0 +1,35 @@
+// 光属性刀类武器 - Light Element Katana Weapons
+[
+  {
+    "id": "katana_light_t1",
+    "name": "圣光太刀",
+    "weaponType": "katana",
+    "element": "light",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "vital_force"]
+  },
+  {
+    "id": "katana_light_t2",
+    "name": "天使斩月",
+    "weaponType": "katana",
+    "element": "light",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "fortify_boost"]
+  },
+  {
+    "id": "katana_light_t3",
+    "name": "圣域妖刀",
+    "weaponType": "katana",
+    "element": "light",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "fortify_boost", "element_resonance"]
+  },
+  {
+    "id": "katana_light_t4",
+    "name": "天罚圣刀",
+    "weaponType": "katana",
+    "element": "light",
+    "tier": 4,
+    "affixSequence": ["crit", "crit_damage_bonus", "fortify_boost", "element_resonance"]
+  }
+]

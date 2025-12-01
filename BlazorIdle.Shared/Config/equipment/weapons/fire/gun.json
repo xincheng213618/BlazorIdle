@@ -1,0 +1,35 @@
+// 火属性铳类武器 - Fire Element Gun Weapons
+[
+  {
+    "id": "gun_fire_t1",
+    "name": "烈焰火铳",
+    "weaponType": "gun",
+    "element": "fire",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "haste", "crit_damage_bonus"]
+  },
+  {
+    "id": "gun_fire_t2",
+    "name": "焚天连发",
+    "weaponType": "gun",
+    "element": "fire",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "haste"]
+  },
+  {
+    "id": "gun_fire_t3",
+    "name": "炎魔狙击",
+    "weaponType": "gun",
+    "element": "fire",
+    "tier": 3,
+    "affixSequence": ["crit", "crit_damage_bonus", "haste", "backwater_boost"]
+  },
+  {
+    "id": "gun_fire_t4",
+    "name": "灭世炎铳",
+    "weaponType": "gun",
+    "element": "fire",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "haste", "element_resonance"]
+  }
+]
