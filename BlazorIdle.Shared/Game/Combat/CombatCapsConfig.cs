@@ -44,6 +44,13 @@ namespace BlazorIdle.Game.Combat
         public double CritDamageBonusPct { get; set; } = 50.0;
 
         /// <summary>
+        /// 急速百分比上限
+        /// Haste percentage cap
+        /// </summary>
+        [JsonPropertyName("hastePct")]
+        public double HastePct { get; set; } = 40.0;
+
+        /// <summary>
         /// 盛体态势上限百分比上限
         /// Fortify max percentage cap
         /// </summary>
@@ -118,6 +125,12 @@ namespace BlazorIdle.Game.Combat
         public double ClampCritDamageBonusPct(double value) => Math.Clamp(value, 0, CritDamageBonusPct);
 
         /// <summary>
+        /// 裁剪急速百分比到上限
+        /// Clamp haste percentage to cap
+        /// </summary>
+        public double ClampHastePct(double value) => Math.Clamp(value, 0, HastePct);
+
+        /// <summary>
         /// 裁剪盛体态势上限百分比到上限
         /// Clamp fortify max percentage to cap
         /// </summary>
@@ -165,6 +178,7 @@ namespace BlazorIdle.Game.Combat
                 AttackPercent = ClampAttackPct(stats.AttackPercent),
                 SpecialAttackPercent = ClampSpecialAttackPct(stats.SpecialAttackPercent),
                 HPPercent = ClampHpPercent(stats.HPPercent),
+                HastePercent = ClampHastePct(stats.HastePercent),
                 CritChancePercent = ClampCritChancePct(stats.CritChancePercent),
                 CritDamageBonusPercent = ClampCritDamageBonusPct(stats.CritDamageBonusPercent),
                 FortifyMaxPercent = ClampFortifyMaxPct(stats.FortifyMaxPercent),

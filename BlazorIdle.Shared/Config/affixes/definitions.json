@@ -1,0 +1,197 @@
+// 词条定义配置 - Affix Definitions Configuration
+// 所有装备可获得的词条定义
+// All affix definitions available on equipment
+[
+  {
+    "id": "attack",
+    "name": "攻击",
+    "scope": "element",
+    "levels": [
+      { "AttackPercent": 4.0 },
+      { "AttackPercent": 6.0 },
+      { "AttackPercent": 7.0 },
+      { "AttackPercent": 8.0 }
+    ],
+    "tags": ["offense"]
+  },
+  {
+    "id": "special_attack",
+    "name": "特攻",
+    "scope": "element",
+    "levels": [
+      { "SpecialAttackPercent": 3.0 },
+      { "SpecialAttackPercent": 4.5 },
+      { "SpecialAttackPercent": 5.5 },
+      { "SpecialAttackPercent": 6.0 }
+    ],
+    "tags": ["offense"]
+  },
+  {
+    "id": "hp",
+    "name": "生命",
+    "scope": "global",
+    "levels": [
+      { "HPPercent": 6.0 },
+      { "HPPercent": 8.0 },
+      { "HPPercent": 9.0 },
+      { "HPPercent": 10.0 }
+    ],
+    "tags": ["defense", "core"]
+  },
+  {
+    "id": "haste",
+    "name": "急速",
+    "scope": "global",
+    "levels": [
+      { "HastePercent": 3.0 },
+      { "HastePercent": 4.5 },
+      { "HastePercent": 5.5 },
+      { "HastePercent": 6.0 }
+    ],
+    "tags": ["utility"]
+  },
+  {
+    "id": "crit",
+    "name": "会心",
+    "scope": "global",
+    "levels": [
+      { "CritChancePercent": 4.0 },
+      { "CritChancePercent": 6.0 },
+      { "CritChancePercent": 7.0 },
+      { "CritChancePercent": 8.0 }
+    ],
+    "tags": ["offense"]
+  },
+  {
+    "id": "crit_damage_bonus",
+    "name": "终结",
+    "scope": "global",
+    "levels": [
+      { "CritDamageBonusPercent": 3.0 },
+      { "CritDamageBonusPercent": 4.0 },
+      { "CritDamageBonusPercent": 4.5 },
+      { "CritDamageBonusPercent": 5.0 }
+    ],
+    "tags": ["offense"]
+  },
+  {
+    "id": "assault",
+    "name": "神击",
+    "scope": "hybrid",
+    "perFieldScope": {
+      "AttackPercent": "element",
+      "CritChancePercent": "global"
+    },
+    "levels": [
+      { "AttackPercent": 2.0, "CritChancePercent": 2.0 },
+      { "AttackPercent": 3.0, "CritChancePercent": 3.0 },
+      { "AttackPercent": 3.5, "CritChancePercent": 3.5 },
+      { "AttackPercent": 4.0, "CritChancePercent": 4.0 }
+    ],
+    "tags": ["hybrid", "burst"]
+  },
+  {
+    "id": "vital_force",
+    "name": "盛能",
+    "scope": "hybrid",
+    "perFieldScope": {
+      "AttackPercent": "element",
+      "HPPercent": "global"
+    },
+    "levels": [
+      { "AttackPercent": 2.0, "HPPercent": 4.0 },
+      { "AttackPercent": 3.0, "HPPercent": 6.0 },
+      { "AttackPercent": 3.5, "HPPercent": 7.0 },
+      { "AttackPercent": 4.0, "HPPercent": 8.0 }
+    ],
+    "tags": ["hybrid"]
+  },
+  {
+    "id": "fortify_boost",
+    "name": "盛体增幅",
+    "scope": "global",
+    "uniqueGroup": "fortify_unique",
+    "levels": [
+      { "FortifyMaxPercent": 10.0 },
+      { "FortifyMaxPercent": 14.0 },
+      { "FortifyMaxPercent": 18.0 },
+      { "FortifyMaxPercent": 20.0 }
+    ],
+    "tags": ["stance"]
+  },
+  {
+    "id": "backwater_boost",
+    "name": "背水意志",
+    "scope": "global",
+    "uniqueGroup": "backwater_unique",
+    "levels": [
+      { "BackwaterMaxPercent": 10.0 },
+      { "BackwaterMaxPercent": 14.0 },
+      { "BackwaterMaxPercent": 18.0 },
+      { "BackwaterMaxPercent": 20.0 }
+    ],
+    "tags": ["stance"]
+  },
+  {
+    "id": "chase_pct",
+    "name": "追击",
+    "scope": "element",
+    "equipLimit": 8,
+    "levels": [
+      { "ChasePercent": 1.8 },
+      { "ChasePercent": 2.4 },
+      { "ChasePercent": 2.8 },
+      { "ChasePercent": 3.2 }
+    ],
+    "tags": ["chase"]
+  },
+  {
+    "id": "chase_flat",
+    "name": "固定追击",
+    "scope": "global",
+    "levels": [
+      { "ChaseFlat": 30 },
+      { "ChaseFlat": 45 },
+      { "ChaseFlat": 55 },
+      { "ChaseFlat": 60 }
+    ],
+    "tags": ["chase"]
+  },
+  {
+    "id": "ken_chase",
+    "name": "克制追击",
+    "scope": "element",
+    "equipLimit": 6,
+    "levels": [
+      { "KenChasePercent": 1.2 },
+      { "KenChasePercent": 1.8 },
+      { "KenChasePercent": 2.4 },
+      { "KenChasePercent": 3.0 }
+    ],
+    "tags": ["chase", "element"]
+  },
+  {
+    "id": "mitigation",
+    "name": "坚韧",
+    "scope": "global",
+    "levels": [
+      { "DamageReductionPercent": 2.0 },
+      { "DamageReductionPercent": 3.0 },
+      { "DamageReductionPercent": 3.6 },
+      { "DamageReductionPercent": 4.0 }
+    ],
+    "tags": ["defense"]
+  },
+  {
+    "id": "element_resonance",
+    "name": "元素共鸣",
+    "scope": "element",
+    "levels": [
+      { "AttackPercent": 2.0, "KenChasePercent": 1.0 },
+      { "AttackPercent": 3.0, "KenChasePercent": 1.5 },
+      { "AttackPercent": 3.5, "KenChasePercent": 1.75 },
+      { "AttackPercent": 4.0, "KenChasePercent": 2.0 }
+    ],
+    "tags": ["element", "hybrid"]
+  }
+]

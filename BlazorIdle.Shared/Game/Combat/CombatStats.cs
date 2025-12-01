@@ -38,6 +38,15 @@ namespace BlazorIdle.Game.Combat
         [JsonPropertyName("hpPercent")]
         public double HPPercent { get; set; }
 
+        /// <summary>
+        /// 急速百分比加成（影响攻速和施法速度）
+        /// Haste percentage bonus (affects attack speed and cast speed)
+        /// 攻速 = 基础攻速 × (1 + 急速%)，施法时间 = 基础施法时间 / (1 + 急速%)
+        /// Attack speed = BaseAPS × (1 + Haste%), Cast time = BaseCastTime / (1 + Haste%)
+        /// </summary>
+        [JsonPropertyName("hastePercent")]
+        public double HastePercent { get; set; }
+
         #endregion
 
         #region 暴击属性 / Critical Hit Attributes
@@ -124,6 +133,7 @@ namespace BlazorIdle.Game.Combat
                 AttackPercent = 0,
                 SpecialAttackPercent = 0,
                 HPPercent = 0,
+                HastePercent = 0,
                 CritChancePercent = 0,
                 CritDamageBonusPercent = 0,
                 FortifyMaxPercent = 0,

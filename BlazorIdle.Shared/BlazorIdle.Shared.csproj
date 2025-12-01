@@ -71,6 +71,10 @@
     <!-- 元素系统配置文件 / Element system config files -->
     <EmbeddedResource Include="Config\elements\types.json" LogicalName="BlazorIdle.Shared.Config.elements.types.json" />
     <EmbeddedResource Include="Config\elements\matrix.json" LogicalName="BlazorIdle.Shared.Config.elements.matrix.json" />
+    
+    <!-- 词条系统配置文件 / Affix system config files -->
+    <EmbeddedResource Include="Config\affixes\definitions.json" LogicalName="BlazorIdle.Shared.Config.affixes.definitions.json" />
+    <EmbeddedResource Include="Config\affixes\rules.json" LogicalName="BlazorIdle.Shared.Config.affixes.rules.json" />
   </ItemGroup>
 
 </Project>

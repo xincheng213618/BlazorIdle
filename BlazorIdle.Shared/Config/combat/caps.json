@@ -7,6 +7,7 @@
   "hpPercent": 100.0,
   "critChancePct": 80.0,
   "critDamageBonusPct": 50.0,
+  "hastePct": 40.0,
   "fortifyMaxPct": 20.0,
   "backwaterMaxPct": 20.0,
   "chasePct": 30.0,
