@@ -1,0 +1,35 @@
+// 光属性弓类武器 - Light Element Bow Weapons
+[
+  {
+    "id": "bow_light_t1",
+    "name": "圣光之弓",
+    "weaponType": "bow",
+    "element": "light",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "chase_pct", "ken_chase"]
+  },
+  {
+    "id": "bow_light_t2",
+    "name": "天使猎弓",
+    "weaponType": "bow",
+    "element": "light",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "chase_pct", "crit_damage_bonus"]
+  },
+  {
+    "id": "bow_light_t3",
+    "name": "圣域神弓",
+    "weaponType": "bow",
+    "element": "light",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "chase_pct", "element_resonance"]
+  },
+  {
+    "id": "bow_light_t4",
+    "name": "神圣猎弓",
+    "weaponType": "bow",
+    "element": "light",
+    "tier": 4,
+    "affixSequence": ["crit", "crit_damage_bonus", "chase_pct", "element_resonance"]
+  }
+]

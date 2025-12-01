@@ -1,0 +1,35 @@
+// 风属性斧类武器 - Wind Element Axe Weapons
+[
+  {
+    "id": "axe_wind_t1",
+    "name": "疾风战斧",
+    "weaponType": "axe",
+    "element": "wind",
+    "tier": 1,
+    "affixSequence": ["attack", "hp", "haste", "fortify_boost"]
+  },
+  {
+    "id": "axe_wind_t2",
+    "name": "苍穹重斧",
+    "weaponType": "axe",
+    "element": "wind",
+    "tier": 2,
+    "affixSequence": ["attack", "hp", "fortify_boost", "haste"]
+  },
+  {
+    "id": "axe_wind_t3",
+    "name": "风暴巨斧",
+    "weaponType": "axe",
+    "element": "wind",
+    "tier": 3,
+    "affixSequence": ["attack", "fortify_boost", "haste", "crit_damage_bonus"]
+  },
+  {
+    "id": "axe_wind_t4",
+    "name": "天风灭斧",
+    "weaponType": "axe",
+    "element": "wind",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "fortify_boost", "element_resonance"]
+  }
+]

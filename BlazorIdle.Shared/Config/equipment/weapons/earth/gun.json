@@ -1,0 +1,35 @@
+// 地属性铳类武器 - Earth Element Gun Weapons
+[
+  {
+    "id": "gun_earth_t1",
+    "name": "岩石火铳",
+    "weaponType": "gun",
+    "element": "earth",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "hp", "mitigation"]
+  },
+  {
+    "id": "gun_earth_t2",
+    "name": "山岳连发",
+    "weaponType": "gun",
+    "element": "earth",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "mitigation"]
+  },
+  {
+    "id": "gun_earth_t3",
+    "name": "岩山狙击",
+    "weaponType": "gun",
+    "element": "earth",
+    "tier": 3,
+    "affixSequence": ["crit", "crit_damage_bonus", "mitigation", "fortify_boost"]
+  },
+  {
+    "id": "gun_earth_t4",
+    "name": "崩山灭铳",
+    "weaponType": "gun",
+    "element": "earth",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "fortify_boost", "element_resonance"]
+  }
+]

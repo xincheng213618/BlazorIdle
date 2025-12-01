@@ -1,0 +1,35 @@
+// 水属性乐器类武器 - Water Element Harp Weapons
+[
+  {
+    "id": "harp_water_t1",
+    "name": "水之竖琴",
+    "weaponType": "harp",
+    "element": "water",
+    "tier": 1,
+    "affixSequence": ["special_attack", "hp", "haste", "vital_force"]
+  },
+  {
+    "id": "harp_water_t2",
+    "name": "碧波之歌",
+    "weaponType": "harp",
+    "element": "water",
+    "tier": 2,
+    "affixSequence": ["special_attack", "hp", "vital_force", "fortify_boost"]
+  },
+  {
+    "id": "harp_water_t3",
+    "name": "深海乐章",
+    "weaponType": "harp",
+    "element": "water",
+    "tier": 3,
+    "affixSequence": ["special_attack", "vital_force", "fortify_boost", "haste"]
+  },
+  {
+    "id": "harp_water_t4",
+    "name": "沧海灭歌",
+    "weaponType": "harp",
+    "element": "water",
+    "tier": 4,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "vital_force", "element_resonance"]
+  }
+]

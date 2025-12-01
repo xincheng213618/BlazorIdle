@@ -1,0 +1,35 @@
+// 地属性枪类武器 - Earth Element Spear Weapons
+[
+  {
+    "id": "spear_earth_t1",
+    "name": "岩石长枪",
+    "weaponType": "spear",
+    "element": "earth",
+    "tier": 1,
+    "affixSequence": ["attack", "hp", "chase_pct", "mitigation"]
+  },
+  {
+    "id": "spear_earth_t2",
+    "name": "山岳之枪",
+    "weaponType": "spear",
+    "element": "earth",
+    "tier": 2,
+    "affixSequence": ["attack", "chase_pct", "mitigation", "fortify_boost"]
+  },
+  {
+    "id": "spear_earth_t3",
+    "name": "岩龙之枪",
+    "weaponType": "spear",
+    "element": "earth",
+    "tier": 3,
+    "affixSequence": ["attack", "chase_pct", "fortify_boost", "element_resonance"]
+  },
+  {
+    "id": "spear_earth_t4",
+    "name": "崩山灭枪",
+    "weaponType": "spear",
+    "element": "earth",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "chase_pct", "element_resonance"]
+  }
+]

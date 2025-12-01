@@ -1,0 +1,35 @@
+// 水属性弓类武器 - Water Element Bow Weapons
+[
+  {
+    "id": "bow_water_t1",
+    "name": "寒冰之弓",
+    "weaponType": "bow",
+    "element": "water",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "chase_pct", "ken_chase"]
+  },
+  {
+    "id": "bow_water_t2",
+    "name": "寒霜长弓",
+    "weaponType": "bow",
+    "element": "water",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "chase_pct", "vital_force"]
+  },
+  {
+    "id": "bow_water_t3",
+    "name": "深海神弓",
+    "weaponType": "bow",
+    "element": "water",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "chase_pct", "element_resonance"]
+  },
+  {
+    "id": "bow_water_t4",
+    "name": "沧海灭弓",
+    "weaponType": "bow",
+    "element": "water",
+    "tier": 4,
+    "affixSequence": ["crit", "crit_damage_bonus", "chase_pct", "element_resonance"]
+  }
+]

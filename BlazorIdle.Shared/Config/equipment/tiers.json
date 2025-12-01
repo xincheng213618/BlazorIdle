@@ -1,11 +1,11 @@
 // 装备层级配置 - Equipment Tier Configuration
-// 定义每个Tier的统一基础攻击力
-// Defines unified base attack for each tier
+// 定义每个Tier的统一基础攻击力和生命值
+// Defines unified base attack and HP for each tier
 {
   "tiers": [
-    { "tier": 1, "name": "普通", "baseAttack": 100 },
-    { "tier": 2, "name": "精良", "baseAttack": 200 },
-    { "tier": 3, "name": "稀有", "baseAttack": 320 },
-    { "tier": 4, "name": "传说", "baseAttack": 450 }
+    { "tier": 1, "name": "T1", "baseAttack": 100, "baseHp": 50 },
+    { "tier": 2, "name": "T2", "baseAttack": 200, "baseHp": 100 },
+    { "tier": 3, "name": "T3", "baseAttack": 320, "baseHp": 160 },
+    { "tier": 4, "name": "T4", "baseAttack": 450, "baseHp": 225 }
   ]
 }

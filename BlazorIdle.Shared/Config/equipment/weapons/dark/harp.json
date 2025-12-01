@@ -1,0 +1,35 @@
+// 暗属性乐器类武器 - Dark Element Harp Weapons
+[
+  {
+    "id": "harp_dark_t1",
+    "name": "暗黑竖琴",
+    "weaponType": "harp",
+    "element": "dark",
+    "tier": 1,
+    "affixSequence": ["special_attack", "hp", "crit_damage_bonus", "backwater_boost"]
+  },
+  {
+    "id": "harp_dark_t2",
+    "name": "恶魔之歌",
+    "weaponType": "harp",
+    "element": "dark",
+    "tier": 2,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "backwater_boost", "haste"]
+  },
+  {
+    "id": "harp_dark_t3",
+    "name": "暗影乐章",
+    "weaponType": "harp",
+    "element": "dark",
+    "tier": 3,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "backwater_boost", "vital_force"]
+  },
+  {
+    "id": "harp_dark_t4",
+    "name": "魔音之琴",
+    "weaponType": "harp",
+    "element": "dark",
+    "tier": 4,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "backwater_boost", "element_resonance"]
+  }
+]

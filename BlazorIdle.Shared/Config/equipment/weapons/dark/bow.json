@@ -1,0 +1,35 @@
+// 暗属性弓类武器 - Dark Element Bow Weapons
+[
+  {
+    "id": "bow_dark_t1",
+    "name": "暗黑之弓",
+    "weaponType": "bow",
+    "element": "dark",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "chase_pct", "crit_damage_bonus"]
+  },
+  {
+    "id": "bow_dark_t2",
+    "name": "恶魔猎弓",
+    "weaponType": "bow",
+    "element": "dark",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "chase_pct", "backwater_boost"]
+  },
+  {
+    "id": "bow_dark_t3",
+    "name": "暗影神弓",
+    "weaponType": "bow",
+    "element": "dark",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "chase_pct", "element_resonance"]
+  },
+  {
+    "id": "bow_dark_t4",
+    "name": "灭世魔弓",
+    "weaponType": "bow",
+    "element": "dark",
+    "tier": 4,
+    "affixSequence": ["crit", "crit_damage_bonus", "chase_pct", "element_resonance"]
+  }
+]

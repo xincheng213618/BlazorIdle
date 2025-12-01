@@ -1,0 +1,35 @@
+// 无属性斧类武器 - Neutral Element Axe Weapons
+[
+  {
+    "id": "axe_neutral_t1",
+    "name": "铁斧",
+    "weaponType": "axe",
+    "element": "neutral",
+    "tier": 1,
+    "affixSequence": ["attack", "hp", "mitigation", "fortify_boost"]
+  },
+  {
+    "id": "axe_neutral_t2",
+    "name": "钢铁重斧",
+    "weaponType": "axe",
+    "element": "neutral",
+    "tier": 2,
+    "affixSequence": ["attack", "hp", "fortify_boost", "vital_force"]
+  },
+  {
+    "id": "axe_neutral_t3",
+    "name": "精金巨斧",
+    "weaponType": "axe",
+    "element": "neutral",
+    "tier": 3,
+    "affixSequence": ["attack", "fortify_boost", "vital_force", "crit_damage_bonus"]
+  },
+  {
+    "id": "axe_neutral_t4",
+    "name": "神铸之斧",
+    "weaponType": "axe",
+    "element": "neutral",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "fortify_boost", "mitigation"]
+  }
+]

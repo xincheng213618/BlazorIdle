@@ -1,0 +1,35 @@
+// 无属性乐器类武器 - Neutral Element Harp Weapons
+[
+  {
+    "id": "harp_neutral_t1",
+    "name": "竖琴",
+    "weaponType": "harp",
+    "element": "neutral",
+    "tier": 1,
+    "affixSequence": ["special_attack", "hp", "haste", "vital_force"]
+  },
+  {
+    "id": "harp_neutral_t2",
+    "name": "银弦竖琴",
+    "weaponType": "harp",
+    "element": "neutral",
+    "tier": 2,
+    "affixSequence": ["special_attack", "hp", "vital_force", "haste"]
+  },
+  {
+    "id": "harp_neutral_t3",
+    "name": "精金之琴",
+    "weaponType": "harp",
+    "element": "neutral",
+    "tier": 3,
+    "affixSequence": ["special_attack", "vital_force", "haste", "crit_damage_bonus"]
+  },
+  {
+    "id": "harp_neutral_t4",
+    "name": "神铸乐章",
+    "weaponType": "harp",
+    "element": "neutral",
+    "tier": 4,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "vital_force", "fortify_boost"]
+  }
+]

@@ -1,0 +1,35 @@
+// 风属性剑类武器 - Wind Element Sword Weapons
+[
+  {
+    "id": "sword_wind_t1",
+    "name": "疾风剑",
+    "weaponType": "sword",
+    "element": "wind",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "haste", "assault"]
+  },
+  {
+    "id": "sword_wind_t2",
+    "name": "苍穹之剑",
+    "weaponType": "sword",
+    "element": "wind",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "haste", "crit_damage_bonus"]
+  },
+  {
+    "id": "sword_wind_t3",
+    "name": "风暴魔剑",
+    "weaponType": "sword",
+    "element": "wind",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "haste", "element_resonance"]
+  },
+  {
+    "id": "sword_wind_t4",
+    "name": "天风灭剑",
+    "weaponType": "sword",
+    "element": "wind",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "element_resonance", "chase_pct"]
+  }
+]

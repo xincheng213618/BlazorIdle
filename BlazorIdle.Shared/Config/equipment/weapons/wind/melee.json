@@ -1,0 +1,35 @@
+// 风属性拳套类武器 - Wind Element Melee Weapons
+[
+  {
+    "id": "melee_wind_t1",
+    "name": "疾风拳套",
+    "weaponType": "melee",
+    "element": "wind",
+    "tier": 1,
+    "affixSequence": ["attack", "haste", "crit", "assault"]
+  },
+  {
+    "id": "melee_wind_t2",
+    "name": "疾风拳刃",
+    "weaponType": "melee",
+    "element": "wind",
+    "tier": 2,
+    "affixSequence": ["attack", "haste", "crit", "crit_damage_bonus"]
+  },
+  {
+    "id": "melee_wind_t3",
+    "name": "风暴铁拳",
+    "weaponType": "melee",
+    "element": "wind",
+    "tier": 3,
+    "affixSequence": ["attack", "haste", "crit_damage_bonus", "backwater_boost"]
+  },
+  {
+    "id": "melee_wind_t4",
+    "name": "天风灭拳",
+    "weaponType": "melee",
+    "element": "wind",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "haste", "element_resonance"]
+  }
+]

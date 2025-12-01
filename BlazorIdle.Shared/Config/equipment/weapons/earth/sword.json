@@ -1,0 +1,35 @@
+// 地属性剑类武器 - Earth Element Sword Weapons
+[
+  {
+    "id": "sword_earth_t1",
+    "name": "大地之剑",
+    "weaponType": "sword",
+    "element": "earth",
+    "tier": 1,
+    "affixSequence": ["attack", "hp", "mitigation", "fortify_boost"]
+  },
+  {
+    "id": "sword_earth_t2",
+    "name": "山岳之剑",
+    "weaponType": "sword",
+    "element": "earth",
+    "tier": 2,
+    "affixSequence": ["attack", "hp", "fortify_boost", "vital_force"]
+  },
+  {
+    "id": "sword_earth_t3",
+    "name": "岩山魔剑",
+    "weaponType": "sword",
+    "element": "earth",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "fortify_boost", "element_resonance"]
+  },
+  {
+    "id": "sword_earth_t4",
+    "name": "崩山灭剑",
+    "weaponType": "sword",
+    "element": "earth",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "element_resonance", "mitigation"]
+  }
+]

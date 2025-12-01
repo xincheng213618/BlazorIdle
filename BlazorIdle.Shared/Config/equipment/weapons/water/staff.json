@@ -1,0 +1,35 @@
+// 水属性杖类武器 - Water Element Staff Weapons
+[
+  {
+    "id": "staff_water_t1",
+    "name": "水晶法杖",
+    "weaponType": "staff",
+    "element": "water",
+    "tier": 1,
+    "affixSequence": ["special_attack", "crit", "hp", "vital_force"]
+  },
+  {
+    "id": "staff_water_t2",
+    "name": "碧波权杖",
+    "weaponType": "staff",
+    "element": "water",
+    "tier": 2,
+    "affixSequence": ["special_attack", "crit", "vital_force", "assault"]
+  },
+  {
+    "id": "staff_water_t3",
+    "name": "深海法典",
+    "weaponType": "staff",
+    "element": "water",
+    "tier": 3,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "vital_force", "element_resonance"]
+  },
+  {
+    "id": "staff_water_t4",
+    "name": "沧海灭杖",
+    "weaponType": "staff",
+    "element": "water",
+    "tier": 4,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "element_resonance", "fortify_boost"]
+  }
+]

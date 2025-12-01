@@ -1,0 +1,35 @@
+// 光属性乐器类武器 - Light Element Harp Weapons
+[
+  {
+    "id": "harp_light_t1",
+    "name": "圣光竖琴",
+    "weaponType": "harp",
+    "element": "light",
+    "tier": 1,
+    "affixSequence": ["special_attack", "hp", "haste", "vital_force"]
+  },
+  {
+    "id": "harp_light_t2",
+    "name": "圣歌竖琴",
+    "weaponType": "harp",
+    "element": "light",
+    "tier": 2,
+    "affixSequence": ["special_attack", "hp", "vital_force", "fortify_boost"]
+  },
+  {
+    "id": "harp_light_t3",
+    "name": "圣域乐章",
+    "weaponType": "harp",
+    "element": "light",
+    "tier": 3,
+    "affixSequence": ["special_attack", "vital_force", "fortify_boost", "crit_damage_bonus"]
+  },
+  {
+    "id": "harp_light_t4",
+    "name": "天罚圣歌",
+    "weaponType": "harp",
+    "element": "light",
+    "tier": 4,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "vital_force", "element_resonance"]
+  }
+]

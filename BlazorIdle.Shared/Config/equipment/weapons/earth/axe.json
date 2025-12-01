@@ -1,0 +1,35 @@
+// 地属性斧类武器 - Earth Element Axe Weapons
+[
+  {
+    "id": "axe_earth_t1",
+    "name": "山岳重斧",
+    "weaponType": "axe",
+    "element": "earth",
+    "tier": 1,
+    "affixSequence": ["attack", "hp", "mitigation", "fortify_boost"]
+  },
+  {
+    "id": "axe_earth_t2",
+    "name": "大地裂斧",
+    "weaponType": "axe",
+    "element": "earth",
+    "tier": 2,
+    "affixSequence": ["attack", "hp", "fortify_boost", "vital_force"]
+  },
+  {
+    "id": "axe_earth_t3",
+    "name": "岩山巨斧",
+    "weaponType": "axe",
+    "element": "earth",
+    "tier": 3,
+    "affixSequence": ["attack", "fortify_boost", "vital_force", "mitigation"]
+  },
+  {
+    "id": "axe_earth_t4",
+    "name": "崩山灭斧",
+    "weaponType": "axe",
+    "element": "earth",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "fortify_boost", "element_resonance"]
+  }
+]

@@ -1,0 +1,35 @@
+// 地属性乐器类武器 - Earth Element Harp Weapons
+[
+  {
+    "id": "harp_earth_t1",
+    "name": "地之竖琴",
+    "weaponType": "harp",
+    "element": "earth",
+    "tier": 1,
+    "affixSequence": ["special_attack", "hp", "mitigation", "vital_force"]
+  },
+  {
+    "id": "harp_earth_t2",
+    "name": "山岳之歌",
+    "weaponType": "harp",
+    "element": "earth",
+    "tier": 2,
+    "affixSequence": ["special_attack", "hp", "vital_force", "fortify_boost"]
+  },
+  {
+    "id": "harp_earth_t3",
+    "name": "岩山乐章",
+    "weaponType": "harp",
+    "element": "earth",
+    "tier": 3,
+    "affixSequence": ["special_attack", "vital_force", "fortify_boost", "crit_damage_bonus"]
+  },
+  {
+    "id": "harp_earth_t4",
+    "name": "崩山灭歌",
+    "weaponType": "harp",
+    "element": "earth",
+    "tier": 4,
+    "affixSequence": ["special_attack", "crit_damage_bonus", "vital_force", "element_resonance"]
+  }
+]

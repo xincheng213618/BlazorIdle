@@ -1,0 +1,35 @@
+// 水属性刀类武器 - Water Element Katana Weapons
+[
+  {
+    "id": "katana_water_t1",
+    "name": "水月刀",
+    "weaponType": "katana",
+    "element": "water",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "vital_force"]
+  },
+  {
+    "id": "katana_water_t2",
+    "name": "碧海斩月",
+    "weaponType": "katana",
+    "element": "water",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "fortify_boost"]
+  },
+  {
+    "id": "katana_water_t3",
+    "name": "深海妖刀",
+    "weaponType": "katana",
+    "element": "water",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "fortify_boost", "element_resonance"]
+  },
+  {
+    "id": "katana_water_t4",
+    "name": "沧海灭刀",
+    "weaponType": "katana",
+    "element": "water",
+    "tier": 4,
+    "affixSequence": ["crit", "crit_damage_bonus", "fortify_boost", "element_resonance"]
+  }
+]

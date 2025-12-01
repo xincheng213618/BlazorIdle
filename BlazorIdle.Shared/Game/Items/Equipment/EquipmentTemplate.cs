@@ -37,39 +37,22 @@ namespace BlazorIdle.Game.Items.Equipment
         public string Element { get; set; } = "neutral";
 
         /// <summary>
-        /// 基础品质
-        /// Base quality
+        /// 词条序列 - 按顺序配置4个词条，掉落时根据品质取前N个
+        /// Affix sequence - 4 affixes in order, drop quality determines how many are used
+        /// 白装=0词条, 绿装=1词条, 蓝装=2词条, 紫装=3词条, 橙装=4词条
         /// </summary>
-        [JsonPropertyName("baseQuality")]
-        public string BaseQuality { get; set; } = "white";
+        [JsonPropertyName("affixSequence")]
+        public List<string> AffixSequence { get; set; } = new();
 
         /// <summary>
-        /// 可用词条池
-        /// Available affix pool
-        /// </summary>
-        [JsonPropertyName("affixPool")]
-        public List<string> AffixPool { get; set; } = new();
-
-        /// <summary>
-        /// 装备层级（1-5，影响强化材料）
-        /// Equipment tier (1-5, affects reinforcement materials)
+        /// 装备层级（1-4，决定基础攻击力和生命值）
+        /// Equipment tier (1-4, determines base attack and HP from tiers.json)
         /// </summary>
         [JsonPropertyName("tier")]
         public int Tier { get; set; } = 1;
 
-        /// <summary>
-        /// 基础攻击力
-        /// Base attack value
-        /// </summary>
-        [JsonPropertyName("baseAttack")]
-        public double BaseAttack { get; set; } = 100;
-
-        /// <summary>
-        /// 基础生命值（可选）
-        /// Base HP value (optional)
-        /// </summary>
-        [JsonPropertyName("baseHp")]
-        public double BaseHp { get; set; } = 0;
+        // 注意：baseAttack 和 baseHp 由 tier 决定，从 tiers.json 加载
+        // Note: baseAttack and baseHp are determined by tier, loaded from tiers.json
     }
 
     /// <summary>

@@ -1,0 +1,35 @@
+// 暗属性刀类武器 - Dark Element Katana Weapons
+[
+  {
+    "id": "katana_dark_t1",
+    "name": "暗黑太刀",
+    "weaponType": "katana",
+    "element": "dark",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "backwater_boost"]
+  },
+  {
+    "id": "katana_dark_t2",
+    "name": "恶魔斩月",
+    "weaponType": "katana",
+    "element": "dark",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "backwater_boost"]
+  },
+  {
+    "id": "katana_dark_t3",
+    "name": "暗影妖刀",
+    "weaponType": "katana",
+    "element": "dark",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "backwater_boost", "element_resonance"]
+  },
+  {
+    "id": "katana_dark_t4",
+    "name": "暗黑妖刀",
+    "weaponType": "katana",
+    "element": "dark",
+    "tier": 4,
+    "affixSequence": ["crit", "crit_damage_bonus", "backwater_boost", "element_resonance"]
+  }
+]

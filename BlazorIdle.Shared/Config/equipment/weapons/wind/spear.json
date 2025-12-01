@@ -1,0 +1,35 @@
+// 风属性枪类武器 - Wind Element Spear Weapons
+[
+  {
+    "id": "spear_wind_t1",
+    "name": "疾风长枪",
+    "weaponType": "spear",
+    "element": "wind",
+    "tier": 1,
+    "affixSequence": ["attack", "hp", "chase_pct", "ken_chase"]
+  },
+  {
+    "id": "spear_wind_t2",
+    "name": "苍穹之枪",
+    "weaponType": "spear",
+    "element": "wind",
+    "tier": 2,
+    "affixSequence": ["attack", "chase_pct", "ken_chase", "haste"]
+  },
+  {
+    "id": "spear_wind_t3",
+    "name": "风龙之枪",
+    "weaponType": "spear",
+    "element": "wind",
+    "tier": 3,
+    "affixSequence": ["attack", "chase_pct", "haste", "element_resonance"]
+  },
+  {
+    "id": "spear_wind_t4",
+    "name": "天风灭枪",
+    "weaponType": "spear",
+    "element": "wind",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "chase_pct", "element_resonance"]
+  }
+]

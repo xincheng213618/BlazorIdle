@@ -1,0 +1,35 @@
+// 无属性剑类武器 - Neutral Element Sword Weapons
+[
+  {
+    "id": "sword_neutral_t1",
+    "name": "铁剑",
+    "weaponType": "sword",
+    "element": "neutral",
+    "tier": 1,
+    "affixSequence": ["attack", "hp", "crit", "assault"]
+  },
+  {
+    "id": "sword_neutral_t2",
+    "name": "钢铁之剑",
+    "weaponType": "sword",
+    "element": "neutral",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "hp", "vital_force"]
+  },
+  {
+    "id": "sword_neutral_t3",
+    "name": "精金之剑",
+    "weaponType": "sword",
+    "element": "neutral",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "hp", "fortify_boost"]
+  },
+  {
+    "id": "sword_neutral_t4",
+    "name": "神铸之剑",
+    "weaponType": "sword",
+    "element": "neutral",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "fortify_boost", "chase_pct"]
+  }
+]

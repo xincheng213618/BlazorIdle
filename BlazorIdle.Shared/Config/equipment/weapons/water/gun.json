@@ -1,0 +1,35 @@
+// 水属性铳类武器 - Water Element Gun Weapons
+[
+  {
+    "id": "gun_water_t1",
+    "name": "寒冰火铳",
+    "weaponType": "gun",
+    "element": "water",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "haste", "vital_force"]
+  },
+  {
+    "id": "gun_water_t2",
+    "name": "寒冰狙击",
+    "weaponType": "gun",
+    "element": "water",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "crit_damage_bonus", "haste"]
+  },
+  {
+    "id": "gun_water_t3",
+    "name": "深海连发",
+    "weaponType": "gun",
+    "element": "water",
+    "tier": 3,
+    "affixSequence": ["crit", "crit_damage_bonus", "haste", "vital_force"]
+  },
+  {
+    "id": "gun_water_t4",
+    "name": "沧海灭铳",
+    "weaponType": "gun",
+    "element": "water",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "haste", "element_resonance"]
+  }
+]

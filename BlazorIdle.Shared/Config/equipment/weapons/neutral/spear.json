@@ -1,0 +1,35 @@
+// 无属性枪类武器 - Neutral Element Spear Weapons
+[
+  {
+    "id": "spear_neutral_t1",
+    "name": "铁枪",
+    "weaponType": "spear",
+    "element": "neutral",
+    "tier": 1,
+    "affixSequence": ["attack", "hp", "chase_pct", "mitigation"]
+  },
+  {
+    "id": "spear_neutral_t2",
+    "name": "钢铁长枪",
+    "weaponType": "spear",
+    "element": "neutral",
+    "tier": 2,
+    "affixSequence": ["attack", "chase_pct", "hp", "vital_force"]
+  },
+  {
+    "id": "spear_neutral_t3",
+    "name": "精金长枪",
+    "weaponType": "spear",
+    "element": "neutral",
+    "tier": 3,
+    "affixSequence": ["attack", "chase_pct", "fortify_boost", "vital_force"]
+  },
+  {
+    "id": "spear_neutral_t4",
+    "name": "神铸之枪",
+    "weaponType": "spear",
+    "element": "neutral",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "chase_pct", "fortify_boost"]
+  }
+]

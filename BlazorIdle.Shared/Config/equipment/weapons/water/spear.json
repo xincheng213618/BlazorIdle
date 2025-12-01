@@ -1,0 +1,35 @@
+// 水属性枪类武器 - Water Element Spear Weapons
+[
+  {
+    "id": "spear_water_t1",
+    "name": "碧波长枪",
+    "weaponType": "spear",
+    "element": "water",
+    "tier": 1,
+    "affixSequence": ["attack", "hp", "chase_pct", "ken_chase"]
+  },
+  {
+    "id": "spear_water_t2",
+    "name": "深海之枪",
+    "weaponType": "spear",
+    "element": "water",
+    "tier": 2,
+    "affixSequence": ["attack", "chase_pct", "ken_chase", "fortify_boost"]
+  },
+  {
+    "id": "spear_water_t3",
+    "name": "海龙之枪",
+    "weaponType": "spear",
+    "element": "water",
+    "tier": 3,
+    "affixSequence": ["attack", "chase_pct", "fortify_boost", "element_resonance"]
+  },
+  {
+    "id": "spear_water_t4",
+    "name": "沧海灭枪",
+    "weaponType": "spear",
+    "element": "water",
+    "tier": 4,
+    "affixSequence": ["attack", "crit_damage_bonus", "chase_pct", "element_resonance"]
+  }
+]

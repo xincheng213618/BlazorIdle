@@ -1,0 +1,35 @@
+// 风属性匕首类武器 - Wind Element Dagger Weapons
+[
+  {
+    "id": "dagger_wind_t1",
+    "name": "疾风短刃",
+    "weaponType": "dagger",
+    "element": "wind",
+    "tier": 1,
+    "affixSequence": ["attack", "crit", "haste", "assault"]
+  },
+  {
+    "id": "dagger_wind_t2",
+    "name": "疾风刺客",
+    "weaponType": "dagger",
+    "element": "wind",
+    "tier": 2,
+    "affixSequence": ["attack", "crit", "haste", "crit_damage_bonus"]
+  },
+  {
+    "id": "dagger_wind_t3",
+    "name": "风暴暗刃",
+    "weaponType": "dagger",
+    "element": "wind",
+    "tier": 3,
+    "affixSequence": ["attack", "crit_damage_bonus", "haste", "backwater_boost"]
+  },
+  {
+    "id": "dagger_wind_t4",
+    "name": "天风之牙",
+    "weaponType": "dagger",
+    "element": "wind",
+    "tier": 4,
+    "affixSequence": ["crit", "crit_damage_bonus", "haste", "element_resonance"]
+  }
+]
