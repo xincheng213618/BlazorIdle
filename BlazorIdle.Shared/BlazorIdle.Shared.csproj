@@ -65,6 +65,8 @@
     <!-- 战斗系统配置文件 / Combat system config files -->
     <EmbeddedResource Include="Config\combat\caps.json" LogicalName="BlazorIdle.Shared.Config.combat.caps.json" />
     <EmbeddedResource Include="Config\combat\crit.json" LogicalName="BlazorIdle.Shared.Config.combat.crit.json" />
+    <EmbeddedResource Include="Config\combat\variance.json" LogicalName="BlazorIdle.Shared.Config.combat.variance.json" />
+    <EmbeddedResource Include="Config\combat\stance.json" LogicalName="BlazorIdle.Shared.Config.combat.stance.json" />
     
     <!-- 元素系统配置文件 / Element system config files -->
     <EmbeddedResource Include="Config\elements\types.json" LogicalName="BlazorIdle.Shared.Config.elements.types.json" />

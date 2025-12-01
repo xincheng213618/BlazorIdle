@@ -170,6 +170,52 @@ namespace BlazorIdle.Game.Combat
 
         #endregion
 
+        #region Variance Config
+
+        /// <summary>
+        /// 加载伤害浮动配置（带缓存）
+        /// Load variance configuration (with caching)
+        /// </summary>
+        public static VarianceConfig LoadVarianceConfig()
+        {
+            return GetOrLoad("combat.variance", () =>
+            {
+                var result = LoadConfigInternal<VarianceConfig>("combat.variance.json");
+                if (result != null)
+                {
+                    Console.WriteLine($"[CombatConfigRepository] 已加载浮动配置: combat.variance.json (范围: {result.DefaultMin}-{result.DefaultMax})");
+                    return result;
+                }
+                Console.WriteLine("[CombatConfigRepository] 浮动配置未找到，使用默认配置");
+                return VarianceConfig.CreateDefault();
+            });
+        }
+
+        #endregion
+
+        #region Stance Config
+
+        /// <summary>
+        /// 加载态势配置（带缓存）
+        /// Load stance configuration (with caching)
+        /// </summary>
+        public static StanceConfig LoadStanceConfig()
+        {
+            return GetOrLoad("combat.stance", () =>
+            {
+                var result = LoadConfigInternal<StanceConfig>("combat.stance.json");
+                if (result != null)
+                {
+                    Console.WriteLine($"[CombatConfigRepository] 已加载态势配置: combat.stance.json (盛体阈值: {result.Fortify.ThresholdMin}, 背水阈值: {result.Backwater.ThresholdMax})");
+                    return result;
+                }
+                Console.WriteLine("[CombatConfigRepository] 态势配置未找到，使用默认配置");
+                return StanceConfig.CreateDefault();
+            });
+        }
+
+        #endregion
+
         #region Cache Helpers
 
         private static T GetOrLoad<T>(string cacheKey, Func<T> loader) where T : class

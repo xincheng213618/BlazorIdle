@@ -1,0 +1,10 @@
+{
+  "fortify": {
+    "thresholdMin": 0.75,
+    "description": "HPRatio >= 75% 时触发盛体"
+  },
+  "backwater": {
+    "thresholdMax": 0.50,
+    "description": "HPRatio <= 50% 时触发背水"
+  }
+}
