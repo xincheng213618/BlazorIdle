@@ -650,5 +650,267 @@ namespace BlazorIdle.Tests
         }
 
         #endregion
+
+        #region SkillResolver 新伤害系统集成测试 / SkillResolver New Damage System Integration Tests
+
+        [Fact]
+        public void SkillResolver_UsesNewDamageSystem_WhenDamageCalculatorProvided()
+        {
+            // Arrange
+            var skillResolver = new SkillResolver();
+            var rng = new RngContext(12345);
+            var clock = new TestGameClock();
+            var calculator = DamageCalculator.CreateDefault();
+
+            var playerStats = new CombatStats
+            {
+                AttackFinal = 1000,
+                AttackPercent = 10,
+                CritChancePercent = 0  // Disable crit for deterministic test
+            };
+
+            var ctx = new BattleContext
+            {
+                Rng = rng,
+                Clock = clock,
+                DamageCalculator = calculator,
+                AttackerCombatStats = playerStats,
+                AttackerElement = "water",
+                DefenderElement = "fire",
+                AttackerHPRatio = 1.0,
+                DefenderDamageReductionPercent = 10
+            };
+
+            // Act
+            var result = skillResolver.Cast("attack_basic", ctx);
+
+            // Assert
+            Assert.True(result.DamageDealt > 0);
+            Assert.True(result.HasElementAdvantage);
+            Assert.Equal(1.5, result.ElementMultiplier);
+            Assert.NotNull(result.DetailedDamageResult);
+        }
+
+        [Fact]
+        public void SkillResolver_FallsBackToLegacySystem_WhenNoDamageCalculator()
+        {
+            // Arrange
+            var skillResolver = new SkillResolver();
+            var rng = new RngContext(12345);
+            var clock = new TestGameClock();
+
+            var player = new Character
+            {
+                DamagePerAttack = 100,
+                CritChancePercent = 0
+            };
+
+            var ctx = new BattleContext
+            {
+                Player = player,
+                Rng = rng,
+                Clock = clock
+                // No DamageCalculator provided
+            };
+
+            // Act
+            var result = skillResolver.Cast("attack_basic", ctx);
+
+            // Assert
+            Assert.True(result.DamageDealt > 0);
+            Assert.False(result.HasElementAdvantage);  // Legacy system doesn't set this
+            Assert.Equal(1.0, result.ElementMultiplier);  // Default value
+            Assert.Null(result.DetailedDamageResult);  // Not set for legacy system
+        }
+
+        [Fact]
+        public void SkillResolver_NewDamageSystem_AppliesStanceBonus()
+        {
+            // Arrange
+            var skillResolver = new SkillResolver();
+            var rng = new RngContext(12345);
+            var clock = new TestGameClock();
+            var calculator = DamageCalculator.CreateDefault();
+
+            var playerStats = new CombatStats
+            {
+                AttackFinal = 1000,
+                BackwaterMaxPercent = 20,  // Enable backwater
+                CritChancePercent = 0
+            };
+
+            var ctx = new BattleContext
+            {
+                Rng = rng,
+                Clock = clock,
+                DamageCalculator = calculator,
+                AttackerCombatStats = playerStats,
+                AttackerElement = "neutral",
+                DefenderElement = "neutral",
+                AttackerHPRatio = 0.3,  // Low HP triggers backwater
+                DefenderDamageReductionPercent = 0
+            };
+
+            // Act
+            var result = skillResolver.Cast("attack_basic", ctx);
+
+            // Assert
+            Assert.True(result.StancePercent > 0);  // Backwater should be active
+            Assert.NotNull(result.DetailedDamageResult);
+            Assert.True(result.DetailedDamageResult.StancePercent > 0);
+        }
+
+        [Fact]
+        public void SkillResolver_NewDamageSystem_AppliesDefenderReduction()
+        {
+            // Arrange
+            var skillResolver = new SkillResolver();
+            var rng = new RngContext(12345);
+            var clock = new TestGameClock();
+            var calculator = DamageCalculator.CreateDefault();
+
+            var playerStats = new CombatStats
+            {
+                AttackFinal = 1000,
+                CritChancePercent = 0
+            };
+
+            var ctxNoReduction = new BattleContext
+            {
+                Rng = new RngContext(12345),
+                Clock = clock,
+                DamageCalculator = calculator,
+                AttackerCombatStats = playerStats,
+                AttackerElement = "neutral",
+                DefenderElement = "neutral",
+                AttackerHPRatio = 1.0,
+                DefenderDamageReductionPercent = 0
+            };
+
+            var ctxWithReduction = new BattleContext
+            {
+                Rng = new RngContext(12345),
+                Clock = clock,
+                DamageCalculator = calculator,
+                AttackerCombatStats = playerStats,
+                AttackerElement = "neutral",
+                DefenderElement = "neutral",
+                AttackerHPRatio = 1.0,
+                DefenderDamageReductionPercent = 50
+            };
+
+            // Act
+            var resultNoReduction = skillResolver.Cast("attack_basic", ctxNoReduction);
+            var resultWithReduction = skillResolver.Cast("attack_basic", ctxWithReduction);
+
+            // Assert
+            // 50% reduction should halve damage
+            Assert.True(resultWithReduction.DamageDealt < resultNoReduction.DamageDealt);
+            double ratio = (double)resultWithReduction.DamageDealt / resultNoReduction.DamageDealt;
+            Assert.True(ratio >= 0.45 && ratio <= 0.55, $"Expected ~50% reduction, got {ratio:P}");
+        }
+
+        [Fact]
+        public void SkillCastResult_HasNewDamageSystemProperties()
+        {
+            // Arrange & Act
+            var result = new SkillCastResult
+            {
+                DamageDealt = 1000,
+                IsCrit = true,
+                HasElementAdvantage = true,
+                ElementMultiplier = 1.5,
+                StancePercent = 10
+            };
+
+            // Assert
+            Assert.Equal(1000, result.DamageDealt);
+            Assert.True(result.IsCrit);
+            Assert.True(result.HasElementAdvantage);
+            Assert.Equal(1.5, result.ElementMultiplier);
+            Assert.Equal(10, result.StancePercent);
+        }
+
+        #endregion
+
+        #region 急速系统测试 / Haste System Tests
+
+        [Fact]
+        public void CombatStats_HastePercent_CanBeSet()
+        {
+            // Arrange & Act
+            var stats = new CombatStats
+            {
+                HastePercent = 25
+            };
+
+            // Assert
+            Assert.Equal(25, stats.HastePercent);
+        }
+
+        [Fact]
+        public void HasteCalculation_CooldownReduction()
+        {
+            // 急速计算公式测试：EffectiveCD = BaseCD / (1 + HastePercent / 100)
+            // Haste calculation test: EffectiveCD = BaseCD / (1 + HastePercent / 100)
+            
+            // Arrange
+            double baseCD = 10.0;  // 10 秒基础冷却
+            double hastePercent = 40;  // 40% 急速（上限）
+
+            // Act
+            double effectiveCD = baseCD / (1 + hastePercent / 100);
+
+            // Assert
+            // 10 / 1.4 ≈ 7.14
+            Assert.True(effectiveCD >= 7.1 && effectiveCD <= 7.2);
+        }
+
+        [Fact]
+        public void HasteCalculation_AttackSpeedIncrease()
+        {
+            // 急速计算公式测试：EffectiveAPS = BaseAPS × (1 + HastePercent / 100)
+            // Haste calculation test: EffectiveAPS = BaseAPS × (1 + HastePercent / 100)
+            
+            // Arrange
+            double baseAPS = 1.0;  // 1.0 攻击/秒
+            double hastePercent = 40;  // 40% 急速
+
+            // Act
+            double effectiveAPS = baseAPS * (1 + hastePercent / 100);
+
+            // Assert
+            // 1.0 × 1.4 = 1.4
+            Assert.Equal(1.4, effectiveAPS);
+        }
+
+        [Fact]
+        public void CombatCapsConfig_ClampHastePct()
+        {
+            // Arrange
+            var caps = CombatCapsConfig.CreateDefault();
+
+            // Act & Assert
+            Assert.Equal(40, caps.ClampHastePct(50));  // 超过上限
+            Assert.Equal(25, caps.ClampHastePct(25));  // 正常值
+            Assert.Equal(0, caps.ClampHastePct(-5));   // 负值裁剪到 0
+        }
+
+        #endregion
+    }
+
+    /// <summary>
+    /// 测试用游戏时钟
+    /// Test game clock
+    /// </summary>
+    public class TestGameClock : IGameClock
+    {
+        private int _nowMs = 0;
+
+        public int NowMs => _nowMs;
+
+        public void AdvanceBy(int ms) => _nowMs += ms;
+
+        public void Reset() => _nowMs = 0;
     }
 }
