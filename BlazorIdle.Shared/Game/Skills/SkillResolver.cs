@@ -122,7 +122,8 @@ namespace BlazorIdle.Game.Skills
                     AttackerElement = ctx.AttackerElement ?? ElementIds.Neutral,
                     DefenderElement = ctx.DefenderElement ?? ElementIds.Neutral,
                     DefenderDRPct = ctx.DefenderDamageReductionPercent,
-                    Rng = new Random(ctx.Rng.Seed + ctx.Rng.Index) // 使用当前 RNG 状态
+                    // Create deterministic Random from RngContext using NextRange() to advance state
+                    Rng = new Random(ctx.Rng.NextRange(int.MinValue, int.MaxValue))
                 };
                 
                 // Phase 8: 检查 ForceCrit
@@ -163,10 +164,6 @@ namespace BlazorIdle.Game.Skills
                 
                 dmg = damageResult.FinalDamage;
                 isCrit = damageResult.IsCrit;
-                
-                // 推进 RNG（与旧系统保持一致）
-                // Advance RNG (consistent with legacy system)
-                ctx.Rng.NextDouble();
             }
             else
             {
