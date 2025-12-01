@@ -107,14 +107,18 @@ namespace BlazorIdle.Tests
         [Fact]
         public void MultiBattle_CritAttackGainsExtraRage()
         {
-            // Arrange - 100% 暴击率
+            // Arrange - 100% 暴击率 (capped to 80% by CombatCapsConfig)
+            // Arrange - 100% crit rate (capped to 80% by CombatCapsConfig)
             var battle = CreateTestBattle(playerCount: 1, enemyCount: 1, critChance: 100.0);
             battle.Start();
 
-            // Act - 执行足够的 ticks 触发至少一次攻击
-            for (int i = 0; i < 15; i++)
+            // Act - 执行足够的 ticks 触发多次攻击，确保至少一次暴击
+            // Act - execute enough ticks to trigger multiple attacks, ensuring at least one crit
+            // With 80% crit rate, 5 attacks gives (1-0.2^5) = 99.97% chance of at least one crit
+            // 60 iterations × 100ms = 6000ms total, with 1 APS = ~6 attacks
+            for (int i = 0; i < 60; i++)
             {
-                battle.AdvanceTick(100); // 1.5秒，确保触发一次攻击
+                battle.AdvanceTick(100);
             }
 
             // Assert - 应该至少获得 2 点 rage（命中 +1，暴击 +1）

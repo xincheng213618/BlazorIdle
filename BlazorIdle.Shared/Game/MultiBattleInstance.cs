@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using BlazorIdle.Game.Combat;
 using BlazorIdle.Game.Skills;
 using BlazorIdle.Game.Tracks;
 using BlazorIdle.Game.Config;
@@ -48,6 +49,9 @@ namespace BlazorIdle.Game
         // 每个角色独立的冷却管理器，用于独立跟踪冷却
         private readonly Dictionary<string, CooldownManager> _cooldownManagers = new();
         private readonly ResourceManager _resourceManager = new();
+        
+        // Phase 5: 伤害计算器（用于新伤害系统）/ Damage calculator (for new damage system)
+        private readonly DamageCalculator _damageCalculator = DamageCalculator.CreateDefault();
         
         // Phase 9: AutoCastEngine for unified skill scheduling / AutoCastEngine 统一技能调度
         private readonly AutoCastEngine _autoCastEngine;
@@ -597,6 +601,25 @@ namespace BlazorIdle.Game
                 var defaultTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
                 var defaultTarget = defaultTargetId != null ? _enemyTeam.GetMember(defaultTargetId) : null;
 
+                // Phase 5: 计算攻击者战斗属性和HP比例
+                // Phase 5: Calculate attacker combat stats and HP ratio
+                var attackerCombatStats = character.CombatStats ?? CombatStats.CreateDefault();
+                // 如果 CombatStats.AttackFinal 为 0，使用旧的属性作为回退（向后兼容）
+                // If CombatStats.AttackFinal is 0, use legacy attributes as fallback (backward compatibility)
+                if (attackerCombatStats.AttackFinal == 0)
+                {
+                    attackerCombatStats = new CombatStats 
+                    { 
+                        AttackFinal = character.DamagePerAttack,
+                        // 向后兼容：从 Character 旧属性复制暴击属性
+                        // Backward compatibility: copy crit stats from legacy Character attributes
+                        CritChancePercent = character.CritChancePercent,
+                        CritDamageBonusPercent = (character.CritMultiplier - 1.0) * 100 // Convert multiplier to percentage
+                    };
+                }
+                double attackerHPRatio = character.MaxHp > 0 ? (double)character.Hp / character.MaxHp : 1.0;
+                double defenderDRPct = defaultTarget?.Entity?.DamageReductionPercent ?? 0;
+
                 // 创建战斗上下文
                 // Create battle context
                 var ctx = new BattleContext
@@ -610,7 +633,14 @@ namespace BlazorIdle.Game
                     PlayerResources = _playerResources.GetValueOrDefault(casterId),
                     PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(casterId),
                     EnemyBuffOwners = _enemyBuffOwners,
-                    CurrentTargetId = defaultTargetId
+                    CurrentTargetId = defaultTargetId,
+                    // Phase 5: 新伤害系统属性 / New damage system properties
+                    DamageCalculator = _damageCalculator,
+                    AttackerCombatStats = attackerCombatStats,
+                    AttackerElement = character.Element,
+                    DefenderElement = defaultTarget?.Entity?.Element ?? ElementIds.Neutral,
+                    AttackerHPRatio = attackerHPRatio,
+                    DefenderDamageReductionPercent = defenderDRPct
                 };
 
                 // Phase 4: 检查技能施放条件
@@ -763,6 +793,16 @@ namespace BlazorIdle.Game
                 var defaultTargetId = SelectPlayerTarget(_config.EnemyTargetStrategy);
                 var defaultTarget = defaultTargetId != null ? _playerTeam.GetMember(defaultTargetId) : null;
 
+                // Phase 5: 计算怪物攻击者战斗属性和HP比例
+                // Phase 5: Calculate monster attacker combat stats and HP ratio
+                // 怪物使用 BaseAttack 作为攻击力
+                // Monster uses BaseAttack as attack power
+                var monsterCombatStats = new CombatStats { AttackFinal = (int)enemy.BaseAttack };
+                double attackerHPRatio = enemy.MaxHp > 0 ? (double)enemy.Hp / enemy.MaxHp : 1.0;
+                // 防御者（玩家）的减伤百分比 - 玩家暂时没有减伤属性，默认为0
+                // Defender (player) damage reduction percentage - players don't have DR yet, default to 0
+                double defenderDRPct = 0;
+
                 // 创建战斗上下文（Enemy 作为施法者）
                 // Create battle context (Enemy as caster)
                 var ctx = new BattleContext
@@ -776,7 +816,14 @@ namespace BlazorIdle.Game
                     PlayerResources = defaultTargetId != null ? _playerResources.GetValueOrDefault(defaultTargetId) : null,
                     PlayerBuffOwner = defaultTargetId != null ? _playerBuffOwners.GetValueOrDefault(defaultTargetId) : null,
                     EnemyBuffOwners = _enemyBuffOwners,
-                    CurrentTargetId = defaultTargetId
+                    CurrentTargetId = defaultTargetId,
+                    // Phase 5: 新伤害系统属性 - 怪物作为攻击者 / New damage system properties - monster as attacker
+                    DamageCalculator = _damageCalculator,
+                    AttackerCombatStats = monsterCombatStats,
+                    AttackerElement = enemy.Element,
+                    DefenderElement = defaultTarget?.Entity?.Element ?? ElementIds.Neutral,
+                    AttackerHPRatio = attackerHPRatio,
+                    DefenderDamageReductionPercent = defenderDRPct
                 };
 
                 // Phase 4: 检查技能施放条件（怪物）
