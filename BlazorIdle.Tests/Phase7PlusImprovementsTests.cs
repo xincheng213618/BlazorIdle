@@ -187,26 +187,34 @@ namespace BlazorIdle.Tests
         [Fact]
         public void SkillResolver_Cast_WorksWithConsistentSkillDefId()
         {
-            // Arrange - Use AttackBasic which is a known skill ID
+            // Arrange - 使用新伤害系统 / Use new damage system
             var clock = new SimClock();
             var rng = new RngContext(42);
+            
+            var combatStats = new Game.Combat.CombatStats
+            {
+                AttackFinal = 50,
+                CritChancePercent = 0.0,
+                CritDamageBonusPercent = 0
+            };
             
             var player = new Character
             {
                 MaxHp = 100,
                 Hp = 100,
-                DamagePerAttack = 50,
+                CombatStats = combatStats,
                 CritChancePercent = 0.0,
                 VariancePct = 0.0,
                 ActiveCombatProfessionId = "warrior"
             };
 
             var repo = new SkillRepository();
-            // Override AttackBasic with custom multiplier
+            // 新系统使用 Damage.CoefAtk
+            // New system uses Damage.CoefAtk
             var skillDef = new SkillDef
             {
                 Id = SkillIds.AttackBasic,
-                DamageMultiplier = 2.0,
+                Damage = new DamageDef { CoefAtk = 2.0 },
                 CanCrit = true,
                 AlwaysHits = true
             };
@@ -216,7 +224,13 @@ namespace BlazorIdle.Tests
             {
                 Player = player,
                 Rng = rng,
-                Clock = clock
+                Clock = clock,
+                DamageCalculator = Game.Combat.DamageCalculator.CreateDefault(),
+                AttackerCombatStats = combatStats,
+                AttackerElement = Game.Combat.ElementIds.Neutral,
+                DefenderElement = Game.Combat.ElementIds.Neutral,
+                AttackerHPRatio = 1.0,
+                DefenderDamageReductionPercent = 0
             };
 
             var resolver = new SkillResolver(config: null, skillRepository: repo);
@@ -224,8 +238,9 @@ namespace BlazorIdle.Tests
             // Act
             var result = resolver.Cast(SkillIds.AttackBasic, ctx);
 
-            // Assert - 50 * 2.0 = 100
-            Assert.Equal(100, result.DamageDealt);
+            // Assert - 新系统: 50 * 2.0 * variance ≈ 100
+            // New system: 50 * 2.0 * variance ≈ 100
+            Assert.InRange(result.DamageDealt, 90, 110);
         }
 
         #endregion
