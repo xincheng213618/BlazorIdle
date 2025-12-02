@@ -50,28 +50,28 @@
 
 ### 阶段 1：属性映射与兼容层（P0 - 必须）
 
-**状态：** 📋 待开始
+**状态：** ✅ 已完成
 
 **目标：** 建立属性名称映射，保证旧 Buff 配置兼容。
 
 **任务清单：**
 
-- [ ] 1.1 创建 `BuffStatMapper` 类
-  - [ ] 位置：BlazorIdle.Shared/Game/Buffs/BuffStatMapper.cs
-  - [ ] 旧属性名映射表
+- [x] 1.1 创建 `BuffStatMapper` 类
+  - [x] 位置：BlazorIdle.Shared/Game/Buffs/BuffStatMapper.cs
+  - [x] 旧属性名映射表
     - `DamagePerAttack` → `AttackFinal`
     - `DamageReduction` → `DamageReductionPercent`
     - `CritMultiplier` → `CritDamageBonusPercent`（需值转换）
     - `SpecialDamage` → `AttackFinal`（旧特殊技能伤害）
-  - [ ] `NormalizeStatName(string)` 方法
-  - [ ] `NeedsValueConversion(string, out Func<double, double>)` 方法
-  - [ ] `IsValidStatName(string)` 验证方法
-  - [ ] 单元测试
+  - [x] `NormalizeStatName(string)` 方法
+  - [x] `NeedsValueConversion(string, out Func<double, double>)` 方法
+  - [x] `IsValidStatName(string)` 验证方法
+  - [x] 单元测试（17个测试）
 
-- [ ] 1.2 创建 `BuffStatApplier` 类
-  - [ ] 位置：BlazorIdle.Shared/Game/Buffs/BuffStatApplier.cs
-  - [ ] `ApplyBuffsToCombatStats(CombatStats, IBuffOwner)` 方法
-  - [ ] 支持所有 CombatStats 属性：
+- [x] 1.2 创建 `BuffStatApplier` 类
+  - [x] 位置：BlazorIdle.Shared/Game/Buffs/BuffStatApplier.cs
+  - [x] `ApplyBuffsToCombatStats(CombatStats, IBuffOwner)` 方法
+  - [x] 支持所有 CombatStats 属性：
     - `AttackFinal` (int)
     - `AttackPercent` (double)
     - `SpecialAttackPercent` (double)
@@ -85,18 +85,18 @@
     - `KenChasePercent` (double)
     - `ChaseFlat` (int)
     - `DamageReductionPercent` (double)
-  - [ ] 实现三种效果类型
+  - [x] 实现三种效果类型
     - `StatMultiplier`: `value × (1 + effectValue)`
     - `StatAdditive`: `value + effectValue`
     - `StatReduction`: `value × (1 - effectValue)`
-  - [ ] 支持层数叠加（按 Stacks 循环应用）
-  - [ ] 按 `AppliedAtMs` 排序应用
-  - [ ] 单元测试
+  - [x] 支持层数叠加（按 Stacks 循环应用）
+  - [x] 按 `AppliedAtMs` 排序应用
+  - [x] 单元测试（30个测试）
 
 **验收标准：**
-- [ ] 旧 Buff 配置（使用 DamagePerAttack）仍能正常工作
-- [ ] 新属性名（AttackPercent 等）正确映射
-- [ ] Buff 效果不受上限裁剪
+- [x] 旧 Buff 配置（使用 DamagePerAttack）仍能正常工作
+- [x] 新属性名（AttackPercent 等）正确映射
+- [x] Buff 效果不受上限裁剪
 
 **预估工作量：** 1-2 小时
 
@@ -237,11 +237,11 @@
 
 | 阶段 | 状态 | 预估 | 实际 |
 |------|------|------|------|
-| Phase 1: 属性映射与兼容层 | 📋 待开始 | 1-2h | - |
+| Phase 1: 属性映射与兼容层 | ✅ 已完成 | 1-2h | 1h |
 | Phase 2: 伤害管线集成 | 📋 待开始 | 2-3h | - |
 | Phase 3: 配置更新与兼容 | 📋 待开始 | 1-2h | - |
 | Phase 4: 测试与验证 | 📋 待开始 | 2-3h | - |
-| **总计** | **0/4 (0%)** | **6-10h** | **-** |
+| **总计** | **1/4 (25%)** | **6-10h** | **1h** |
 
 ---
 
