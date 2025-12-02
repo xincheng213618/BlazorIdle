@@ -177,7 +177,7 @@ namespace BlazorIdle.Tests
         }
 
         /// <summary>
-        /// Test 8: mage_arcane_power每层提升8% DamagePerAttack和12% SpecialDamage
+        /// Test 8: mage_arcane_power每层提升8% AttackFinal和12% SpecialAttackPercent
         /// </summary>
         [Fact]
         public void MageArcanePower_EachStackBoostsDamage()
@@ -190,17 +190,17 @@ namespace BlazorIdle.Tests
             Assert.NotNull(arcaneConfig.Effects);
             Assert.Equal(2, arcaneConfig.Effects.Count);
             
-            // Verify DamagePerAttack multiplier
+            // Verify AttackFinal multiplier (previously DamagePerAttack)
             var damageEffect = arcaneConfig.Effects.FirstOrDefault(e => 
-                e.Type == BuffEffectType.StatMultiplier && e.Target == "DamagePerAttack");
+                e.Type == BuffEffectType.StatMultiplier && e.Target == "AttackFinal");
             Assert.NotNull(damageEffect);
             Assert.Equal(0.08, damageEffect.Value);
             
-            // Verify SpecialDamage multiplier
+            // Verify SpecialAttackPercent additive (previously SpecialDamage multiplier)
             var specialEffect = arcaneConfig.Effects.FirstOrDefault(e => 
-                e.Type == BuffEffectType.StatMultiplier && e.Target == "SpecialDamage");
+                e.Type == BuffEffectType.StatAdditive && e.Target == "SpecialAttackPercent");
             Assert.NotNull(specialEffect);
-            Assert.Equal(0.12, specialEffect.Value);
+            Assert.Equal(12.0, specialEffect.Value);
         }
 
         /// <summary>

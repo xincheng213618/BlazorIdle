@@ -3,6 +3,8 @@
 // 注意 / Note:
 // - 包含所有游侠职业相关的Buff效果
 // - Contains all ranger profession related buff effects
+// - 使用新的属性名称（AttackFinal, CritDamageBonusPercent 等）
+// - Uses new attribute names (AttackFinal, CritDamageBonusPercent, etc.)
 //
 [
   {
@@ -41,7 +43,7 @@
     "effects": [
       {
         "type": "StatMultiplier",
-        "target": "DamagePerAttack",
+        "target": "AttackFinal",
         "value": 0.40
       },
       {

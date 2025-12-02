@@ -3,6 +3,8 @@
 // 注意 / Note:
 // - 包含不属于特定职业的通用负面效果
 // - Contains generic debuff effects not specific to any profession
+// - 使用新的属性名称（AttackFinal, DamageReductionPercent 等）
+// - Uses new attribute names (AttackFinal, DamageReductionPercent, etc.)
 //
 [
   {
@@ -18,7 +20,7 @@
     "effects": [
       {
         "type": "StatReduction",
-        "target": "DamagePerAttack",
+        "target": "AttackFinal",
         "value": 0.20
       }
     ]
@@ -54,7 +56,7 @@
     "effects": [
       {
         "type": "StatReduction",
-        "target": "DamagePerHit",
+        "target": "AttackFinal",
         "value": 0.20
       }
     ]

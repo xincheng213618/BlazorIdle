@@ -3,6 +3,8 @@
 // 注意 / Note:
 // - 包含不属于特定职业的通用Buff效果
 // - Contains generic buff effects not specific to any profession
+// - 使用新的属性名称（AttackFinal, CritDamageBonusPercent 等）
+// - Uses new attribute names (AttackFinal, CritDamageBonusPercent, etc.)
 //
 [
   {
@@ -18,7 +20,7 @@
     "effects": [
       {
         "type": "StatMultiplier",
-        "target": "DamagePerAttack",
+        "target": "AttackFinal",
         "value": 0.10
       }
     ]
@@ -53,9 +55,9 @@
     "defaultTarget": "Self",
     "effects": [
       {
-        "type": "StatMultiplier",
-        "target": "DamageReduction",
-        "value": 0.25
+        "type": "StatAdditive",
+        "target": "DamageReductionPercent",
+        "value": 25.0
       }
     ]
   },
@@ -91,12 +93,12 @@
       {
         "type": "StatAdditive",
         "target": "CritChancePercent",
-        "value": 0.10
+        "value": 10.0
       },
       {
-        "type": "StatMultiplier",
-        "target": "CritMultiplier",
-        "value": 0.20
+        "type": "StatAdditive",
+        "target": "CritDamageBonusPercent",
+        "value": 20.0
       }
     ]
   },

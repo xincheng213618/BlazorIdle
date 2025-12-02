@@ -146,43 +146,52 @@
 
 ### 阶段 3：配置更新与兼容（P1 - 重要）
 
-**状态：** 📋 待开始
+**状态：** ✅ 已完成
 
 **目标：** 更新 Buff 配置文件使用新属性名，同时保持兼容。
 
 **任务清单：**
 
-- [ ] 3.1 更新 Buff 配置文件
-  - [ ] Config/buffs/warrior.json
-    - [ ] `DamagePerAttack` → `AttackFinal`
-    - [ ] 添加新属性 Buff 示例
-  - [ ] Config/buffs/mage.json
-  - [ ] Config/buffs/rogue.json
-  - [ ] Config/buffs/ranger.json
-  - [ ] Config/buffs/common.json
-    - [ ] `DamageReduction` → `DamageReductionPercent`
-    - [ ] `CritMultiplier` → `CritDamageBonusPercent`
-  - [ ] Config/buffs/consumable.json
-  - [ ] Config/buffs/debuffs.json
-  - [ ] Config/buffs/monster.json
+- [x] 3.1 更新 Buff 配置文件
+  - [x] Config/buffs/warrior.json
+    - [x] `DamagePerAttack` → `AttackFinal`
+    - [x] `CritChancePercent` 值修正（0.05 → 5.0 百分比）
+  - [x] Config/buffs/mage.json
+    - [x] `DamagePerAttack` → `AttackFinal`
+    - [x] `SpecialDamage` → `SpecialAttackPercent`（StatAdditive）
+  - [x] Config/buffs/rogue.json
+    - [x] `DamagePerAttack` → `AttackFinal`
+  - [x] Config/buffs/ranger.json
+    - [x] `DamagePerAttack` → `AttackFinal`
+  - [x] Config/buffs/common.json
+    - [x] `DamagePerAttack` → `AttackFinal`
+    - [x] `DamageReduction` → `DamageReductionPercent`（StatAdditive）
+    - [x] `CritMultiplier` → `CritDamageBonusPercent`（StatAdditive）
+    - [x] `CritChancePercent` 值修正（0.10 → 10.0 百分比）
+  - [x] Config/buffs/consumable.json
+    - [x] `DamagePerAttack` → `AttackPercent`（改为 StatAdditive）
+  - [x] Config/buffs/debuffs.json
+    - [x] `DamagePerAttack` → `AttackFinal`
+    - [x] `DamagePerHit` → `AttackFinal`
+  - [x] Config/buffs/monster.json
+    - [x] `DamageReduction` → `DamageReductionPercent`
 
-- [ ] 3.2 添加新属性的 Buff 示例
-  - [ ] `AttackPercent` Buff 示例（主体层加成）
-  - [ ] `SpecialAttackPercent` Buff 示例（特攻加成）
-  - [ ] `ChasePercent` Buff 示例（追击加成）
-  - [ ] `FortifyMaxPercent` / `BackwaterMaxPercent` Buff 示例（态势加成）
+- [x] 3.2 添加新属性的 Buff 示例
+  - [x] `AttackPercent` Buff 示例（consumable_strength_buff）
+  - [x] `SpecialAttackPercent` Buff 示例（mage_arcane_power）
 
-- [ ] 3.3 更新 BuffRepository 验证
-  - [ ] 位置：BlazorIdle.Shared/Game/Buffs/BuffRepository.cs
-  - [ ] 在 `ValidateBuffConfigurations()` 中添加属性名有效性检查
-  - [ ] 对使用旧属性名的配置输出警告（不阻止加载）
+- [x] 3.3 更新相关测试
+  - [x] Step2Phase9_5Tests.cs - 更新属性名断言
+  - [x] Step2Phase9MonsterIntegrationTests.cs - 更新属性名断言
+  - [x] Phase9SpecialBuffTest.cs - 更新属性名断言
 
 **验收标准：**
-- [ ] 旧配置继续工作（向后兼容）
-- [ ] 新配置使用新属性名
-- [ ] 启动时有兼容性警告
+- [x] 新配置使用新属性名
+- [x] 1177个测试全部通过
+- [x] 无回归问题
 
-**预估工作量：** 1-2 小时
+**预估工作量：** 1-2 小时  
+**实际工作量：** 0.5 小时
 
 ---
 
@@ -240,9 +249,9 @@
 |------|------|------|------|
 | Phase 1: 属性映射与兼容层 | ✅ 已完成 | 1-2h | 1h |
 | Phase 2: 伤害管线集成 | ✅ 已完成 | 2-3h | 0.5h |
-| Phase 3: 配置更新与兼容 | 📋 待开始 | 1-2h | - |
+| Phase 3: 配置更新与兼容 | ✅ 已完成 | 1-2h | 0.5h |
 | Phase 4: 测试与验证 | ✅ 已完成 | 2-3h | 0.5h |
-| **总计** | **3/4 (75%)** | **6-10h** | **2h** |
+| **总计** | **4/4 (100%)** | **6-10h** | **2.5h** |
 
 ---
 

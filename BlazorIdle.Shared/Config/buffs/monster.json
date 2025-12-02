@@ -3,6 +3,8 @@
 // 注意 / Note:
 // - 包含所有怪物专属的Buff效果
 // - Contains all monster-specific buff effects
+// - 使用新的属性名称（DamageReductionPercent 等）
+// - Uses new attribute names (DamageReductionPercent, etc.)
 //
 [
   {
@@ -18,7 +20,7 @@
     "effects": [
       {
         "type": "StatAdditive",
-        "target": "DamageReduction",
+        "target": "DamageReductionPercent",
         "value": 5.0
       }
     ]
