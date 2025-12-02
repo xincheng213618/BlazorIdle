@@ -61,6 +61,7 @@
     <EmbeddedResource Include="Config\professions\attributes.json" LogicalName="BlazorIdle.Shared.Config.professions.attributes.json" />
     <EmbeddedResource Include="Config\professions\limits.json" LogicalName="BlazorIdle.Shared.Config.professions.limits.json" />
     <EmbeddedResource Include="Config\professions\experience.json" LogicalName="BlazorIdle.Shared.Config.professions.experience.json" />
+    <EmbeddedResource Include="Config\professions\base_stats.json" LogicalName="BlazorIdle.Shared.Config.professions.base_stats.json" />
     
     <!-- 战斗系统配置文件 / Combat system config files -->
     <EmbeddedResource Include="Config\combat\caps.json" LogicalName="BlazorIdle.Shared.Config.combat.caps.json" />
