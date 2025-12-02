@@ -2,6 +2,7 @@ using Xunit;
 using BlazorIdle.Game;
 using BlazorIdle.Game.Skills;
 using BlazorIdle.Game.Config;
+using BlazorIdle.Game.Combat;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -18,6 +19,9 @@ namespace BlazorIdle.Tests
     /// 3. CastingController properly called
     /// 4. CombatConfig actually used by SkillResolver
     /// 5. SkillIds constants used consistently
+    /// 
+    /// 旧系统清理：这些测试已更新为使用新的伤害系统（DamageCalculator + CombatStats）
+    /// Legacy cleanup: These tests have been updated to use the new damage system
     /// </summary>
     public class Stage10IntegrationTests
     {
@@ -26,23 +30,35 @@ namespace BlazorIdle.Tests
         [Fact]
         public void SkillResolver_WithCrit_EventRecordsCritCorrectly()
         {
-            // Arrange - 创建100%暴击率的战斗上下文
+            // Arrange - 创建100%暴击率的战斗上下文（使用新伤害系统）
             var clock = new SimClock();
             var rng = new RngContext(12345);
+            var combatStats = new CombatStats 
+            { 
+                AttackFinal = 100,
+                CritChancePercent = 100.0, // 100% 暴击
+                CritDamageBonusPercent = 100.0 // 2.0x crit = 100% bonus
+            };
             var player = new Character 
             { 
-                DamagePerAttack = 100, 
-                CritChancePercent = 100.0, // 100% 暴击
-                CritMultiplier = 2.0,
+                CombatStats = combatStats,
+                CritChancePercent = 100.0,
                 VariancePct = 0.0
             };
-            var enemy = new Enemy { MaxHp = 10000, Hp = 10000 };
+            var enemy = new Enemy { MaxHp = 10000, Hp = 10000, Element = ElementIds.Neutral };
+            var damageCalculator = DamageCalculator.CreateDefault();
             var ctx = new BattleContext
             {
                 Player = player,
                 Enemy = enemy,
                 Rng = rng,
-                Clock = clock
+                Clock = clock,
+                DamageCalculator = damageCalculator,
+                AttackerCombatStats = combatStats,
+                AttackerElement = ElementIds.Neutral,
+                DefenderElement = ElementIds.Neutral,
+                AttackerHPRatio = 1.0,
+                DefenderDamageReductionPercent = 0
             };
             var resolver = new SkillResolver();
 
@@ -60,23 +76,34 @@ namespace BlazorIdle.Tests
         [Fact]
         public void SkillResolver_WithoutCrit_EventRecordsNoCrit()
         {
-            // Arrange - 0% 暴击率
+            // Arrange - 0% 暴击率（使用新伤害系统）
             var clock = new SimClock();
             var rng = new RngContext(12345);
+            var combatStats = new CombatStats 
+            { 
+                AttackFinal = 100,
+                CritChancePercent = 0.0 // 无暴击
+            };
             var player = new Character 
             { 
-                DamagePerAttack = 100, 
-                CritChancePercent = 0.0, // 无暴击
-                CritMultiplier = 2.0,
+                CombatStats = combatStats,
+                CritChancePercent = 0.0,
                 VariancePct = 0.0
             };
-            var enemy = new Enemy { MaxHp = 10000, Hp = 10000 };
+            var enemy = new Enemy { MaxHp = 10000, Hp = 10000, Element = ElementIds.Neutral };
+            var damageCalculator = DamageCalculator.CreateDefault();
             var ctx = new BattleContext
             {
                 Player = player,
                 Enemy = enemy,
                 Rng = rng,
-                Clock = clock
+                Clock = clock,
+                DamageCalculator = damageCalculator,
+                AttackerCombatStats = combatStats,
+                AttackerElement = ElementIds.Neutral,
+                DefenderElement = ElementIds.Neutral,
+                AttackerHPRatio = 1.0,
+                DefenderDamageReductionPercent = 0
             };
             var resolver = new SkillResolver();
 

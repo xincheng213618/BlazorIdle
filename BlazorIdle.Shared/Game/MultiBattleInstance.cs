@@ -603,20 +603,9 @@ namespace BlazorIdle.Game
 
                 // Phase 5: 计算攻击者战斗属性和HP比例
                 // Phase 5: Calculate attacker combat stats and HP ratio
+                // 旧系统清理：移除了向后兼容逻辑，现在要求 CombatStats 必须正确设置
+                // Legacy cleanup: Removed backward compatibility, CombatStats must be properly set
                 var attackerCombatStats = character.CombatStats ?? CombatStats.CreateDefault();
-                // 如果 CombatStats.AttackFinal 为 0，使用旧的属性作为回退（向后兼容）
-                // If CombatStats.AttackFinal is 0, use legacy attributes as fallback (backward compatibility)
-                if (attackerCombatStats.AttackFinal == 0)
-                {
-                    attackerCombatStats = new CombatStats 
-                    { 
-                        AttackFinal = character.DamagePerAttack,
-                        // 向后兼容：从 Character 旧属性复制暴击属性
-                        // Backward compatibility: copy crit stats from legacy Character attributes
-                        CritChancePercent = character.CritChancePercent,
-                        CritDamageBonusPercent = (character.CritMultiplier - 1.0) * 100 // Convert multiplier to percentage
-                    };
-                }
                 double attackerHPRatio = character.MaxHp > 0 ? (double)character.Hp / character.MaxHp : 1.0;
                 double defenderDRPct = defaultTarget?.Entity?.DamageReductionPercent ?? 0;
 
