@@ -1,6 +1,8 @@
 @using BlazorIdle.Shared.Models
 @using BlazorIdle.Shared.Game
 @using BlazorIdle.Game.Config
+@using BlazorIdle.Game.Combat
+@using BlazorIdle.Game.Professions
 @using BlazorIdle.Services
 @inject IGameConfigService GameConfig
 @inject ICharacterAttributeService AttributeService
@@ -40,105 +42,163 @@
         else
         {
             <div class="section">
-                <h6 class="section-title">基础属性 (Base Attributes)</h6>
+                <h6 class="section-title">职业信息 (Profession Info)</h6>
                 <div class="stats-grid">
                     <div class="stat-item highlight-stat">
-                        <span class="stat-label">@GetMainStatName():</span>
-                        <span class="stat-value stat-main">@GetMainStatTotal()</span>
+                        <span class="stat-label">当前职业:</span>
+                        <span class="stat-value stat-main">@professionName</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">耐力:</span>
-                        <span class="stat-value">@GetStaminaTotal()</span>
+                        <span class="stat-label">职业等级:</span>
+                        <span class="stat-value">Lv.@currentLevel</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">急速等级:</span>
-                        <span class="stat-value">@GetHasteRating()</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">暴击等级:</span>
-                        <span class="stat-value">@GetCritRating()</span>
+                        <span class="stat-label">职业描述:</span>
+                        <span class="stat-value">@professionDescription</span>
                     </div>
                 </div>
             </div>
 
             <div class="section">
-                <h6 class="section-title">战斗属性 (Combat Stats)</h6>
+                <h6 class="section-title">汇总属性 (Final Stats) <small class="text-muted">= 职业基础 + 装备加成</small></h6>
+                <div class="stats-grid">
+                    <div class="stat-item highlight-stat">
+                        <span class="stat-label">⚔️ 最终攻击力:</span>
+                        <span class="stat-value stat-main">@finalStats.AttackFinal</span>
+                    </div>
+                    <div class="stat-item highlight-stat">
+                        <span class="stat-label">❤️ 最大生命值:</span>
+                        <span class="stat-value stat-main">@finalMaxHp</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">⚡ 最终攻速:</span>
+                        <span class="stat-value">@finalAttackRate.ToString("F2") 次/秒</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">🎯 暴击率:</span>
+                        <span class="stat-value">@finalStats.CritChancePercent.ToString("F1")% <span class="stat-cap">/ @combatCaps.CritChancePct%</span></span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">💥 暴击伤害加成:</span>
+                        <span class="stat-value">+@finalStats.CritDamageBonusPercent.ToString("F1")% <span class="stat-cap">/ @combatCaps.CritDamageBonusPct%</span></span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">💨 急速:</span>
+                        <span class="stat-value">@finalStats.HastePercent.ToString("F1")% <span class="stat-cap">/ @combatCaps.HastePct%</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h6 class="section-title">战斗加成 (Combat Bonuses)</h6>
                 <div class="stats-grid">
                     <div class="stat-item">
-                        <span class="stat-label">当前职业:</span>
-                        <span class="stat-value">@professionName ⭐ Lv.@currentLevel</span>
+                        <span class="stat-label">攻击加成%:</span>
+                        <span class="stat-value">+@finalStats.AttackPercent.ToString("F1")%</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">最大生命值:</span>
-                        <span class="stat-value">@character.MaxHp</span>
+                        <span class="stat-label">特攻加成%:</span>
+                        <span class="stat-value">+@finalStats.SpecialAttackPercent.ToString("F1")%</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">攻击伤害:</span>
-                        <span class="stat-value">@character.DamagePerAttack</span>
+                        <span class="stat-label">生命加成%:</span>
+                        <span class="stat-value">+@finalStats.HPPercent.ToString("F1")%</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">基础攻速:</span>
-                        <span class="stat-value">@character.AttackRateAPS.ToString("F2") 次/秒</span>
+                        <span class="stat-label">减伤%:</span>
+                        <span class="stat-value">@finalStats.DamageReductionPercent.ToString("F1")%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h6 class="section-title">态势与追击 (Stance & Chase)</h6>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">🔥 盛体态势:</span>
+                        <span class="stat-value">@finalStats.FortifyMaxPercent.ToString("F1")% <small class="text-muted">(HP≥75%)</small></span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">暴击率:</span>
-                        <span class="stat-value">@character.CritChancePercent.ToString("F1")% <span class="stat-cap">/ 60%</span></span>
+                        <span class="stat-label">💧 背水意志:</span>
+                        <span class="stat-value">@finalStats.BackwaterMaxPercent.ToString("F1")% <small class="text-muted">(HP≤50%)</small></span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">急速:</span>
-                        <span class="stat-value">@character.HastePercent.ToString("F1")% <span class="stat-cap">/ 40%</span></span>
+                        <span class="stat-label">追击%:</span>
+                        <span class="stat-value">+@finalStats.ChasePercent.ToString("F1")%</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">暴击倍率:</span>
-                        <span class="stat-value">@character.CritMultiplier.ToString("F1")x</span>
+                        <span class="stat-label">克制追击%:</span>
+                        <span class="stat-value">+@finalStats.KenChasePercent.ToString("F1")%</span>
                     </div>
+                    <div class="stat-item">
+                        <span class="stat-label">固定追击:</span>
+                        <span class="stat-value">+@finalStats.ChaseFlat</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h6 class="section-title">其他属性 (Other Stats)</h6>
+                <div class="stats-grid">
                     <div class="stat-item">
                         <span class="stat-label">伤害浮动:</span>
-                        <span class="stat-value">±@((character.VariancePct * 100).ToString("F0"))%</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="section">
-                <h6 class="section-title">技能属性 (Skill Stats)</h6>
-                <div class="stats-grid">
-                    <div class="stat-item">
-                        <span class="stat-label">技能伤害:</span>
-                        <span class="stat-value">@character.SpecialDamage</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">技能间隔:</span>
-                        <span class="stat-value">@character.SpecialIntervalSec.ToString("F1") 秒</span>
+                        <span class="stat-value">±@((professionBaseStats.Variance * 100).ToString("F0"))%</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">复活时间:</span>
-                        <span class="stat-value">@character.ReviveSec.ToString("F1") 秒</span>
+                        <span class="stat-value">@professionBaseStats.ReviveSec.ToString("F1") 秒</span>
                     </div>
                 </div>
             </div>
 
             <div class="section section-dps">
-                <h6 class="section-title">输出统计 (DPS Stats)</h6>
+                <h6 class="section-title">期望伤害模拟 (Expected Damage Simulation)</h6>
+                <div class="mb-2">
+                    <label class="form-label small mb-1">模拟血量 (Simulate HP %)</label>
+                    <div class="btn-group btn-group-sm w-100" role="group">
+                        @foreach (var hp in new[] { 1, 25, 50, 75, 100 })
+                        {
+                            <button type="button" 
+                                    class="btn @(selectedHpPercent == hp ? "btn-primary" : "btn-outline-primary")"
+                                    @onclick="() => OnHpPercentChanged(hp)">
+                                @hp%
+                            </button>
+                        }
+                    </div>
+                </div>
                 <div class="stats-grid">
+                    <div class="stat-item highlight-stat">
+                        <span class="stat-label">⚔️ 期望伤害:</span>
+                        <span class="stat-value stat-main">@expectedDamageResult?.ExpectedDamage.ToString("F1")</span>
+                    </div>
                     <div class="stat-item">
-                        <span class="stat-label">期望伤害:</span>
-                        <span class="stat-value">@expectedDamage.ToString("F1")</span>
+                        <span class="stat-label">非暴击伤害:</span>
+                        <span class="stat-value">@expectedDamageResult?.NormalDamage</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">暴击伤害:</span>
+                        <span class="stat-value stat-highlight">@expectedDamageResult?.CritDamage</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">态势加成%:</span>
+                        <span class="stat-value">@(expectedDamageResult?.StancePercent.ToString("F1") ?? "0")%
+                            @if (selectedHpPercent >= 75)
+                            {
+                                <small class="text-success">(盛体)</small>
+                            }
+                            else if (selectedHpPercent <= 50)
+                            {
+                                <small class="text-warning">(背水)</small>
+                            }
+                        </span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">生效攻速:</span>
-                        <span class="stat-value">@effectiveAPS.ToString("F2") APS</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">普攻DPS:</span>
-                        <span class="stat-value stat-highlight">@basicDPS.ToString("F1")</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">技能DPS:</span>
-                        <span class="stat-value">@skillDPS.ToString("F1")</span>
+                        <span class="stat-value">@finalAttackRate.ToString("F2") APS</span>
                     </div>
                     <div class="stat-item highlight-stat">
-                        <span class="stat-label">总DPS:</span>
-                        <span class="stat-value stat-total">@totalDPS.ToString("F1")</span>
+                        <span class="stat-label">📊 期望DPS:</span>
+                        <span class="stat-value stat-total">@(((expectedDamageResult?.ExpectedDamage ?? 0) * finalAttackRate).ToString("F1"))</span>
                     </div>
                 </div>
             </div>
@@ -155,17 +215,26 @@
     private bool isLoading;
     private CalculatedAttributes? calculatedAttrs;
     private string professionName = "";
+    private string professionDescription = "";
     private int currentLevel = 1;
-    private double expectedDamage;
-    private double effectiveAPS;
-    private double basicDPS;
-    private double skillDPS;
-    private double totalDPS;
+    
+    // 新属性系统
+    private CombatStats finalStats = new();
+    private int finalMaxHp = 0;
+    private double finalAttackRate = 0;
+    private ProfessionBaseStats professionBaseStats = new();
+    private CombatCapsConfig combatCaps = new();
+    
+    // 期望伤害模拟
+    private int selectedHpPercent = 100;
+    private ExpectedDamageResult? expectedDamageResult;
+    private readonly BattleStatsService _battleStatsService = BattleStatsService.CreateDefault();
 
     protected override async Task OnInitializedAsync()
     {
         isCollapsed = StartCollapsed;
         await GameConfig.EnsureLoadedAsync();
+        combatCaps = CombatConfigRepository.LoadCombatCaps();
         CharacterService.SelectedCharacterChanged += OnCharacterChanged;
     }
 
@@ -182,21 +251,28 @@
         try
         {
             isLoading = true;
+            
+            // 获取职业配置
+            var profConfig = ProfessionStatsRepository.Shared.GetProfession(character.ActiveCombatProfessionId);
+            professionName = profConfig?.Name ?? character.ActiveCombatProfessionId;
+            professionDescription = profConfig?.Description ?? "";
+            professionBaseStats = profConfig?.BaseStats ?? ProfessionBaseStats.CreateDefault();
+            
+            if (character.Professions.TryGetValue(character.ActiveCombatProfessionId, out var progress))
+                currentLevel = progress.Level;
+
+            // 使用新的 CharacterStatsCalculator 计算最终属性
+            // 装备配置暂未在 CharacterData 中实现，将在后续 Phase 4 集成
+            var calculator = CharacterStatsCalculator.CreateDefault();
+            finalStats = calculator.CalculateFinalStats(character.ActiveCombatProfessionId, null);
+            finalMaxHp = calculator.CalculateFinalMaxHp(character.ActiveCombatProfessionId, null);
+            finalAttackRate = calculator.CalculateFinalAttackRate(character.ActiveCombatProfessionId, null);
+
+            // 使用新的期望伤害模拟（替代旧的 DPS 计算）
+            UpdateExpectedDamage();
+            
+            // 保持旧计算系统兼容（用于其他地方可能的引用）
             calculatedAttrs = await AttributeService.CalculateAttributesAsync(character);
-            if (calculatedAttrs != null)
-            {
-                var config = await ProfessionService.GetConfigAsync(character.ActiveCombatProfessionId);
-                professionName = config?.Name ?? character.ActiveCombatProfessionId;
-
-                if (character.Professions.TryGetValue(character.ActiveCombatProfessionId, out var progress))
-                    currentLevel = progress.Level;
-
-                expectedDamage = AttributeCalculator.CalculateExpectedHitDamage(calculatedAttrs);
-                effectiveAPS = AttributeCalculator.CalculateEffectiveAPS(calculatedAttrs);
-                basicDPS = AttributeCalculator.CalculateBasicDPS(calculatedAttrs);
-                skillDPS = AttributeCalculator.CalculateSkillDPS(calculatedAttrs);
-                totalDPS = AttributeCalculator.CalculateTotalDPS(calculatedAttrs);
-            }
         }
         catch (Exception ex)
         {
@@ -209,11 +285,22 @@
         }
     }
 
-    private string GetMainStatName() => calculatedAttrs?.MainStatName ?? "主属性";
-    private int GetMainStatTotal() => calculatedAttrs?.MainStatTotal ?? 0;
-    private int GetStaminaTotal() => calculatedAttrs?.StaminaTotal ?? 0;
-    private int GetHasteRating() => calculatedAttrs?.HasteRating ?? 0;
-    private int GetCritRating() => calculatedAttrs?.CritRating ?? 0;
+    private void OnHpPercentChanged(int hpPercent)
+    {
+        selectedHpPercent = hpPercent;
+        UpdateExpectedDamage();
+    }
+
+    private void UpdateExpectedDamage()
+    {
+        if (character == null) return;
+        
+        expectedDamageResult = _battleStatsService.CalculateExpectedDamage(
+            character.ActiveCombatProfessionId,
+            loadout: null,
+            hpRatio: selectedHpPercent / 100.0
+        );
+    }
 
     private async void OnCharacterChanged(CharacterData? newCharacter)
     {

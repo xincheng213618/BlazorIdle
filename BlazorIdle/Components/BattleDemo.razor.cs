@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using BlazorIdle.Game;
 using BlazorIdle.Game.Combat;
 using BlazorIdle.Game.Config;
+using BlazorIdle.Game.Professions;
 using BlazorIdle.Game.Skills;
 using BlazorIdle.Shared.Models;
 using Microsoft.AspNetCore.Components;
@@ -17,6 +18,14 @@ namespace BlazorIdle.Components
         // Phase 9: SkillRepository for skill name lookup (using shared singleton)
         private readonly SkillRepository _skillRepository = SkillRepository.Shared;
         
+        // 新属性系统计算器实例
+        // New attribute system calculator instance
+        private readonly CharacterStatsCalculator _statsCalculator = CharacterStatsCalculator.CreateDefault();
+        
+        // 战斗属性服务 - 用于计算战斗属性和期望伤害
+        // Battle stats service - for calculating battle stats and expected damage
+        private readonly BattleStatsService _battleStatsService = BattleStatsService.CreateDefault();
+        
         // ===== Phase 5 测试: 临时战斗属性配置 =====
         // ===== Phase 5 Testing: Temporary Combat Stats Configuration =====
         
@@ -27,28 +36,34 @@ namespace BlazorIdle.Components
         private bool useNewDamageSystem = true;
         
         /// <summary>
-        /// 测试用基础攻击力
-        /// Test base attack power
+        /// 是否使用职业+装备自动计算属性（生产模式）
+        /// Whether to use profession+equipment auto-calculated stats (production mode)
         /// </summary>
-        private int testAttackFinal = 100;
+        private bool useAutoCalculatedStats = true;
         
         /// <summary>
-        /// 测试用攻击力百分比加成
-        /// Test attack percentage bonus
+        /// 额外攻击力（自动计算模式下叠加到职业基础上）/ 测试用基础攻击力（测试模式）
+        /// Extra attack power (added to profession base in auto mode) / Test base attack power (in test mode)
+        /// </summary>
+        private int testAttackFinal = 0;
+        
+        /// <summary>
+        /// 额外攻击力百分比加成
+        /// Extra attack percentage bonus
         /// </summary>
         private double testAttackPercent = 0;
         
         /// <summary>
-        /// 测试用暴击率
-        /// Test critical chance
+        /// 额外暴击率
+        /// Extra critical chance
         /// </summary>
-        private double testCritChancePercent = 15;
+        private double testCritChancePercent = 0;
         
         /// <summary>
-        /// 测试用暴击伤害加成百分比
-        /// Test critical damage bonus percentage
+        /// 额外暴击伤害加成百分比
+        /// Extra critical damage bonus percentage
         /// </summary>
-        private double testCritDamageBonusPercent = 20;
+        private double testCritDamageBonusPercent = 0;
         
         /// <summary>
         /// 测试用玩家元素属性
@@ -57,20 +72,20 @@ namespace BlazorIdle.Components
         private string testPlayerElement = ElementIds.Fire;
         
         /// <summary>
-        /// 测试用最大生命值
-        /// Test max HP
+        /// 额外最大生命值（自动计算模式下叠加到职业基础上）/ 测试用最大HP（测试模式）
+        /// Extra max HP (added to profession base in auto mode) / Test max HP (in test mode)
         /// </summary>
-        private int testMaxHp = 500;
+        private int testMaxHp = 0;
         
         /// <summary>
-        /// 测试用盛体态势上限
-        /// Test fortify stance max
+        /// 额外盛体态势上限
+        /// Extra fortify stance max
         /// </summary>
         private double testFortifyMaxPercent = 0;
         
         /// <summary>
-        /// 测试用背水态势上限
-        /// Test backwater stance max
+        /// 额外背水态势上限
+        /// Extra backwater stance max
         /// </summary>
         private double testBackwaterMaxPercent = 0;
         
@@ -147,18 +162,37 @@ namespace BlazorIdle.Components
         private BattleDigest? digest;
         private bool isRunning = false;
 
-        // 理论DPS计算（基于角色属性）
-        // Theoretical DPS calculation (based on character attributes)
+        // 理论DPS计算（基于新属性系统的期望伤害模拟）
+        // Theoretical DPS calculation (based on new attribute system expected damage simulation)
         private double theoreticalDps
         {
             get
             {
                 if (SelectedCharacter == null) return 0.0;
 
-                var hasteFactor = 1.0 + SelectedCharacter.HastePercent / 100.0;
-                var attackDps = SelectedCharacter.DamagePerAttack * SelectedCharacter.AttackRateAPS * hasteFactor;
-                var specialDps = SelectedCharacter.SpecialDamage / Math.Max(0.1, SelectedCharacter.SpecialIntervalSec);
-                return attackDps + specialDps;
+                var professionId = SelectedCharacter.ActiveCombatProfessionId;
+                
+                // 使用 BattleStatsService 计算期望伤害
+                var extra = new ExtraCombatStats
+                {
+                    ExtraAttackFinal = testAttackFinal,
+                    ExtraAttackPercent = testAttackPercent,
+                    ExtraCritChancePercent = testCritChancePercent,
+                    ExtraCritDamageBonusPercent = testCritDamageBonusPercent,
+                    ExtraFortifyMaxPercent = testFortifyMaxPercent,
+                    ExtraBackwaterMaxPercent = testBackwaterMaxPercent,
+                    ExtraMaxHp = testMaxHp
+                };
+                
+                var expectedDamageResult = _battleStatsService.CalculateExpectedDamage(
+                    professionId, 
+                    loadout: null,
+                    hpRatio: 1.0, // 假设满血
+                    extraStats: useAutoCalculatedStats ? extra : null
+                );
+                
+                var attackRate = _statsCalculator.CalculateFinalAttackRate(professionId, null);
+                return expectedDamageResult.ExpectedDamage * attackRate;
             }
         }
 
@@ -668,42 +702,44 @@ namespace BlazorIdle.Components
             var rng = new RngContext(seed);
 
             // 构造角色实体
-            // Phase 5 Test: 如果启用新伤害系统，使用测试属性
-            // Phase 5 Test: If new damage system enabled, use test attributes
-            int characterMaxHp = useNewDamageSystem ? testMaxHp : Math.Max(1, SelectedCharacter.MaxHp);
+            // 新属性系统：从职业+装备计算最终属性
+            // New attribute system: calculate final attributes from profession+equipment
+            var professionId = SelectedCharacter.ActiveCombatProfessionId;
+            var battleStats = GetBattleStatsPackage(professionId);
+            
+            // 获取职业基础属性用于非战斗属性（浮动、复活等）
+            var profBaseStats = _statsCalculator.GetProfessionBaseStats(professionId);
             
             var character = new Character
             {
-                MaxHp = characterMaxHp,
-                Hp = characterMaxHp,
-                AttackRateAPS = SelectedCharacter.AttackRateAPS,
-                DamagePerAttack = SelectedCharacter.DamagePerAttack,
-                HastePercent = SelectedCharacter.HastePercent,
-                SpecialIntervalSec = SelectedCharacter.SpecialIntervalSec,
-                SpecialDamage = SelectedCharacter.SpecialDamage,
-                CritChancePercent = SelectedCharacter.CritChancePercent,
-                CritMultiplier = SelectedCharacter.CritMultiplier,
-                VariancePct = SelectedCharacter.VariancePct,
-                ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0),
-                ActiveCombatProfessionId = SelectedCharacter.ActiveCombatProfessionId,
+                MaxHp = battleStats.MaxHp,
+                Hp = battleStats.MaxHp,
+                AttackRateAPS = battleStats.AttackRate,
+                // 新属性系统：使用 CombatStats.AttackFinal 替代旧的 DamagePerAttack
+                // New attribute system: use CombatStats.AttackFinal instead of legacy DamagePerAttack
+                DamagePerAttack = battleStats.CombatStats?.AttackFinal ?? 100,
+                HastePercent = battleStats.CombatStats?.HastePercent ?? 0,
+                SpecialIntervalSec = profBaseStats.SpecialIntervalSec,
+                // 新属性系统：特殊攻击伤害通过技能系数计算
+                // New attribute system: special attack damage calculated via skill coefficient
+                SpecialDamage = battleStats.CombatStats?.AttackFinal ?? 100,
+                CritChancePercent = battleStats.CombatStats?.CritChancePercent ?? 0,
+                // 新属性系统：暴击倍率 = 1.2 (基础) × (1 + 暴伤加成%)
+                // New attribute system: crit multiplier = 1.2 (base) × (1 + crit damage bonus%)
+                CritMultiplier = 1.2 * (1 + (battleStats.CombatStats?.CritDamageBonusPercent ?? 0) / 100.0),
+                VariancePct = profBaseStats.Variance,
+                ReviveMs = (int)Math.Round(Math.Max(0, profBaseStats.ReviveSec) * 1000.0),
+                ActiveCombatProfessionId = professionId,
                 // Phase 3+: 从CharacterData复制固定技能ID
                 // Phase 3+: Copy fixed skill IDs from CharacterData
-                NormalAttackSkillId = SelectedCharacter.FixedSkillsByProfession.TryGetValue(SelectedCharacter.ActiveCombatProfessionId, out var fixedSkills) 
+                NormalAttackSkillId = SelectedCharacter.FixedSkillsByProfession.TryGetValue(professionId, out var fixedSkills) 
                     ? fixedSkills.NormalAttack : null,
-                SpecialAttackSkillId = SelectedCharacter.FixedSkillsByProfession.TryGetValue(SelectedCharacter.ActiveCombatProfessionId, out var fixedSkills2) 
+                SpecialAttackSkillId = SelectedCharacter.FixedSkillsByProfession.TryGetValue(professionId, out var fixedSkills2) 
                     ? fixedSkills2.SpecialAttack : null,
-                // Phase 5 Test: 设置测试用元素属性和战斗属性
-                // Phase 5 Test: Set test element and combat stats
-                Element = useNewDamageSystem ? testPlayerElement : ElementIds.Neutral,
-                CombatStats = useNewDamageSystem ? new CombatStats
-                {
-                    AttackFinal = testAttackFinal,
-                    AttackPercent = testAttackPercent,
-                    CritChancePercent = testCritChancePercent,
-                    CritDamageBonusPercent = testCritDamageBonusPercent,
-                    FortifyMaxPercent = testFortifyMaxPercent,
-                    BackwaterMaxPercent = testBackwaterMaxPercent
-                } : null
+                // 新属性系统：设置元素和战斗属性
+                // New attribute system: set element and combat stats
+                Element = battleStats.Element,
+                CombatStats = battleStats.CombatStats
             };
 
             // 玩家队伍
@@ -923,42 +959,44 @@ namespace BlazorIdle.Components
             int seed = HashSeed(SelectedCharacter.Id, currentDungeon.Id, configVersion);
             var rng = new RngContext(seed);
 
-            // Phase 5 Test: 如果启用新伤害系统，使用测试属性
-            // Phase 5 Test: If new damage system enabled, use test attributes
-            int characterMaxHp = useNewDamageSystem ? testMaxHp : Math.Max(1, SelectedCharacter.MaxHp);
+            // 新属性系统：从职业+装备计算最终属性
+            // New attribute system: calculate final attributes from profession+equipment
+            var professionId = SelectedCharacter.ActiveCombatProfessionId;
+            var battleStats = GetBattleStatsPackage(professionId);
+            
+            // 获取职业基础属性用于非战斗属性（浮动、复活等）
+            var profBaseStats = _statsCalculator.GetProfessionBaseStats(professionId);
             
             var character = new Character
             {
-                MaxHp = characterMaxHp,
-                Hp = characterMaxHp,
-                AttackRateAPS = SelectedCharacter.AttackRateAPS,
-                DamagePerAttack = SelectedCharacter.DamagePerAttack,
-                HastePercent = SelectedCharacter.HastePercent,
-                SpecialIntervalSec = SelectedCharacter.SpecialIntervalSec,
-                SpecialDamage = SelectedCharacter.SpecialDamage,
-                CritChancePercent = SelectedCharacter.CritChancePercent,
-                CritMultiplier = SelectedCharacter.CritMultiplier,
-                VariancePct = SelectedCharacter.VariancePct,
-                ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0),
-                ActiveCombatProfessionId = SelectedCharacter.ActiveCombatProfessionId,
+                MaxHp = battleStats.MaxHp,
+                Hp = battleStats.MaxHp,
+                AttackRateAPS = battleStats.AttackRate,
+                // 新属性系统：使用 CombatStats.AttackFinal 替代旧的 DamagePerAttack
+                // New attribute system: use CombatStats.AttackFinal instead of legacy DamagePerAttack
+                DamagePerAttack = battleStats.CombatStats?.AttackFinal ?? 100,
+                HastePercent = battleStats.CombatStats?.HastePercent ?? 0,
+                SpecialIntervalSec = profBaseStats.SpecialIntervalSec,
+                // 新属性系统：特殊攻击伤害通过技能系数计算
+                // New attribute system: special attack damage calculated via skill coefficient
+                SpecialDamage = battleStats.CombatStats?.AttackFinal ?? 100,
+                CritChancePercent = battleStats.CombatStats?.CritChancePercent ?? 0,
+                // 新属性系统：暴击倍率 = 1.2 (基础) × (1 + 暴伤加成%)
+                // New attribute system: crit multiplier = 1.2 (base) × (1 + crit damage bonus%)
+                CritMultiplier = 1.2 * (1 + (battleStats.CombatStats?.CritDamageBonusPercent ?? 0) / 100.0),
+                VariancePct = profBaseStats.Variance,
+                ReviveMs = (int)Math.Round(Math.Max(0, profBaseStats.ReviveSec) * 1000.0),
+                ActiveCombatProfessionId = professionId,
                 // Phase 3+: 从CharacterData复制固定技能ID
                 // Phase 3+: Copy fixed skill IDs from CharacterData
-                NormalAttackSkillId = SelectedCharacter.FixedSkillsByProfession.TryGetValue(SelectedCharacter.ActiveCombatProfessionId, out var fixedSkills) 
+                NormalAttackSkillId = SelectedCharacter.FixedSkillsByProfession.TryGetValue(professionId, out var fixedSkills) 
                     ? fixedSkills.NormalAttack : null,
-                SpecialAttackSkillId = SelectedCharacter.FixedSkillsByProfession.TryGetValue(SelectedCharacter.ActiveCombatProfessionId, out var fixedSkills2) 
+                SpecialAttackSkillId = SelectedCharacter.FixedSkillsByProfession.TryGetValue(professionId, out var fixedSkills2) 
                     ? fixedSkills2.SpecialAttack : null,
-                // Phase 5 Test: 设置测试用元素属性和战斗属性
-                // Phase 5 Test: Set test element and combat stats
-                Element = useNewDamageSystem ? testPlayerElement : ElementIds.Neutral,
-                CombatStats = useNewDamageSystem ? new CombatStats
-                {
-                    AttackFinal = testAttackFinal,
-                    AttackPercent = testAttackPercent,
-                    CritChancePercent = testCritChancePercent,
-                    CritDamageBonusPercent = testCritDamageBonusPercent,
-                    FortifyMaxPercent = testFortifyMaxPercent,
-                    BackwaterMaxPercent = testBackwaterMaxPercent
-                } : null
+                // 新属性系统：设置元素和战斗属性
+                // New attribute system: set element and combat stats
+                Element = battleStats.Element,
+                CombatStats = battleStats.CombatStats
             };
 
             playerTeam = new BattleTeam<Character>("player_team", "玩家队伍", TeamType.Player);
@@ -1361,9 +1399,11 @@ namespace BlazorIdle.Components
             {
                 try
                 {
-                    // 重新计算并应用属性
-                    // Recalculate and apply attributes
-                    await AttributeService.RecalculateAndApplyAsync(SelectedCharacter);
+                    // 重新计算并应用属性（使用新属性系统）
+                    // Recalculate and apply attributes (using new attribute system)
+                    var professionId = SelectedCharacter.ActiveCombatProfessionId;
+                    var battleStats = GetBattleStatsPackage(professionId);
+                    
                     Logger.LogInformation(
                         "Recalculated attributes for character {CharacterId} after level-up from {OldLevel} to {NewLevel}",
                         SelectedCharacter.Id, oldLevel, progress.Level);
@@ -1376,20 +1416,22 @@ namespace BlazorIdle.Components
                         var battleChar = battleMember.Entity;
                         
                         // Update member's max HP (also scales current HP proportionally)
-                        battleMember.UpdateMaxHp(SelectedCharacter.MaxHp);
+                        battleMember.UpdateMaxHp(battleStats.MaxHp);
                         
-                        // Update character entity stats
-                        battleChar.MaxHp = SelectedCharacter.MaxHp;
+                        // Update character entity stats (using new attribute system)
+                        battleChar.MaxHp = battleStats.MaxHp;
                         battleChar.Hp = Math.Min(battleChar.Hp, battleChar.MaxHp);
-                        battleChar.DamagePerAttack = SelectedCharacter.DamagePerAttack;
-                        battleChar.HastePercent = SelectedCharacter.HastePercent;
-                        battleChar.CritChancePercent = SelectedCharacter.CritChancePercent;
-                        battleChar.CritMultiplier = SelectedCharacter.CritMultiplier;
+                        battleChar.AttackRateAPS = battleStats.AttackRate;
+                        battleChar.DamagePerAttack = battleStats.CombatStats?.AttackFinal ?? 100;
+                        battleChar.HastePercent = battleStats.CombatStats?.HastePercent ?? 0;
+                        battleChar.CritChancePercent = battleStats.CombatStats?.CritChancePercent ?? 0;
+                        battleChar.CritMultiplier = 1.2 * (1 + (battleStats.CombatStats?.CritDamageBonusPercent ?? 0) / 100.0);
+                        battleChar.CombatStats = battleStats.CombatStats;
                         
                         Logger.LogInformation(
-                            "Updated combat character instance: HP={HP}/{MaxHP}, Damage={Damage}, Haste={Haste}%, Crit={Crit}%",
-                            battleMember.CurrentHp, battleMember.MaxHp, battleChar.DamagePerAttack, 
-                            battleChar.HastePercent, battleChar.CritChancePercent);
+                            "Updated combat character instance: HP={HP}/{MaxHP}, Attack={Attack}, Haste={Haste}%, Crit={Crit}%",
+                            battleMember.CurrentHp, battleMember.MaxHp, battleStats.CombatStats?.AttackFinal ?? 0, 
+                            battleStats.CombatStats?.HastePercent ?? 0, battleStats.CombatStats?.CritChancePercent ?? 0);
                     }
                 }
                 catch (Exception ex)
@@ -1790,6 +1832,131 @@ namespace BlazorIdle.Components
         public async ValueTask DisposeAsync()
         {
             await Task.CompletedTask;
+        }
+
+        // ===== 新属性系统辅助方法 =====
+        // ===== New Attribute System Helper Methods =====
+
+        /// <summary>
+        /// 构建战斗用 CombatStats - 从职业+装备计算或使用测试值
+        /// Build combat stats for battle - calculate from profession+equipment or use test values
+        /// </summary>
+        /// <param name="professionId">当前职业ID / Current profession ID</param>
+        /// <returns>战斗用 CombatStats / Combat stats for battle</returns>
+        private CombatStats BuildCombatStatsForBattle(string professionId)
+        {
+            if (useAutoCalculatedStats)
+            {
+                // 生产模式：使用 CharacterStatsCalculator 从职业+装备计算
+                // Production mode: use CharacterStatsCalculator to calculate from profession+equipment
+                // TODO: 当装备系统完善后，传入实际的 EquipmentLoadout
+                var calculatedStats = _statsCalculator.CalculateFinalStats(professionId, null);
+                
+                // 添加测试加成（用于调试）
+                // Add test bonuses (for debugging)
+                return new CombatStats
+                {
+                    AttackFinal = calculatedStats.AttackFinal + testAttackFinal,
+                    AttackPercent = calculatedStats.AttackPercent + testAttackPercent,
+                    CritChancePercent = calculatedStats.CritChancePercent + testCritChancePercent,
+                    CritDamageBonusPercent = calculatedStats.CritDamageBonusPercent + testCritDamageBonusPercent,
+                    FortifyMaxPercent = calculatedStats.FortifyMaxPercent + testFortifyMaxPercent,
+                    BackwaterMaxPercent = calculatedStats.BackwaterMaxPercent + testBackwaterMaxPercent,
+                    HastePercent = calculatedStats.HastePercent,
+                    HPPercent = calculatedStats.HPPercent,
+                    SpecialAttackPercent = calculatedStats.SpecialAttackPercent,
+                    ChasePercent = calculatedStats.ChasePercent,
+                    KenChasePercent = calculatedStats.KenChasePercent,
+                    ChaseFlat = calculatedStats.ChaseFlat,
+                    DamageReductionPercent = calculatedStats.DamageReductionPercent
+                };
+            }
+            else
+            {
+                // 测试模式：使用手动输入的测试值
+                // Test mode: use manually entered test values
+                return new CombatStats
+                {
+                    AttackFinal = testAttackFinal,
+                    AttackPercent = testAttackPercent,
+                    CritChancePercent = testCritChancePercent,
+                    CritDamageBonusPercent = testCritDamageBonusPercent,
+                    FortifyMaxPercent = testFortifyMaxPercent,
+                    BackwaterMaxPercent = testBackwaterMaxPercent
+                };
+            }
+        }
+
+        /// <summary>
+        /// 获取战斗用最大生命值 - 从职业+装备计算或使用测试值
+        /// Get max HP for battle - calculate from profession+equipment or use test value
+        /// </summary>
+        /// <param name="professionId">当前职业ID / Current profession ID</param>
+        /// <returns>最大生命值 / Max HP</returns>
+        private int GetMaxHpForBattle(string professionId)
+        {
+            if (useAutoCalculatedStats)
+            {
+                // 生产模式：使用 CharacterStatsCalculator 从职业+装备计算
+                // Production mode: use CharacterStatsCalculator to calculate from profession+equipment
+                return _statsCalculator.CalculateFinalMaxHp(professionId, null) + testMaxHp;
+            }
+            else
+            {
+                // 测试模式：使用手动输入的测试值
+                // Test mode: use manually entered test value
+                return testMaxHp > 0 ? testMaxHp : 500;
+            }
+        }
+
+        /// <summary>
+        /// 获取战斗用攻速 - 从职业计算
+        /// Get attack rate for battle - calculate from profession
+        /// </summary>
+        /// <param name="professionId">当前职业ID / Current profession ID</param>
+        /// <returns>攻击速度 APS / Attack rate APS</returns>
+        private double GetAttackRateForBattle(string professionId)
+        {
+            if (useAutoCalculatedStats)
+            {
+                // 生产模式：使用 CharacterStatsCalculator 从职业+装备计算
+                // Production mode: use CharacterStatsCalculator to calculate from profession+equipment
+                return _statsCalculator.CalculateFinalAttackRate(professionId, null);
+            }
+            else
+            {
+                // 测试模式：使用角色数据中的攻速
+                // Test mode: use attack rate from character data
+                return SelectedCharacter?.AttackRateAPS ?? 2.0;
+            }
+        }
+
+        /// <summary>
+        /// 获取战斗用属性组合 - 整合 MaxHp, AttackRate, CombatStats, Element
+        /// Get battle stats package - combine MaxHp, AttackRate, CombatStats, Element
+        /// </summary>
+        /// <param name="professionId">当前职业ID / Current profession ID</param>
+        /// <returns>战斗属性组合 / Battle stats package</returns>
+        private (int MaxHp, double AttackRate, CombatStats? CombatStats, string Element) GetBattleStatsPackage(string professionId)
+        {
+            if (useNewDamageSystem)
+            {
+                return (
+                    GetMaxHpForBattle(professionId),
+                    GetAttackRateForBattle(professionId),
+                    BuildCombatStatsForBattle(professionId),
+                    testPlayerElement
+                );
+            }
+            else
+            {
+                return (
+                    Math.Max(1, SelectedCharacter?.MaxHp ?? 500),
+                    SelectedCharacter?.AttackRateAPS ?? 2.0,
+                    null,
+                    ElementIds.Neutral
+                );
+            }
         }
     }
 }

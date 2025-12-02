@@ -1,0 +1,161 @@
+// 职业基础属性配置 - Profession Base Stats Configuration
+// 定义每个职业的基础属性、初始战斗属性、资源系统和默认技能
+// Defines base stats, initial combat stats, resource system and default skills for each profession
+{
+  "warrior": {
+    "id": "warrior",
+    "name": "战士",
+    "description": "高生命、稳定输出",
+    "baseStats": {
+      "baseAttack": 100,
+      "baseHP": 500,
+      "attackRateAPS": 0.4,
+      "variance": 0.04,
+      "reviveSec": 5.0,
+      "specialIntervalSec": 5.0
+    },
+    "initialCombatStats": {
+      "critChancePercent": 5.0,
+      "critDamageBonusPercent": 0.0,
+      "hastePercent": 0.0,
+      "attackPercent": 0.0,
+      "specialAttackPercent": 0.0,
+      "hpPercent": 0.0,
+      "fortifyMaxPercent": 0.0,
+      "backwaterMaxPercent": 0.0,
+      "chasePercent": 0.0,
+      "kenChasePercent": 0.0,
+      "chaseFlat": 0,
+      "damageReductionPercent": 0.0
+    },
+    "resource": {
+      "id": "rage",
+      "name": "怒气",
+      "max": 5,
+      "initial": 0,
+      "gainPerAttack": 1,
+      "gainPerCritExtra": 1
+    },
+    "defaultSkills": {
+      "normalAttack": "warrior_attack_basic",
+      "specialAttack": "warrior_special_pulse"
+    }
+  },
+  "mage": {
+    "id": "mage",
+    "name": "法师",
+    "description": "高爆发、低生命",
+    "baseStats": {
+      "baseAttack": 80,
+      "baseHP": 300,
+      "attackRateAPS": 0.35,
+      "variance": 0.06,
+      "reviveSec": 6.0,
+      "specialIntervalSec": 6.0
+    },
+    "initialCombatStats": {
+      "critChancePercent": 10.0,
+      "critDamageBonusPercent": 10.0,
+      "hastePercent": 0.0,
+      "attackPercent": 0.0,
+      "specialAttackPercent": 5.0,
+      "hpPercent": 0.0,
+      "fortifyMaxPercent": 0.0,
+      "backwaterMaxPercent": 0.0,
+      "chasePercent": 0.0,
+      "kenChasePercent": 0.0,
+      "chaseFlat": 0,
+      "damageReductionPercent": 0.0
+    },
+    "resource": {
+      "id": "mana",
+      "name": "法力",
+      "max": 10,
+      "initial": 5,
+      "gainPerAttack": 1,
+      "gainPerCritExtra": 1
+    },
+    "defaultSkills": {
+      "normalAttack": "mage_attack_basic",
+      "specialAttack": "mage_special_pulse"
+    }
+  },
+  "rogue": {
+    "id": "rogue",
+    "name": "盗贼",
+    "description": "高急速、高暴击",
+    "baseStats": {
+      "baseAttack": 70,
+      "baseHP": 350,
+      "attackRateAPS": 0.5,
+      "variance": 0.05,
+      "reviveSec": 4.0,
+      "specialIntervalSec": 4.0
+    },
+    "initialCombatStats": {
+      "critChancePercent": 15.0,
+      "critDamageBonusPercent": 5.0,
+      "hastePercent": 10.0,
+      "attackPercent": 0.0,
+      "specialAttackPercent": 0.0,
+      "hpPercent": 0.0,
+      "fortifyMaxPercent": 0.0,
+      "backwaterMaxPercent": 0.0,
+      "chasePercent": 0.0,
+      "kenChasePercent": 0.0,
+      "chaseFlat": 0,
+      "damageReductionPercent": 0.0
+    },
+    "resource": {
+      "id": "energy",
+      "name": "能量",
+      "max": 4,
+      "initial": 4,
+      "gainPerAttack": 1,
+      "gainPerCritExtra": 1
+    },
+    "defaultSkills": {
+      "normalAttack": "rogue_attack_basic",
+      "specialAttack": "rogue_special_pulse"
+    }
+  },
+  "ranger": {
+    "id": "ranger",
+    "name": "游侠",
+    "description": "平衡型、较高急速",
+    "baseStats": {
+      "baseAttack": 85,
+      "baseHP": 400,
+      "attackRateAPS": 0.45,
+      "variance": 0.05,
+      "reviveSec": 5.0,
+      "specialIntervalSec": 5.0
+    },
+    "initialCombatStats": {
+      "critChancePercent": 8.0,
+      "critDamageBonusPercent": 0.0,
+      "hastePercent": 5.0,
+      "attackPercent": 0.0,
+      "specialAttackPercent": 0.0,
+      "hpPercent": 0.0,
+      "fortifyMaxPercent": 0.0,
+      "backwaterMaxPercent": 0.0,
+      "chasePercent": 0.0,
+      "kenChasePercent": 0.0,
+      "chaseFlat": 0,
+      "damageReductionPercent": 0.0
+    },
+    "resource": {
+      "id": "energy",
+      "name": "能量",
+      "max": 3,
+      "initial": 3,
+      "gainPerAttack": 1,
+      "gainPerCritExtra": 1
+    },
+    "defaultSkills": {
+      "normalAttack": "ranger_attack_basic",
+      "specialAttack": "ranger_special_pulse"
+    }
+  }
+}

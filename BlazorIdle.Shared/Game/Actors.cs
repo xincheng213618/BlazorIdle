@@ -1,4 +1,6 @@
 using BlazorIdle.Game.Combat;
+using BlazorIdle.Game.Items.Equipment;
+using BlazorIdle.Game.Professions;
 
 namespace BlazorIdle.Game
 {
@@ -44,6 +46,80 @@ namespace BlazorIdle.Game
         /// Aggregated combat stats (calculated from equipment affixes)
         /// </summary>
         public CombatStats? CombatStats { get; set; }
+
+        #endregion
+
+        #region 角色属性系统 / Character Attribute System
+
+        /// <summary>
+        /// 装备配置（10件装备）
+        /// Equipment loadout (10 equipment pieces)
+        /// </summary>
+        public EquipmentLoadout? EquipmentLoadout { get; set; }
+
+        /// <summary>
+        /// 根据职业和装备计算最终战斗属性
+        /// Calculate final combat stats based on profession and equipment
+        /// </summary>
+        /// <param name="calculator">角色属性计算器 / Character stats calculator (optional)</param>
+        /// <returns>最终战斗属性 / Final combat stats</returns>
+        public CombatStats GetFinalCombatStats(CharacterStatsCalculator? calculator = null)
+        {
+            calculator ??= CharacterStatsCalculator.CreateDefault();
+            return calculator.CalculateFinalStats(ActiveCombatProfessionId, EquipmentLoadout);
+        }
+
+        /// <summary>
+        /// 根据职业和装备计算最终生命值
+        /// Calculate final max HP based on profession and equipment
+        /// </summary>
+        /// <param name="calculator">角色属性计算器 / Character stats calculator (optional)</param>
+        /// <returns>最终最大生命值 / Final max HP</returns>
+        public int GetFinalMaxHp(CharacterStatsCalculator? calculator = null)
+        {
+            calculator ??= CharacterStatsCalculator.CreateDefault();
+            return calculator.CalculateFinalMaxHp(ActiveCombatProfessionId, EquipmentLoadout);
+        }
+
+        /// <summary>
+        /// 根据职业和装备计算最终攻速
+        /// Calculate final attack rate based on profession and equipment
+        /// </summary>
+        /// <param name="calculator">角色属性计算器 / Character stats calculator (optional)</param>
+        /// <returns>最终攻速 / Final attack rate APS</returns>
+        public double GetFinalAttackRate(CharacterStatsCalculator? calculator = null)
+        {
+            calculator ??= CharacterStatsCalculator.CreateDefault();
+            return calculator.CalculateFinalAttackRate(ActiveCombatProfessionId, EquipmentLoadout);
+        }
+
+        /// <summary>
+        /// 使用职业和装备更新角色属性
+        /// Update character stats using profession and equipment
+        /// </summary>
+        /// <param name="calculator">角色属性计算器 / Character stats calculator (optional)</param>
+        public void UpdateStatsFromProfessionAndEquipment(CharacterStatsCalculator? calculator = null)
+        {
+            calculator ??= CharacterStatsCalculator.CreateDefault();
+
+            // 更新战斗属性
+            CombatStats = GetFinalCombatStats(calculator);
+
+            // 更新基础属性（与旧系统兼容）
+            MaxHp = GetFinalMaxHp(calculator);
+            Hp = Math.Min(Hp, MaxHp);
+            AttackRateAPS = GetFinalAttackRate(calculator);
+            HastePercent = CombatStats.HastePercent;
+            CritChancePercent = CombatStats.CritChancePercent;
+
+            // 更新职业相关属性
+            var professionConfig = ProfessionStatsRepository.Shared.GetProfession(ActiveCombatProfessionId);
+            if (professionConfig != null)
+            {
+                VariancePct = professionConfig.BaseStats.Variance;
+                ReviveMs = (int)(professionConfig.BaseStats.ReviveSec * 1000);
+            }
+        }
 
         #endregion
 

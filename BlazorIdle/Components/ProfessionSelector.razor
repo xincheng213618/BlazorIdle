@@ -1,5 +1,6 @@
 @using BlazorIdle.Shared.Models
 @using BlazorIdle.Game.Config
+@using BlazorIdle.Game.Professions
 @using BlazorIdle.Services
 @inject ICharacterService CharacterService
 @inject IGameConfigService GameConfig
@@ -38,15 +39,21 @@
                     {
                         var progress = character.Professions.GetValueOrDefault(prof.Id);
                         var isActive = character.ActiveCombatProfessionId == prof.Id;
+                        var baseStats = GetProfessionBaseStats(prof.Id);
+                        var initialStats = GetProfessionInitialCombatStats(prof.Id);
 
                         <div class="profession-card @(isActive ? "active" : "")"
                              @onclick="() => SelectProfession(prof.Id)">
                             <div class="profession-header">
-                                <strong>@prof.Name</strong>
+                                <strong>@GetProfessionDisplayName(prof.Id)</strong>
                                 @if (isActive)
                                 {
                                     <span class="badge bg-success ms-2">激活</span>
                                 }
+                            </div>
+                            
+                            <div class="profession-desc">
+                                <small class="text-muted">@GetProfessionDescription(prof.Id)</small>
                             </div>
 
                             @if (progress != null)
@@ -65,9 +72,50 @@
                             }
 
                             <div class="profession-stats-preview">
-                                <small class="text-muted">
-                                    HP: @prof.MaxHp | ATK: @prof.DamagePerAttack | APS: @prof.AttackRateAPS
-                                </small>
+                                <div class="stat-row">
+                                    <span class="stat-icon">⚔️</span>
+                                    <span class="stat-name">攻击力:</span>
+                                    <span class="stat-value">@baseStats.BaseAttack</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-icon">❤️</span>
+                                    <span class="stat-name">生命值:</span>
+                                    <span class="stat-value">@baseStats.BaseHP</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-icon">⚡</span>
+                                    <span class="stat-name">攻速:</span>
+                                    <span class="stat-value">@baseStats.AttackRateAPS.ToString("F2") APS</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-icon">🎯</span>
+                                    <span class="stat-name">暴击率:</span>
+                                    <span class="stat-value">@initialStats.CritChancePercent.ToString("F0")%</span>
+                                </div>
+                                @if (initialStats.HastePercent > 0)
+                                {
+                                    <div class="stat-row">
+                                        <span class="stat-icon">💨</span>
+                                        <span class="stat-name">急速:</span>
+                                        <span class="stat-value">@initialStats.HastePercent.ToString("F0")%</span>
+                                    </div>
+                                }
+                                @if (initialStats.CritDamageBonusPercent > 0)
+                                {
+                                    <div class="stat-row">
+                                        <span class="stat-icon">💥</span>
+                                        <span class="stat-name">暴伤加成:</span>
+                                        <span class="stat-value">+@initialStats.CritDamageBonusPercent.ToString("F0")%</span>
+                                    </div>
+                                }
+                                @if (initialStats.SpecialAttackPercent > 0)
+                                {
+                                    <div class="stat-row">
+                                        <span class="stat-icon">✨</span>
+                                        <span class="stat-name">特攻加成:</span>
+                                        <span class="stat-value">+@initialStats.SpecialAttackPercent.ToString("F0")%</span>
+                                    </div>
+                                }
                             </div>
                         </div>
                     }
@@ -112,7 +160,7 @@
             @if (showSwitchConfirm)
             {
                 <div class="switch-confirm mt-3 alert alert-warning">
-                    <p>确认切换到 <strong>@GetProfessionName(selectedProfessionId)</strong> 吗？</p>
+                    <p>确认切换到 <strong>@GetProfessionDisplayName(selectedProfessionId)</strong> 吗？</p>
                     <div class="d-flex gap-2">
                         <button class="btn btn-sm btn-primary" @onclick="ConfirmSwitch" disabled="@isSwitching">
                             @(isSwitching ? "切换中..." : "确认")
@@ -161,8 +209,27 @@
     private double GetExpPercentage(ProfessionProgress progress)
         => progress.ExperienceToNext <= 0 ? 100 : Math.Min(100, progress.Experience * 100.0 / progress.ExperienceToNext);
 
-    private string GetProfessionName(string profId)
-        => combatProfessions.FirstOrDefault(p => p.Id == profId)?.Name ?? profId;
+    private string GetProfessionDisplayName(string profId)
+    {
+        var config = ProfessionStatsRepository.Shared.GetProfession(profId);
+        return config?.Name ?? combatProfessions.FirstOrDefault(p => p.Id == profId)?.Name ?? profId;
+    }
+
+    private string GetProfessionDescription(string profId)
+    {
+        var config = ProfessionStatsRepository.Shared.GetProfession(profId);
+        return config?.Description ?? "";
+    }
+
+    private ProfessionBaseStats GetProfessionBaseStats(string profId)
+    {
+        return ProfessionStatsRepository.Shared.GetBaseStats(profId);
+    }
+
+    private InitialCombatStats GetProfessionInitialCombatStats(string profId)
+    {
+        return ProfessionStatsRepository.Shared.GetInitialCombatStats(profId);
+    }
 
     private void SelectProfession(string professionId)
     {
@@ -259,7 +326,7 @@
 
     .profession-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill,minmax(200px,1fr));
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
         gap: 15px;
     }
 
@@ -302,8 +369,13 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 8px;
+        margin-bottom: 4px;
         font-size: .95rem;
+    }
+
+    .profession-desc {
+        margin-bottom: 8px;
+        font-size: .8rem;
     }
 
     .profession-level {
@@ -343,7 +415,31 @@
     .profession-stats-preview {
         padding-top: 8px;
         border-top: 1px solid #e9ecef;
-        font-size: .7rem;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .stat-row {
+        display: flex;
+        align-items: center;
+        font-size: .75rem;
+    }
+
+    .stat-icon {
+        width: 18px;
+        text-align: center;
+    }
+
+    .stat-name {
+        color: #6c757d;
+        margin-left: 4px;
+    }
+
+    .stat-value {
+        margin-left: auto;
+        font-weight: 600;
+        color: #495057;
     }
 
     .profession-note {

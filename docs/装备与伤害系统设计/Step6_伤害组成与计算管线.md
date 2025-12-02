@@ -1,15 +1,22 @@
 # Step6 伤害组成与计算管线（与装备词条/元素/技能系统联动）详细设计
 
-版本：v1.2  
-日期：2025-11-29  
+版本：v1.3  
+日期：2025-12-02  
 作者：@copilot  
-本次更新：与 v1.1 相比，明确双攻击系（Attack% / SpecialAttack%）、新增 HP% 词条（不入伤害乘区，仅影响最大生命）、暴击基础倍率 1.2 + 额外暴击伤害加成%，删去旧“技能专精”描述，统一术语（CritDamageBonusPercent、KenChasePercent、ChasePercent）。确认盛体 / 背水互斥区间无需额外选择逻辑。
+本次更新：v1.3 移除护甲系统（ArmorCurve），简化减伤层为直接使用减伤百分比；新增急速属性（HastePct）说明。
 
 --------------------------------
-更新摘要（v1.2 必要变更）
+更新摘要（v1.3 必要变更）
+--------------------------------
+1. 移除护甲系统：删除 ArmorCurve、Armor 字段，减伤层简化为 `AfterDefense = AfterChase × (1 - DR%/100)`。
+2. 新增急速属性：HastePct 上限 40%，影响攻速和施法速度。
+3. 更新伪代码和配置示例以反映上述变更。
+
+--------------------------------
+历史更新摘要（v1.2）
 --------------------------------
 1. 主体加成层：现在包含 (1 + Attack%) × (1 + SpecialAttack%) × (1 + Stance%)。  
-2. 词条“mastery / skillDamage%”相关描述删除；所有伤害统一视为技能，不区分普通攻击与技能输出乘区。  
+2. 词条"mastery / skillDamage%"相关描述删除；所有伤害统一视为技能，不区分普通攻击与技能输出乘区。  
 3. 暴击层：基础暴击倍率 baseMultiplier=1.2；终结词条提供 CritDamageBonusPercent，乘区变为 (1 + CritDamageBonus%/100)。最大合计 50% → 最终暴击倍率 ≤ 1.2 × 1.5 = 1.8。  
 4. HPPercent 不进入伤害乘区，只用于最大生命值计算与生存系统。  
 5. 追击层术语统一：ChasePercent、KenChasePercent（克制条件成立时）、ChaseFlat。  
@@ -42,7 +49,7 @@
 1. 目标与原则
 --------------------------------
 - 多来源伤害加成统一到简洁乘区，减少爆炸可能。
-- 词条与强化变化“所见即所得” → 所有百分比先裁剪再入管线。
+- 词条与强化变化"所见即所得" → 所有百分比先裁剪再入管线。
 - 乘区限制：主体 / 暴击 / 元素；追击在尾部加法。
 - 盛体 / 背水互斥；元素克制与克制追击分层避免重复。
 
@@ -50,15 +57,15 @@
 2. 核心字段与数据来源
 --------------------------------
 角色：
-- AttackFinal：基础攻击（等级/职业/装备基础）已经含 AttackFlat 等基础面板值。
+- AttackFinal：基础攻击（职业基础 + 装备基础）已经含 AttackFlat 等基础面板值。
 - AttackPercent（词条汇总后裁剪）
 - SpecialAttackPercent（词条汇总后裁剪）
 - HPPercent（仅面板最大生命提升）
+- HastePercent（急速，影响攻速和施法速度）
 - CritChancePercent、CritDamageBonusPercent
 - FortifyMaxPct、BackwaterMaxPct（态势上限）
 - ChasePercent、KenChasePercent、ChaseFlat
 - DamageReductionPercent
-- Armor
 
 技能：
 - SkillCoef、SkillFlat、VarianceMin/VarianceMax、element（可选）
@@ -71,18 +78,19 @@
 3. 上限（Caps）引用
 --------------------------------
 与 Step5 文档一致：
-AttackPct 100 / SpecialAttackPct 80 / HPPercent 100 / CritChancePct 80 / CritDamageBonusPct 50 / FortifyMaxPct 20 / BackwaterMaxPct 20 / ChasePct 30 / KenChasePct 20 / DamageReductionPct 90 / ChaseFlatCap 按阶段定。
+AttackPct 100 / SpecialAttackPct 80 / HPPercent 100 / CritChancePct 80 / CritDamageBonusPct 50 / HastePct 40 / FortifyMaxPct 20 / BackwaterMaxPct 20 / ChasePct 30 / KenChasePct 20 / DamageReductionPct 90 / ChaseFlatCap 按阶段定。
 
 --------------------------------
 4. 伤害管线层级顺序（更新）
 --------------------------------
 1. 基础层（Base）  
-2. 主体加成层（Attack% / SpecialAttack% / Stance%）  
-3. 暴击层（Crit）  
-4. 元素层（ElementMult）  
-5. 追击层（Chase / KenChase / FlatChase）  
-6. 减伤层（ArmorCurve / DamageReduction%）  
-7. 收尾层（封底、记录）
+2. 浮动层（Variance）
+3. 主体加成层（Attack% / SpecialAttack% / Stance%）  
+4. 暴击层（Crit）  
+5. 元素层（ElementMult）  
+6. 追击层（Chase / KenChase / FlatChase）  
+7. 减伤层（DamageReduction%）  
+8. 收尾层（封底、记录）
 
 --------------------------------
 5. 各层详细公式
@@ -94,7 +102,7 @@ AfterVariance = BaseComponent × Variance
 AfterMain = AfterVariance × (1 + AttackPct/100) × (1 + SpecialAttackPct/100) × (1 + StancePct/100)
 
 暴击层：
-AfterCrit = AfterMain × ( isCrit ? (1 + CritDamageBonusPct/100) × baseCritMultiplier : 1 )
+AfterCrit = AfterMain × ( isCrit ? baseCritMultiplier × (1 + CritDamageBonusPct/100) : 1 )
 
 元素层：
 AfterElement = AfterCrit × ElementMult  (1.5 / 1.0 / 0.75)
@@ -105,8 +113,8 @@ AfterChase = AfterElement
            + AfterElement × (KenChasePct/100, 若克制成立)
            + ChaseFlat
 
-减伤层：
-AfterDefense = AfterChase × (1 - ArmorCurve(Armor)) × (1 - DamageReductionPct/100)
+减伤层（v1.3 简化）：
+AfterDefense = AfterChase × (1 - DamageReductionPct/100)
 
 收尾：
 FinalDamage = max(1, round(AfterDefense))
@@ -142,7 +150,7 @@ Atk% = AttackPct; Sp% = SpecialAttackPct; St% = StancePct
 CritDmgBonus% = CritDamageBonusPct; CritMultBase = 1.2  
 ElemM = ElementMult  
 Ch% = ChasePct; KenCh% = KenChasePct; ChFlat = ChaseFlat  
-AR = ArmorCurve(Armor); DR% = DamageReductionPct  
+DR% = DamageReductionPct  
 
 Base = A × SC + SF  
 Var = Base × V  
@@ -150,7 +158,7 @@ Main = Var × (1+Atk%/100) × (1+Sp%/100) × (1+St%/100)
 Crit = Main × (isCrit ? CritMultBase × (1+CritDmgBonus%/100) : 1)  
 Elem = Crit × ElemM  
 Chase = Elem + Elem×(Ch%/100) + Elem×(KenCh%/100) + ChFlat  
-Defense = Chase × (1-AR) × (1-DR%/100)  
+Defense = Chase × (1-DR%/100)  
 Final = round( max(1, Defense) )
 
 --------------------------------
@@ -162,7 +170,7 @@ Final = round( max(1, Defense) )
 - CritChance=25% 命中；CritDamageBonus%=40
 - ElemM=1.5（克制）
 - Ch%=15, KenCh%=10, ChFlat=50
-- AR=0.10, DR%=5
+- DR%=5
 
 过程：
 Base = 1000×1.2 + 80 = 1280  
@@ -171,8 +179,8 @@ Main = 1318.4 ×1.8 ×1.4 ×1.1 ≈ 3651.0
 Crit = 3651.0 × (1.2 × (1+0.40)) = 3651.0 × 1.68 ≈ 6137.7  
 Elem = 6137.7 ×1.5 ≈ 9206.6  
 Chase = 9206.6 + 9206.6×0.15 + 9206.6×0.10 + 50 ≈ 9206.6 + 1380.99 + 920.66 + 50 = 11558.25  
-Defense = 11558.25 ×0.9 ×0.95 ≈ 9899.3  
-FinalDamage ≈ 9899
+Defense = 11558.25 × 0.95 ≈ 10980.3  
+FinalDamage ≈ 10980
 
 --------------------------------
 10. 配置结构示例
@@ -181,11 +189,12 @@ FinalDamage ≈ 9899
 {
   "combat": {
     "variance": { "defaultMin": 0.95, "defaultMax": 1.05 },
-    "crit": { "baseMultiplier": 1.2, "critDamageBonusCap": 50.0 },
+    "crit": { "baseMultiplier": 1.2 },
     "caps": {
       "AttackPct": 100.0,
       "SpecialAttackPct": 80.0,
       "HPPercent": 100.0,
+      "HastePct": 40.0,
       "CritChancePct": 80.0,
       "CritDamageBonusPct": 50.0,
       "FortifyMaxPct": 20.0,
@@ -195,8 +204,7 @@ FinalDamage ≈ 9899
       "DamageReductionPct": 90.0,
       "ChaseFlatCap": 9999
     },
-    "element": { "advantageMultiplier": 1.5, "reverseMultiplier": 0.75, "defaultMultiplier": 1.0 },
-    "armorCurve": { "k": 50.0 }
+    "element": { "advantageMultiplier": 1.5, "reverseMultiplier": 0.75, "defaultMultiplier": 1.0 }
   }
 }
 ```
@@ -229,10 +237,10 @@ double CalcDamage(HitCtx ctx) {
     double chaseFlat = Clamp(ctx.Stats.ChaseFlat, 0, Caps.ChaseFlatCap);
     double afterChase = afterElem + afterElem * (chasePct/100) + afterElem * (kenChasePct/100) + chaseFlat;
 
-    double armorReduce = ArmorCurve(ctx.Defender.Armor, ArmorCurveK);
-    double drPct = Clamp(ctx.Defender.DamageReductionPct + ctx.Buffs.MitigationPct, 0, Caps.DamageReductionPct);
-
-    double afterDefense = afterChase * (1 - armorReduce) * (1 - drPct/100);
+    // v1.3: 简化减伤层，移除护甲曲线
+    double drPct = Clamp(ctx.Defender.DamageReductionPct, 0, Caps.DamageReductionPct);
+    double afterDefense = afterChase * (1 - drPct/100);
+    
     double final = Math.Max(1, Math.Round(afterDefense));
     EmitCombatEvent(ctx, final);
     return final;
@@ -250,7 +258,7 @@ double CalcDamage(HitCtx ctx) {
 13. 测试矩阵（更新版）
 --------------------------------
 单元：
-- AttackPct / SpecialAttackPct / CritChancePct / CritDamageBonusPct Caps 裁剪
+- AttackPct / SpecialAttackPct / CritChancePct / CritDamageBonusPct / HastePct Caps 裁剪
 - 盛体 / 背水区间边界 (0.50,0.75)
 - 元素克制与被克制乘区
 - KenChasePct 仅在 elemMult=1.5 时生效
@@ -269,7 +277,7 @@ double CalcDamage(HitCtx ctx) {
 - CritDamageBonusCap 控制暴击上限
 - ChasePct / KenChasePct equipLimit 控制尾部加成
 - StanceMaxPct 调节高血 / 低血差异
-- ArmorCurve k 调整怪物防御收益
+- DamageReductionPct 上限控制减伤收益
 
 --------------------------------
 15. 风险与缓解策略
@@ -285,7 +293,7 @@ double CalcDamage(HitCtx ctx) {
 16. 未来扩展预留
 --------------------------------
 - 真伤追击（不受减伤层）
-- 穿透（ArmorPenetrationPercent）前置于减伤层
+- 穿透（DamageReductionPenetrationPercent）前置于减伤层
 - 暴击期望溢出机制（精准伤害）
 - Stance 过渡带（70%~55% 区间渐变）
 - 元素耐性与穿透
@@ -302,5 +310,10 @@ Phase C5：平衡调参与日志可视化
 --------------------------------
 18. 总结
 --------------------------------
-v1.2 伤害管线已与最新词条系统 (Step5 v2.1) 对齐：双攻击系、基础暴击倍率、态势互斥、追击尾部加法、克制追击条件化、HP% 不直接增伤。结构紧凑、易控、可扩展，满足初期放置游戏数值稳定与构筑差异化需要。  
-后续若需自动化采样 / 回归脚本或性能基准，请继续指示。  
+v1.3 伤害管线更新：
+- 移除护甲系统，简化减伤为直接百分比计算
+- 新增急速属性（HastePct 40%上限）
+- 与最新词条系统 (Step5 v2.1) 对齐
+
+结构紧凑、易控、可扩展，满足初期放置游戏数值稳定与构筑差异化需要。  
+后续若需自动化采样 / 回归脚本或性能基准，请继续指示。
