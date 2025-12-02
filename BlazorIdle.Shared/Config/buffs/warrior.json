@@ -123,8 +123,8 @@
     "effects": [
       {
         "type": "StatMultiplier",
-        "target": "AttackFinal",
-        "value": 0.10
+        "target": "AttackPercent",
+        "value": 0.50
       }
     ]
   }
