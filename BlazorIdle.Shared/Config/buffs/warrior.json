@@ -113,7 +113,7 @@
   {
     "id": "strength_aura_buff",
     "name": "力量光环",
-    "description": "Step3: 战士光环效果 - 提升全队攻击力",
+    "description": "Step3: 战士光环效果 - 提升全队攻击力50%",
     "icon": "⚔️",
     "kind": "Buff",
     "durationSec": 10.0,
@@ -122,9 +122,9 @@
     "defaultTarget": "AllAllies",
     "effects": [
       {
-        "type": "StatMultiplier",
+        "type": "StatAdditive",
         "target": "AttackPercent",
-        "value": 0.50
+        "value": 50.0
       }
     ]
   }

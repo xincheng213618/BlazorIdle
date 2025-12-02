@@ -83,6 +83,51 @@
 
 ---
 
+## ⚠️ 效果类型使用指南
+
+### StatMultiplier vs StatAdditive
+
+对于百分比属性（如 `AttackPercent`），正确的效果类型选择非常重要：
+
+#### StatMultiplier（乘法效果）
+- **公式**：`新值 = 原值 × (1 + value)`
+- **适用场景**：当原值已经有基础值时增强
+- **注意**：如果原值为 0，结果也是 0！
+
+```json
+// 错误用法：基础 AttackPercent 为 0 时无效
+{
+  "type": "StatMultiplier",
+  "target": "AttackPercent",
+  "value": 0.50  // 0 × 1.5 = 0，没有效果！
+}
+```
+
+#### StatAdditive（加法效果）
+- **公式**：`新值 = 原值 + value`
+- **适用场景**：直接增加固定数值
+
+```json
+// 正确用法：直接增加 50% 攻击力加成
+{
+  "type": "StatAdditive",
+  "target": "AttackPercent",
+  "value": 50.0  // 0 + 50 = 50%
+}
+```
+
+### 常见配置示例
+
+| 想要的效果 | 正确配置 |
+|-----------|----------|
+| 增加 50% 攻击力加成 | `StatAdditive` + `AttackPercent` + `50.0` |
+| 增加 20 点基础攻击 | `StatAdditive` + `AttackFinal` + `20` |
+| 当前攻击力提升 50% | `StatMultiplier` + `AttackFinal` + `0.50` |
+| 增加 10% 暴击率 | `StatAdditive` + `CritChancePercent` + `10.0` |
+| 增加 30% 暴击伤害 | `StatAdditive` + `CritDamageBonusPercent` + `30.0` |
+
+---
+
 ## 🔧 实施方案
 
 ### Phase 1：属性映射层
