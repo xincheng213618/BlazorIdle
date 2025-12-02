@@ -295,6 +295,17 @@
 
 ## 📝 变更日志
 
+### 2025-12-02 v1.3 ✅ 实施完成
+- 修复力量光环配置错误：`StatMultiplier` 改为 `StatAdditive`
+- 在设计文档中添加效果类型使用指南
+- 所有功能已测试验证通过
+
+### 2025-12-02 v1.2
+- 修复 `DamageCalculator` 二次属性裁剪问题
+- 移除对 `AttackPercent` 等属性的裁剪，让 Buff 效果能够突破上限
+- 保留 `CritChancePercent` 裁剪（暴击率逻辑上不能超过100%）
+- 修复 `BattleDemo.razor.cs` 怪物属性缺失问题（Element, BaseAttack, DamageReductionPercent）
+
 ### 2025-12-02 v1.1
 - 修正属性上限公式：`最终属性 = 职业属性 + Clamp(装备属性) + Buff效果`
 - 明确仅装备属性受上限裁剪，职业属性不受影响
@@ -308,6 +319,31 @@
 
 ---
 
-**最后更新：** 2025-12-02 v1.0  
+## 🔗 下一步工作
+
+### 下一个 PR：旧系统清理
+
+建议在下一个 PR 中进行以下清理工作：
+
+1. **移除旧的 Buff 应用逻辑**
+   - `SkillResolver.ApplyBuffEffects()` 方法可以移除
+   - 旧的 `DamagePerAttack` 直接修改逻辑可以移除
+
+2. **移除 Character 类中的 [Obsolete] 属性**
+   - `DamagePerAttack` 属性
+   - `SpecialDamage` 属性
+   - `CritMultiplier` 属性
+
+3. **清理 MultiBattleInstance 中的向后兼容逻辑**
+   - 移除旧伤害系统的回退逻辑
+   - 简化战斗代码
+
+4. **更新相关测试**
+   - 移除针对旧属性的测试
+   - 更新测试使用新属性名
+
+---
+
+**最后更新：** 2025-12-02 v1.3  
 **维护者：** @copilot  
-**状态：** 📋 待开始
+**状态：** ✅ 已完成
