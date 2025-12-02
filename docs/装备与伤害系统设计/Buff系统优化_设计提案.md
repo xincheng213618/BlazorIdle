@@ -24,10 +24,11 @@
 ### 属性上限规则
 
 ```
-最终属性 = Clamp(职业属性 + 装备属性) + Buff效果
+最终属性 = 职业属性 + Clamp(装备属性) + Buff效果
 
 关键规则：
-- 装备部分的属性汇总受上限裁剪（如 AttackPercent 上限 100%）
+- 仅装备部分的属性受上限裁剪（如 AttackPercent 上限 100%）
+- 职业基础属性不受上限裁剪
 - Buff 效果不受上限裁剪，直接叠加到最终属性
 - 例如：玩家装备 AttackPercent = 108% → 裁剪为 100%
        再获得 20% 攻击力 Buff → 最终按 120% 计算
@@ -37,10 +38,18 @@
 
 ```
 最终战斗属性 = 
-    Clamp(职业基础属性 + 装备基础属性 + 装备词条属性)  // 受上限裁剪
-    + Buff 加成                                        // 不受上限裁剪
-    + (未来)天赋加成                                   // 规划中
+    职业基础属性                           // 不受上限裁剪
+    + Clamp(装备基础属性 + 装备词条属性)    // 仅装备部分受上限裁剪
+    + Buff 加成                            // 不受上限裁剪
+    + (未来)天赋加成                        // 规划中，可能也不受上限裁剪
 ```
+
+### 实现要点
+
+为了正确实现此公式，需要：
+1. **分离装备属性计算**：装备属性单独汇总并应用上限裁剪
+2. **职业属性直接叠加**：职业初始属性不经过裁剪
+3. **Buff 效果最后叠加**：Buff 效果在裁剪后的属性上叠加，不受上限影响
 
 ---
 
@@ -260,7 +269,9 @@ private static double ApplyEffectDouble(double baseValue, BuffEffectType type, d
 修改 `SkillResolver.Cast()` 方法，在创建 `DamageContext` 前应用 Buff：
 
 ```csharp
-// 1. 获取基础战斗属性（已过装备上限裁剪）
+// 1. 获取战斗属性
+//    公式：最终属性 = 职业属性 + Clamp(装备属性) + Buff效果
+//    传入的 baseStats 应该已经是：职业属性 + Clamp(装备属性) 的结果
 var baseStats = ctx.AttackerCombatStats ?? CombatStats.CreateDefault();
 
 // 2. 应用 Buff 效果（不受上限裁剪）
@@ -277,6 +288,54 @@ var damageCtx = new DamageContext
     AttackerStats = buffedStats,  // 包含 Buff 加成的属性
     // ...其他属性
 };
+```
+
+### Phase 4：CharacterStatsCalculator 修改
+
+修改属性计算流程，分离装备属性裁剪：
+
+```csharp
+/// <summary>
+/// 计算最终战斗属性
+/// 公式：最终属性 = 职业属性 + Clamp(装备属性) + Buff效果
+/// </summary>
+public CombatStats CalculateFinalStats(
+    string professionId, 
+    EquipmentLoadout loadout,
+    IBuffOwner? buffOwner = null)
+{
+    // 1. 获取职业基础属性（不裁剪）
+    var professionStats = GetProfessionInitialCombatStats(professionId);
+    
+    // 2. 计算装备属性并单独裁剪
+    var equipmentStats = EquipmentCalculator.Calculate(loadout);
+    var clampedEquipmentStats = equipmentStats.Clamp(CombatCapsConfig);
+    
+    // 3. 合并职业 + 裁剪后的装备
+    var mergedStats = MergeStats(professionStats, clampedEquipmentStats);
+    
+    // 4. 应用 Buff 效果（不裁剪）
+    if (buffOwner != null)
+    {
+        return BuffStatApplier.ApplyBuffsToCombatStats(mergedStats, buffOwner);
+    }
+    
+    return mergedStats;
+}
+
+/// <summary>
+/// 合并两个 CombatStats（加法叠加）
+/// </summary>
+private CombatStats MergeStats(CombatStats profession, CombatStats equipment)
+{
+    return new CombatStats
+    {
+        AttackFinal = profession.AttackFinal + equipment.AttackFinal,
+        AttackPercent = profession.AttackPercent + equipment.AttackPercent,
+        SpecialAttackPercent = profession.SpecialAttackPercent + equipment.SpecialAttackPercent,
+        // ... 其他属性同理
+    };
+}
 ```
 
 ---
@@ -436,28 +495,36 @@ var damageCtx = new DamageContext
 ### 场景：玩家装备 108% 攻击加成 + 获得 20% 攻击 Buff
 
 ```
-装备属性汇总：
-- 职业初始 AttackPercent = 0%
+属性计算（公式：最终属性 = 职业属性 + Clamp(装备属性) + Buff效果）：
+
+职业属性：
+- 职业初始 AttackPercent = 5%（假设法师职业带5%初始特攻加成）
+
+装备属性（单独裁剪）：
 - 装备词条 AttackPercent = 108%
-- 汇总后 AttackPercent = 108%
 - 上限裁剪后 AttackPercent = 100%（上限为 100%）
+
+合并后（Buff应用前）：
+- AttackPercent = 5%（职业）+ 100%（裁剪后装备）= 105%
 
 获得 Buff：
 - 攻击力 +20% Buff（StatAdditive, target: "AttackPercent", value: 20）
 
 最终属性：
-- AttackPercent = 100%（装备部分，已裁剪）+ 20%（Buff，不裁剪）= 120%
+- AttackPercent = 105%（职业+装备）+ 20%（Buff，不裁剪）= 125%
 
 伤害计算（主体层）：
-- AfterMain = AfterVariance × (1 + 120%/100) × ...
-- 即 AfterMain = AfterVariance × 2.2 × ...
+- AfterMain = AfterVariance × (1 + 125%/100) × ...
+- 即 AfterMain = AfterVariance × 2.25 × ...
 ```
 
 ### 场景：多个 Buff 叠加
 
 ```
-基础属性（装备裁剪后）：
-- AttackPercent = 80%
+基础属性（职业 + 裁剪后装备）：
+- 职业 AttackPercent = 0%
+- 装备 AttackPercent = 80%（未超上限，无裁剪）
+- 合并后 AttackPercent = 80%
 - CritDamageBonusPercent = 40%
 
 Buff 1: 攻击力 +15%（StatAdditive, AttackPercent, 15）
@@ -470,8 +537,8 @@ Buff 3: 暴击伤害 +20%（StatAdditive, CritDamageBonusPercent, 20）
 3. CritDamageBonusPercent = 40 + 20 = 60
 
 最终属性：
-- AttackPercent = 104.5%（超过上限但有效）
-- CritDamageBonusPercent = 60%（超过上限但有效）
+- AttackPercent = 104.5%（超过装备上限但有效，因为 Buff 不受限）
+- CritDamageBonusPercent = 60%（超过装备上限但有效）
 ```
 
 ---
@@ -544,9 +611,12 @@ Buff 3: 暴击伤害 +20%（StatAdditive, CritDamageBonusPercent, 20）
 
 ### 上限规则澄清
 
-1. **装备属性**：受 `CombatCapsConfig` 上限裁剪
-2. **Buff 效果**：**不受**上限裁剪，直接叠加
-3. **天赋效果**（未来）：规划中，可能也不受上限裁剪
+1. **职业属性**：**不受**上限裁剪
+2. **装备属性**：受 `CombatCapsConfig` 上限裁剪（单独裁剪）
+3. **Buff 效果**：**不受**上限裁剪，直接叠加到最终属性
+4. **天赋效果**（未来）：规划中，可能也不受上限裁剪
+
+**公式**：`最终属性 = 职业属性 + Clamp(装备属性) + Buff效果`
 
 ### 向后兼容
 
@@ -563,6 +633,11 @@ Buff 3: 暴击伤害 +20%（StatAdditive, CritDamageBonusPercent, 20）
 ---
 
 ## 📝 变更日志
+
+### 2025-12-02 v1.1
+- 修正属性上限公式：`最终属性 = 职业属性 + Clamp(装备属性) + Buff效果`
+- 明确仅装备属性受上限裁剪，职业属性不受影响
+- 添加 Phase 4：CharacterStatsCalculator 修改方案
 
 ### 2025-12-02 v1.0
 - 初始版本
