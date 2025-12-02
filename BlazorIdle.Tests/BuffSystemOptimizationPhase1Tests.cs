@@ -687,6 +687,112 @@ namespace BlazorIdle.Tests
             Assert.Equal(180, ogreResult.FinalDamage);
         }
 
+        /// <summary>
+        /// 验证 Buff 的 AttackPercent 能够正确应用到伤害计算
+        /// Verify Buff's AttackPercent is correctly applied to damage calculation
+        /// </summary>
+        [Fact]
+        public void BuffAttackPercent_ShouldIncreaseMainLayerDamage()
+        {
+            // Arrange
+            var calculator = DamageCalculator.CreateDefault();
+            
+            // 基础属性（无 Buff）
+            var baseStats = new CombatStats 
+            { 
+                AttackFinal = 100,
+                AttackPercent = 0  // 没有攻击力加成
+            };
+            
+            // 应用了 50% 攻击力 Buff 的属性
+            var buffedStats = new CombatStats 
+            { 
+                AttackFinal = 100,
+                AttackPercent = 50  // 50% 攻击力加成
+            };
+            
+            // 无 Buff 的伤害上下文
+            var baseCtx = new DamageContext
+            {
+                AttackFinal = 100,
+                SkillCoef = 1.0,
+                SkillFlat = 0,
+                AttackerStats = baseStats,
+                AttackerHPRatio = 1.0,
+                AttackerElement = "neutral",
+                DefenderElement = "neutral",
+                DefenderDRPct = 0,
+                Rng = new Random(42)
+            };
+            
+            // 有 Buff 的伤害上下文
+            var buffedCtx = new DamageContext
+            {
+                AttackFinal = 100,
+                SkillCoef = 1.0,
+                SkillFlat = 0,
+                AttackerStats = buffedStats,
+                AttackerHPRatio = 1.0,
+                AttackerElement = "neutral",
+                DefenderElement = "neutral",
+                DefenderDRPct = 0,
+                Rng = new Random(42)
+            };
+            
+            // Act
+            var baseResult = calculator.CalculateDeterministic(baseCtx);
+            var buffedResult = calculator.CalculateDeterministic(buffedCtx);
+            
+            // Assert
+            // 基础伤害：100 × 1.0 × 1.0（无攻击%） = 100
+            // Buff 伤害：100 × 1.0 × 1.5（50%攻击%） = 150
+            Assert.Equal(100, baseResult.FinalDamage);
+            Assert.Equal(150, buffedResult.FinalDamage);
+            
+            // 验证 Buff 效果正确应用（50% 增加）
+            Assert.Equal(1.5, (double)buffedResult.FinalDamage / baseResult.FinalDamage, 1);
+        }
+
+        /// <summary>
+        /// 验证 Buff 效果能够突破装备上限
+        /// Verify Buff effects can exceed equipment caps
+        /// </summary>
+        [Fact]
+        public void BuffAttackPercent_CanExceedEquipmentCaps()
+        {
+            // Arrange
+            var calculator = DamageCalculator.CreateDefault();
+            
+            // 已达到装备上限（100%）+ Buff 增加 50%
+            // 如果上限生效，应该只有 100%；如果 Buff 不受限制，应该是 150%
+            var statsWithExceededCap = new CombatStats 
+            { 
+                AttackFinal = 100,
+                AttackPercent = 150  // 装备100% + Buff 50% = 150%（超过上限）
+            };
+            
+            var ctx = new DamageContext
+            {
+                AttackFinal = 100,
+                SkillCoef = 1.0,
+                SkillFlat = 0,
+                AttackerStats = statsWithExceededCap,
+                AttackerHPRatio = 1.0,
+                AttackerElement = "neutral",
+                DefenderElement = "neutral",
+                DefenderDRPct = 0,
+                Rng = new Random(42)
+            };
+            
+            // Act
+            var result = calculator.CalculateDeterministic(ctx);
+            
+            // Assert
+            // 如果上限（100%）生效：100 × 2.0 = 200
+            // 如果不裁剪（150%）：100 × 2.5 = 250
+            Assert.Equal(250, result.FinalDamage);  // Buff 效果突破了上限
+        }
+
         #endregion
     }
 }
