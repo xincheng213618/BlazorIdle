@@ -85,32 +85,51 @@
             }
         }
 
-        <!-- Phase 5 测试: 临时战斗属性配置 / Phase 5 Test: Temporary Combat Stats Configuration -->
+        <!-- 新属性系统配置 / New Attribute System Configuration -->
         <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span>⚔️ Phase 5 测试 - 新伤害系统</span>
-                <div class="form-check form-switch mb-0">
-                    <input class="form-check-input" type="checkbox" id="useNewDamageSystem" 
-                           @bind="useNewDamageSystem" disabled="@isRunning">
-                    <label class="form-check-label" for="useNewDamageSystem">启用</label>
+                <span>⚔️ 新伤害系统 - 职业属性+装备</span>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="useAutoCalculatedStats" 
+                               @bind="useAutoCalculatedStats" disabled="@(!useNewDamageSystem || isRunning)">
+                        <label class="form-check-label small" for="useAutoCalculatedStats">自动计算</label>
+                    </div>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="useNewDamageSystem" 
+                               @bind="useNewDamageSystem" disabled="@isRunning">
+                        <label class="form-check-label" for="useNewDamageSystem">启用</label>
+                    </div>
                 </div>
             </div>
             @if (useNewDamageSystem)
             {
                 <div class="card-body">
+                    @if (useAutoCalculatedStats)
+                    {
+                        <div class="alert alert-info small mb-2 py-2">
+                            <strong>生产模式</strong>：战斗属性 = 职业基础属性 + 装备属性（当前暂无装备）+ 下方额外加成
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning small mb-2 py-2">
+                            <strong>测试模式</strong>：直接使用下方输入值作为战斗属性
+                        </div>
+                    }
                     <div class="row g-2">
                         <div class="col-6 col-md-3">
-                            <label class="form-label small">基础攻击力</label>
+                            <label class="form-label small">@(useAutoCalculatedStats ? "额外攻击力" : "基础攻击力")</label>
                             <input type="number" class="form-control form-control-sm" 
                                    @bind="testAttackFinal" disabled="@isRunning" />
                         </div>
                         <div class="col-6 col-md-3">
-                            <label class="form-label small">攻击力加成%</label>
+                            <label class="form-label small">@(useAutoCalculatedStats ? "额外攻击%" : "攻击力加成%")</label>
                             <input type="number" class="form-control form-control-sm" 
                                    @bind="testAttackPercent" step="0.1" disabled="@isRunning" />
                         </div>
                         <div class="col-6 col-md-3">
-                            <label class="form-label small">最大HP</label>
+                            <label class="form-label small">@(useAutoCalculatedStats ? "额外HP" : "最大HP")</label>
                             <input type="number" class="form-control form-control-sm" 
                                    @bind="testMaxHp" disabled="@isRunning" />
                         </div>
@@ -127,28 +146,31 @@
                             </select>
                         </div>
                         <div class="col-6 col-md-3">
-                            <label class="form-label small">暴击率%</label>
+                            <label class="form-label small">@(useAutoCalculatedStats ? "额外暴击率%" : "暴击率%")</label>
                             <input type="number" class="form-control form-control-sm" 
                                    @bind="testCritChancePercent" step="0.1" disabled="@isRunning" />
                         </div>
                         <div class="col-6 col-md-3">
-                            <label class="form-label small">暴击伤害加成%</label>
+                            <label class="form-label small">@(useAutoCalculatedStats ? "额外暴伤%" : "暴击伤害加成%")</label>
                             <input type="number" class="form-control form-control-sm" 
                                    @bind="testCritDamageBonusPercent" step="0.1" disabled="@isRunning" />
                         </div>
                         <div class="col-6 col-md-3">
-                            <label class="form-label small">盛体态势上限%</label>
+                            <label class="form-label small">@(useAutoCalculatedStats ? "额外盛体%" : "盛体态势上限%")</label>
                             <input type="number" class="form-control form-control-sm" 
                                    @bind="testFortifyMaxPercent" step="0.1" disabled="@isRunning" />
                         </div>
                         <div class="col-6 col-md-3">
-                            <label class="form-label small">背水态势上限%</label>
+                            <label class="form-label small">@(useAutoCalculatedStats ? "额外背水%" : "背水态势上限%")</label>
                             <input type="number" class="form-control form-control-sm" 
                                    @bind="testBackwaterMaxPercent" step="0.1" disabled="@isRunning" />
                         </div>
                     </div>
                     <div class="small text-muted mt-2">
-                        💡 提示：启用后将使用测试属性替代旧属性系统。怪物属性从 monsters.json 读取（baseAttack, element, damageReductionPercent）。
+                        💡 @(useAutoCalculatedStats 
+                            ? "生产模式：战斗属性从职业+装备自动计算，上方输入为额外加成（用于调试）。" 
+                            : "测试模式：直接使用上方输入值作为战斗属性。")
+                        怪物属性从 monsters.json 读取（baseAttack, element, damageReductionPercent）。
                     </div>
                 </div>
             }
