@@ -29,8 +29,14 @@ namespace BlazorIdle.Tests
         {
             clock ??= new SimClock();
             rng ??= new RngContext(12345);
-            player ??= new Character { CombatStats = combatStats, VariancePct = 0.0 };
-            player.CombatStats = combatStats;
+            if (player == null)
+            {
+                player = new Character { CombatStats = combatStats, VariancePct = 0.0 };
+            }
+            else
+            {
+                player.CombatStats = combatStats;
+            }
             
             return new BattleContext
             {

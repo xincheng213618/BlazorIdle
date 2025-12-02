@@ -37,7 +37,7 @@ namespace BlazorIdle.Tests
             { 
                 AttackFinal = 100,
                 CritChancePercent = 100.0, // 100% 暴击
-                CritDamageBonusPercent = 100.0 // 2.0x crit = 100% bonus
+                CritDamageBonusPercent = 66.67 // BaseMultiplier(1.2) * (1 + 66.67/100) ≈ 2.0
             };
             var player = new Character 
             { 
@@ -66,8 +66,9 @@ namespace BlazorIdle.Tests
             var result = resolver.Cast(SkillIds.AttackBasic, ctx);
 
             // Assert - 验证 SkillResolver 正确计算暴击
+            // 新系统：100 * variance(0.95-1.05) * 1.2 * 1.667 ≈ 190-210
             Assert.True(result.IsCrit, "SkillResolver should calculate crit");
-            Assert.Equal(200, result.DamageDealt); // 100 * 2.0
+            Assert.InRange(result.DamageDealt, 180, 220);
             
             // 注意：此测试验证 SkillResolver 层的暴击计算
             // 完整的事件记录测试需要 MultiBattleInstance，这在 Phase7ImprovementsTests 中已验证
@@ -110,9 +111,9 @@ namespace BlazorIdle.Tests
             // Act
             var result = resolver.Cast(SkillIds.AttackBasic, ctx);
 
-            // Assert
+            // Assert - 新系统有默认 ±5% 浮动
             Assert.False(result.IsCrit);
-            Assert.Equal(100, result.DamageDealt);
+            Assert.InRange(result.DamageDealt, 95, 105);
         }
         
         #endregion
@@ -132,8 +133,14 @@ namespace BlazorIdle.Tests
         {
             clock ??= new SimClock();
             rng ??= new RngContext(12345);
-            player ??= new Character { CombatStats = combatStats, VariancePct = 0.0 };
-            player.CombatStats = combatStats;
+            if (player == null)
+            {
+                player = new Character { CombatStats = combatStats, VariancePct = 0.0 };
+            }
+            else
+            {
+                player.CombatStats = combatStats;
+            }
             enemy ??= new Enemy { MaxHp = 10000, Hp = 10000, Element = ElementIds.Neutral };
             
             return new BattleContext
