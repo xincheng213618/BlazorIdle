@@ -682,15 +682,13 @@ namespace BlazorIdle.Components
             // 新属性系统：从职业+装备计算最终属性
             // New attribute system: calculate final attributes from profession+equipment
             var professionId = SelectedCharacter.ActiveCombatProfessionId;
-            int characterMaxHp = useNewDamageSystem ? GetMaxHpForBattle(professionId) : Math.Max(1, SelectedCharacter.MaxHp);
-            double characterAttackRate = useNewDamageSystem ? GetAttackRateForBattle(professionId) : SelectedCharacter.AttackRateAPS;
-            var combatStats = useNewDamageSystem ? BuildCombatStatsForBattle(professionId) : null;
+            var battleStats = GetBattleStatsPackage(professionId);
             
             var character = new Character
             {
-                MaxHp = characterMaxHp,
-                Hp = characterMaxHp,
-                AttackRateAPS = characterAttackRate,
+                MaxHp = battleStats.MaxHp,
+                Hp = battleStats.MaxHp,
+                AttackRateAPS = battleStats.AttackRate,
                 DamagePerAttack = SelectedCharacter.DamagePerAttack,
                 HastePercent = SelectedCharacter.HastePercent,
                 SpecialIntervalSec = SelectedCharacter.SpecialIntervalSec,
@@ -708,8 +706,8 @@ namespace BlazorIdle.Components
                     ? fixedSkills2.SpecialAttack : null,
                 // 新属性系统：设置元素和战斗属性
                 // New attribute system: set element and combat stats
-                Element = useNewDamageSystem ? testPlayerElement : ElementIds.Neutral,
-                CombatStats = combatStats
+                Element = battleStats.Element,
+                CombatStats = battleStats.CombatStats
             };
 
             // 玩家队伍
@@ -932,15 +930,13 @@ namespace BlazorIdle.Components
             // 新属性系统：从职业+装备计算最终属性
             // New attribute system: calculate final attributes from profession+equipment
             var professionId = SelectedCharacter.ActiveCombatProfessionId;
-            int characterMaxHp = useNewDamageSystem ? GetMaxHpForBattle(professionId) : Math.Max(1, SelectedCharacter.MaxHp);
-            double characterAttackRate = useNewDamageSystem ? GetAttackRateForBattle(professionId) : SelectedCharacter.AttackRateAPS;
-            var combatStats = useNewDamageSystem ? BuildCombatStatsForBattle(professionId) : null;
+            var battleStats = GetBattleStatsPackage(professionId);
             
             var character = new Character
             {
-                MaxHp = characterMaxHp,
-                Hp = characterMaxHp,
-                AttackRateAPS = characterAttackRate,
+                MaxHp = battleStats.MaxHp,
+                Hp = battleStats.MaxHp,
+                AttackRateAPS = battleStats.AttackRate,
                 DamagePerAttack = SelectedCharacter.DamagePerAttack,
                 HastePercent = SelectedCharacter.HastePercent,
                 SpecialIntervalSec = SelectedCharacter.SpecialIntervalSec,
@@ -958,8 +954,8 @@ namespace BlazorIdle.Components
                     ? fixedSkills2.SpecialAttack : null,
                 // 新属性系统：设置元素和战斗属性
                 // New attribute system: set element and combat stats
-                Element = useNewDamageSystem ? testPlayerElement : ElementIds.Neutral,
-                CombatStats = combatStats
+                Element = battleStats.Element,
+                CombatStats = battleStats.CombatStats
             };
 
             playerTeam = new BattleTeam<Character>("player_team", "玩家队伍", TeamType.Player);
@@ -1887,6 +1883,34 @@ namespace BlazorIdle.Components
                 // 测试模式：使用角色数据中的攻速
                 // Test mode: use attack rate from character data
                 return SelectedCharacter?.AttackRateAPS ?? 2.0;
+            }
+        }
+
+        /// <summary>
+        /// 获取战斗用属性组合 - 整合 MaxHp, AttackRate, CombatStats, Element
+        /// Get battle stats package - combine MaxHp, AttackRate, CombatStats, Element
+        /// </summary>
+        /// <param name="professionId">当前职业ID / Current profession ID</param>
+        /// <returns>战斗属性组合 / Battle stats package</returns>
+        private (int MaxHp, double AttackRate, CombatStats? CombatStats, string Element) GetBattleStatsPackage(string professionId)
+        {
+            if (useNewDamageSystem)
+            {
+                return (
+                    GetMaxHpForBattle(professionId),
+                    GetAttackRateForBattle(professionId),
+                    BuildCombatStatsForBattle(professionId),
+                    testPlayerElement
+                );
+            }
+            else
+            {
+                return (
+                    Math.Max(1, SelectedCharacter?.MaxHp ?? 500),
+                    SelectedCharacter?.AttackRateAPS ?? 2.0,
+                    null,
+                    ElementIds.Neutral
+                );
             }
         }
     }
