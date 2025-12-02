@@ -44,6 +44,13 @@ namespace BlazorIdle.Game.Professions
         public double ReviveSec { get; set; }
 
         /// <summary>
+        /// 特殊技能间隔（秒）
+        /// Special attack interval (seconds)
+        /// </summary>
+        [JsonPropertyName("specialIntervalSec")]
+        public double SpecialIntervalSec { get; set; }
+
+        /// <summary>
         /// 创建默认基础属性
         /// Create default base stats
         /// </summary>
@@ -55,7 +62,8 @@ namespace BlazorIdle.Game.Professions
                 BaseHP = 500,
                 AttackRateAPS = 0.4,
                 Variance = 0.05,
-                ReviveSec = 5.0
+                ReviveSec = 5.0,
+                SpecialIntervalSec = 5.0
             };
         }
     }

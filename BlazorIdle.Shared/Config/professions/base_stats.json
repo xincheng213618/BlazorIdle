@@ -11,7 +11,8 @@
       "baseHP": 500,
       "attackRateAPS": 0.4,
       "variance": 0.04,
-      "reviveSec": 5.0
+      "reviveSec": 5.0,
+      "specialIntervalSec": 5.0
     },
     "initialCombatStats": {
       "critChancePercent": 5.0,
@@ -49,7 +50,8 @@
       "baseHP": 300,
       "attackRateAPS": 0.35,
       "variance": 0.06,
-      "reviveSec": 6.0
+      "reviveSec": 6.0,
+      "specialIntervalSec": 6.0
     },
     "initialCombatStats": {
       "critChancePercent": 10.0,
@@ -87,7 +89,8 @@
       "baseHP": 350,
       "attackRateAPS": 0.5,
       "variance": 0.05,
-      "reviveSec": 4.0
+      "reviveSec": 4.0,
+      "specialIntervalSec": 4.0
     },
     "initialCombatStats": {
       "critChancePercent": 15.0,
@@ -125,7 +128,8 @@
       "baseHP": 400,
       "attackRateAPS": 0.45,
       "variance": 0.05,
-      "reviveSec": 5.0
+      "reviveSec": 5.0,
+      "specialIntervalSec": 5.0
     },
     "initialCombatStats": {
       "critChancePercent": 8.0,

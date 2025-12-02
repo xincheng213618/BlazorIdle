@@ -152,27 +152,53 @@
             </div>
 
             <div class="section section-dps">
-                <h6 class="section-title">输出统计 (DPS Stats)</h6>
+                <h6 class="section-title">期望伤害模拟 (Expected Damage Simulation)</h6>
+                <div class="mb-2">
+                    <label class="form-label small mb-1">模拟血量 (Simulate HP %)</label>
+                    <div class="btn-group btn-group-sm w-100" role="group">
+                        @foreach (var hp in new[] { 1, 25, 50, 75, 100 })
+                        {
+                            <button type="button" 
+                                    class="btn @(selectedHpPercent == hp ? "btn-primary" : "btn-outline-primary")"
+                                    @onclick="() => OnHpPercentChanged(hp)">
+                                @hp%
+                            </button>
+                        }
+                    </div>
+                </div>
                 <div class="stats-grid">
+                    <div class="stat-item highlight-stat">
+                        <span class="stat-label">⚔️ 期望伤害:</span>
+                        <span class="stat-value stat-main">@expectedDamageResult?.ExpectedDamage.ToString("F1")</span>
+                    </div>
                     <div class="stat-item">
-                        <span class="stat-label">期望伤害:</span>
-                        <span class="stat-value">@expectedDamage.ToString("F1")</span>
+                        <span class="stat-label">非暴击伤害:</span>
+                        <span class="stat-value">@expectedDamageResult?.NormalDamage</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">暴击伤害:</span>
+                        <span class="stat-value stat-highlight">@expectedDamageResult?.CritDamage</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">态势加成%:</span>
+                        <span class="stat-value">@(expectedDamageResult?.StancePercent.ToString("F1") ?? "0")%
+                            @if (selectedHpPercent >= 75)
+                            {
+                                <small class="text-success">(盛体)</small>
+                            }
+                            else if (selectedHpPercent <= 50)
+                            {
+                                <small class="text-warning">(背水)</small>
+                            }
+                        </span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">生效攻速:</span>
-                        <span class="stat-value">@effectiveAPS.ToString("F2") APS</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">普攻DPS:</span>
-                        <span class="stat-value stat-highlight">@basicDPS.ToString("F1")</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">技能DPS:</span>
-                        <span class="stat-value">@skillDPS.ToString("F1")</span>
+                        <span class="stat-value">@finalAttackRate.ToString("F2") APS</span>
                     </div>
                     <div class="stat-item highlight-stat">
-                        <span class="stat-label">总DPS:</span>
-                        <span class="stat-value stat-total">@totalDPS.ToString("F1")</span>
+                        <span class="stat-label">📊 期望DPS:</span>
+                        <span class="stat-value stat-total">@(((expectedDamageResult?.ExpectedDamage ?? 0) * finalAttackRate).ToString("F1"))</span>
                     </div>
                 </div>
             </div>
@@ -191,11 +217,6 @@
     private string professionName = "";
     private string professionDescription = "";
     private int currentLevel = 1;
-    private double expectedDamage;
-    private double effectiveAPS;
-    private double basicDPS;
-    private double skillDPS;
-    private double totalDPS;
     
     // 新属性系统
     private CombatStats finalStats = new();
@@ -203,6 +224,11 @@
     private double finalAttackRate = 0;
     private ProfessionBaseStats professionBaseStats = new();
     private CombatCapsConfig combatCaps = new();
+    
+    // 期望伤害模拟
+    private int selectedHpPercent = 100;
+    private ExpectedDamageResult? expectedDamageResult;
+    private readonly BattleStatsService _battleStatsService = BattleStatsService.CreateDefault();
 
     protected override async Task OnInitializedAsync()
     {
@@ -242,16 +268,11 @@
             finalMaxHp = calculator.CalculateFinalMaxHp(character.ActiveCombatProfessionId, null);
             finalAttackRate = calculator.CalculateFinalAttackRate(character.ActiveCombatProfessionId, null);
 
-            // 计算旧系统属性（用于DPS计算的兼容）
+            // 使用新的期望伤害模拟（替代旧的 DPS 计算）
+            UpdateExpectedDamage();
+            
+            // 保持旧计算系统兼容（用于其他地方可能的引用）
             calculatedAttrs = await AttributeService.CalculateAttributesAsync(character);
-            if (calculatedAttrs != null)
-            {
-                expectedDamage = AttributeCalculator.CalculateExpectedHitDamage(calculatedAttrs);
-                effectiveAPS = AttributeCalculator.CalculateEffectiveAPS(calculatedAttrs);
-                basicDPS = AttributeCalculator.CalculateBasicDPS(calculatedAttrs);
-                skillDPS = AttributeCalculator.CalculateSkillDPS(calculatedAttrs);
-                totalDPS = AttributeCalculator.CalculateTotalDPS(calculatedAttrs);
-            }
         }
         catch (Exception ex)
         {
@@ -262,6 +283,23 @@
         {
             isLoading = false;
         }
+    }
+
+    private void OnHpPercentChanged(int hpPercent)
+    {
+        selectedHpPercent = hpPercent;
+        UpdateExpectedDamage();
+    }
+
+    private void UpdateExpectedDamage()
+    {
+        if (character == null) return;
+        
+        expectedDamageResult = _battleStatsService.CalculateExpectedDamage(
+            character.ActiveCombatProfessionId,
+            loadout: null,
+            hpRatio: selectedHpPercent / 100.0
+        );
     }
 
     private async void OnCharacterChanged(CharacterData? newCharacter)

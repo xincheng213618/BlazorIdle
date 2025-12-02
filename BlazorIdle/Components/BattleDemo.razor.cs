@@ -22,6 +22,10 @@ namespace BlazorIdle.Components
         // New attribute system calculator instance
         private readonly CharacterStatsCalculator _statsCalculator = CharacterStatsCalculator.CreateDefault();
         
+        // 战斗属性服务 - 用于计算战斗属性和期望伤害
+        // Battle stats service - for calculating battle stats and expected damage
+        private readonly BattleStatsService _battleStatsService = BattleStatsService.CreateDefault();
+        
         // ===== Phase 5 测试: 临时战斗属性配置 =====
         // ===== Phase 5 Testing: Temporary Combat Stats Configuration =====
         
@@ -158,18 +162,37 @@ namespace BlazorIdle.Components
         private BattleDigest? digest;
         private bool isRunning = false;
 
-        // 理论DPS计算（基于角色属性）
-        // Theoretical DPS calculation (based on character attributes)
+        // 理论DPS计算（基于新属性系统的期望伤害模拟）
+        // Theoretical DPS calculation (based on new attribute system expected damage simulation)
         private double theoreticalDps
         {
             get
             {
                 if (SelectedCharacter == null) return 0.0;
 
-                var hasteFactor = 1.0 + SelectedCharacter.HastePercent / 100.0;
-                var attackDps = SelectedCharacter.DamagePerAttack * SelectedCharacter.AttackRateAPS * hasteFactor;
-                var specialDps = SelectedCharacter.SpecialDamage / Math.Max(0.1, SelectedCharacter.SpecialIntervalSec);
-                return attackDps + specialDps;
+                var professionId = SelectedCharacter.ActiveCombatProfessionId;
+                
+                // 使用 BattleStatsService 计算期望伤害
+                var extra = new ExtraCombatStats
+                {
+                    ExtraAttackFinal = testAttackFinal,
+                    ExtraAttackPercent = testAttackPercent,
+                    ExtraCritChancePercent = testCritChancePercent,
+                    ExtraCritDamageBonusPercent = testCritDamageBonusPercent,
+                    ExtraFortifyMaxPercent = testFortifyMaxPercent,
+                    ExtraBackwaterMaxPercent = testBackwaterMaxPercent,
+                    ExtraMaxHp = testMaxHp
+                };
+                
+                var expectedDamageResult = _battleStatsService.CalculateExpectedDamage(
+                    professionId, 
+                    loadout: null,
+                    hpRatio: 1.0, // 假设满血
+                    extraStats: useAutoCalculatedStats ? extra : null
+                );
+                
+                var attackRate = _statsCalculator.CalculateFinalAttackRate(professionId, null);
+                return expectedDamageResult.ExpectedDamage * attackRate;
             }
         }
 
@@ -684,19 +707,28 @@ namespace BlazorIdle.Components
             var professionId = SelectedCharacter.ActiveCombatProfessionId;
             var battleStats = GetBattleStatsPackage(professionId);
             
+            // 获取职业基础属性用于非战斗属性（浮动、复活等）
+            var profBaseStats = _statsCalculator.GetProfessionBaseStats(professionId);
+            
             var character = new Character
             {
                 MaxHp = battleStats.MaxHp,
                 Hp = battleStats.MaxHp,
                 AttackRateAPS = battleStats.AttackRate,
-                DamagePerAttack = SelectedCharacter.DamagePerAttack,
-                HastePercent = SelectedCharacter.HastePercent,
-                SpecialIntervalSec = SelectedCharacter.SpecialIntervalSec,
-                SpecialDamage = SelectedCharacter.SpecialDamage,
-                CritChancePercent = SelectedCharacter.CritChancePercent,
-                CritMultiplier = SelectedCharacter.CritMultiplier,
-                VariancePct = SelectedCharacter.VariancePct,
-                ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0),
+                // 新属性系统：使用 CombatStats.AttackFinal 替代旧的 DamagePerAttack
+                // New attribute system: use CombatStats.AttackFinal instead of legacy DamagePerAttack
+                DamagePerAttack = battleStats.CombatStats?.AttackFinal ?? 100,
+                HastePercent = battleStats.CombatStats?.HastePercent ?? 0,
+                SpecialIntervalSec = profBaseStats.SpecialIntervalSec,
+                // 新属性系统：特殊攻击伤害通过技能系数计算
+                // New attribute system: special attack damage calculated via skill coefficient
+                SpecialDamage = battleStats.CombatStats?.AttackFinal ?? 100,
+                CritChancePercent = battleStats.CombatStats?.CritChancePercent ?? 0,
+                // 新属性系统：暴击倍率 = 1.2 (基础) × (1 + 暴伤加成%)
+                // New attribute system: crit multiplier = 1.2 (base) × (1 + crit damage bonus%)
+                CritMultiplier = 1.2 * (1 + (battleStats.CombatStats?.CritDamageBonusPercent ?? 0) / 100.0),
+                VariancePct = profBaseStats.Variance,
+                ReviveMs = (int)Math.Round(Math.Max(0, profBaseStats.ReviveSec) * 1000.0),
                 ActiveCombatProfessionId = professionId,
                 // Phase 3+: 从CharacterData复制固定技能ID
                 // Phase 3+: Copy fixed skill IDs from CharacterData
@@ -932,19 +964,28 @@ namespace BlazorIdle.Components
             var professionId = SelectedCharacter.ActiveCombatProfessionId;
             var battleStats = GetBattleStatsPackage(professionId);
             
+            // 获取职业基础属性用于非战斗属性（浮动、复活等）
+            var profBaseStats = _statsCalculator.GetProfessionBaseStats(professionId);
+            
             var character = new Character
             {
                 MaxHp = battleStats.MaxHp,
                 Hp = battleStats.MaxHp,
                 AttackRateAPS = battleStats.AttackRate,
-                DamagePerAttack = SelectedCharacter.DamagePerAttack,
-                HastePercent = SelectedCharacter.HastePercent,
-                SpecialIntervalSec = SelectedCharacter.SpecialIntervalSec,
-                SpecialDamage = SelectedCharacter.SpecialDamage,
-                CritChancePercent = SelectedCharacter.CritChancePercent,
-                CritMultiplier = SelectedCharacter.CritMultiplier,
-                VariancePct = SelectedCharacter.VariancePct,
-                ReviveMs = (int)Math.Round(Math.Max(0, SelectedCharacter.ReviveSec) * 1000.0),
+                // 新属性系统：使用 CombatStats.AttackFinal 替代旧的 DamagePerAttack
+                // New attribute system: use CombatStats.AttackFinal instead of legacy DamagePerAttack
+                DamagePerAttack = battleStats.CombatStats?.AttackFinal ?? 100,
+                HastePercent = battleStats.CombatStats?.HastePercent ?? 0,
+                SpecialIntervalSec = profBaseStats.SpecialIntervalSec,
+                // 新属性系统：特殊攻击伤害通过技能系数计算
+                // New attribute system: special attack damage calculated via skill coefficient
+                SpecialDamage = battleStats.CombatStats?.AttackFinal ?? 100,
+                CritChancePercent = battleStats.CombatStats?.CritChancePercent ?? 0,
+                // 新属性系统：暴击倍率 = 1.2 (基础) × (1 + 暴伤加成%)
+                // New attribute system: crit multiplier = 1.2 (base) × (1 + crit damage bonus%)
+                CritMultiplier = 1.2 * (1 + (battleStats.CombatStats?.CritDamageBonusPercent ?? 0) / 100.0),
+                VariancePct = profBaseStats.Variance,
+                ReviveMs = (int)Math.Round(Math.Max(0, profBaseStats.ReviveSec) * 1000.0),
                 ActiveCombatProfessionId = professionId,
                 // Phase 3+: 从CharacterData复制固定技能ID
                 // Phase 3+: Copy fixed skill IDs from CharacterData
@@ -1358,9 +1399,11 @@ namespace BlazorIdle.Components
             {
                 try
                 {
-                    // 重新计算并应用属性
-                    // Recalculate and apply attributes
-                    await AttributeService.RecalculateAndApplyAsync(SelectedCharacter);
+                    // 重新计算并应用属性（使用新属性系统）
+                    // Recalculate and apply attributes (using new attribute system)
+                    var professionId = SelectedCharacter.ActiveCombatProfessionId;
+                    var battleStats = GetBattleStatsPackage(professionId);
+                    
                     Logger.LogInformation(
                         "Recalculated attributes for character {CharacterId} after level-up from {OldLevel} to {NewLevel}",
                         SelectedCharacter.Id, oldLevel, progress.Level);
@@ -1373,20 +1416,22 @@ namespace BlazorIdle.Components
                         var battleChar = battleMember.Entity;
                         
                         // Update member's max HP (also scales current HP proportionally)
-                        battleMember.UpdateMaxHp(SelectedCharacter.MaxHp);
+                        battleMember.UpdateMaxHp(battleStats.MaxHp);
                         
-                        // Update character entity stats
-                        battleChar.MaxHp = SelectedCharacter.MaxHp;
+                        // Update character entity stats (using new attribute system)
+                        battleChar.MaxHp = battleStats.MaxHp;
                         battleChar.Hp = Math.Min(battleChar.Hp, battleChar.MaxHp);
-                        battleChar.DamagePerAttack = SelectedCharacter.DamagePerAttack;
-                        battleChar.HastePercent = SelectedCharacter.HastePercent;
-                        battleChar.CritChancePercent = SelectedCharacter.CritChancePercent;
-                        battleChar.CritMultiplier = SelectedCharacter.CritMultiplier;
+                        battleChar.AttackRateAPS = battleStats.AttackRate;
+                        battleChar.DamagePerAttack = battleStats.CombatStats?.AttackFinal ?? 100;
+                        battleChar.HastePercent = battleStats.CombatStats?.HastePercent ?? 0;
+                        battleChar.CritChancePercent = battleStats.CombatStats?.CritChancePercent ?? 0;
+                        battleChar.CritMultiplier = 1.2 * (1 + (battleStats.CombatStats?.CritDamageBonusPercent ?? 0) / 100.0);
+                        battleChar.CombatStats = battleStats.CombatStats;
                         
                         Logger.LogInformation(
-                            "Updated combat character instance: HP={HP}/{MaxHP}, Damage={Damage}, Haste={Haste}%, Crit={Crit}%",
-                            battleMember.CurrentHp, battleMember.MaxHp, battleChar.DamagePerAttack, 
-                            battleChar.HastePercent, battleChar.CritChancePercent);
+                            "Updated combat character instance: HP={HP}/{MaxHP}, Attack={Attack}, Haste={Haste}%, Crit={Crit}%",
+                            battleMember.CurrentHp, battleMember.MaxHp, battleStats.CombatStats?.AttackFinal ?? 0, 
+                            battleStats.CombatStats?.HastePercent ?? 0, battleStats.CombatStats?.CritChancePercent ?? 0);
                     }
                 }
                 catch (Exception ex)
