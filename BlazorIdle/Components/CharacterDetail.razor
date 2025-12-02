@@ -236,8 +236,9 @@
                 currentLevel = progress.Level;
 
             // 使用新的 CharacterStatsCalculator 计算最终属性
+            // 装备配置暂未在 CharacterData 中实现，将在后续 Phase 4 集成
             var calculator = CharacterStatsCalculator.CreateDefault();
-            finalStats = calculator.CalculateFinalStats(character.ActiveCombatProfessionId, null); // TODO: 传入装备配置
+            finalStats = calculator.CalculateFinalStats(character.ActiveCombatProfessionId, null);
             finalMaxHp = calculator.CalculateFinalMaxHp(character.ActiveCombatProfessionId, null);
             finalAttackRate = calculator.CalculateFinalAttackRate(character.ActiveCombatProfessionId, null);
 
