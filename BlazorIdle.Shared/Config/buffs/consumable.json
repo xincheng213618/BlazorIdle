@@ -3,6 +3,8 @@
 // 注意 / Note:
 // - 包含所有消耗品（药水、食物等）产生的Buff效果
 // - Contains all buff effects from consumables (potions, food, etc.)
+// - 使用新的属性名称（AttackFinal, AttackPercent 等）
+// - Uses new attribute names (AttackFinal, AttackPercent, etc.)
 //
 [
   {
@@ -17,9 +19,9 @@
     "defaultTarget": "Self",
     "effects": [
       {
-        "type": "StatMultiplier",
-        "target": "DamagePerAttack",
-        "value": 0.10
+        "type": "StatAdditive",
+        "target": "AttackPercent",
+        "value": 10.0
       }
     ]
   },
@@ -53,9 +55,9 @@
     "defaultTarget": "Self",
     "effects": [
       {
-        "type": "StatMultiplier",
-        "target": "DamagePerAttack",
-        "value": 0.05
+        "type": "StatAdditive",
+        "target": "AttackPercent",
+        "value": 5.0
       }
     ]
   }

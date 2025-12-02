@@ -300,7 +300,7 @@ namespace BlazorIdle.Tests
 
             var effect = buff.Effects[0];
             Assert.Equal(BuffEffectType.StatAdditive, effect.Type);
-            Assert.Equal("DamageReduction", effect.Target);
+            Assert.Equal("DamageReductionPercent", effect.Target);
             Assert.Equal(5.0, effect.Value);
         }
 

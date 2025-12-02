@@ -66,10 +66,12 @@ namespace BlazorIdle.Game.Combat
 
             // 3. 主体层：AfterMain = AfterVariance × (1+Atk%) × (1+SpAtk%) × (1+Stance%)
             // Layer 3: AfterMain = AfterVariance × (1+Atk%) × (1+SpAtk%) × (1+Stance%)
-            double atkPct = _configs.Caps.ClampAttackPct(stats.AttackPercent);
-            double spAtkPct = _configs.Caps.ClampSpecialAttackPct(stats.SpecialAttackPercent);
-            double fortifyMaxPct = _configs.Caps.ClampFortifyMaxPct(stats.FortifyMaxPercent);
-            double backwaterMaxPct = _configs.Caps.ClampBackwaterMaxPct(stats.BackwaterMaxPercent);
+            // Buff System Optimization: 不裁剪 AttackPercent 和 SpecialAttackPercent，因为 Buff 效果不受上限限制
+            // Buff System Optimization: Don't clamp AttackPercent and SpecialAttackPercent, as Buff effects bypass caps
+            double atkPct = stats.AttackPercent;  // 不裁剪，允许超过上限
+            double spAtkPct = stats.SpecialAttackPercent;  // 不裁剪，允许超过上限
+            double fortifyMaxPct = stats.FortifyMaxPercent;  // 不裁剪，允许超过上限
+            double backwaterMaxPct = stats.BackwaterMaxPercent;  // 不裁剪，允许超过上限
             double stancePct = _configs.Stance.CalcStancePercent(ctx.AttackerHPRatio, fortifyMaxPct, backwaterMaxPct);
             result.StancePercent = stancePct;
 
@@ -80,8 +82,10 @@ namespace BlazorIdle.Game.Combat
 
             // 4. 暴击层：AfterCrit = AfterMain × (isCrit ? BaseMultiplier × (1+CritBonus%) : 1)
             // Layer 4: AfterCrit = AfterMain × (isCrit ? BaseMultiplier × (1+CritBonus%) : 1)
+            // 暴击率仍然需要裁剪（不能超过100%），但暴击伤害加成不裁剪
+            // Crit chance still needs clamping (can't exceed 100%), but crit damage bonus bypasses caps
             double critChance = _configs.Caps.ClampCritChancePct(stats.CritChancePercent);
-            double critBonus = _configs.Caps.ClampCritDamageBonusPct(stats.CritDamageBonusPercent);
+            double critBonus = stats.CritDamageBonusPercent;  // 不裁剪，允许超过上限
             bool isCrit = ctx.Rng.NextDouble() * 100 < critChance;
             result.IsCrit = isCrit;
 
@@ -104,9 +108,11 @@ namespace BlazorIdle.Game.Combat
 
             // 6. 追击层：AfterChase = AfterElement + AfterElement×Chase% + AfterElement×KenChase% + ChaseFlat
             // Layer 6: AfterChase = AfterElement + AfterElement×Chase% + AfterElement×KenChase% + ChaseFlat
-            double chasePct = _configs.Caps.ClampChasePct(stats.ChasePercent);
-            double kenChasePct = result.HasElementAdvantage ? _configs.Caps.ClampKenChasePct(stats.KenChasePercent) : 0;
-            int chaseFlat = _configs.Caps.ClampChaseFlat(stats.ChaseFlat);
+            // 追击属性不裁剪，允许 Buff 超过上限
+            // Chase stats bypass caps for Buff effects
+            double chasePct = stats.ChasePercent;  // 不裁剪
+            double kenChasePct = result.HasElementAdvantage ? stats.KenChasePercent : 0;  // 不裁剪
+            int chaseFlat = stats.ChaseFlat;  // 不裁剪
 
             result.AfterChase = result.AfterElement 
                 + result.AfterElement * (chasePct / 100.0)
@@ -147,10 +153,11 @@ namespace BlazorIdle.Game.Combat
             result.AfterVariance = result.BaseDamage * variance;
 
             // 3. 主体层
-            double atkPct = _configs.Caps.ClampAttackPct(stats.AttackPercent);
-            double spAtkPct = _configs.Caps.ClampSpecialAttackPct(stats.SpecialAttackPercent);
-            double fortifyMaxPct = _configs.Caps.ClampFortifyMaxPct(stats.FortifyMaxPercent);
-            double backwaterMaxPct = _configs.Caps.ClampBackwaterMaxPct(stats.BackwaterMaxPercent);
+            // Buff System Optimization: 不裁剪，允许超过上限
+            double atkPct = stats.AttackPercent;
+            double spAtkPct = stats.SpecialAttackPercent;
+            double fortifyMaxPct = stats.FortifyMaxPercent;
+            double backwaterMaxPct = stats.BackwaterMaxPercent;
             double stancePct = _configs.Stance.CalcStancePercent(ctx.AttackerHPRatio, fortifyMaxPct, backwaterMaxPct);
             result.StancePercent = stancePct;
 
@@ -160,7 +167,8 @@ namespace BlazorIdle.Game.Combat
                 * (1 + stancePct / 100.0);
 
             // 4. 暴击层
-            double critBonus = _configs.Caps.ClampCritDamageBonusPct(stats.CritDamageBonusPercent);
+            // 暴击伤害加成不裁剪
+            double critBonus = stats.CritDamageBonusPercent;
             result.IsCrit = forceCrit;
 
             if (forceCrit)
@@ -180,9 +188,10 @@ namespace BlazorIdle.Game.Combat
             result.AfterElement = result.AfterCrit * result.ElementMultiplier;
 
             // 6. 追击层
-            double chasePct = _configs.Caps.ClampChasePct(stats.ChasePercent);
-            double kenChasePct = result.HasElementAdvantage ? _configs.Caps.ClampKenChasePct(stats.KenChasePercent) : 0;
-            int chaseFlat = _configs.Caps.ClampChaseFlat(stats.ChaseFlat);
+            // 追击属性不裁剪
+            double chasePct = stats.ChasePercent;
+            double kenChasePct = result.HasElementAdvantage ? stats.KenChasePercent : 0;
+            int chaseFlat = stats.ChaseFlat;
 
             result.AfterChase = result.AfterElement 
                 + result.AfterElement * (chasePct / 100.0)

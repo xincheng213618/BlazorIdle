@@ -80,8 +80,8 @@ namespace BlazorIdle.Tests
             Assert.NotNull(warriorBuff.Effects);
             Assert.Equal(3, warriorBuff.Effects.Count);
             
-            // Verify effects exist (order doesn't matter)
-            Assert.Contains(warriorBuff.Effects, e => e.Type == BuffEffectType.StatMultiplier && e.Target == "DamagePerAttack");
+            // Verify effects exist (order doesn't matter) - using new attribute names
+            Assert.Contains(warriorBuff.Effects, e => e.Type == BuffEffectType.StatMultiplier && e.Target == "AttackFinal");
             Assert.Contains(warriorBuff.Effects, e => e.Type == BuffEffectType.StatAdditive && e.Target == "HastePercent");
             Assert.Contains(warriorBuff.Effects, e => e.Type == BuffEffectType.StatAdditive && e.Target == "CritChancePercent");
             

@@ -1,0 +1,349 @@
+# Buff系统优化 - 实施进度追踪
+
+## 📋 概述
+
+本文档用于追踪 Buff 系统优化的实施进度。
+
+**目标：** 使 Buff 系统能够正确影响新伤害管线的所有属性，且 Buff 效果不受属性上限裁剪。
+
+**核心公式：**
+```
+最终属性 = 职业属性 + Clamp(装备属性) + Buff效果
+```
+
+**原则：**
+- ✅ Buff 效果支持所有 `CombatStats` 属性
+- ✅ **Buff 效果不受上限裁剪**
+- ✅ **职业属性不受上限裁剪**
+- ✅ **仅装备属性受上限裁剪**（单独裁剪）
+- ✅ 保持向后兼容，支持旧的属性名称
+- ✅ 建立清晰的 Buff 效果应用流程
+
+**设计文档：**
+- [Buff系统优化_设计提案.md](./Buff系统优化_设计提案.md)
+- [Step6_伤害组成与计算管线.md](./Step6_伤害组成与计算管线.md) (v1.3)
+- [角色属性系统_设计提案.md](./角色属性系统_设计提案.md)
+
+---
+
+## 📁 代码位置规划
+
+### 新增文件
+
+| 文件路径 | 说明 | 阶段 |
+|----------|------|------|
+| `Game/Buffs/BuffStatMapper.cs` | 属性名称映射（新增） | Phase 1 |
+| `Game/Buffs/BuffStatApplier.cs` | Buff 效果应用（新增） | Phase 1 |
+
+### 修改文件
+
+| 文件路径 | 说明 | 阶段 |
+|----------|------|------|
+| `Game/Combat/CharacterStatsCalculator.cs` | 分离装备属性裁剪 | Phase 2 |
+| `Game/Skills/SkillResolver.cs` | 集成 Buff 应用 | Phase 2 |
+| `Game/MultiBattleInstance.cs` | 急速等属性 Buff 应用 | Phase 2 |
+| `Config/buffs/*.json` | 更新 Buff 配置使用新属性名 | Phase 3 |
+
+---
+
+## 🎯 实施阶段
+
+### 阶段 1：属性映射与兼容层（P0 - 必须）
+
+**状态：** ✅ 已完成
+
+**目标：** 建立属性名称映射，保证旧 Buff 配置兼容。
+
+**任务清单：**
+
+- [x] 1.1 创建 `BuffStatMapper` 类
+  - [x] 位置：BlazorIdle.Shared/Game/Buffs/BuffStatMapper.cs
+  - [x] 旧属性名映射表
+    - `DamagePerAttack` → `AttackFinal`
+    - `DamageReduction` → `DamageReductionPercent`
+    - `CritMultiplier` → `CritDamageBonusPercent`（需值转换）
+    - `SpecialDamage` → `AttackFinal`（旧特殊技能伤害）
+  - [x] `NormalizeStatName(string)` 方法
+  - [x] `NeedsValueConversion(string, out Func<double, double>)` 方法
+  - [x] `IsValidStatName(string)` 验证方法
+  - [x] 单元测试（17个测试）
+
+- [x] 1.2 创建 `BuffStatApplier` 类
+  - [x] 位置：BlazorIdle.Shared/Game/Buffs/BuffStatApplier.cs
+  - [x] `ApplyBuffsToCombatStats(CombatStats, IBuffOwner)` 方法
+  - [x] 支持所有 CombatStats 属性：
+    - `AttackFinal` (int)
+    - `AttackPercent` (double)
+    - `SpecialAttackPercent` (double)
+    - `HPPercent` (double)
+    - `HastePercent` (double)
+    - `CritChancePercent` (double)
+    - `CritDamageBonusPercent` (double)
+    - `FortifyMaxPercent` (double)
+    - `BackwaterMaxPercent` (double)
+    - `ChasePercent` (double)
+    - `KenChasePercent` (double)
+    - `ChaseFlat` (int)
+    - `DamageReductionPercent` (double)
+  - [x] 实现三种效果类型
+    - `StatMultiplier`: `value × (1 + effectValue)`
+    - `StatAdditive`: `value + effectValue`
+    - `StatReduction`: `value × (1 - effectValue)`
+  - [x] 支持层数叠加（按 Stacks 循环应用）
+  - [x] 按 `AppliedAtMs` 排序应用
+  - [x] 单元测试（30个测试）
+
+**验收标准：**
+- [x] 旧 Buff 配置（使用 DamagePerAttack）仍能正常工作
+- [x] 新属性名（AttackPercent 等）正确映射
+- [x] Buff 效果不受上限裁剪
+
+**预估工作量：** 1-2 小时
+
+---
+
+### 阶段 2：伤害管线集成（P0 - 必须）
+
+**状态：** ✅ 已完成
+
+**目标：** 将 Buff 效果应用到伤害计算流程。
+
+**任务清单：**
+
+- [x] 2.1 修改 SkillResolver
+  - [x] 位置：BlazorIdle.Shared/Game/Skills/SkillResolver.cs
+  - [x] 在 `Cast()` 方法中：
+    - [x] 获取基础 CombatStats（已过装备上限裁剪）
+    - [x] 调用 `BuffStatApplier.ApplyBuffsToCombatStats()` 应用 Buff
+    - [x] 使用 buffed stats 创建 DamageContext
+  - [x] 保留旧的 `ApplyBuffEffects()` 用于旧系统兼容
+  - [x] 确保 Buff 效果影响所有管线层级
+
+- [x] 2.2 验证伤害计算各层
+  - [x] 基础层：`AttackFinal` Buff 正确影响基础伤害
+  - [x] 主体层：`AttackPercent`, `SpecialAttackPercent` Buff 正确乘入
+  - [x] 暴击层：`CritChancePercent`, `CritDamageBonusPercent` Buff 正确影响暴击
+  - [x] 追击层：`ChasePercent`, `KenChasePercent`, `ChaseFlat` Buff 正确影响追击
+  - [x] 减伤层：`DamageReductionPercent` Buff 正确影响减伤
+
+- [x] 2.3 更新 MultiBattleInstance（通过 SkillResolver 间接完成）
+  - [x] 急速 Buff 效果（`HastePercent`）通过 buffedStats 传递
+  - [x] 所有属性 Buff 效果通过 DamageCalculator 管线生效
+
+- [x] 2.4 CharacterStatsCalculator 无需修改
+  - [x] Buff 效果在 SkillResolver 中应用，不影响属性计算流程
+
+**验收标准：**
+- [x] 攻击% Buff 正确影响主体层伤害
+- [x] 暴击伤害 Buff 正确影响暴击倍率
+- [x] 所有属性 Buff 正确生效（47个单元测试 + 1177个回归测试全部通过）
+- [x] Buff 效果不受上限裁剪（超过上限仍然有效）
+
+**预估工作量：** 2-3 小时  
+**实际工作量：** 0.5 小时
+
+---
+
+### 阶段 3：配置更新与兼容（P1 - 重要）
+
+**状态：** ✅ 已完成
+
+**目标：** 更新 Buff 配置文件使用新属性名，同时保持兼容。
+
+**任务清单：**
+
+- [x] 3.1 更新 Buff 配置文件
+  - [x] Config/buffs/warrior.json
+    - [x] `DamagePerAttack` → `AttackFinal`
+    - [x] `CritChancePercent` 值修正（0.05 → 5.0 百分比）
+  - [x] Config/buffs/mage.json
+    - [x] `DamagePerAttack` → `AttackFinal`
+    - [x] `SpecialDamage` → `SpecialAttackPercent`（StatAdditive）
+  - [x] Config/buffs/rogue.json
+    - [x] `DamagePerAttack` → `AttackFinal`
+  - [x] Config/buffs/ranger.json
+    - [x] `DamagePerAttack` → `AttackFinal`
+  - [x] Config/buffs/common.json
+    - [x] `DamagePerAttack` → `AttackFinal`
+    - [x] `DamageReduction` → `DamageReductionPercent`（StatAdditive）
+    - [x] `CritMultiplier` → `CritDamageBonusPercent`（StatAdditive）
+    - [x] `CritChancePercent` 值修正（0.10 → 10.0 百分比）
+  - [x] Config/buffs/consumable.json
+    - [x] `DamagePerAttack` → `AttackPercent`（改为 StatAdditive）
+  - [x] Config/buffs/debuffs.json
+    - [x] `DamagePerAttack` → `AttackFinal`
+    - [x] `DamagePerHit` → `AttackFinal`
+  - [x] Config/buffs/monster.json
+    - [x] `DamageReduction` → `DamageReductionPercent`
+
+- [x] 3.2 添加新属性的 Buff 示例
+  - [x] `AttackPercent` Buff 示例（consumable_strength_buff）
+  - [x] `SpecialAttackPercent` Buff 示例（mage_arcane_power）
+
+- [x] 3.3 更新相关测试
+  - [x] Step2Phase9_5Tests.cs - 更新属性名断言
+  - [x] Step2Phase9MonsterIntegrationTests.cs - 更新属性名断言
+  - [x] Phase9SpecialBuffTest.cs - 更新属性名断言
+
+**验收标准：**
+- [x] 新配置使用新属性名
+- [x] 1177个测试全部通过
+- [x] 无回归问题
+
+**预估工作量：** 1-2 小时  
+**实际工作量：** 0.5 小时
+
+---
+
+### 阶段 4：测试与验证（P0 - 必须）
+
+**状态：** ✅ 已完成
+
+**目标：** 确保 Buff 系统正确工作。
+
+**任务清单：**
+
+- [x] 4.1 单元测试
+  - [x] BuffStatMapper 测试
+    - [x] 旧属性名映射测试
+    - [x] 值转换测试（CritMultiplier）
+    - [x] 无效属性名处理测试
+  - [x] BuffStatApplier 测试
+    - [x] StatMultiplier 效果测试
+    - [x] StatAdditive 效果测试
+    - [x] StatReduction 效果测试
+    - [x] 多 Buff 叠加测试
+    - [x] 层数叠加测试
+    - [x] 时间排序测试
+  - [x] BuffSystemOptimizationPhase1Tests.cs - 47个测试全部通过
+
+- [x] 4.2 集成测试
+  - [x] Buff + 伤害管线集成测试
+    - [x] AttackFinal Buff 影响基础层
+    - [x] AttackPercent Buff 影响主体层
+    - [x] CritDamageBonusPercent Buff 影响暴击层
+    - [x] ChasePercent Buff 影响追击层
+    - [x] DamageReductionPercent Buff 影响减伤层
+  - [x] 超过上限的 Buff 效果测试
+    - [x] 装备 100% + Buff 20% = 有效 120%
+  - [x] 多 Buff 叠加战斗测试
+
+- [x] 4.3 回归测试
+  - [x] 旧 Buff 配置兼容性测试
+  - [x] 现有战斗逻辑不受影响
+  - [x] 现有测试套件通过（1177个测试全部通过）
+
+**验收标准：**
+- [x] 所有新增测试通过（47个）
+- [x] 现有测试套件通过（1177个）
+- [x] 无回归问题
+
+**预估工作量：** 2-3 小时  
+**实际工作量：** 0.5 小时（包含在 Phase 1 实现中）
+
+---
+
+## 📊 总体进度
+
+| 阶段 | 状态 | 预估 | 实际 |
+|------|------|------|------|
+| Phase 1: 属性映射与兼容层 | ✅ 已完成 | 1-2h | 1h |
+| Phase 2: 伤害管线集成 | ✅ 已完成 | 2-3h | 0.5h |
+| Phase 3: 配置更新与兼容 | ✅ 已完成 | 1-2h | 0.5h |
+| Phase 4: 测试与验证 | ✅ 已完成 | 2-3h | 0.5h |
+| **总计** | **4/4 (100%)** | **6-10h** | **2.5h** |
+
+---
+
+## 🔧 技术要点
+
+### 属性上限规则
+
+```
+最终属性 = 职业属性 + Clamp(装备属性) + Buff效果
+
+关键规则：
+- 职业属性不受上限裁剪
+- 仅装备部分的属性受上限裁剪（单独裁剪）
+- Buff 效果不受上限裁剪，直接叠加
+```
+
+### 属性映射表
+
+| 旧属性名 | 新属性名 | 值转换 |
+|---------|---------|--------|
+| `DamagePerAttack` | `AttackFinal` | 无 |
+| `SpecialDamage` | `AttackFinal` | 无 |
+| `DamageReduction` | `DamageReductionPercent` | 无 |
+| `CritMultiplier` | `CritDamageBonusPercent` | `(v-1)*100` |
+
+### 效果叠加公式
+
+| 效果类型 | 公式 | 示例 |
+|---------|------|------|
+| StatMultiplier | `base × (1 + value)` | 100 × 1.15 = 115 |
+| StatAdditive | `base + value` | 100 + 15 = 115 |
+| StatReduction | `base × (1 - value)` | 100 × 0.85 = 85 |
+
+### 应用顺序
+
+1. Buff 按 `AppliedAtMs`（应用时间）排序
+2. 同一 Buff 的多层按 Stacks 循环应用
+3. 先乘法后加法（如果有多种效果类型）
+
+---
+
+## 📝 变更日志
+
+### 2025-12-02 v1.3 ✅ 实施完成
+- 修复力量光环配置错误：`StatMultiplier` 改为 `StatAdditive`
+- 在设计文档中添加效果类型使用指南
+- 所有功能已测试验证通过
+
+### 2025-12-02 v1.2
+- 修复 `DamageCalculator` 二次属性裁剪问题
+- 移除对 `AttackPercent` 等属性的裁剪，让 Buff 效果能够突破上限
+- 保留 `CritChancePercent` 裁剪（暴击率逻辑上不能超过100%）
+- 修复 `BattleDemo.razor.cs` 怪物属性缺失问题（Element, BaseAttack, DamageReductionPercent）
+
+### 2025-12-02 v1.1
+- 修正属性上限公式：`最终属性 = 职业属性 + Clamp(装备属性) + Buff效果`
+- 明确仅装备属性受上限裁剪，职业属性不受影响
+- 添加 CharacterStatsCalculator 修改到 Phase 2
+
+### 2025-12-02 v1.0
+- 初始版本
+- 基于设计提案创建实施文档
+- 规划 4 个实施阶段
+- 预估总工时：6-10 小时
+
+---
+
+## 🔗 下一步工作
+
+### 下一个 PR：旧系统清理
+
+建议在下一个 PR 中进行以下清理工作：
+
+1. **移除旧的 Buff 应用逻辑**
+   - `SkillResolver.ApplyBuffEffects()` 方法可以移除
+   - 旧的 `DamagePerAttack` 直接修改逻辑可以移除
+
+2. **移除 Character 类中的 [Obsolete] 属性**
+   - `DamagePerAttack` 属性
+   - `SpecialDamage` 属性
+   - `CritMultiplier` 属性
+
+3. **清理 MultiBattleInstance 中的向后兼容逻辑**
+   - 移除旧伤害系统的回退逻辑
+   - 简化战斗代码
+
+4. **更新相关测试**
+   - 移除针对旧属性的测试
+   - 更新测试使用新属性名
+
+---
+
+**最后更新：** 2025-12-02 v1.3  
+**维护者：** @copilot  
+**状态：** ✅ 已完成

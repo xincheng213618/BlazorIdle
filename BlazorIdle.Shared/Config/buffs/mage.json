@@ -3,6 +3,8 @@
 // 注意 / Note:
 // - 包含所有法师职业相关的Buff效果
 // - Contains all mage profession related buff effects
+// - 使用新的属性名称（AttackFinal, SpecialAttackPercent 等）
+// - Uses new attribute names (AttackFinal, SpecialAttackPercent, etc.)
 //
 [
   {
@@ -36,13 +38,13 @@
     "effects": [
       {
         "type": "StatMultiplier",
-        "target": "DamagePerAttack",
+        "target": "AttackFinal",
         "value": 0.08
       },
       {
-        "type": "StatMultiplier",
-        "target": "SpecialDamage",
-        "value": 0.12
+        "type": "StatAdditive",
+        "target": "SpecialAttackPercent",
+        "value": 12.0
       }
     ]
   },

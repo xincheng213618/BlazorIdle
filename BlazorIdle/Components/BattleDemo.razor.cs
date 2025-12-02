@@ -780,7 +780,12 @@ namespace BlazorIdle.Components
                         CastSkillIds = monsterDef.CastSkillIds,
                         InstantSkillIds = monsterDef.InstantSkillIds,
                         // Step3 Phase 1: Copy periodic skill list
-                        PeriodicSkillIds = monsterDef.PeriodicSkillIds
+                        PeriodicSkillIds = monsterDef.PeriodicSkillIds,
+                        // Phase 5: New damage system properties - 修复：缺失这些属性导致怪物伤害都是默认值
+                        // Phase 5: New damage system properties - Fix: missing these caused default monster damage
+                        Element = monsterDef.Element,
+                        BaseAttack = monsterDef.BaseAttack * monsterGroup.DamageMultiplier,
+                        DamageReductionPercent = monsterDef.DamageReductionPercent
                     };
 
                     string enemyId = $"{monsterGroup.MonsterId}_{enemyIndex}";

@@ -3,6 +3,8 @@
 // 注意 / Note:
 // - 包含所有盗贼职业相关的Buff效果
 // - Contains all rogue profession related buff effects
+// - 使用新的属性名称（AttackFinal, CritDamageBonusPercent 等）
+// - Uses new attribute names (AttackFinal, CritDamageBonusPercent, etc.)
 //
 [
   {
@@ -30,7 +32,7 @@
     "effects": [
       {
         "type": "StatMultiplier",
-        "target": "DamagePerAttack",
+        "target": "AttackFinal",
         "value": 0.15
       }
     ]
@@ -106,7 +108,7 @@
       },
       {
         "type": "StatMultiplier",
-        "target": "DamagePerAttack",
+        "target": "AttackFinal",
         "value": 0.50
       }
     ]

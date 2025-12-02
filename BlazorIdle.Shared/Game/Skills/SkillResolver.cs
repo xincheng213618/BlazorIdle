@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using BlazorIdle.Game.Combat;
+using BlazorIdle.Game.Buffs;
 
 namespace BlazorIdle.Game.Skills
 {
@@ -14,6 +15,13 @@ namespace BlazorIdle.Game.Skills
     /// - When BattleContext.DamageCalculator is available, use new 7-layer damage pipeline
     /// - 否则回退到旧的简化伤害计算
     /// - Otherwise fallback to old simplified damage calculation
+    /// 
+    /// Buff System Optimization: 使用 BuffStatApplier 应用 Buff 效果到 CombatStats
+    /// Buff System Optimization: Use BuffStatApplier to apply buff effects to CombatStats
+    /// - 公式：最终属性 = 职业属性 + Clamp(装备属性) + Buff效果
+    /// - Formula: FinalStats = ProfessionStats + Clamp(EquipmentStats) + BuffEffects
+    /// - Buff 效果不受属性上限裁剪
+    /// - Buff effects are NOT subject to stat caps
     /// </summary>
     public sealed class SkillResolver : ISkillResolver
     {
@@ -91,9 +99,18 @@ namespace BlazorIdle.Game.Skills
                 double skillCoef = damageDef?.CoefAtk ?? 1.0;
                 int skillFlat = damageDef?.Flat ?? 0;
                 
-                // 获取攻击力：优先使用 CombatStats.AttackFinal，否则使用旧属性
-                // Get attack power: prefer CombatStats.AttackFinal, otherwise use legacy attributes
-                int attackFinal = ctx.AttackerCombatStats.AttackFinal;
+                // Buff System Optimization: 应用 Buff 效果到整个 CombatStats
+                // Buff System Optimization: Apply buff effects to entire CombatStats
+                // 公式：buffedStats = baseStats（职业+装备裁剪后）+ Buff效果
+                // Formula: buffedStats = baseStats (profession + clamped equipment) + Buff effects
+                var baseStats = ctx.AttackerCombatStats;
+                var buffedStats = (!isMonsterSkill && casterBuffOwner != null)
+                    ? BuffStatApplier.ApplyBuffsToCombatStats(baseStats, casterBuffOwner)
+                    : baseStats;
+                
+                // 获取攻击力：优先使用 buffedStats.AttackFinal，否则使用旧属性
+                // Get attack power: prefer buffedStats.AttackFinal, otherwise use legacy attributes
+                int attackFinal = buffedStats.AttackFinal;
                 if (attackFinal == 0)
                 {
                     // 回退到旧属性
@@ -103,21 +120,14 @@ namespace BlazorIdle.Game.Skills
                         : (ctx.Player?.DamagePerAttack ?? 0);
                 }
                 
-                // Phase 8: 应用 Buff 效果到攻击力（仅玩家）
-                // Phase 8: Apply buff effects to attack power (player only)
-                if (casterBuffOwner != null && !isMonsterSkill)
-                {
-                    attackFinal = ApplyBuffEffects(attackFinal, "DamagePerAttack", casterBuffOwner);
-                }
-                
-                // 创建伤害上下文
-                // Create damage context
+                // 创建伤害上下文（使用 buffedStats）
+                // Create damage context (using buffedStats)
                 var damageCtx = new DamageContext
                 {
                     AttackFinal = attackFinal,
                     SkillCoef = skillCoef,
                     SkillFlat = skillFlat,
-                    AttackerStats = ctx.AttackerCombatStats,
+                    AttackerStats = buffedStats,  // 使用应用了 Buff 的属性
                     AttackerHPRatio = ctx.AttackerHPRatio,
                     AttackerElement = ctx.AttackerElement ?? ElementIds.Neutral,
                     DefenderElement = ctx.DefenderElement ?? ElementIds.Neutral,
