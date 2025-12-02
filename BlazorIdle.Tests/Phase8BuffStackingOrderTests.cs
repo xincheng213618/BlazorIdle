@@ -231,7 +231,7 @@ namespace BlazorIdle.Tests
                 kind: BuffKind.Buff,
                 effects: new List<BuffEffect>
                 {
-                    BuffEffect.StatMultiplier("AttackPercent", 0.5) // +50% of current
+                    BuffEffect.StatMultiplier("AttackPercent", 0.5) // 乘以 1.5 (value * (1 + 0.5))
                 },
                 appliedAtMs: clock.NowMs
             );
@@ -245,7 +245,7 @@ namespace BlazorIdle.Tests
                 kind: BuffKind.Buff,
                 effects: new List<BuffEffect>
                 {
-                    BuffEffect.StatMultiplier("AttackPercent", 0.3) // +30% of current
+                    BuffEffect.StatMultiplier("AttackPercent", 0.3) // 乘以 1.3 (value * (1 + 0.3))
                 },
                 appliedAtMs: clock.NowMs
             );
