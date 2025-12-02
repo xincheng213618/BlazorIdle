@@ -573,5 +573,120 @@ namespace BlazorIdle.Tests
         }
 
         #endregion
+
+        #region Monster BaseAttack Tests
+
+        /// <summary>
+        /// 验证怪物 BaseAttack 正确加载
+        /// Verify monster BaseAttack loads correctly
+        /// </summary>
+        [Fact]
+        public void MonsterDef_ShouldLoadCorrectBaseAttack()
+        {
+            // Arrange - 加载怪物配置
+            var monsters = BlazorIdle.Game.Config.ConfigRepository.LoadMonsters();
+            
+            // 查找测试怪物
+            var slime = monsters.Find(m => m.Id == "slime");
+            var wolf = monsters.Find(m => m.Id == "wolf");
+            var ogre = monsters.Find(m => m.Id == "ogre");
+            
+            // Assert - 怪物应该存在
+            Assert.NotNull(slime);
+            Assert.NotNull(wolf);
+            Assert.NotNull(ogre);
+            
+            // Assert - 验证 BaseAttack 值与 monsters.json 匹配
+            // slime: baseAttack=100, wolf: baseAttack=130, ogre: baseAttack=180
+            Assert.Equal(100, slime.BaseAttack);
+            Assert.Equal(130, wolf.BaseAttack);
+            Assert.Equal(180, ogre.BaseAttack);
+            
+            // Assert - 三个怪物的攻击力应该不同
+            Assert.NotEqual(slime.BaseAttack, wolf.BaseAttack);
+            Assert.NotEqual(wolf.BaseAttack, ogre.BaseAttack);
+        }
+
+        /// <summary>
+        /// 验证怪物技能的伤害计算使用正确的 BaseAttack
+        /// Verify monster skill damage calculation uses correct BaseAttack
+        /// </summary>
+        [Fact]
+        public void MonsterSkillDamage_ShouldUseCorrectBaseAttack()
+        {
+            // Arrange - 创建测试场景
+            var monsters = BlazorIdle.Game.Config.ConfigRepository.LoadMonsters();
+            var slimeDef = monsters.Find(m => m.Id == "slime");
+            var wolfDef = monsters.Find(m => m.Id == "wolf");
+            var ogreDef = monsters.Find(m => m.Id == "ogre");
+            
+            Assert.NotNull(slimeDef);
+            Assert.NotNull(wolfDef);
+            Assert.NotNull(ogreDef);
+            
+            // 创建 DamageCalculator
+            var calculator = DamageCalculator.CreateDefault();
+            
+            // 测试 Slime (BaseAttack=100)
+            var slimeStats = new CombatStats { AttackFinal = (int)slimeDef.BaseAttack };
+            var slimeCtx = new DamageContext
+            {
+                AttackFinal = slimeStats.AttackFinal,
+                SkillCoef = 1.0,
+                SkillFlat = 0,
+                AttackerStats = slimeStats,
+                AttackerHPRatio = 1.0,
+                AttackerElement = "neutral",
+                DefenderElement = "neutral",
+                DefenderDRPct = 0,
+                Rng = new Random(42)
+            };
+            var slimeResult = calculator.CalculateDeterministic(slimeCtx);
+            
+            // 测试 Wolf (BaseAttack=130)
+            var wolfStats = new CombatStats { AttackFinal = (int)wolfDef.BaseAttack };
+            var wolfCtx = new DamageContext
+            {
+                AttackFinal = wolfStats.AttackFinal,
+                SkillCoef = 1.0,
+                SkillFlat = 0,
+                AttackerStats = wolfStats,
+                AttackerHPRatio = 1.0,
+                AttackerElement = "neutral",
+                DefenderElement = "neutral",
+                DefenderDRPct = 0,
+                Rng = new Random(42)
+            };
+            var wolfResult = calculator.CalculateDeterministic(wolfCtx);
+            
+            // 测试 Ogre (BaseAttack=180)
+            var ogreStats = new CombatStats { AttackFinal = (int)ogreDef.BaseAttack };
+            var ogreCtx = new DamageContext
+            {
+                AttackFinal = ogreStats.AttackFinal,
+                SkillCoef = 1.0,
+                SkillFlat = 0,
+                AttackerStats = ogreStats,
+                AttackerHPRatio = 1.0,
+                AttackerElement = "neutral",
+                DefenderElement = "neutral",
+                DefenderDRPct = 0,
+                Rng = new Random(42)
+            };
+            var ogreResult = calculator.CalculateDeterministic(ogreCtx);
+            
+            // Assert - 伤害应该与 BaseAttack 成比例
+            Assert.True(slimeResult.FinalDamage < wolfResult.FinalDamage, 
+                $"Slime damage ({slimeResult.FinalDamage}) should be less than Wolf damage ({wolfResult.FinalDamage})");
+            Assert.True(wolfResult.FinalDamage < ogreResult.FinalDamage,
+                $"Wolf damage ({wolfResult.FinalDamage}) should be less than Ogre damage ({ogreResult.FinalDamage})");
+            
+            // 验证实际伤害值（中间值 variance = 1.0）
+            Assert.Equal(100, slimeResult.FinalDamage);
+            Assert.Equal(130, wolfResult.FinalDamage);
+            Assert.Equal(180, ogreResult.FinalDamage);
+        }
+
+        #endregion
     }
 }
