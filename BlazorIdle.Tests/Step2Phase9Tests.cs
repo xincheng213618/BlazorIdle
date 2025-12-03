@@ -4,6 +4,7 @@ using BlazorIdle.Game;
 using BlazorIdle.Game.Resources;
 using BlazorIdle.Game.Buffs;
 using BlazorIdle.Shared.Models;
+using BlazorIdle.Game.Combat;
 using System.Collections.Generic;
 
 namespace BlazorIdle.Tests
@@ -46,13 +47,10 @@ namespace BlazorIdle.Tests
                 ActiveCombatProfessionId = professionId,
                 Name = "Test Character",
                 MaxHp = 100,
-                DamagePerAttack = 50,
                 AttackRateAPS = 1.0,
                 HastePercent = 0,
                 SpecialIntervalSec = 5.0,
-                SpecialDamage = 100,
                 CritChancePercent = 5.0,
-                CritMultiplier = 2.0,
                 VariancePct = 10.0,
                 ReviveSec = 5.0
             };
@@ -67,15 +65,19 @@ namespace BlazorIdle.Tests
                 MaxHp = character.MaxHp,
                 Hp = character.MaxHp,
                 AttackRateAPS = character.AttackRateAPS,
-                DamagePerAttack = character.DamagePerAttack,
                 HastePercent = character.HastePercent,
                 SpecialIntervalSec = character.SpecialIntervalSec,
-                SpecialDamage = character.SpecialDamage,
                 CritChancePercent = character.CritChancePercent,
-                CritMultiplier = character.CritMultiplier,
                 VariancePct = character.VariancePct,
                 ReviveMs = (int)(character.ReviveSec * 1000)
             };
+            
+            // 初始化新伤害系统
+            player.CombatStats = new CombatStats
+            {
+                AttackFinal = 50
+            };
+            
             buckets ??= new ResourceBucketCollection();
 
             var buffOwner = new CharacterBuffOwner(player, character.Id, buckets);
