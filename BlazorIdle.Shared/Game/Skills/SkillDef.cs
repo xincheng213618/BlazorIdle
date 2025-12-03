@@ -116,10 +116,24 @@ namespace BlazorIdle.Game.Skills
         // Phase 5: Buff operation support
 
         /// <summary>
-        /// 技能伤害定义
-        /// Skill damage definition
+        /// 技能伤害定义（单段伤害，向后兼容）
+        /// Skill damage definition (single hit, backward compatible)
         /// </summary>
         public DamageDef? Damage { get; set; }
+
+        /// <summary>
+        /// 多段伤害定义列表（支持连击、弹幕等多段伤害技能）
+        /// Multi-hit damage definition list (supports combos, barrages, etc.)
+        /// 如果设置了 Hits，则优先使用 Hits，忽略 Damage
+        /// If Hits is set, it takes priority over Damage
+        /// </summary>
+        public List<DamageHit>? Hits { get; set; }
+
+        /// <summary>
+        /// 是否为多段伤害技能
+        /// Whether this is a multi-hit skill
+        /// </summary>
+        public bool IsMultiHit => Hits != null && Hits.Count > 0;
 
         /// <summary>
         /// 基础伤害倍率（1.0 = 正常伤害） - 保留以向后兼容
