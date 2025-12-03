@@ -2842,33 +2842,10 @@ namespace BlazorIdle.Game
             TeamStatusChanged?.Invoke(statusEvent);
         }
 
-        /// <summary>
-        /// 计算玩家伤害
-        /// Roll player damage
-        /// </summary>
-        private int PlayerRollDamage(int baseDamage, Character character, bool allowCrit)
-        {
-            double dmg = Math.Floor(_rng.Jitter(baseDamage, character.VariancePct));
-            if (dmg < 1) dmg = 1;
-
-            if (allowCrit && _rng.NextDouble() < (character.CritChancePercent / 100.0))
-            {
-                dmg = Math.Floor(dmg * Math.Max(1.0, character.CritMultiplier));
-            }
-
-            return (int)dmg;
-        }
-
-        /// <summary>
-        /// 计算敌人伤害
-        /// Roll enemy damage
-        /// </summary>
-        private int EnemyRollDamage(int baseDamage, Enemy enemy)
-        {
-            double dmg = Math.Floor(_rng.Jitter(baseDamage, enemy.VariancePct));
-            if (dmg < 1) dmg = 1;
-            return (int)dmg;
-        }
+        // 旧系统清理：PlayerRollDamage 和 EnemyRollDamage 已移除
+        // 新伤害系统使用 DamageCalculator 处理所有伤害计算
+        // Legacy cleanup: PlayerRollDamage and EnemyRollDamage have been removed
+        // New damage system uses DamageCalculator for all damage calculation
 
         /// <summary>
         /// 获取角色名称
