@@ -1,6 +1,7 @@
 using Xunit;
 using BlazorIdle.Game.Skills;
 using BlazorIdle.Game.Combat;
+using BlazorIdle.Game;
 using System.Collections.Generic;
 
 namespace BlazorIdle.Tests
@@ -472,6 +473,283 @@ namespace BlazorIdle.Tests
             {
                 Assert.True(barrage.Hits[i].DelaySec > barrage.Hits[i - 1].DelaySec);
             }
+        }
+
+        #endregion
+
+        #region SkillResolver Multi-Hit Integration Tests
+
+        /// <summary>
+        /// 创建测试用的 SkillResolver 和 BattleContext
+        /// </summary>
+        private (SkillResolver resolver, BattleContext ctx, SkillRepository repo) CreateTestContext()
+        {
+            var repo = new SkillRepository();
+            var resolver = new SkillResolver(null, repo, null);
+            
+            var damageCalc = DamageCalculator.CreateDefault();
+            var combatStats = new CombatStats
+            {
+                AttackFinal = 100,
+                CritChancePercent = 0, // 禁用暴击以便测试更确定
+                CritDamageBonusPercent = 50
+            };
+            
+            var ctx = new BattleContext
+            {
+                DamageCalculator = damageCalc,
+                AttackerCombatStats = combatStats,
+                AttackerHPRatio = 1.0,
+                AttackerElement = ElementIds.Neutral,
+                DefenderElement = ElementIds.Neutral,
+                DefenderDamageReductionPercent = 0,
+                Clock = new SimClock(),
+                Rng = new RngContext(12345)
+            };
+
+            return (resolver, ctx, repo);
+        }
+
+        [Fact]
+        public void SkillResolver_SingleHitSkill_ReturnsLegacyResult()
+        {
+            // Arrange
+            var (resolver, ctx, repo) = CreateTestContext();
+            
+            var skill = new SkillDef
+            {
+                Id = "test_single_hit",
+                Name = "Test Single Hit",
+                Damage = new DamageDef { CoefAtk = 1.5, Flat = 10 }
+            };
+            repo.RegisterSkill(skill);
+
+            // Act
+            var result = resolver.Cast("test_single_hit", ctx);
+
+            // Assert
+            Assert.False(result.HasMultiHit);
+            Assert.True(result.DamageDealt > 0);
+            Assert.Null(result.DamageInstances);
+        }
+
+        [Fact]
+        public void SkillResolver_MultiHitSkill_ReturnsMultipleInstances()
+        {
+            // Arrange
+            var (resolver, ctx, repo) = CreateTestContext();
+            
+            var skill = new SkillDef
+            {
+                Id = "test_triple_slash",
+                Name = "Test Triple Slash",
+                CanCrit = false, // 禁用暴击使测试更确定
+                Hits = new List<DamageHit>
+                {
+                    new DamageHit { HitIndex = 0, CoefAtk = 0.5, DelaySec = 0 },
+                    new DamageHit { HitIndex = 1, CoefAtk = 0.5, DelaySec = 0.2 },
+                    new DamageHit { HitIndex = 2, CoefAtk = 0.5, DelaySec = 0.4 }
+                }
+            };
+            repo.RegisterSkill(skill);
+
+            // Act
+            var result = resolver.Cast("test_triple_slash", ctx);
+
+            // Assert
+            Assert.True(result.HasMultiHit);
+            Assert.NotNull(result.DamageInstances);
+            Assert.Equal(3, result.DamageInstances.Count);
+            
+            // 验证各段的 HitIndex
+            Assert.Equal(0, result.DamageInstances[0].HitIndex);
+            Assert.Equal(1, result.DamageInstances[1].HitIndex);
+            Assert.Equal(2, result.DamageInstances[2].HitIndex);
+            
+            // 验证延迟
+            Assert.Equal(0, result.DamageInstances[0].ApplyAtSec);
+            Assert.Equal(0.2, result.DamageInstances[1].ApplyAtSec);
+            Assert.Equal(0.4, result.DamageInstances[2].ApplyAtSec);
+            
+            // 验证立即/延迟属性
+            Assert.True(result.DamageInstances[0].IsImmediate);
+            Assert.True(result.DamageInstances[1].IsPending);
+            Assert.True(result.DamageInstances[2].IsPending);
+        }
+
+        [Fact]
+        public void SkillResolver_MultiHitSkill_TotalDamageIsSum()
+        {
+            // Arrange
+            var (resolver, ctx, repo) = CreateTestContext();
+            
+            var skill = new SkillDef
+            {
+                Id = "test_combo",
+                Name = "Test Combo",
+                CanCrit = false,
+                Hits = new List<DamageHit>
+                {
+                    new DamageHit { HitIndex = 0, CoefAtk = 0.3 },
+                    new DamageHit { HitIndex = 1, CoefAtk = 0.3 },
+                    new DamageHit { HitIndex = 2, CoefAtk = 0.4 }
+                }
+            };
+            repo.RegisterSkill(skill);
+
+            // Act
+            var result = resolver.Cast("test_combo", ctx);
+
+            // Assert
+            Assert.True(result.HasMultiHit);
+            int sumOfInstances = 0;
+            foreach (var inst in result.DamageInstances!)
+            {
+                sumOfInstances += inst.Damage;
+            }
+            Assert.Equal(sumOfInstances, result.TotalDamage);
+        }
+
+        [Fact]
+        public void SkillResolver_MultiHitSkill_FirstHitPopulatesLegacyFields()
+        {
+            // Arrange
+            var (resolver, ctx, repo) = CreateTestContext();
+            
+            var skill = new SkillDef
+            {
+                Id = "test_multi_legacy",
+                Name = "Test Multi Legacy",
+                CanCrit = false,
+                Hits = new List<DamageHit>
+                {
+                    new DamageHit { HitIndex = 0, CoefAtk = 0.5 },
+                    new DamageHit { HitIndex = 1, CoefAtk = 0.5 }
+                }
+            };
+            repo.RegisterSkill(skill);
+
+            // Act
+            var result = resolver.Cast("test_multi_legacy", ctx);
+
+            // Assert
+            Assert.True(result.HasMultiHit);
+            // DamageDealt 应该等于第一段的伤害
+            Assert.Equal(result.DamageInstances![0].Damage, result.DamageDealt);
+        }
+
+        [Fact]
+        public void SkillResolver_MultiHitSkill_HasPendingDamage_DetectsDelayed()
+        {
+            // Arrange
+            var (resolver, ctx, repo) = CreateTestContext();
+            
+            var skill = new SkillDef
+            {
+                Id = "test_delayed",
+                Name = "Test Delayed",
+                CanCrit = false,
+                Hits = new List<DamageHit>
+                {
+                    new DamageHit { HitIndex = 0, CoefAtk = 1.0, DelaySec = 1.5 }
+                }
+            };
+            repo.RegisterSkill(skill);
+
+            // Act
+            var result = resolver.Cast("test_delayed", ctx);
+
+            // Assert
+            Assert.True(result.HasMultiHit);
+            Assert.True(result.HasPendingDamage);
+        }
+
+        [Fact]
+        public void SkillResolver_MultiHitSkill_AllImmediate_NoPendingDamage()
+        {
+            // Arrange
+            var (resolver, ctx, repo) = CreateTestContext();
+            
+            var skill = new SkillDef
+            {
+                Id = "test_immediate",
+                Name = "Test Immediate",
+                CanCrit = false,
+                Hits = new List<DamageHit>
+                {
+                    new DamageHit { HitIndex = 0, CoefAtk = 0.5, DelaySec = 0 },
+                    new DamageHit { HitIndex = 1, CoefAtk = 0.5, DelaySec = 0 }
+                }
+            };
+            repo.RegisterSkill(skill);
+
+            // Act
+            var result = resolver.Cast("test_immediate", ctx);
+
+            // Assert
+            Assert.True(result.HasMultiHit);
+            Assert.False(result.HasPendingDamage);
+        }
+
+        [Fact]
+        public void SkillResolver_MultiHitSkill_SkillIdAndCasterIdPopulated()
+        {
+            // Arrange
+            var (resolver, ctx, repo) = CreateTestContext();
+            
+            var skill = new SkillDef
+            {
+                Id = "test_metadata",
+                Name = "Test Metadata",
+                CanCrit = false,
+                Hits = new List<DamageHit>
+                {
+                    new DamageHit { HitIndex = 0, CoefAtk = 1.0 }
+                }
+            };
+            repo.RegisterSkill(skill);
+
+            var opts = new SkillCastOptions
+            {
+                CasterId = "player_1",
+                BundleId = "test_bundle"
+            };
+
+            // Act
+            var result = resolver.Cast("test_metadata", ctx, opts);
+
+            // Assert
+            Assert.True(result.HasMultiHit);
+            var instance = result.DamageInstances![0];
+            Assert.Equal("test_metadata", instance.SkillId);
+            Assert.Equal("player_1", instance.CasterId);
+            Assert.Equal("test_bundle", instance.BundleId);
+            Assert.True(instance.IsCasterPlayer);
+        }
+
+        [Fact]
+        public void SkillResolver_BackwardCompatibility_SingleDamageDefStillWorks()
+        {
+            // Arrange
+            var (resolver, ctx, repo) = CreateTestContext();
+            
+            // 使用旧的 Damage 定义（不使用 Hits）
+            var skill = new SkillDef
+            {
+                Id = "test_legacy_skill",
+                Name = "Legacy Skill",
+                CanCrit = false,
+                Damage = new DamageDef { CoefAtk = 1.2, Flat = 20 }
+            };
+            repo.RegisterSkill(skill);
+
+            // Act
+            var result = resolver.Cast("test_legacy_skill", ctx);
+
+            // Assert
+            Assert.False(result.HasMultiHit);
+            Assert.True(result.DamageDealt > 0);
+            Assert.Null(result.DamageInstances);
         }
 
         #endregion
