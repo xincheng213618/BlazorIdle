@@ -1,12 +1,16 @@
 using System.Linq;
 using BlazorIdle.Game;
 using BlazorIdle.Game.Buffs;
+using BlazorIdle.Game.Combat;
 using Xunit;
 
 namespace BlazorIdle.Tests
 {
     /// <summary>
     /// Phase 9: Test that special attack applies buff to player
+    /// 
+    /// 旧系统清理：这些测试已更新为使用新的 CombatStats 系统
+    /// Legacy cleanup: These tests have been updated to use the new CombatStats system
     /// </summary>
     public class Phase9SpecialBuffTest
     {
@@ -25,14 +29,17 @@ namespace BlazorIdle.Tests
             {
                 MaxHp = 1000,
                 Hp = 1000,
-                DamagePerAttack = 50,
                 AttackRateAPS = 1.0,
                 CritChancePercent = 0.0,
-                CritMultiplier = 2.0,
                 HastePercent = 0.0,
                 VariancePct = 0.0,
                 SpecialIntervalSec = 1.0, // Fast special for testing
-                SpecialDamage = 100
+                CombatStats = new CombatStats
+                {
+                    AttackFinal = 50,
+                    CritChancePercent = 0.0,
+                    CritDamageBonusPercent = 100.0 // 2.0x crit = 100% bonus
+                }
             };
             playerTeam.AddMember("player1", character, maxHp: 1000, currentHp: 1000);
 
