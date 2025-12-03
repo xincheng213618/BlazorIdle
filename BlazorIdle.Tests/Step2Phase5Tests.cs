@@ -337,16 +337,24 @@ namespace BlazorIdle.Tests
 
         #region Helper Methods
 
+        /// <summary>
+        /// 创建测试用的 Character（使用新伤害系统）
+        /// Create Character for testing (using new damage system)
+        /// </summary>
         private Character CreateTestCharacter()
         {
             return new Character
             {
                 MaxHp = 100,
                 Hp = 100,
-                DamagePerAttack = 10,
                 AttackRateAPS = 2.0,
                 CritChancePercent = 5.0,
-                CritMultiplier = 2.0
+                CombatStats = new Game.Combat.CombatStats
+                {
+                    AttackFinal = 10,
+                    CritChancePercent = 5.0,
+                    CritDamageBonusPercent = 100.0 // 2.0x crit = 100% bonus
+                }
             };
         }
 
