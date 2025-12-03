@@ -1,5 +1,6 @@
 using BlazorIdle.Shared.Models;
 using BlazorIdle.Game.Config;
+using BlazorIdle.Game.Combat;
 using BlazorIdle.Shared.DTOs;
 using BlazorIdle.Configuration;
 using System.Net.Http.Json;
@@ -41,7 +42,6 @@ namespace BlazorIdle.Services
         private readonly IAuthService _authService;
         private readonly Blazored.LocalStorage.ILocalStorageService _localStorage;
         private readonly ApiConfiguration _apiConfig;
-        private readonly ICharacterAttributeService _attributeService;
         private readonly ILogger<CharacterService> _logger;
         private CharacterListResponse? _cachedCharacters;
 
@@ -53,14 +53,12 @@ namespace BlazorIdle.Services
             IAuthService authService,
             Blazored.LocalStorage.ILocalStorageService localStorage,
             ApiConfiguration apiConfig,
-            ICharacterAttributeService attributeService,
             ILogger<CharacterService> logger)
         {
             _httpClient = httpClient;
             _authService = authService;
             _localStorage = localStorage;
             _apiConfig = apiConfig;
-            _attributeService = attributeService;
             _logger = logger;
         }
 
@@ -111,10 +109,10 @@ namespace BlazorIdle.Services
                 
                 if (response?.Character != null)
                 {
-                    // Task 3.1: 加载角色后立即计算属性
-                    // Calculate attributes immediately after loading character
-                    await _attributeService.RecalculateAndApplyAsync(response.Character);
-                    _logger.LogInformation("Loaded and calculated attributes for character {CharacterId}", id);
+                    // 加载角色后使用新的属性计算系统
+                    // Calculate attributes using new system after loading character
+                    RecalculateCharacterStats(response.Character);
+                    _logger.LogInformation("Loaded and calculated stats for character {CharacterId}", id);
                 }
                 
                 return response?.Character;
@@ -152,10 +150,10 @@ namespace BlazorIdle.Services
                     
                     if (result?.Character != null)
                     {
-                        // Task 3.1: 创建角色后初始化属性
-                        // Initialize attributes after creating character
-                        await _attributeService.RecalculateAndApplyAsync(result.Character);
-                        _logger.LogInformation("Created and initialized attributes for character {CharacterId}", result.Character.Id);
+                        // 创建角色后使用新的属性计算系统
+                        // Initialize stats using new system after creating character
+                        RecalculateCharacterStats(result.Character);
+                        _logger.LogInformation("Created and initialized stats for character {CharacterId}", result.Character.Id);
                         
                         // 保存初始化后的属性
                         // Save initialized attributes
@@ -305,12 +303,9 @@ namespace BlazorIdle.Services
                     // Character stats
                     MaxHp = character.MaxHp,
                     AttackRateAPS = character.AttackRateAPS,
-                    DamagePerAttack = character.DamagePerAttack,
                     HastePercent = character.HastePercent,
                     SpecialIntervalSec = character.SpecialIntervalSec,
-                    SpecialDamage = character.SpecialDamage,
                     CritChancePercent = character.CritChancePercent,
-                    CritMultiplier = character.CritMultiplier,
                     VariancePct = character.VariancePct,
                     ReviveSec = character.ReviveSec,
                     // 库存数据
@@ -394,11 +389,11 @@ namespace BlazorIdle.Services
                     _cachedCharacters = null;
                     if (result?.Character != null)
                     {
-                        // Task 3.3: 切换职业后重新计算属性
-                        // Recalculate attributes after profession switch
-                        await _attributeService.RecalculateAndApplyAsync(result.Character);
+                        // 切换职业后使用新的属性计算系统
+                        // Recalculate stats using new system after profession switch
+                        RecalculateCharacterStats(result.Character);
                         _logger.LogInformation(
-                            "Switched profession to {ProfessionId} and recalculated attributes for character {CharacterId}",
+                            "Switched profession to {ProfessionId} and recalculated stats for character {CharacterId}",
                             professionId, characterId);
                         
                         // 立即保存更新后的属性
@@ -435,8 +430,8 @@ namespace BlazorIdle.Services
         }
 
         /// <summary>
-        /// Task 3.5: 强制重新计算并应用角色属性
-        /// Force recalculate and apply character attributes
+        /// 强制重新计算并应用角色属性
+        /// Force recalculate and apply character stats
         /// </summary>
         /// <param name="character">要重算的角色</param>
         /// <param name="saveImmediately">是否立即保存到服务器</param>
@@ -444,31 +439,31 @@ namespace BlazorIdle.Services
         {
             try
             {
-                _logger.LogInformation("Force recalculating attributes for character {CharacterId}", character.Id);
+                _logger.LogInformation("Force recalculating stats for character {CharacterId}", character.Id);
 
-                // 重新计算属性
-                await _attributeService.RecalculateAndApplyAsync(character);
+                // 使用新的属性计算系统重新计算
+                RecalculateCharacterStats(character);
 
                 // 如果需要立即保存
                 if (saveImmediately)
                 {
                     await UpdateCharacterAsync(character.Id, character);
-                    _logger.LogInformation("Saved recalculated attributes for character {CharacterId}", character.Id);
+                    _logger.LogInformation("Saved recalculated stats for character {CharacterId}", character.Id);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error force recalculating attributes for character {CharacterId}", character.Id);
+                _logger.LogError(ex, "Error force recalculating stats for character {CharacterId}", character.Id);
             }
         }
 
         /// <summary>
-        /// Task 3.5: 批量重算所有角色的属性（用于配置更新后）
-        /// Batch recalculate attributes for all characters (used after config update)
+        /// 批量重算所有角色的属性（用于配置更新后）
+        /// Batch recalculate stats for all characters (used after config update)
         /// </summary>
         public async Task RecalculateAllCharactersAsync(List<CharacterData> characters)
         {
-            _logger.LogInformation("Recalculating attributes for {Count} characters", characters.Count);
+            _logger.LogInformation("Recalculating stats for {Count} characters", characters.Count);
 
             foreach (var character in characters)
             {
@@ -476,6 +471,36 @@ namespace BlazorIdle.Services
             }
 
             _logger.LogInformation("Completed recalculation for all characters");
+        }
+
+        /// <summary>
+        /// 使用新的角色属性系统重新计算属性
+        /// Recalculate character stats using new CharacterStatsCalculator system
+        /// </summary>
+        private void RecalculateCharacterStats(CharacterData character)
+        {
+            var calculator = CharacterStatsCalculator.CreateDefault();
+            var professionId = character.ActiveCombatProfessionId;
+            
+            // 使用新的 CharacterStatsCalculator 计算战斗属性
+            var combatStats = calculator.CalculateFinalStats(professionId, loadout: null);
+            var maxHp = calculator.CalculateFinalMaxHp(professionId, loadout: null);
+            var attackRate = calculator.CalculateFinalAttackRate(professionId, loadout: null);
+            
+            // 应用到 CharacterData
+            character.MaxHp = maxHp;
+            character.AttackRateAPS = attackRate;
+            character.HastePercent = combatStats.HastePercent;
+            character.CritChancePercent = combatStats.CritChancePercent;
+            
+            // 从职业配置获取其他固定属性
+            var professionConfig = BlazorIdle.Game.Professions.ProfessionStatsRepository.Shared.GetProfession(professionId);
+            if (professionConfig != null)
+            {
+                character.VariancePct = professionConfig.BaseStats.Variance;
+                character.ReviveSec = professionConfig.BaseStats.ReviveSec;
+                character.SpecialIntervalSec = professionConfig.BaseStats.SpecialIntervalSec;
+            }
         }
 
         /// <summary>

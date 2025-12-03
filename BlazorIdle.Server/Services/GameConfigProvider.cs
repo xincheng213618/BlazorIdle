@@ -70,9 +70,6 @@ namespace BlazorIdle.Server.Services
             // Load profession limits
             var professionLimits = ConfigRepository.LoadProfessionLimits();
 
-            // Load profession attributes
-            var professionAttributes = ConfigRepository.LoadProfessionAttributes();
-
             _professions.Clear();
             _professions.AddRange(profs.Where(p => !string.IsNullOrWhiteSpace(p.Id)));
 
@@ -94,16 +91,14 @@ namespace BlazorIdle.Server.Services
             _experienceCurve.Clear();
             _experienceCurve.AddRange(experienceCurve.OrderBy(e => e.Level));
 
+            // ProfessionAttributes 已废弃，使用新的 ProfessionStatsRepository
+            // ProfessionAttributes is deprecated, use new ProfessionStatsRepository
             _professionAttributes.Clear();
-            foreach (var kvp in professionAttributes)
-            {
-                _professionAttributes[kvp.Key] = kvp.Value;
-            }
 
             // 设置职业最大等级
             _maxProfessionLevel = professionLimits.MaxProfessionLevel;
 
-            Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-exp:{_experienceCurve.Count}-maxLvl:{_maxProfessionLevel}-profAttrs:{_professionAttributes.Count}";
+            Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-exp:{_experienceCurve.Count}-maxLvl:{_maxProfessionLevel}";
             _loaded = true;
 
             // Note: We no longer read from file system - all configs are loaded from embedded resources

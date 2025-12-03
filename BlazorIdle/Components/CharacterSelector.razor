@@ -62,7 +62,7 @@
                         <div class="character-stats">
                             <div class="stat-row">
                                 <span>生命值: @character.MaxHp</span>
-                                <span>攻击: @character.DamagePerAttack</span>
+                                <span>攻速: @character.AttackRateAPS.ToString("F1")/s</span>
                             </div>
                             <div class="stat-row text-muted small">
                                 <span>创建时间: @character.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>

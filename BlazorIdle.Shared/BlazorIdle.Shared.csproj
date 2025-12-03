@@ -58,7 +58,6 @@
     
     <!-- 职业配置文件 / Profession config files -->
     <EmbeddedResource Include="Config\professions\professions.json" LogicalName="BlazorIdle.Shared.Config.professions.professions.json" />
-    <EmbeddedResource Include="Config\professions\attributes.json" LogicalName="BlazorIdle.Shared.Config.professions.attributes.json" />
     <EmbeddedResource Include="Config\professions\limits.json" LogicalName="BlazorIdle.Shared.Config.professions.limits.json" />
     <EmbeddedResource Include="Config\professions\experience.json" LogicalName="BlazorIdle.Shared.Config.professions.experience.json" />
     <EmbeddedResource Include="Config\professions\base_stats.json" LogicalName="BlazorIdle.Shared.Config.professions.base_stats.json" />

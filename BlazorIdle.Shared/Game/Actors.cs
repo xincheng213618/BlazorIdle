@@ -13,19 +13,13 @@ namespace BlazorIdle.Game
 
         // 基础输出（Attack，受急速影响）
         public double AttackRateAPS { get; set; } = 2.0; // 次/秒
-        [Obsolete("将在新伤害系统中移除，使用 CombatStats.AttackFinal 替代")]
-        public int DamagePerAttack { get; set; } = 15;
         public double HastePercent { get; set; } = 0.0;  // 仅影响 Attack 轨
 
         // Special（不受急速）
         public double SpecialIntervalSec { get; set; } = 5.0;
-        [Obsolete("将在新伤害系统中移除，统一使用 AttackFinal × SkillCoef")]
-        public int SpecialDamage { get; set; } = 120;
 
         // 暴击
         public double CritChancePercent { get; set; } = 15.0;
-        [Obsolete("将在新伤害系统中移除，使用 CritConfig.BaseMultiplier + CombatStats.CritDamageBonusPercent 替代")]
-        public double CritMultiplier { get; set; } = 1.5;
 
         // 浮动
         public double VariancePct { get; set; } = 0.05;  // ±5%

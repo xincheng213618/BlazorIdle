@@ -49,23 +49,14 @@ namespace BlazorIdle.Shared.Models
         [JsonPropertyName("attackRateAPS")]
         public double AttackRateAPS { get; set; }
 
-        [JsonPropertyName("damagePerAttack")]
-        public int DamagePerAttack { get; set; }
-
         [JsonPropertyName("hastePercent")]
         public double HastePercent { get; set; }
 
         [JsonPropertyName("specialIntervalSec")]
         public double SpecialIntervalSec { get; set; }
 
-        [JsonPropertyName("specialDamage")]
-        public int SpecialDamage { get; set; }
-
         [JsonPropertyName("critChancePercent")]
         public double CritChancePercent { get; set; }
-
-        [JsonPropertyName("critMultiplier")]
-        public double CritMultiplier { get; set; }
 
         [JsonPropertyName("variancePct")]
         public double VariancePct { get; set; }
