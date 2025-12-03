@@ -2,6 +2,7 @@ using Xunit;
 using BlazorIdle.Game;
 using BlazorIdle.Game.Skills;
 using BlazorIdle.Game.Buffs;
+using BlazorIdle.Game.Combat;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -284,11 +285,17 @@ namespace BlazorIdle.Tests
             {
                 MaxHp = 100,
                 Hp = 100,
-                DamagePerAttack = 50,
                 AttackRateAPS = 1.0,
                 VariancePct = 0.0,
                 ActiveCombatProfessionId = "warrior"
             };
+            
+            // 初始化新伤害系统
+            player.CombatStats = new CombatStats
+            {
+                AttackFinal = 50
+            };
+            
             playerTeam.AddMember("player1", player, maxHp: 100, currentHp: 100);
 
             var enemyTeam = new BattleTeam<Enemy>("team_enemy", "Enemy Team", TeamType.Enemy);
@@ -338,12 +345,18 @@ namespace BlazorIdle.Tests
             {
                 MaxHp = 100,
                 Hp = 100,
-                DamagePerAttack = 50,
                 AttackRateAPS = 1.0,
                 CritChancePercent = 0.0,
                 VariancePct = 0.0,
                 ActiveCombatProfessionId = "warrior"
             };
+            
+            // 初始化新伤害系统
+            player.CombatStats = new CombatStats
+            {
+                AttackFinal = 50
+            };
+            
             playerTeam.AddMember("player1", player, maxHp: 100, currentHp: 100);
 
             var enemyTeam = new BattleTeam<Enemy>("team_enemy", "Enemy Team", TeamType.Enemy);

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BlazorIdle.Game;
 using BlazorIdle.Game.Skills;
+using BlazorIdle.Game.Combat;
 using BlazorIdle.Shared.Models;
 using Xunit;
 
@@ -227,13 +228,17 @@ namespace BlazorIdle.Tests
                 ActiveCombatProfessionId = "warrior",
                 MaxHp = 100,
                 Hp = 100,
-                DamagePerAttack = 10,
                 AttackRateAPS = 1.0,
                 CritChancePercent = 5.0,
                 HastePercent = 0.0,
                 VariancePct = 10.0,
-                SpecialIntervalSec = 2.0,
-                SpecialDamage = 20
+                SpecialIntervalSec = 2.0
+            };
+            
+            // 初始化新伤害系统
+            character.CombatStats = new CombatStats
+            {
+                AttackFinal = 10
             };
 
             var team = new BattleTeam<Character>("player_team", "Player Team", TeamType.Player);
