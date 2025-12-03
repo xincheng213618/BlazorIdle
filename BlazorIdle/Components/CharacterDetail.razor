@@ -212,7 +212,7 @@
     private bool isCollapsed;
     private CharacterData? character;
     private bool isLoading;
-    private bool hasStats; // 替代 calculatedAttrs 的空检查
+    private bool hasStats; // 标记角色属性是否已成功计算并可用于显示
     private string professionName = "";
     private string professionDescription = "";
     private int currentLevel = 1;
@@ -274,7 +274,7 @@
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error calculating attributes: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Error calculating stats: {ex.Message}");
             hasStats = false;
         }
         finally
