@@ -361,7 +361,9 @@ namespace BlazorIdle.Tests
         [Fact]
         public void CritChanceBuff_IncreaseCritRate()
         {
-            // Arrange - 创建 +100% 暴击率的 buff
+            // Arrange - 测试暴击率 buff 正确应用
+            // 注意: 新系统中暴击率有上限(80%)，所以测试使用 ForceCrit
+            // Note: New system has crit cap (default 80%), so test uses ForceCrit
             var combatStats = new CombatStats
             {
                 AttackFinal = 100,
@@ -392,6 +394,13 @@ namespace BlazorIdle.Tests
             );
             buffOwner.ApplyBuff(buff);
 
+            // 验证 BuffStatApplier 正确应用了暴击率
+            // Verify BuffStatApplier correctly applied crit rate
+            var buffedStats = BuffStatApplier.ApplyBuffsToCombatStats(combatStats, buffOwner);
+            Assert.Equal(100.0, buffedStats.CritChancePercent);
+            
+            // 使用 ForceCrit 测试暴击流程
+            // Use ForceCrit to test crit flow
             var ctx = new BattleContext
             {
                 Player = player,
@@ -406,11 +415,12 @@ namespace BlazorIdle.Tests
                 DefenderDamageReductionPercent = 0
             };
             var resolver = new SkillResolver();
+            var opts = new SkillCastOptions { ForceCrit = true };
 
             // Act
-            var result = resolver.Cast(SkillIds.AttackBasic, ctx);
+            var result = resolver.Cast(SkillIds.AttackBasic, ctx, opts);
 
-            // Assert - 应该暴击（通过 BuffStatApplier 增加暴击率）
+            // Assert - 应该暴击
             Assert.True(result.IsCrit);
         }
 
@@ -418,10 +428,12 @@ namespace BlazorIdle.Tests
         public void CritMultiplierBuff_IncreaseCritDamage()
         {
             // Arrange - 测试暴击伤害加成
+            // 使用 ForceCrit 确保暴击，因为暴击率有上限
+            // Use ForceCrit to ensure crit, as crit rate has cap
             var combatStats = new CombatStats
             {
                 AttackFinal = 100,
-                CritChancePercent = 100.0,
+                CritChancePercent = 0.0,
                 CritDamageBonusPercent = 66.67 // ~2.0x with BaseMultiplier 1.2
             };
             
@@ -430,7 +442,7 @@ namespace BlazorIdle.Tests
                 MaxHp = 1000,
                 Hp = 1000,
                 CombatStats = combatStats,
-                CritChancePercent = 100.0,
+                CritChancePercent = 0.0,
                 ActiveCombatProfessionId = "warrior"
             };
 
@@ -448,6 +460,11 @@ namespace BlazorIdle.Tests
             );
             buffOwner.ApplyBuff(buff);
 
+            // 验证 BuffStatApplier 正确应用了暴击伤害加成
+            // Verify BuffStatApplier correctly applied crit damage bonus
+            var buffedStats = BuffStatApplier.ApplyBuffsToCombatStats(combatStats, buffOwner);
+            Assert.Equal(66.67 + 50.0, buffedStats.CritDamageBonusPercent, precision: 2);
+
             var ctx = new BattleContext
             {
                 Player = player,
@@ -462,9 +479,10 @@ namespace BlazorIdle.Tests
                 DefenderDamageReductionPercent = 0
             };
             var resolver = new SkillResolver();
+            var opts = new SkillCastOptions { ForceCrit = true };
 
             // Act
-            var result = resolver.Cast(SkillIds.AttackBasic, ctx);
+            var result = resolver.Cast(SkillIds.AttackBasic, ctx, opts);
 
             // Assert - 暴击伤害应该更高
             Assert.True(result.IsCrit);
@@ -642,12 +660,14 @@ namespace BlazorIdle.Tests
         public void ComplexBuffInteraction_MultipleEffectsAndCrit()
         {
             // Arrange - 复杂场景：多个 buff + 暴击
+            // 使用 ForceCrit 确保暴击，因为暴击率有上限
+            // Use ForceCrit to ensure crit, as crit rate has cap
             var combatStats = new CombatStats
             {
                 AttackFinal = 100,
                 AttackPercent = 0,
                 ChaseFlat = 0,
-                CritChancePercent = 100.0, // 保证暴击
+                CritChancePercent = 0.0,
                 CritDamageBonusPercent = 66.67
             };
             
@@ -656,7 +676,7 @@ namespace BlazorIdle.Tests
                 MaxHp = 1000,
                 Hp = 1000,
                 CombatStats = combatStats,
-                CritChancePercent = 100.0,
+                CritChancePercent = 0.0,
                 ActiveCombatProfessionId = "warrior"
             };
 
@@ -691,6 +711,12 @@ namespace BlazorIdle.Tests
                 stackingPolicy: BuffStackingPolicy.Refresh,
                 durationSec: 10.0
             ));
+            
+            // 验证 BuffStatApplier 正确应用了所有 buff
+            var buffedStats = BuffStatApplier.ApplyBuffsToCombatStats(combatStats, buffOwner);
+            Assert.Equal(30.0, buffedStats.AttackPercent);
+            Assert.Equal(10, buffedStats.ChaseFlat);
+            Assert.Equal(66.67 + 50.0, buffedStats.CritDamageBonusPercent, precision: 2);
 
             var ctx = new BattleContext
             {
@@ -706,9 +732,10 @@ namespace BlazorIdle.Tests
                 DefenderDamageReductionPercent = 0
             };
             var resolver = new SkillResolver();
+            var opts = new SkillCastOptions { ForceCrit = true };
 
             // Act
-            var result = resolver.Cast(SkillIds.AttackBasic, ctx);
+            var result = resolver.Cast(SkillIds.AttackBasic, ctx, opts);
 
             // Assert - 应该暴击且伤害较高
             Assert.True(result.IsCrit);
@@ -717,3 +744,43 @@ namespace BlazorIdle.Tests
         }
     }
 }
+
+    /// <summary>
+    /// 单独测试 BuffStatApplier 是否正确应用暴击率 buff
+    /// Isolated test for BuffStatApplier crit chance application
+    /// </summary>
+    public class BuffStatApplierTests
+    {
+        [Fact]
+        public void BuffStatApplier_AppliesCritChanceBuff_Correctly()
+        {
+            // Arrange
+            var baseStats = new CombatStats
+            {
+                AttackFinal = 100,
+                CritChancePercent = 0.0
+            };
+            
+            var player = new Character();
+            var buffOwner = new CharacterBuffOwner(player, "player1");
+            
+            var buff = new BuffInstance(
+                id: "crit_boost",
+                ownerId: "player1",
+                kind: BuffKind.Buff,
+                effects: new List<BuffEffect>
+                {
+                    BuffEffect.StatAdditive("CritChancePercent", 100.0)
+                },
+                stackingPolicy: BuffStackingPolicy.Refresh,
+                durationSec: 10.0
+            );
+            buffOwner.ApplyBuff(buff);
+            
+            // Act
+            var result = BuffStatApplier.ApplyBuffsToCombatStats(baseStats, buffOwner);
+            
+            // Assert
+            Assert.Equal(100.0, result.CritChancePercent);
+        }
+    }
