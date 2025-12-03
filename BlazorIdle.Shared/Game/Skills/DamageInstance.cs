@@ -96,6 +96,12 @@ namespace BlazorIdle.Game.Skills
         public double ElementMultiplier { get; set; } = 1.0;
 
         /// <summary>
+        /// 事件来源类型（普攻/技能/触发等）
+        /// Event source type (Attack/Special/Trigger etc.)
+        /// </summary>
+        public EventSource EventSource { get; set; } = EventSource.Attack;
+
+        /// <summary>
         /// 创建实例副本
         /// Create a copy of this instance
         /// </summary>
@@ -114,7 +120,8 @@ namespace BlazorIdle.Game.Skills
                 IsCasterPlayer = IsCasterPlayer,
                 BundleId = BundleId,
                 HasElementAdvantage = HasElementAdvantage,
-                ElementMultiplier = ElementMultiplier
+                ElementMultiplier = ElementMultiplier,
+                EventSource = EventSource
             };
         }
     }

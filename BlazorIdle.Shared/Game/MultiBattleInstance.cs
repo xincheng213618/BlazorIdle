@@ -727,6 +727,7 @@ namespace BlazorIdle.Game
                                     targetedInstance.TargetId = targetId;
                                     targetedInstance.CasterId = casterId;
                                     targetedInstance.IsCasterPlayer = true;
+                                    targetedInstance.EventSource = eventSource;  // 保留原始事件来源
                                     
                                     // AOE 伤害减免
                                     // AOE damage reduction
@@ -943,6 +944,7 @@ namespace BlazorIdle.Game
                                     targetedInstance.TargetId = targetId;
                                     targetedInstance.CasterId = casterId;
                                     targetedInstance.IsCasterPlayer = false;
+                                    targetedInstance.EventSource = eventSource;  // 保留原始事件来源
                                     
                                     // AOE 伤害减免
                                     // AOE damage reduction
@@ -1313,7 +1315,7 @@ namespace BlazorIdle.Game
                             instance.TargetId,
                             defender,
                             instance.Damage,
-                            EventSource.Attack,
+                            instance.EventSource,  // 使用原始事件来源而不是硬编码 Attack
                             isAoe: false,
                             isCrit: instance.IsCrit,
                             skillId: instance.SkillId,
@@ -1335,7 +1337,7 @@ namespace BlazorIdle.Game
                             instance.TargetId,
                             defender,
                             instance.Damage,
-                            source: EventSource.Attack,
+                            source: instance.EventSource,  // 使用原始事件来源
                             skillId: instance.SkillId,
                             bundleId: instance.BundleId);
                     }
