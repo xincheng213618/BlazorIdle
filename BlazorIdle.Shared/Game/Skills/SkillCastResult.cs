@@ -9,16 +9,55 @@ namespace BlazorIdle.Game.Skills
     public sealed class SkillCastResult
     {
         /// <summary>
-        /// 造成的伤害值
-        /// Damage dealt
+        /// 造成的伤害值（单段伤害，向后兼容）
+        /// Damage dealt (single hit, backward compatible)
         /// </summary>
         public int DamageDealt { get; set; }
 
         /// <summary>
-        /// 是否暴击
-        /// Whether it was a critical hit
+        /// 是否暴击（单段伤害，向后兼容）
+        /// Whether it was a critical hit (single hit, backward compatible)
         /// </summary>
         public bool IsCrit { get; set; }
+
+        /// <summary>
+        /// 多段伤害实例列表（支持连击、弹幕等多段伤害技能）
+        /// Multi-hit damage instance list (supports combos, barrages, etc.)
+        /// </summary>
+        public List<DamageInstance>? DamageInstances { get; set; }
+
+        /// <summary>
+        /// 是否有多段伤害
+        /// Whether this result has multi-hit damage
+        /// </summary>
+        public bool HasMultiHit => DamageInstances != null && DamageInstances.Count > 0;
+
+        /// <summary>
+        /// 是否有待应用的延迟伤害
+        /// Whether there are pending (delayed) damages
+        /// </summary>
+        public bool HasPendingDamage => DamageInstances?.Exists(d => d.IsPending) ?? false;
+
+        /// <summary>
+        /// 总伤害（所有段伤害之和）
+        /// Total damage (sum of all hit damages)
+        /// </summary>
+        public int TotalDamage
+        {
+            get
+            {
+                if (DamageInstances != null && DamageInstances.Count > 0)
+                {
+                    int total = 0;
+                    foreach (var instance in DamageInstances)
+                    {
+                        total += instance.Damage;
+                    }
+                    return total;
+                }
+                return DamageDealt;
+            }
+        }
 
         /// <summary>
         /// Bundle ID：记录本次技能施放所属的 bundle

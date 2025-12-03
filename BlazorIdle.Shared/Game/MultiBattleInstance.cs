@@ -5,6 +5,7 @@ using BlazorIdle.Game.Combat;
 using BlazorIdle.Game.Skills;
 using BlazorIdle.Game.Tracks;
 using BlazorIdle.Game.Config;
+using BlazorIdle.Game.Battle.Execution;
 
 namespace BlazorIdle.Game
 {
@@ -81,6 +82,11 @@ namespace BlazorIdle.Game
         // Accumulator for periodic skill checks (every 1 second)
         // 定期技能检查累积器（每秒检查一次）
         private double _periodicCheckAccumulator = 0.0;
+        
+        // Battle Refactor Phase 2.4: 延迟伤害系统
+        // Battle Refactor Phase 2.4: Delayed damage system
+        private readonly PendingDamageQueue _pendingDamageQueue;
+        private readonly DamageApplier _damageApplier;
         
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
@@ -188,6 +194,11 @@ namespace BlazorIdle.Game
             
             // Phase 7: 初始化 TriggerProcessor / Initialize TriggerProcessor
             _triggerProcessor = new TriggerProcessor(_skillRepository, _conditionChecker, GetOrCreateCooldownManager, _resourceManager);
+            
+            // Battle Refactor Phase 2.4: 初始化延迟伤害系统
+            // Battle Refactor Phase 2.4: Initialize delayed damage system
+            _pendingDamageQueue = new PendingDamageQueue();
+            _damageApplier = new DamageApplier(_pendingDamageQueue, _clock);
 
             // Phase 8: 注册施法事件处理器 / Register casting event handlers
             _castingController.OnCastComplete += HandleCastComplete;
@@ -455,6 +466,10 @@ namespace BlazorIdle.Game
 
                 // 处理怪物行动
                 ProcessEnemyActions(now);
+                
+                // Battle Refactor Phase 2.4: 处理延迟伤害
+                // Battle Refactor Phase 2.4: Process delayed damages
+                ProcessPendingDamages();
 
                 // 检查战斗状态
                 CheckBattleState(now);
@@ -690,22 +705,82 @@ namespace BlazorIdle.Game
                 if (targetIds.Count > 0)
                 {
                     bool isAoe = targetIds.Count > 1;
-                    int damagePerTarget = isAoe ? (int)(result.DamageDealt * _config.AoeDamageMultiplier) : result.DamageDealt;
-
-                    foreach (var targetId in targetIds)
+                    
+                    // Battle Refactor Phase 2.4: 支持多段伤害
+                    // Battle Refactor Phase 2.4: Support multi-hit damage
+                    if (result.DamageInstances != null && result.DamageInstances.Count > 0)
                     {
-                        // 处理伤害（针对敌人目标）
-                        // Process damage (for enemy targets)
-                        var enemyTarget = _enemyTeam.GetMember(targetId);
-                        if (enemyTarget != null && damagePerTarget > 0)
+                        // 多段伤害处理
+                        // Multi-hit damage processing
+                        foreach (var targetId in targetIds)
                         {
-                            ApplyDamageToEnemy(casterId, member, targetId, enemyTarget, damagePerTarget, eventSource, 
-                                isAoe: isAoe, isCrit: result.IsCrit, skillId: skillId, bundleId: result.BundleId);
+                            var enemyTarget = _enemyTeam.GetMember(targetId);
+                            if (enemyTarget != null)
+                            {
+                                // 为每个目标处理所有伤害实例
+                                // Process all damage instances for each target
+                                foreach (var instance in result.DamageInstances)
+                                {
+                                    // 克隆实例并设置目标
+                                    // Clone instance and set target
+                                    var targetedInstance = instance.Clone();
+                                    targetedInstance.TargetId = targetId;
+                                    targetedInstance.CasterId = casterId;
+                                    targetedInstance.IsCasterPlayer = true;
+                                    targetedInstance.EventSource = eventSource;  // 保留原始事件来源
+                                    
+                                    // AOE 伤害减免
+                                    // AOE damage reduction
+                                    if (isAoe)
+                                    {
+                                        targetedInstance.Damage = (int)(targetedInstance.Damage * _config.AoeDamageMultiplier);
+                                    }
+                                    
+                                    if (targetedInstance.IsImmediate)
+                                    {
+                                        // 立即伤害
+                                        // Immediate damage
+                                        if (!enemyTarget.IsDead && targetedInstance.Damage > 0)
+                                        {
+                                            ApplyDamageToEnemy(casterId, member, targetId, enemyTarget, targetedInstance.Damage, eventSource,
+                                                isAoe: isAoe, isCrit: targetedInstance.IsCrit, skillId: skillId, bundleId: result.BundleId);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // 延迟伤害加入队列
+                                        // Delayed damage enqueue
+                                        _pendingDamageQueue.Enqueue(targetedInstance, _clock.NowMs / 1000.0);
+                                    }
+                                }
+                            }
+                            
+                            // Phase 5: 即时治疗应用到每个目标（支持治疗队友）
+                            // Phase 5: Instant heal applies to each target (supports healing allies)
+                            ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: true, skillId: skillId);
                         }
-                        
-                        // Phase 5: 即时治疗应用到每个目标（支持治疗队友）
-                        // Phase 5: Instant heal applies to each target (supports healing allies)
-                        ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: true, skillId: skillId);
+                    }
+                    else
+                    {
+                        // 传统单段伤害处理（向后兼容）
+                        // Legacy single-hit damage processing (backward compatible)
+                        int damagePerTarget = isAoe ? (int)(result.DamageDealt * _config.AoeDamageMultiplier) : result.DamageDealt;
+
+                        foreach (var targetId in targetIds)
+                        {
+                            // 处理伤害（针对敌人目标）
+                            // Process damage (for enemy targets)
+                            var enemyTarget = _enemyTeam.GetMember(targetId);
+                            if (enemyTarget != null && damagePerTarget > 0)
+                            {
+                                ApplyDamageToEnemy(casterId, member, targetId, enemyTarget, damagePerTarget, eventSource, 
+                                    isAoe: isAoe, isCrit: result.IsCrit, skillId: skillId, bundleId: result.BundleId);
+                            }
+                            
+                            // Phase 5: 即时治疗应用到每个目标（支持治疗队友）
+                            // Phase 5: Instant heal applies to each target (supports healing allies)
+                            ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: true, skillId: skillId);
+                        }
                     }
                     
                     // Buff操作和资源变化只应用一次（不是每个目标）
@@ -847,22 +922,82 @@ namespace BlazorIdle.Game
                 if (targetIds.Count > 0)
                 {
                     bool isAoe = targetIds.Count > 1;
-                    int damagePerTarget = isAoe ? (int)(result.DamageDealt * _config.AoeDamageMultiplier) : result.DamageDealt;
-
-                    foreach (var targetId in targetIds)
+                    
+                    // Battle Refactor Phase 2.4: 支持多段伤害（怪物对玩家）
+                    // Battle Refactor Phase 2.4: Support multi-hit damage (monster to player)
+                    if (result.DamageInstances != null && result.DamageInstances.Count > 0)
                     {
-                        // 处理伤害（针对玩家目标）
-                        // Process damage (for player targets)
-                        var playerTarget = _playerTeam.GetMember(targetId);
-                        if (playerTarget != null && damagePerTarget > 0)
+                        // 多段伤害处理
+                        // Multi-hit damage processing
+                        foreach (var targetId in targetIds)
                         {
-                            ApplyDamageToPlayer(casterId, member, targetId, playerTarget, damagePerTarget,
-                                source: eventSource, skillId: skillId, bundleId: result.BundleId);
+                            var playerTarget = _playerTeam.GetMember(targetId);
+                            if (playerTarget != null)
+                            {
+                                // 为每个目标处理所有伤害实例
+                                // Process all damage instances for each target
+                                foreach (var instance in result.DamageInstances)
+                                {
+                                    // 克隆实例并设置目标
+                                    // Clone instance and set target
+                                    var targetedInstance = instance.Clone();
+                                    targetedInstance.TargetId = targetId;
+                                    targetedInstance.CasterId = casterId;
+                                    targetedInstance.IsCasterPlayer = false;
+                                    targetedInstance.EventSource = eventSource;  // 保留原始事件来源
+                                    
+                                    // AOE 伤害减免
+                                    // AOE damage reduction
+                                    if (isAoe)
+                                    {
+                                        targetedInstance.Damage = (int)(targetedInstance.Damage * _config.AoeDamageMultiplier);
+                                    }
+                                    
+                                    if (targetedInstance.IsImmediate)
+                                    {
+                                        // 立即伤害
+                                        // Immediate damage
+                                        if (!playerTarget.IsDead && targetedInstance.Damage > 0)
+                                        {
+                                            ApplyDamageToPlayer(casterId, member, targetId, playerTarget, targetedInstance.Damage,
+                                                source: eventSource, skillId: skillId, bundleId: result.BundleId);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // 延迟伤害加入队列
+                                        // Delayed damage enqueue
+                                        _pendingDamageQueue.Enqueue(targetedInstance, _clock.NowMs / 1000.0);
+                                    }
+                                }
+                            }
+                            
+                            // Phase 5: 即时治疗应用到每个目标（支持治疗队友）
+                            // Phase 5: Instant heal applies to each target (supports healing allies)
+                            ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: false, skillId: skillId);
                         }
-                        
-                        // Phase 5: 即时治疗应用到每个目标（支持治疗队友）
-                        // Phase 5: Instant heal applies to each target (supports healing allies)
-                        ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: false, skillId: skillId);
+                    }
+                    else
+                    {
+                        // 传统单段伤害处理（向后兼容）
+                        // Legacy single-hit damage processing (backward compatible)
+                        int damagePerTarget = isAoe ? (int)(result.DamageDealt * _config.AoeDamageMultiplier) : result.DamageDealt;
+
+                        foreach (var targetId in targetIds)
+                        {
+                            // 处理伤害（针对玩家目标）
+                            // Process damage (for player targets)
+                            var playerTarget = _playerTeam.GetMember(targetId);
+                            if (playerTarget != null && damagePerTarget > 0)
+                            {
+                                ApplyDamageToPlayer(casterId, member, targetId, playerTarget, damagePerTarget,
+                                    source: eventSource, skillId: skillId, bundleId: result.BundleId);
+                            }
+                            
+                            // Phase 5: 即时治疗应用到每个目标（支持治疗队友）
+                            // Phase 5: Instant heal applies to each target (supports healing allies)
+                            ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: false, skillId: skillId);
+                        }
                     }
                     
                     // Buff操作和资源变化只应用一次（不是每个目标）
@@ -1153,6 +1288,61 @@ namespace BlazorIdle.Game
             // For now, use random selection (could be enhanced based on target policy)
             int randomIndex = _rng.NextRange(0, alivePlayerIds.Count - 1);
             return alivePlayerIds[randomIndex];
+        }
+
+        /// <summary>
+        /// Battle Refactor Phase 2.4: 处理所有到期的延迟伤害
+        /// Battle Refactor Phase 2.4: Process all pending delayed damages that are ready
+        /// </summary>
+        private void ProcessPendingDamages()
+        {
+            _damageApplier.ProcessPendingDamages(instance =>
+            {
+                // 根据施法者类型应用伤害
+                // Apply damage based on caster type
+                if (instance.IsCasterPlayer)
+                {
+                    // 玩家对敌人造成的延迟伤害
+                    // Player's delayed damage to enemy
+                    var attacker = _playerTeam.GetMember(instance.CasterId);
+                    var defender = _enemyTeam.GetMember(instance.TargetId);
+                    
+                    if (attacker != null && defender != null && !defender.IsDead)
+                    {
+                        ApplyDamageToEnemy(
+                            instance.CasterId,
+                            attacker,
+                            instance.TargetId,
+                            defender,
+                            instance.Damage,
+                            instance.EventSource,  // 使用原始事件来源而不是硬编码 Attack
+                            isAoe: false,
+                            isCrit: instance.IsCrit,
+                            skillId: instance.SkillId,
+                            bundleId: instance.BundleId);
+                    }
+                }
+                else
+                {
+                    // 怪物对玩家造成的延迟伤害
+                    // Monster's delayed damage to player
+                    var attacker = _enemyTeam.GetMember(instance.CasterId);
+                    var defender = _playerTeam.GetMember(instance.TargetId);
+                    
+                    if (attacker != null && defender != null && !defender.IsDead)
+                    {
+                        ApplyDamageToPlayer(
+                            instance.CasterId,
+                            attacker,
+                            instance.TargetId,
+                            defender,
+                            instance.Damage,
+                            source: instance.EventSource,  // 使用原始事件来源
+                            skillId: instance.SkillId,
+                            bundleId: instance.BundleId);
+                    }
+                }
+            });
         }
 
         /// <summary>
