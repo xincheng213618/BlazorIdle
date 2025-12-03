@@ -111,8 +111,20 @@ namespace BlazorIdle.Game.Battle.Execution
                     request.OnImmediateDamage?.Invoke(instance);
                 });
 
-                // 记录延迟的伤害
-                delayedDamages.AddRange(_damageApplier.PendingQueue.GetAll());
+                // 记录本次技能产生的延迟伤害
+                // Record delayed damages from this skill cast
+                // 注：这里获取的是刚入队的伤害实例，不包含之前已在队列中的其他技能伤害
+                // Note: This captures the just-enqueued damages, not including other skills' pending damages
+                if (castResult.DamageInstances != null)
+                {
+                    foreach (var instance in castResult.DamageInstances)
+                    {
+                        if (instance.IsPending)
+                        {
+                            delayedDamages.Add(instance);
+                        }
+                    }
+                }
             }
             else if (castResult.DamageDealt > 0)
             {
