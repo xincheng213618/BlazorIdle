@@ -46,11 +46,8 @@ builder.Services.AddScoped<IHeartbeatService, HeartbeatService>();
 // 游戏配置服务
 builder.Services.AddScoped<IGameConfigService, GameConfigService>();
 
-// 职业属性配置服务
+// 职业属性配置服务（仍然需要用于资源获取配置等）
 builder.Services.AddScoped<IProfessionAttributeService, ProfessionAttributeService>();
-
-// 角色属性计算服务
-builder.Services.AddScoped<ICharacterAttributeService, CharacterAttributeService>();
 
 // Task 3.4: 战斗属性同步服务
 builder.Services.AddScoped<IBattleAttributeSyncService, BattleAttributeSyncService>();

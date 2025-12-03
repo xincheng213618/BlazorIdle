@@ -47,12 +47,6 @@ public class UpdateCharacterRequest
     public double? AttackRateAPS { get; set; }
 
     /// <summary>
-    /// 每次攻击伤害
-    /// Damage per attack
-    /// </summary>
-    public int? DamagePerAttack { get; set; }
-
-    /// <summary>
     /// 急速百分比
     /// Haste percentage
     /// </summary>
@@ -65,22 +59,10 @@ public class UpdateCharacterRequest
     public double? SpecialIntervalSec { get; set; }
 
     /// <summary>
-    /// 特殊技能伤害
-    /// Special skill damage
-    /// </summary>
-    public int? SpecialDamage { get; set; }
-
-    /// <summary>
     /// 暴击率百分比
     /// Critical chance percentage
     /// </summary>
     public double? CritChancePercent { get; set; }
-
-    /// <summary>
-    /// 暴击伤害倍率
-    /// Critical damage multiplier
-    /// </summary>
-    public double? CritMultiplier { get; set; }
 
     /// <summary>
     /// 伤害浮动百分比

@@ -1,6 +1,7 @@
 using Xunit;
 using BlazorIdle.Game;
 using BlazorIdle.Game.Resources;
+using BlazorIdle.Game.Combat;
 using System.Linq;
 
 namespace BlazorIdle.Tests
@@ -8,6 +9,9 @@ namespace BlazorIdle.Tests
     /// <summary>
     /// Phase 2 集成测试：资源系统集成到战斗流程
     /// Phase 2 integration tests: Resource system integration into battle flow
+    /// 
+    /// 旧系统清理：这些测试已更新为使用新的 CombatStats 系统
+    /// Legacy cleanup: These tests have been updated to use the new CombatStats system
     /// </summary>
     public class ResourceIntegrationTests
     {
@@ -16,7 +20,7 @@ namespace BlazorIdle.Tests
             var clock = new SimClock();
             var rng = new RngContext(12345);
 
-            // 创建玩家队伍
+            // 创建玩家队伍 - 使用新的 CombatStats 系统
             var playerTeam = new BattleTeam<Character>("team_player", "Player Team", TeamType.Player);
             for (int i = 0; i < playerCount; i++)
             {
@@ -25,14 +29,17 @@ namespace BlazorIdle.Tests
                 {
                     MaxHp = 1000,
                     Hp = 1000,
-                    DamagePerAttack = 50,
                     AttackRateAPS = 1.0,
                     CritChancePercent = critChance,
-                    CritMultiplier = 2.0,
                     HastePercent = 0.0,
                     VariancePct = 0.0,
                     SpecialIntervalSec = 10.0,
-                    SpecialDamage = 100
+                    CombatStats = new CombatStats
+                    {
+                        AttackFinal = 50,
+                        CritChancePercent = critChance,
+                        CritDamageBonusPercent = 100.0 // 2.0x crit = 100% bonus
+                    }
                 };
                 playerTeam.AddMember(memberId, character, maxHp: 1000, currentHp: 1000);
             }

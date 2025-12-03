@@ -68,9 +68,6 @@ namespace BlazorIdle.Game.Config
             // Load battle configs
             var battleConfigs = ConfigRepository.LoadBattleConfigs();
 
-            // Load profession attributes
-            var professionAttributes = ConfigRepository.LoadProfessionAttributes();
-
             // Load experience curve
             var experienceCurve = ConfigRepository.LoadExperienceCurve();
 
@@ -101,11 +98,9 @@ namespace BlazorIdle.Game.Config
             _battleConfigs.Clear();
             _battleConfigs.AddRange(battleConfigs.Where(b => !string.IsNullOrWhiteSpace(b.Id)));
 
+            // ProfessionAttributes 已废弃，使用新的 ProfessionStatsRepository
+            // ProfessionAttributes is deprecated, use new ProfessionStatsRepository
             _professionAttributes.Clear();
-            foreach (var kvp in professionAttributes)
-            {
-                _professionAttributes[kvp.Key] = kvp.Value;
-            }
 
             _experienceCurve.Clear();
             _experienceCurve.AddRange(experienceCurve.OrderBy(e => e.Level));
@@ -121,7 +116,7 @@ namespace BlazorIdle.Game.Config
             _foodShopItems.Clear();
             _foodShopItems.AddRange(foodShop.Where(s => !string.IsNullOrWhiteSpace(s.ItemId)));
 
-            Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-profAttrs:{_professionAttributes.Count}-exp:{_experienceCurve.Count}-maxLvl:{_maxProfessionLevel}-cs:{_consumableShopItems.Count}-ps:{_potionShopItems.Count}-fs:{_foodShopItems.Count}";
+            Version = $"p:{_professions.Count}-m:{_monsters.Count}-i:{_items.Count}-d:{_dungeons.Count}-bs:{_battleScenarios.Count}-bc:{_battleConfigs.Count}-exp:{_experienceCurve.Count}-maxLvl:{_maxProfessionLevel}-cs:{_consumableShopItems.Count}-ps:{_potionShopItems.Count}-fs:{_foodShopItems.Count}";
             _loaded = true;
 
             // Note: We no longer fetch from API - all configs are loaded from embedded resources

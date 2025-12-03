@@ -108,17 +108,13 @@ namespace BlazorIdle.Game.Skills
                     ? BuffStatApplier.ApplyBuffsToCombatStats(baseStats, casterBuffOwner)
                     : baseStats;
                 
-                // 获取攻击力：优先使用 buffedStats.AttackFinal，否则使用旧属性
-                // Get attack power: prefer buffedStats.AttackFinal, otherwise use legacy attributes
-                int attackFinal = buffedStats.AttackFinal;
-                if (attackFinal == 0)
-                {
-                    // 回退到旧属性
-                    // Fallback to legacy attributes
-                    attackFinal = isMonsterSkill
-                        ? (int)(ctx.Enemy?.BaseAttack ?? ctx.Enemy?.DamagePerHit ?? 0)
-                        : (ctx.Player?.DamagePerAttack ?? 0);
-                }
+                // 旧系统清理：移除了向后兼容逻辑，直接使用 buffedStats.AttackFinal
+                // Legacy cleanup: Removed backward compatibility, use buffedStats.AttackFinal directly
+                // 怪物攻击力从 BaseAttack 获取
+                // Monster attack power from BaseAttack
+                int attackFinal = isMonsterSkill
+                    ? (int)(ctx.Enemy?.BaseAttack ?? 0)
+                    : buffedStats.AttackFinal;
                 
                 // 创建伤害上下文（使用 buffedStats）
                 // Create damage context (using buffedStats)
@@ -175,100 +171,11 @@ namespace BlazorIdle.Game.Skills
                 dmg = damageResult.FinalDamage;
                 isCrit = damageResult.IsCrit;
             }
-            else
-            {
-                // 旧系统：使用简化的伤害计算
-                // Legacy system: Use simplified damage calculation
-                int baseDamage = 0;
-                
-                if (skillDef?.Damage != null)
-                {
-                    var damageDef = skillDef.Damage;
-                    int attackPower = isMonsterSkill
-                        ? (ctx.Enemy?.DamagePerHit ?? 0)
-                        : (ctx.Player?.DamagePerAttack ?? 0);
-                    
-                    if (casterBuffOwner != null && !isMonsterSkill)
-                    {
-                        attackPower = ApplyBuffEffects(attackPower, "DamagePerAttack", casterBuffOwner);
-                    }
-                    
-                    baseDamage = (int)(damageDef.CoefAtk * attackPower) + damageDef.Flat;
-                }
-                else
-                {
-                    baseDamage = skillId switch
-                    {
-                        SkillIds.AttackBasic => ctx.Player?.DamagePerAttack ?? 0,
-                        SkillIds.SpecialPulse => ctx.Player?.SpecialDamage ?? 0,
-                        SkillIds.EnemyAttackBasic => ctx.Enemy?.DamagePerHit ?? 0,
-                        _ => 0
-                    };
 
-                    if (casterBuffOwner != null && skillId == SkillIds.AttackBasic)
-                    {
-                        baseDamage = ApplyBuffEffects(baseDamage, "DamagePerAttack", casterBuffOwner);
-                    }
-                    else if (casterBuffOwner != null && skillId == SkillIds.SpecialPulse)
-                    {
-                        baseDamage = ApplyBuffEffects(baseDamage, "SpecialDamage", casterBuffOwner);
-                    }
-
-                    if (skillDef != null)
-                    {
-                        baseDamage = (int)(baseDamage * skillDef.DamageMultiplier);
-                    }
-                }
-
-                double variancePct = isMonsterSkill
-                    ? ctx.Enemy?.VariancePct ?? 0.0
-                    : ctx.Player?.VariancePct ?? 0.0;
-                dmg = Math.Floor(ctx.Rng.Jitter(baseDamage, variancePct));
-                if (dmg < 1) dmg = 1;
-
-                bool hasForceCrit = casterBuffOwner != null && HasForceCritEffect(casterBuffOwner);
-                bool canCrit = skillDef?.CanCrit ?? true;
-                
-                if (!isMonsterSkill && ctx.Player != null && canCrit)
-                {
-                    if (hasForceCrit)
-                    {
-                        isCrit = true;
-                        var buffsToRemove = new List<string>();
-                        foreach (var buff in casterBuffOwner!.Buffs.Values)
-                        {
-                            if (buff.Effects.Any(e => e.Type == Buffs.BuffEffectType.ForceCrit))
-                            {
-                                buffsToRemove.Add(buff.Id);
-                                break;
-                            }
-                        }
-                        foreach (var buffId in buffsToRemove)
-                        {
-                            casterBuffOwner.RemoveBuff(buffId, "consumed_forcecrit");
-                        }
-                    }
-                    else
-                    {
-                        double critChance = ctx.Player.CritChancePercent;
-                        if (casterBuffOwner != null)
-                        {
-                            critChance = ApplyBuffEffectsToDouble(critChance, "CritChancePercent", casterBuffOwner);
-                        }
-                        isCrit = opts.ForceCrit || ctx.Rng.NextDouble() < (critChance / 100.0);
-                    }
-                    
-                    if (isCrit)
-                    {
-                        double critMultiplier = ctx.Player.CritMultiplier;
-                        if (casterBuffOwner != null)
-                        {
-                            critMultiplier = ApplyBuffEffectsToDouble(critMultiplier, "CritMultiplier", casterBuffOwner);
-                        }
-                        dmg = Math.Floor(dmg * Math.Max(1.0, critMultiplier));
-                    }
-                }
-            }
+            // 旧系统清理：移除了旧的伤害计算分支，现在要求 DamageCalculator 必须可用
+            // Legacy cleanup: Removed old damage calculation branch, DamageCalculator is now required
+            // 如果没有 DamageCalculator，伤害为 0
+            // If DamageCalculator is not available, damage is 0
 
             // Phase 5: 创建结果并添加 buff 操作
             // Phase 5: Create result and add buff operations
@@ -451,115 +358,10 @@ namespace BlazorIdle.Game.Skills
             return results;
         }
 
-        /// <summary>
-        /// Phase 8: 应用 Buff 效果到整数属性
-        /// Phase 8: Apply buff effects to integer attributes
-        /// Method B: Buffs are applied in time order (earlier applied first)
-        /// Same-type effects use multiplicative stacking to prevent runaway scaling
-        /// </summary>
-        private int ApplyBuffEffects(int baseValue, string statName, Buffs.IBuffOwner buffOwner)
-        {
-            double modifiedValue = baseValue;
-
-            // Method B: Sort buffs by application time (earlier first)
-            // This ensures deterministic and intuitive behavior
-            var sortedBuffs = buffOwner.Buffs.Values
-                .OrderBy(b => b.AppliedAtMs)
-                .ToList();
-
-            foreach (var buff in sortedBuffs)
-            {
-                foreach (var effect in buff.Effects)
-                {
-                    // 只处理影响指定属性的效果
-                    // Only process effects targeting the specified stat
-                    if (effect.Target != statName)
-                        continue;
-
-                    switch (effect.Type)
-                    {
-                        case Buffs.BuffEffectType.StatMultiplier:
-                            // 倍率效果：基础值 * (1 + value)
-                            // Multiplier effect: base * (1 + value)
-                            // value 为 0.15 表示 +15%
-                            // value of 0.15 means +15%
-                            // Multiplicative stacking prevents runaway scaling
-                            modifiedValue *= (1.0 + effect.Value);
-                            break;
-
-                        case Buffs.BuffEffectType.StatAdditive:
-                            // 加法效果：直接加上数值
-                            // Additive effect: directly add value
-                            modifiedValue += effect.Value;
-                            break;
-
-                        case Buffs.BuffEffectType.StatReduction:
-                            // 减益效果：基础值 * (1 - value)
-                            // Reduction effect: base * (1 - value)
-                            // value 为 0.10 表示 -10%
-                            // value of 0.10 means -10%
-                            // Multiplicative stacking for debuffs too
-                            modifiedValue *= (1.0 - effect.Value);
-                            break;
-                    }
-                }
-            }
-
-            return (int)Math.Floor(modifiedValue);
-        }
-
-        /// <summary>
-        /// Phase 8: 应用 Buff 效果到浮点数属性
-        /// Phase 8: Apply buff effects to double attributes
-        /// Method B: Buffs are applied in time order (earlier applied first)
-        /// Same-type effects use multiplicative stacking to prevent runaway scaling
-        /// </summary>
-        private double ApplyBuffEffectsToDouble(double baseValue, string statName, Buffs.IBuffOwner buffOwner)
-        {
-            double modifiedValue = baseValue;
-
-            // Method B: Sort buffs by application time (earlier first)
-            // This ensures deterministic and intuitive behavior
-            var sortedBuffs = buffOwner.Buffs.Values
-                .OrderBy(b => b.AppliedAtMs)
-                .ToList();
-
-            foreach (var buff in sortedBuffs)
-            {
-                foreach (var effect in buff.Effects)
-                {
-                    // 只处理影响指定属性的效果
-                    // Only process effects targeting the specified stat
-                    if (effect.Target != statName)
-                        continue;
-
-                    switch (effect.Type)
-                    {
-                        case Buffs.BuffEffectType.StatMultiplier:
-                            // 倍率效果：基础值 * (1 + value)
-                            // Multiplier effect: base * (1 + value)
-                            // Multiplicative stacking prevents runaway scaling
-                            modifiedValue *= (1.0 + effect.Value);
-                            break;
-
-                        case Buffs.BuffEffectType.StatAdditive:
-                            // 加法效果：直接加上数值
-                            // Additive effect: directly add value
-                            modifiedValue += effect.Value;
-                            break;
-
-                        case Buffs.BuffEffectType.StatReduction:
-                            // 减益效果：基础值 * (1 - value)
-                            // Reduction effect: base * (1 - value)
-                            // Multiplicative stacking for debuffs too
-                            modifiedValue *= (1.0 - effect.Value);
-                            break;
-                    }
-                }
-            }
-
-            return modifiedValue;
-        }
+        // 旧系统清理：移除了 ApplyBuffEffects 和 ApplyBuffEffectsToDouble 方法
+        // Legacy cleanup: Removed ApplyBuffEffects and ApplyBuffEffectsToDouble methods
+        // 这些方法已被 BuffStatApplier.ApplyBuffsToCombatStats() 替代
+        // These methods have been replaced by BuffStatApplier.ApplyBuffsToCombatStats()
 
         /// <summary>
         /// Phase 8: 检查是否有强制暴击效果

@@ -5,7 +5,6 @@
 @using BlazorIdle.Game.Professions
 @using BlazorIdle.Services
 @inject IGameConfigService GameConfig
-@inject ICharacterAttributeService AttributeService
 @inject IProfessionAttributeService ProfessionService
 @inject ICharacterService CharacterService
 @implements IDisposable
@@ -35,7 +34,7 @@
         {
             <div class="text-muted">加载配置中...</div>
         }
-        else if (calculatedAttrs == null)
+        else if (!hasStats)
         {
             <div class="text-muted">无法计算属性...</div>
         }
@@ -213,7 +212,7 @@
     private bool isCollapsed;
     private CharacterData? character;
     private bool isLoading;
-    private CalculatedAttributes? calculatedAttrs;
+    private bool hasStats; // 标记角色属性是否已成功计算并可用于显示
     private string professionName = "";
     private string professionDescription = "";
     private int currentLevel = 1;
@@ -246,7 +245,7 @@
 
     private async Task RefreshAttributesAsync()
     {
-        if (character == null) { calculatedAttrs = null; return; }
+        if (character == null) { hasStats = false; return; }
 
         try
         {
@@ -271,13 +270,12 @@
             // 使用新的期望伤害模拟（替代旧的 DPS 计算）
             UpdateExpectedDamage();
             
-            // 保持旧计算系统兼容（用于其他地方可能的引用）
-            calculatedAttrs = await AttributeService.CalculateAttributesAsync(character);
+            hasStats = true;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error calculating attributes: {ex.Message}");
-            calculatedAttrs = null;
+            System.Diagnostics.Debug.WriteLine($"Error calculating stats: {ex.Message}");
+            hasStats = false;
         }
         finally
         {

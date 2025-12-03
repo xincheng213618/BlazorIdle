@@ -943,10 +943,14 @@ namespace BlazorIdle.Tests
             {
                 MaxHp = 200,
                 Hp = 100,
-                DamagePerAttack = 50,
                 AttackRateAPS = 1.0,
                 CritChancePercent = 10.0,
-                CritMultiplier = 2.0
+                CombatStats = new Game.Combat.CombatStats
+                {
+                    AttackFinal = 50,
+                    CritChancePercent = 10.0,
+                    CritDamageBonusPercent = 100.0 // 2.0x crit = 100% bonus
+                }
             };
 
             var resources = new ResourceBucketCollection("rage", max: 20, initial: 10);

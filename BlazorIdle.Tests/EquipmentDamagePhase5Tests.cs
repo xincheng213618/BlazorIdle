@@ -692,35 +692,39 @@ namespace BlazorIdle.Tests
         }
 
         [Fact]
-        public void SkillResolver_FallsBackToLegacySystem_WhenNoDamageCalculator()
+        public void SkillResolver_RequiresNewDamageSystem()
         {
+            // 旧系统清理：此测试验证新系统是必需的
+            // Legacy cleanup: This test verifies the new system is required
+            
             // Arrange
             var skillResolver = new SkillResolver();
             var rng = new RngContext(12345);
             var clock = new TestGameClock();
 
+            var combatStats = new CombatStats { AttackFinal = 100 };
             var player = new Character
             {
-                DamagePerAttack = 100,
+                CombatStats = combatStats,
                 CritChancePercent = 0
             };
 
-            var ctx = new BattleContext
+            // Context without DamageCalculator
+            var ctxWithoutCalculator = new BattleContext
             {
                 Player = player,
                 Rng = rng,
                 Clock = clock
-                // No DamageCalculator provided
+                // No DamageCalculator provided - new system requires it
             };
 
-            // Act
-            var result = skillResolver.Cast("attack_basic", ctx);
+            // Act - 没有 DamageCalculator，新系统不会计算伤害
+            var result = skillResolver.Cast("attack_basic", ctxWithoutCalculator);
 
-            // Assert
-            Assert.True(result.DamageDealt > 0);
-            Assert.False(result.HasElementAdvantage);  // Legacy system doesn't set this
-            Assert.Equal(1.0, result.ElementMultiplier);  // Default value
-            Assert.Null(result.DetailedDamageResult);  // Not set for legacy system
+            // Assert - 新系统要求 DamageCalculator，否则伤害为 0
+            Assert.Equal(0, result.DamageDealt);
+            Assert.False(result.IsCrit);
+            Assert.Null(result.DetailedDamageResult);
         }
 
         [Fact]

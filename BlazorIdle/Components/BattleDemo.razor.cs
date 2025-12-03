@@ -715,18 +715,9 @@ namespace BlazorIdle.Components
                 MaxHp = battleStats.MaxHp,
                 Hp = battleStats.MaxHp,
                 AttackRateAPS = battleStats.AttackRate,
-                // 新属性系统：使用 CombatStats.AttackFinal 替代旧的 DamagePerAttack
-                // New attribute system: use CombatStats.AttackFinal instead of legacy DamagePerAttack
-                DamagePerAttack = battleStats.CombatStats?.AttackFinal ?? 100,
                 HastePercent = battleStats.CombatStats?.HastePercent ?? 0,
                 SpecialIntervalSec = profBaseStats.SpecialIntervalSec,
-                // 新属性系统：特殊攻击伤害通过技能系数计算
-                // New attribute system: special attack damage calculated via skill coefficient
-                SpecialDamage = battleStats.CombatStats?.AttackFinal ?? 100,
                 CritChancePercent = battleStats.CombatStats?.CritChancePercent ?? 0,
-                // 新属性系统：暴击倍率 = 1.2 (基础) × (1 + 暴伤加成%)
-                // New attribute system: crit multiplier = 1.2 (base) × (1 + crit damage bonus%)
-                CritMultiplier = 1.2 * (1 + (battleStats.CombatStats?.CritDamageBonusPercent ?? 0) / 100.0),
                 VariancePct = profBaseStats.Variance,
                 ReviveMs = (int)Math.Round(Math.Max(0, profBaseStats.ReviveSec) * 1000.0),
                 ActiveCombatProfessionId = professionId,
@@ -977,18 +968,9 @@ namespace BlazorIdle.Components
                 MaxHp = battleStats.MaxHp,
                 Hp = battleStats.MaxHp,
                 AttackRateAPS = battleStats.AttackRate,
-                // 新属性系统：使用 CombatStats.AttackFinal 替代旧的 DamagePerAttack
-                // New attribute system: use CombatStats.AttackFinal instead of legacy DamagePerAttack
-                DamagePerAttack = battleStats.CombatStats?.AttackFinal ?? 100,
                 HastePercent = battleStats.CombatStats?.HastePercent ?? 0,
                 SpecialIntervalSec = profBaseStats.SpecialIntervalSec,
-                // 新属性系统：特殊攻击伤害通过技能系数计算
-                // New attribute system: special attack damage calculated via skill coefficient
-                SpecialDamage = battleStats.CombatStats?.AttackFinal ?? 100,
                 CritChancePercent = battleStats.CombatStats?.CritChancePercent ?? 0,
-                // 新属性系统：暴击倍率 = 1.2 (基础) × (1 + 暴伤加成%)
-                // New attribute system: crit multiplier = 1.2 (base) × (1 + crit damage bonus%)
-                CritMultiplier = 1.2 * (1 + (battleStats.CombatStats?.CritDamageBonusPercent ?? 0) / 100.0),
                 VariancePct = profBaseStats.Variance,
                 ReviveMs = (int)Math.Round(Math.Max(0, profBaseStats.ReviveSec) * 1000.0),
                 ActiveCombatProfessionId = professionId,
@@ -1427,10 +1409,8 @@ namespace BlazorIdle.Components
                         battleChar.MaxHp = battleStats.MaxHp;
                         battleChar.Hp = Math.Min(battleChar.Hp, battleChar.MaxHp);
                         battleChar.AttackRateAPS = battleStats.AttackRate;
-                        battleChar.DamagePerAttack = battleStats.CombatStats?.AttackFinal ?? 100;
                         battleChar.HastePercent = battleStats.CombatStats?.HastePercent ?? 0;
                         battleChar.CritChancePercent = battleStats.CombatStats?.CritChancePercent ?? 0;
-                        battleChar.CritMultiplier = 1.2 * (1 + (battleStats.CombatStats?.CritDamageBonusPercent ?? 0) / 100.0);
                         battleChar.CombatStats = battleStats.CombatStats;
                         
                         Logger.LogInformation(

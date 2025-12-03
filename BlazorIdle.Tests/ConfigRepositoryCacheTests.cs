@@ -147,20 +147,7 @@ namespace BlazorIdle.Tests
             Assert.Same(curve1, curve2);
         }
 
-        [Fact]
-        public void LoadProfessionAttributes_MultipleCalls_ReturnsSameInstance()
-        {
-            // Arrange
-            ConfigRepository.ClearCache();
-
-            // Act
-            var attrs1 = ConfigRepository.LoadProfessionAttributes();
-            var attrs2 = ConfigRepository.LoadProfessionAttributes();
-
-            // Assert
-            Assert.NotNull(attrs1);
-            Assert.Same(attrs1, attrs2);
-        }
+        // 注意：LoadProfessionAttributes 测试已移除，因为 attributes.json 已被删除
 
         [Fact]
         public void LoadProfessionLimits_MultipleCalls_ReturnsSameInstance()

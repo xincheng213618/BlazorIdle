@@ -211,12 +211,9 @@ public class CharacterController : ControllerBase
             // Copy initial stats from default profession template
             MaxHp = defaultProfession.MaxHp,
             AttackRateAPS = defaultProfession.AttackRateAPS,
-            DamagePerAttack = defaultProfession.DamagePerAttack,
             HastePercent = defaultProfession.HastePercent,
             SpecialIntervalSec = defaultProfession.SpecialIntervalSec,
-            SpecialDamage = defaultProfession.SpecialDamage,
             CritChancePercent = defaultProfession.CritChancePercent,
-            CritMultiplier = defaultProfession.CritMultiplier,
             VariancePct = defaultProfession.VariancePct,
             ReviveSec = defaultProfession.ReviveSec,
             // 设置默认激活职业为用户选择的职业
@@ -374,23 +371,14 @@ public class CharacterController : ControllerBase
         if (request.AttackRateAPS.HasValue)
             character.AttackRateAPS = request.AttackRateAPS.Value;
         
-        if (request.DamagePerAttack.HasValue)
-            character.DamagePerAttack = request.DamagePerAttack.Value;
-        
         if (request.HastePercent.HasValue)
             character.HastePercent = request.HastePercent.Value;
         
         if (request.SpecialIntervalSec.HasValue)
             character.SpecialIntervalSec = request.SpecialIntervalSec.Value;
         
-        if (request.SpecialDamage.HasValue)
-            character.SpecialDamage = request.SpecialDamage.Value;
-        
         if (request.CritChancePercent.HasValue)
             character.CritChancePercent = request.CritChancePercent.Value;
-        
-        if (request.CritMultiplier.HasValue)
-            character.CritMultiplier = request.CritMultiplier.Value;
         
         if (request.VariancePct.HasValue)
             character.VariancePct = request.VariancePct.Value;
@@ -558,12 +546,9 @@ public class CharacterController : ControllerBase
         // Note: Not considering level growth for now, using base profession stats
         character.MaxHp = profession.MaxHp;
         character.AttackRateAPS = profession.AttackRateAPS;
-        character.DamagePerAttack = profession.DamagePerAttack;
         character.HastePercent = profession.HastePercent;
         character.SpecialIntervalSec = profession.SpecialIntervalSec;
-        character.SpecialDamage = profession.SpecialDamage;
         character.CritChancePercent = profession.CritChancePercent;
-        character.CritMultiplier = profession.CritMultiplier;
         character.VariancePct = profession.VariancePct;
         character.ReviveSec = profession.ReviveSec;
 

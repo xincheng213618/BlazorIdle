@@ -267,7 +267,9 @@ namespace BlazorIdle.Tests
             var testSkill = new SkillDef
             {
                 Id = SkillIds.AttackBasic,
-                DamageMultiplier = 2.0
+                // 新系统使用 Damage.CoefAtk 代替 DamageMultiplier
+                // New system uses Damage.CoefAtk instead of DamageMultiplier
+                Damage = new DamageDef { CoefAtk = 2.0 }
             };
             repo.RegisterSkill(testSkill);
 
@@ -275,8 +277,10 @@ namespace BlazorIdle.Tests
             var ctx = CreateTestContext();
             var result = resolver.Cast(SkillIds.AttackBasic, ctx);
 
-            // Base damage is 10, multiplied by 2.0
-            Assert.True(result.DamageDealt >= 18); // Allowing for variance
+            // 新系统: AttackFinal=10, 技能系数 2.0
+            // New system: AttackFinal=10, skill coefficient 2.0
+            // 预期伤害 ~20 (10 * 2.0 * variance)
+            Assert.True(result.DamageDealt >= 15, $"Expected damage >= 15, got {result.DamageDealt}");
         }
 
         [Fact]
@@ -314,36 +318,78 @@ namespace BlazorIdle.Tests
             repo.RegisterSkill(critSkill);
 
             var resolver = new SkillResolver(null, repo);
-            var ctx = CreateTestContext();
             
-            // Force crit
+            // Force crit - 创建新的上下文
+            var ctxCrit = CreateTestContext();
             var opts = new SkillCastOptions { ForceCrit = true };
-            var resultCrit = resolver.Cast("crit_skill", ctx, opts);
+            var resultCrit = resolver.Cast("crit_skill", ctxCrit, opts);
             Assert.Single(resultCrit.BuffOperations);
 
-            // No crit
-            ctx.Player.CritChancePercent = 0; // Ensure no crit
-            var resultNoCrit = resolver.Cast("crit_skill", ctx);
+            // No crit - 创建新的上下文，使用不同的 CombatStats
+            var noCritStats = new Game.Combat.CombatStats
+            {
+                AttackFinal = 10,
+                CritChancePercent = 0, // 确保不暴击
+                CritDamageBonusPercent = 66.67
+            };
+            var playerNoCrit = new Character 
+            { 
+                CombatStats = noCritStats,
+                CritChancePercent = 0,
+                VariancePct = 0
+            };
+            var ctxNoCrit = new BattleContext
+            {
+                Player = playerNoCrit,
+                Enemy = new Enemy { BaseAttack = 5, Element = Game.Combat.ElementIds.Neutral },
+                Rng = new RngContext(12345),
+                Clock = new TestGameClock(),
+                DamageCalculator = Game.Combat.DamageCalculator.CreateDefault(),
+                AttackerCombatStats = noCritStats,
+                AttackerElement = Game.Combat.ElementIds.Neutral,
+                DefenderElement = Game.Combat.ElementIds.Neutral,
+                AttackerHPRatio = 1.0,
+                DefenderDamageReductionPercent = 0
+            };
+            var resultNoCrit = resolver.Cast("crit_skill", ctxNoCrit);
             Assert.Empty(resultNoCrit.BuffOperations);
         }
 
         private BattleContext CreateTestContext()
         {
+            // 更新使用新伤害系统 / Updated to use new damage system
+            var combatStats = new Game.Combat.CombatStats
+            {
+                AttackFinal = 10,
+                CritChancePercent = 0,
+                CritDamageBonusPercent = 66.67 // ~2.0x crit
+            };
+            
+            var player = new Character 
+            { 
+                CombatStats = combatStats,
+                CritChancePercent = 0,
+                VariancePct = 0
+            };
+            
+            var enemy = new Enemy
+            {
+                BaseAttack = 5,
+                Element = Game.Combat.ElementIds.Neutral
+            };
+            
             return new BattleContext
             {
-                Player = new Character 
-                { 
-                    DamagePerAttack = 10,
-                    CritChancePercent = 0,
-                    CritMultiplier = 2.0,
-                    VariancePct = 0
-                },
-                Enemy = new Enemy
-                {
-                    DamagePerHit = 5
-                },
+                Player = player,
+                Enemy = enemy,
                 Rng = new RngContext(12345),
-                Clock = new TestGameClock()
+                Clock = new TestGameClock(),
+                DamageCalculator = Game.Combat.DamageCalculator.CreateDefault(),
+                AttackerCombatStats = combatStats,
+                AttackerElement = Game.Combat.ElementIds.Neutral,
+                DefenderElement = Game.Combat.ElementIds.Neutral,
+                AttackerHPRatio = 1.0,
+                DefenderDamageReductionPercent = 0
             };
         }
 

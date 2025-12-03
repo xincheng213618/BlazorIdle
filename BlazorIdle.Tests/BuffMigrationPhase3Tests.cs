@@ -1,6 +1,7 @@
 using BlazorIdle.Game;
 using BlazorIdle.Game.Buffs;
 using BlazorIdle.Game.Skills;
+using BlazorIdle.Game.Combat;
 using System.Linq;
 using Xunit;
 
@@ -9,6 +10,9 @@ namespace BlazorIdle.Tests
     /// <summary>
     /// Phase 3 Integration Tests: Verify buff configuration migration from inline to config-based.
     /// Tests that SkillRepository buffs use BuffConfigId and work correctly in combat.
+    /// 
+    /// 旧系统清理：这些测试已更新为使用新的 CombatStats 系统
+    /// Legacy cleanup: These tests have been updated to use the new CombatStats system
     /// </summary>
     public class BuffMigrationPhase3Tests
     {
@@ -124,7 +128,7 @@ namespace BlazorIdle.Tests
         [Fact]
         public void Integration_SpecialPulse_AppliesBuffsFromConfig()
         {
-            // Arrange
+            // Arrange - 使用新的 CombatStats 系统
             var clock = new SimClock();
             var rng = new RngContext(12345);
 
@@ -133,14 +137,17 @@ namespace BlazorIdle.Tests
             {
                 MaxHp = 1000,
                 Hp = 1000,
-                DamagePerAttack = 50,
                 AttackRateAPS = 1.0,
                 CritChancePercent = 0.0,
-                CritMultiplier = 2.0,
                 HastePercent = 0.0,
                 VariancePct = 0.0,
                 SpecialIntervalSec = 1.0,
-                SpecialDamage = 100
+                CombatStats = new CombatStats
+                {
+                    AttackFinal = 50,
+                    CritChancePercent = 0.0,
+                    CritDamageBonusPercent = 100.0 // 2.0x crit = 100% bonus
+                }
             };
             playerTeam.AddMember("player1", character, maxHp: 1000, currentHp: 1000);
 
@@ -199,7 +206,7 @@ namespace BlazorIdle.Tests
         [Fact]
         public void Integration_BuffFromConfig_DoTWorks()
         {
-            // Arrange - Create a simple battle with config-based buff
+            // Arrange - Create a simple battle with config-based buff (使用新 CombatStats 系统)
             var clock = new SimClock();
             var rng = new RngContext(12345);
 
@@ -208,14 +215,17 @@ namespace BlazorIdle.Tests
             {
                 MaxHp = 1000,
                 Hp = 1000,
-                DamagePerAttack = 50,
                 AttackRateAPS = 1.0,
                 CritChancePercent = 0.0,
-                CritMultiplier = 2.0,
                 HastePercent = 0.0,
                 VariancePct = 0.0,
                 SpecialIntervalSec = 1.0,
-                SpecialDamage = 100
+                CombatStats = new CombatStats
+                {
+                    AttackFinal = 50,
+                    CritChancePercent = 0.0,
+                    CritDamageBonusPercent = 100.0 // 2.0x crit = 100% bonus
+                }
             };
             playerTeam.AddMember("player1", character, maxHp: 1000, currentHp: 1000);
 

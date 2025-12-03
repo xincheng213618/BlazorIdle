@@ -212,19 +212,26 @@ namespace BlazorIdle.Tests
 
         private BattleContext CreateTestContext()
         {
+            // 更新使用新伤害系统 / Updated to use new damage system
+            var combatStats = new Game.Combat.CombatStats
+            {
+                AttackFinal = 100,
+                CritChancePercent = 10,
+                CritDamageBonusPercent = 66.67 // 1.2 * 1.667 ≈ 2.0
+            };
+            
             var player = new Character
             {
-                DamagePerAttack = 100,
-                SpecialDamage = 200,
+                CombatStats = combatStats,
                 CritChancePercent = 10,
-                CritMultiplier = 2.0,
                 VariancePct = 0.1
             };
 
             var enemy = new Enemy
             {
-                DamagePerHit = 50,
-                VariancePct = 0.1
+                BaseAttack = 50,
+                VariancePct = 0.1,
+                Element = Game.Combat.ElementIds.Neutral
             };
 
             return new BattleContext
@@ -232,7 +239,13 @@ namespace BlazorIdle.Tests
                 Player = player,
                 Enemy = enemy,
                 Rng = new RngContext(42),
-                Clock = new TestClock()
+                Clock = new TestClock(),
+                DamageCalculator = Game.Combat.DamageCalculator.CreateDefault(),
+                AttackerCombatStats = combatStats,
+                AttackerElement = Game.Combat.ElementIds.Neutral,
+                DefenderElement = Game.Combat.ElementIds.Neutral,
+                AttackerHPRatio = 1.0,
+                DefenderDamageReductionPercent = 0
             };
         }
 

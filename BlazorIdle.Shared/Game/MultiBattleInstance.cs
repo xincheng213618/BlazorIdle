@@ -603,20 +603,9 @@ namespace BlazorIdle.Game
 
                 // Phase 5: 计算攻击者战斗属性和HP比例
                 // Phase 5: Calculate attacker combat stats and HP ratio
+                // 旧系统清理：移除了向后兼容逻辑，现在要求 CombatStats 必须正确设置
+                // Legacy cleanup: Removed backward compatibility, CombatStats must be properly set
                 var attackerCombatStats = character.CombatStats ?? CombatStats.CreateDefault();
-                // 如果 CombatStats.AttackFinal 为 0，使用旧的属性作为回退（向后兼容）
-                // If CombatStats.AttackFinal is 0, use legacy attributes as fallback (backward compatibility)
-                if (attackerCombatStats.AttackFinal == 0)
-                {
-                    attackerCombatStats = new CombatStats 
-                    { 
-                        AttackFinal = character.DamagePerAttack,
-                        // 向后兼容：从 Character 旧属性复制暴击属性
-                        // Backward compatibility: copy crit stats from legacy Character attributes
-                        CritChancePercent = character.CritChancePercent,
-                        CritDamageBonusPercent = (character.CritMultiplier - 1.0) * 100 // Convert multiplier to percentage
-                    };
-                }
                 double attackerHPRatio = character.MaxHp > 0 ? (double)character.Hp / character.MaxHp : 1.0;
                 double defenderDRPct = defaultTarget?.Entity?.DamageReductionPercent ?? 0;
 
@@ -2853,33 +2842,10 @@ namespace BlazorIdle.Game
             TeamStatusChanged?.Invoke(statusEvent);
         }
 
-        /// <summary>
-        /// 计算玩家伤害
-        /// Roll player damage
-        /// </summary>
-        private int PlayerRollDamage(int baseDamage, Character character, bool allowCrit)
-        {
-            double dmg = Math.Floor(_rng.Jitter(baseDamage, character.VariancePct));
-            if (dmg < 1) dmg = 1;
-
-            if (allowCrit && _rng.NextDouble() < (character.CritChancePercent / 100.0))
-            {
-                dmg = Math.Floor(dmg * Math.Max(1.0, character.CritMultiplier));
-            }
-
-            return (int)dmg;
-        }
-
-        /// <summary>
-        /// 计算敌人伤害
-        /// Roll enemy damage
-        /// </summary>
-        private int EnemyRollDamage(int baseDamage, Enemy enemy)
-        {
-            double dmg = Math.Floor(_rng.Jitter(baseDamage, enemy.VariancePct));
-            if (dmg < 1) dmg = 1;
-            return (int)dmg;
-        }
+        // 旧系统清理：PlayerRollDamage 和 EnemyRollDamage 已移除
+        // 新伤害系统使用 DamageCalculator 处理所有伤害计算
+        // Legacy cleanup: PlayerRollDamage and EnemyRollDamage have been removed
+        // New damage system uses DamageCalculator for all damage calculation
 
         /// <summary>
         /// 获取角色名称

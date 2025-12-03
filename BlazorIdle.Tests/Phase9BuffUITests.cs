@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BlazorIdle.Game;
 using BlazorIdle.Game.Buffs;
+using BlazorIdle.Game.Combat;
 using Xunit;
 
 namespace BlazorIdle.Tests
@@ -226,15 +227,20 @@ namespace BlazorIdle.Tests
             {
                 MaxHp = 1000,
                 Hp = 1000,
-                DamagePerAttack = 50,
                 AttackRateAPS = 1.0,
                 CritChancePercent = 0.0,
-                CritMultiplier = 2.0,
                 HastePercent = 0.0,
                 VariancePct = 0.0,
-                SpecialIntervalSec = 10.0,
-                SpecialDamage = 100
+                SpecialIntervalSec = 10.0
             };
+            
+            // 初始化新伤害系统
+            character.CombatStats = new CombatStats
+            {
+                AttackFinal = 50,
+                CritDamageBonusPercent = 100  // 相当于原来的 2.0 倍暴击
+            };
+            
             playerTeam.AddMember("player1", character, maxHp: 1000, currentHp: 1000);
 
             // 创建敌人队伍

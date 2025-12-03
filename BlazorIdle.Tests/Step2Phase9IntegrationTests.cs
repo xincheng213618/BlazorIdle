@@ -1,6 +1,7 @@
 using Xunit;
 using BlazorIdle.Game;
 using BlazorIdle.Game.Skills;
+using BlazorIdle.Game.Combat;
 using BlazorIdle.Shared.Models;
 using System.Collections.Generic;
 
@@ -64,8 +65,13 @@ namespace BlazorIdle.Tests
                 MaxHp = 1000,
                 Hp = 1000,
                 AttackRateAPS = 0.4,
-                DamagePerAttack = 100,
                 ActiveCombatProfessionId = "warrior"
+            };
+            
+            // 初始化新伤害系统
+            character.CombatStats = new CombatStats
+            {
+                AttackFinal = 100
             };
 
             var resources = new BlazorIdle.Game.Resources.ResourceBucketCollection("rage", max: 100, initial: 10);
@@ -164,8 +170,13 @@ namespace BlazorIdle.Tests
                 MaxHp = 1000,
                 Hp = 1000,
                 AttackRateAPS = 0.4,
-                DamagePerAttack = 100,
                 ActiveCombatProfessionId = "warrior"
+            };
+            
+            // 初始化新伤害系统
+            character.CombatStats = new CombatStats
+            {
+                AttackFinal = 100
             };
 
             // 只有 2 点怒气（不够释放 warrior_mortal_strike）

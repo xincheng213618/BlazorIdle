@@ -1,6 +1,7 @@
 using Xunit;
 using BlazorIdle.Game;
 using BlazorIdle.Game.Resources;
+using BlazorIdle.Game.Combat;
 using BlazorIdle.Shared.Models;
 using System.Collections.Generic;
 
@@ -9,9 +10,41 @@ namespace BlazorIdle.Tests
     /// <summary>
     /// Phase 2.7 测试：职业特定资源系统
     /// Phase 2.7 tests: Profession-specific resource system
+    /// 
+    /// 旧系统清理：这些测试已更新为使用新的 CombatStats 系统
+    /// Legacy cleanup: These tests have been updated to use the new CombatStats system
     /// </summary>
     public class ProfessionResourceTests
     {
+        /// <summary>
+        /// 创建用于测试的 Character（使用新伤害系统）
+        /// Create Character for testing (using new damage system)
+        /// </summary>
+        private static Character CreateTestCharacter(
+            string professionId = "warrior",
+            int maxHp = 1000,
+            int attackFinal = 50,
+            double attackRate = 1.0,
+            double critChance = 0.0)
+        {
+            return new Character
+            {
+                ActiveCombatProfessionId = professionId,
+                MaxHp = maxHp,
+                Hp = maxHp,
+                AttackRateAPS = attackRate,
+                CritChancePercent = critChance,
+                HastePercent = 0.0,
+                VariancePct = 0.0,
+                SpecialIntervalSec = 10.0,
+                CombatStats = new CombatStats
+                {
+                    AttackFinal = attackFinal,
+                    CritChancePercent = critChance
+                }
+            };
+        }
+
         [Fact]
         public void ResourceBucketCollection_CustomResourceId_CreatesCorrectly()
         {
@@ -44,19 +77,7 @@ namespace BlazorIdle.Tests
             var clock = new SimClock();
             var rng = new RngContext(12345);
 
-            var warrior = new Character
-            {
-                ActiveCombatProfessionId = "warrior",
-                MaxHp = 1000,
-                Hp = 1000,
-                DamagePerAttack = 50,
-                AttackRateAPS = 1.0,
-                CritChancePercent = 0.0,
-                HastePercent = 0.0,
-                VariancePct = 0.0,
-                SpecialIntervalSec = 10.0,
-                SpecialDamage = 100
-            };
+            var warrior = CreateTestCharacter(professionId: "warrior", maxHp: 1000, attackFinal: 50, attackRate: 1.0);
 
             var playerTeam = new BattleTeam<Character>("player_team", "Player Team", TeamType.Player);
             playerTeam.AddMember("warrior1", warrior, maxHp: 1000, currentHp: 1000);
@@ -97,19 +118,7 @@ namespace BlazorIdle.Tests
             var clock = new SimClock();
             var rng = new RngContext(12345);
 
-            var mage = new Character
-            {
-                ActiveCombatProfessionId = "mage",
-                MaxHp = 800,
-                Hp = 800,
-                DamagePerAttack = 40,
-                AttackRateAPS = 1.0,
-                CritChancePercent = 0.0,
-                HastePercent = 0.0,
-                VariancePct = 0.0,
-                SpecialIntervalSec = 10.0,
-                SpecialDamage = 120
-            };
+            var mage = CreateTestCharacter(professionId: "mage", maxHp: 800, attackFinal: 40, attackRate: 1.0);
 
             var playerTeam = new BattleTeam<Character>("player_team", "Player Team", TeamType.Player);
             playerTeam.AddMember("mage1", mage, maxHp: 800, currentHp: 800);
@@ -150,19 +159,7 @@ namespace BlazorIdle.Tests
             var clock = new SimClock();
             var rng = new RngContext(12345);
 
-            var ranger = new Character
-            {
-                ActiveCombatProfessionId = "ranger",
-                MaxHp = 900,
-                Hp = 900,
-                DamagePerAttack = 45,
-                AttackRateAPS = 1.5,
-                CritChancePercent = 0.0,
-                HastePercent = 0.0,
-                VariancePct = 0.0,
-                SpecialIntervalSec = 10.0,
-                SpecialDamage = 110
-            };
+            var ranger = CreateTestCharacter(professionId: "ranger", maxHp: 900, attackFinal: 45, attackRate: 1.5);
 
             var playerTeam = new BattleTeam<Character>("player_team", "Player Team", TeamType.Player);
             playerTeam.AddMember("ranger1", ranger, maxHp: 900, currentHp: 900);
@@ -203,19 +200,7 @@ namespace BlazorIdle.Tests
             var clock = new SimClock();
             var rng = new RngContext(12345);
 
-            var warrior = new Character
-            {
-                ActiveCombatProfessionId = "warrior",
-                MaxHp = 1000,
-                Hp = 1000,
-                DamagePerAttack = 50,
-                AttackRateAPS = 2.0, // 快速攻击
-                CritChancePercent = 0.0,
-                HastePercent = 0.0,
-                VariancePct = 0.0,
-                SpecialIntervalSec = 10.0,
-                SpecialDamage = 100
-            };
+            var warrior = CreateTestCharacter(professionId: "warrior", maxHp: 1000, attackFinal: 50, attackRate: 2.0);
 
             var playerTeam = new BattleTeam<Character>("player_team", "Player Team", TeamType.Player);
             playerTeam.AddMember("warrior1", warrior, maxHp: 1000, currentHp: 1000);
@@ -259,19 +244,7 @@ namespace BlazorIdle.Tests
             var clock = new SimClock();
             var rng = new RngContext(12345);
 
-            var mage = new Character
-            {
-                ActiveCombatProfessionId = "mage",
-                MaxHp = 800,
-                Hp = 800,
-                DamagePerAttack = 40,
-                AttackRateAPS = 2.0,
-                CritChancePercent = 0.0,
-                HastePercent = 0.0,
-                VariancePct = 0.0,
-                SpecialIntervalSec = 10.0,
-                SpecialDamage = 120
-            };
+            var mage = CreateTestCharacter(professionId: "mage", maxHp: 800, attackFinal: 40, attackRate: 2.0);
 
             var playerTeam = new BattleTeam<Character>("player_team", "Player Team", TeamType.Player);
             playerTeam.AddMember("mage1", mage, maxHp: 800, currentHp: 800);
@@ -315,33 +288,8 @@ namespace BlazorIdle.Tests
             var clock = new SimClock();
             var rng = new RngContext(12345);
 
-            var warrior = new Character
-            {
-                ActiveCombatProfessionId = "warrior",
-                MaxHp = 1000,
-                Hp = 1000,
-                DamagePerAttack = 50,
-                AttackRateAPS = 1.0,
-                CritChancePercent = 0.0,
-                HastePercent = 0.0,
-                VariancePct = 0.0,
-                SpecialIntervalSec = 10.0,
-                SpecialDamage = 100
-            };
-
-            var mage = new Character
-            {
-                ActiveCombatProfessionId = "mage",
-                MaxHp = 800,
-                Hp = 800,
-                DamagePerAttack = 40,
-                AttackRateAPS = 1.0,
-                CritChancePercent = 0.0,
-                HastePercent = 0.0,
-                VariancePct = 0.0,
-                SpecialIntervalSec = 10.0,
-                SpecialDamage = 120
-            };
+            var warrior = CreateTestCharacter(professionId: "warrior", maxHp: 1000, attackFinal: 50, attackRate: 1.0);
+            var mage = CreateTestCharacter(professionId: "mage", maxHp: 800, attackFinal: 40, attackRate: 1.0);
 
             var playerTeam = new BattleTeam<Character>("player_team", "Player Team", TeamType.Player);
             playerTeam.AddMember("warrior1", warrior, maxHp: 1000, currentHp: 1000);
@@ -398,19 +346,7 @@ namespace BlazorIdle.Tests
             var clock = new SimClock();
             var rng = new RngContext(12345);
 
-            var character = new Character
-            {
-                ActiveCombatProfessionId = "unknown",
-                MaxHp = 1000,
-                Hp = 1000,
-                DamagePerAttack = 50,
-                AttackRateAPS = 1.0,
-                CritChancePercent = 0.0,
-                HastePercent = 0.0,
-                VariancePct = 0.0,
-                SpecialIntervalSec = 10.0,
-                SpecialDamage = 100
-            };
+            var character = CreateTestCharacter(professionId: "unknown", maxHp: 1000, attackFinal: 50, attackRate: 1.0);
 
             var playerTeam = new BattleTeam<Character>("player_team", "Player Team", TeamType.Player);
             playerTeam.AddMember("player1", character, maxHp: 1000, currentHp: 1000);
