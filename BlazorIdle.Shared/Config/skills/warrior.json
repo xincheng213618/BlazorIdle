@@ -95,7 +95,7 @@
   {
     "id": "warrior_slam",
     "name": "猛击",
-    "description": "用力打击敌人，造成伤害并产生怒气",
+    "description": "用力连续打击敌人三次，造成伤害并产生怒气",
     "type": "active",
     "slotType": "active",
     "fixed": true,
@@ -109,10 +109,29 @@
     "unlock": {
       "minLevel": 1
     },
-    "damage": {
-      "coefAtk": 1.2,
-      "flat": 20
-    },
+    "hits": [
+      {
+        "hitIndex": 0,
+        "coefAtk": 0.5,
+        "flat": 10,
+        "delaySec": 0,
+        "independentCrit": true
+      },
+      {
+        "hitIndex": 1,
+        "coefAtk": 0.4,
+        "flat": 5,
+        "delaySec": 0.2,
+        "independentCrit": true
+      },
+      {
+        "hitIndex": 2,
+        "coefAtk": 0.5,
+        "flat": 10,
+        "delaySec": 0.4,
+        "independentCrit": true
+      }
+    ],
     "gains": [
       {
         "bucketId": "rage",

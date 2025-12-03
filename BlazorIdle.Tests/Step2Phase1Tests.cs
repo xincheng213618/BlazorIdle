@@ -330,10 +330,23 @@ namespace BlazorIdle.Tests
             
             // Assert
             Assert.NotNull(slam);
-            Assert.NotNull(slam.Damage);
-            Assert.Equal(1.2, slam.Damage.CoefAtk);
-            Assert.Equal(20, slam.Damage.Flat);
-            // Note: AOE is determined by targetPolicy in SkillDef, not in DamageDef
+            // warrior_slam now uses multi-hit format (hits array) instead of single damage
+            Assert.True(slam.IsMultiHit);
+            Assert.NotNull(slam.Hits);
+            Assert.Equal(3, slam.Hits.Count);
+            // Verify first hit
+            Assert.Equal(0, slam.Hits[0].HitIndex);
+            Assert.Equal(0.5, slam.Hits[0].CoefAtk);
+            Assert.Equal(10, slam.Hits[0].Flat);
+            Assert.Equal(0, slam.Hits[0].DelaySec);
+            // Verify second hit (delayed)
+            Assert.Equal(1, slam.Hits[1].HitIndex);
+            Assert.Equal(0.4, slam.Hits[1].CoefAtk);
+            Assert.Equal(0.2, slam.Hits[1].DelaySec);
+            // Verify third hit (delayed)
+            Assert.Equal(2, slam.Hits[2].HitIndex);
+            Assert.Equal(0.5, slam.Hits[2].CoefAtk);
+            Assert.Equal(0.4, slam.Hits[2].DelaySec);
         }
 
         [Fact]
