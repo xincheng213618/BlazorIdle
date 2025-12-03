@@ -479,8 +479,17 @@ namespace BlazorIdle.Services
         /// </summary>
         private void RecalculateCharacterStats(CharacterData character)
         {
-            var calculator = CharacterStatsCalculator.CreateDefault();
             var professionId = character.ActiveCombatProfessionId;
+            
+            // 获取职业配置（一次获取，多次使用）
+            var professionConfig = BlazorIdle.Game.Professions.ProfessionStatsRepository.Shared.GetProfession(professionId);
+            if (professionConfig == null)
+            {
+                _logger.LogWarning("Profession config not found for {ProfessionId}, using defaults", professionId);
+                return;
+            }
+            
+            var calculator = CharacterStatsCalculator.CreateDefault();
             
             // 使用新的 CharacterStatsCalculator 计算战斗属性
             var combatStats = calculator.CalculateFinalStats(professionId, loadout: null);
@@ -494,13 +503,9 @@ namespace BlazorIdle.Services
             character.CritChancePercent = combatStats.CritChancePercent;
             
             // 从职业配置获取其他固定属性
-            var professionConfig = BlazorIdle.Game.Professions.ProfessionStatsRepository.Shared.GetProfession(professionId);
-            if (professionConfig != null)
-            {
-                character.VariancePct = professionConfig.BaseStats.Variance;
-                character.ReviveSec = professionConfig.BaseStats.ReviveSec;
-                character.SpecialIntervalSec = professionConfig.BaseStats.SpecialIntervalSec;
-            }
+            character.VariancePct = professionConfig.BaseStats.Variance;
+            character.ReviveSec = professionConfig.BaseStats.ReviveSec;
+            character.SpecialIntervalSec = professionConfig.BaseStats.SpecialIntervalSec;
         }
 
         /// <summary>

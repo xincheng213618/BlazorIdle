@@ -98,7 +98,6 @@ namespace BlazorIdle.Game.Config
             _battleConfigs.Clear();
             _battleConfigs.AddRange(battleConfigs.Where(b => !string.IsNullOrWhiteSpace(b.Id)));
 
-            _professionAttributes.Clear();
             // ProfessionAttributes 已废弃，使用新的 ProfessionStatsRepository
             // ProfessionAttributes is deprecated, use new ProfessionStatsRepository
             _professionAttributes.Clear();
