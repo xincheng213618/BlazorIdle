@@ -2,6 +2,7 @@ using Xunit;
 using BlazorIdle.Game;
 using BlazorIdle.Game.Resources;
 using BlazorIdle.Game.Config;
+using BlazorIdle.Game.Combat;
 using BlazorIdle.Shared.Models;
 using System.Linq;
 
@@ -10,9 +11,42 @@ namespace BlazorIdle.Tests
     /// <summary>
     /// Phase 2.6 测试：资源在副本波次之间的持久化
     /// Phase 2.6 tests: Resource persistence between dungeon waves
+    /// 
+    /// 旧系统清理：这些测试已更新为使用新的 CombatStats 系统
+    /// Legacy cleanup: These tests have been updated to use the new CombatStats system
     /// </summary>
     public class ResourcePersistenceTests
     {
+        /// <summary>
+        /// 创建用于测试的 Character（使用新伤害系统）
+        /// Create Character for testing (using new damage system)
+        /// </summary>
+        private static Character CreateTestCharacter(
+            string professionId = "warrior",
+            int maxHp = 1000,
+            int attackFinal = 100,
+            double attackRate = 2.0,
+            double critChance = 0.0)
+        {
+            return new Character
+            {
+                ActiveCombatProfessionId = professionId,
+                MaxHp = maxHp,
+                Hp = maxHp,
+                AttackRateAPS = attackRate,
+                CritChancePercent = critChance,
+                HastePercent = 0.0,
+                VariancePct = 0.0,
+                SpecialIntervalSec = 10.0,
+                CombatStats = new CombatStats
+                {
+                    AttackFinal = attackFinal,
+                    CritChancePercent = critChance,
+                    CritDamageBonusPercent = 100.0 // 2.0x crit = 100% bonus
+                }
+            };
+        }
+
         [Fact]
         public void DungeonWaves_ResourcesPersistBetweenWaves()
         {
@@ -20,19 +54,7 @@ namespace BlazorIdle.Tests
             var clock = new SimClock();
             var rng = new RngContext(12345);
             
-            var character = new Character
-            {
-                MaxHp = 1000,
-                Hp = 1000,
-                DamagePerAttack = 100,
-                AttackRateAPS = 2.0,
-                CritChancePercent = 0.0,
-                CritMultiplier = 2.0,
-                HastePercent = 0.0,
-                VariancePct = 0.0,
-                SpecialIntervalSec = 10.0,
-                SpecialDamage = 200
-            };
+            var character = CreateTestCharacter(maxHp: 1000, attackFinal: 100, attackRate: 2.0);
 
             var playerTeam = new BattleTeam<Character>("player_team", "Player Team", TeamType.Player);
             playerTeam.AddMember("player1", character, maxHp: 1000, currentHp: 1000);
@@ -137,19 +159,7 @@ namespace BlazorIdle.Tests
             var clock = new SimClock();
             var rng = new RngContext(12345);
             
-            var character = new Character
-            {
-                MaxHp = 1000,
-                Hp = 1000,
-                DamagePerAttack = 50,
-                AttackRateAPS = 1.0,
-                CritChancePercent = 0.0,
-                CritMultiplier = 2.0,
-                HastePercent = 0.0,
-                VariancePct = 0.0,
-                SpecialIntervalSec = 10.0,
-                SpecialDamage = 100
-            };
+            var character = CreateTestCharacter(maxHp: 1000, attackFinal: 50, attackRate: 1.0);
 
             var playerTeam = new BattleTeam<Character>("player_team", "Player Team", TeamType.Player);
             playerTeam.AddMember("player1", character, maxHp: 1000, currentHp: 1000);
@@ -220,19 +230,7 @@ namespace BlazorIdle.Tests
             var clock = new SimClock();
             var rng = new RngContext(12345);
             
-            var character = new Character
-            {
-                MaxHp = 1000,
-                Hp = 1000,
-                DamagePerAttack = 50,
-                AttackRateAPS = 1.0,
-                CritChancePercent = 0.0,
-                CritMultiplier = 2.0,
-                HastePercent = 0.0,
-                VariancePct = 0.0,
-                SpecialIntervalSec = 10.0,
-                SpecialDamage = 100
-            };
+            var character = CreateTestCharacter(maxHp: 1000, attackFinal: 50, attackRate: 1.0);
 
             var playerTeam = new BattleTeam<Character>("player_team", "Player Team", TeamType.Player);
             playerTeam.AddMember("player1", character, maxHp: 1000, currentHp: 1000);
@@ -269,20 +267,7 @@ namespace BlazorIdle.Tests
             var clock = new SimClock();
             var rng = new RngContext(12345);
             
-            var warrior = new Character
-            {
-                ActiveCombatProfessionId = "warrior",
-                MaxHp = 1000,
-                Hp = 1000,
-                DamagePerAttack = 100,
-                AttackRateAPS = 2.0,
-                CritChancePercent = 0.0,
-                CritMultiplier = 2.0,
-                HastePercent = 0.0,
-                VariancePct = 0.0,
-                SpecialIntervalSec = 10.0,
-                SpecialDamage = 200
-            };
+            var warrior = CreateTestCharacter(professionId: "warrior", maxHp: 1000, attackFinal: 100, attackRate: 2.0);
 
             var playerTeam = new BattleTeam<Character>("player_team", "Player Team", TeamType.Player);
             playerTeam.AddMember("warrior1", warrior, maxHp: 1000, currentHp: 1000);
@@ -470,6 +455,36 @@ namespace BlazorIdle.Tests
     
     public class DungeonResourceResetTests
     {
+        /// <summary>
+        /// 创建用于测试的 Character（使用新伤害系统）
+        /// Create Character for testing (using new damage system)
+        /// </summary>
+        private static Character CreateTestCharacter(
+            string professionId = "warrior",
+            int maxHp = 1000,
+            int attackFinal = 100,
+            double attackRate = 2.0,
+            double critChance = 0.0)
+        {
+            return new Character
+            {
+                ActiveCombatProfessionId = professionId,
+                MaxHp = maxHp,
+                Hp = maxHp,
+                AttackRateAPS = attackRate,
+                CritChancePercent = critChance,
+                HastePercent = 0.0,
+                VariancePct = 0.0,
+                SpecialIntervalSec = 10.0,
+                CombatStats = new CombatStats
+                {
+                    AttackFinal = attackFinal,
+                    CritChancePercent = critChance,
+                    CritDamageBonusPercent = 100.0 // 2.0x crit = 100% bonus
+                }
+            };
+        }
+
         [Fact]
         public void DungeonRestart_ResourcesResetToInitialValues()
         {
@@ -480,20 +495,7 @@ namespace BlazorIdle.Tests
             var clock = new SimClock();
             var rng = new RngContext(12345);
             
-            var warrior = new Character
-            {
-                ActiveCombatProfessionId = "warrior",
-                MaxHp = 1000,
-                Hp = 1000,
-                DamagePerAttack = 100,
-                AttackRateAPS = 2.0,
-                CritChancePercent = 0.0,
-                CritMultiplier = 2.0,
-                HastePercent = 0.0,
-                VariancePct = 0.0,
-                SpecialIntervalSec = 10.0,
-                SpecialDamage = 200
-            };
+            var warrior = CreateTestCharacter(professionId: "warrior", maxHp: 1000, attackFinal: 100, attackRate: 2.0);
 
             var playerTeam = new BattleTeam<Character>("player_team", "Player Team", TeamType.Player);
             playerTeam.AddMember("warrior1", warrior, maxHp: 1000, currentHp: 1000);

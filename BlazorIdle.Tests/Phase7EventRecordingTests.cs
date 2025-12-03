@@ -2,6 +2,7 @@ using Xunit;
 using BlazorIdle.Game;
 using BlazorIdle.Game.Skills;
 using BlazorIdle.Game.Buffs;
+using BlazorIdle.Game.Combat;
 using System.Collections.Generic;
 
 namespace BlazorIdle.Tests
@@ -9,33 +10,39 @@ namespace BlazorIdle.Tests
     /// <summary>
     /// Phase 7: 测试事件记录功能 - 验证事件记录不破坏现有功能
     /// Phase 7: Test event recording functionality - verify event recording doesn't break existing features
+    /// 
+    /// 旧系统清理：这些测试已更新为使用新的 CombatStats 系统
+    /// Legacy cleanup: These tests have been updated to use the new CombatStats system
     /// </summary>
     public class Phase7EventRecordingTests
     {
         /// <summary>
-        /// 创建测试用的战斗实例
-        /// Create battle instance for testing
+        /// 创建测试用的战斗实例（使用新伤害系统）
+        /// Create battle instance for testing (using new damage system)
         /// </summary>
         private MultiBattleInstance CreateTestBattle(double critChance = 0.0)
         {
             var clock = new SimClock();
             var rng = new RngContext(42);
 
-            // 创建玩家队伍
+            // 创建玩家队伍 - 使用新的 CombatStats 系统
             var playerTeam = new BattleTeam<Character>("team_player", "Player Team", TeamType.Player);
             var player = new Character
             {
                 MaxHp = 1000,
                 Hp = 1000,
-                DamagePerAttack = 50,
                 AttackRateAPS = 1.0,
                 CritChancePercent = critChance,
-                CritMultiplier = 2.0,
                 HastePercent = 0.0,
                 VariancePct = 0.0,
                 SpecialIntervalSec = 10.0,
-                SpecialDamage = 100,
-                ActiveCombatProfessionId = "warrior"
+                ActiveCombatProfessionId = "warrior",
+                CombatStats = new CombatStats
+                {
+                    AttackFinal = 50,
+                    CritChancePercent = critChance,
+                    CritDamageBonusPercent = 100.0 // 2.0x crit = 100% bonus
+                }
             };
             playerTeam.AddMember("player1", player, maxHp: 1000, currentHp: 1000);
 
