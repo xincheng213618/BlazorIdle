@@ -8,6 +8,7 @@ using BlazorIdle.Game.Config;
 using BlazorIdle.Game.Battle.Execution;
 using BlazorIdle.Game.Battle.Systems;
 using BlazorIdle.Game.Battle.Events;
+using BlazorIdle.Game.Battle.State;
 
 namespace BlazorIdle.Game
 {
@@ -126,6 +127,18 @@ namespace BlazorIdle.Game
         // 注：在 InitializeIntegrationModules() 中初始化
         // Note: Initialized in InitializeIntegrationModules()
         private ConsumableProcessor? _consumableProcessor;
+        
+        // Battle Refactor Phase 6.1: 技能执行协调器
+        // Battle Refactor Phase 6.1: Skill execution coordinator
+        // 注：在 InitializeIntegrationModules() 中初始化
+        // Note: Initialized in InitializeIntegrationModules()
+        private SkillExecutionCoordinator _skillExecutionCoordinator = null!;
+        
+        // Battle Refactor Phase 7: 战斗状态管理器
+        // Battle Refactor Phase 7: Battle state manager
+        // 注：在 InitializeIntegrationModules() 中初始化
+        // Note: Initialized in InitializeIntegrationModules()
+        private BattleStateManager _battleStateManager = null!;
         
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
@@ -380,6 +393,63 @@ namespace BlazorIdle.Game
                 _consumableProcessor.OnConsumableUsed += evt => ConsumableUsed?.Invoke(evt);
                 _consumableProcessor.OnConsumableOutOfStock += evt => ConsumableOutOfStock?.Invoke(evt);
             }
+            
+            // Battle Refactor Phase 6.1: 初始化技能执行协调器
+            // Battle Refactor Phase 6.1: Initialize skill execution coordinator
+            _skillExecutionCoordinator = new SkillExecutionCoordinator(
+                _pendingDamageQueue,
+                _clock,
+                _config.AoeDamageMultiplier
+            );
+            
+            // 连接 SkillExecutionCoordinator 事件到 MultiBattleInstance
+            // Wire up SkillExecutionCoordinator events to MultiBattleInstance
+            _skillExecutionCoordinator.OnApplyDamageToEnemy += (casterId, targetId, damage, source, isAoe, isCrit, skillId, bundleId) =>
+            {
+                var attacker = _playerTeam.GetMember(casterId);
+                var defender = _enemyTeam.GetMember(targetId);
+                if (attacker != null && defender != null && !defender.IsDead)
+                {
+                    ApplyDamageToEnemy(casterId, attacker, targetId, defender, damage, source, isAoe, isCrit, skillId, bundleId);
+                }
+            };
+            _skillExecutionCoordinator.OnApplyDamageToPlayer += (casterId, targetId, damage, source, skillId, bundleId) =>
+            {
+                var attacker = _enemyTeam.GetMember(casterId);
+                var defender = _playerTeam.GetMember(targetId);
+                if (attacker != null && defender != null && !defender.IsDead)
+                {
+                    ApplyDamageToPlayer(casterId, attacker, targetId, defender, damage, source, skillId, bundleId);
+                }
+            };
+            _skillExecutionCoordinator.OnApplyInstantHeal += (result, casterId, targetId, isCasterPlayer, skillId) =>
+            {
+                ApplyInstantHeal(result, casterId, targetId, isCasterPlayer, skillId);
+            };
+            _skillExecutionCoordinator.OnRecordResourceGain += (casterId, resourceId, amount, newValue, reason, skillId, bundleId) =>
+            {
+                _eventRecorder.RecordResourceGain(casterId, resourceId, amount, newValue, reason, skillId, bundleId);
+            };
+            
+            // Battle Refactor Phase 7: 初始化战斗状态管理器
+            // Battle Refactor Phase 7: Initialize battle state manager
+            _battleStateManager = new BattleStateManager(
+                _clock,
+                _playerTeam,
+                _enemyTeam,
+                _config,
+                _playerBuffOwners,
+                _enemyBuffOwners,
+                _playerResources,
+                _professionResourceConfigs,
+                _characterTracks,
+                _enemyTracks
+            );
+            
+            // 连接 BattleStateManager 事件到 MultiBattleInstance
+            // Wire up BattleStateManager events to MultiBattleInstance
+            _battleStateManager.OnTeamStatusChanged += evt => TeamStatusChanged?.Invoke(evt);
+            _battleStateManager.OnStopRequested += () => Stop();
         }
 
         /// <summary>
@@ -716,50 +786,10 @@ namespace BlazorIdle.Game
         /// </summary>
         private void UpdateCharacterHaste(string charId, Character character, CharacterTracks tracks)
         {
-            // 获取基础急速
-            // Get base haste
-            double baseHastePercent = character.HastePercent;
-            
-            // 应用 Buff 效果到急速
-            // Apply buff effects to haste
-            if (_playerBuffOwners.TryGetValue(charId, out var buffOwner))
-            {
-                double modifiedHaste = baseHastePercent;
-                
-                // 按应用时间排序 Buff（与 SkillResolver 一致）
-                // Sort buffs by application time (consistent with SkillResolver)
-                var sortedBuffs = buffOwner.Buffs.Values
-                    .OrderBy(b => b.AppliedAtMs)
-                    .ToList();
-                
-                foreach (var buff in sortedBuffs)
-                {
-                    foreach (var effect in buff.Effects)
-                    {
-                        // 只处理影响急速的效果
-                        // Only process effects targeting haste
-                        if (effect.Target != "HastePercent")
-                            continue;
-                        
-                        switch (effect.Type)
-                        {
-                            case Buffs.BuffEffectType.StatMultiplier:
-                                modifiedHaste *= (1.0 + effect.Value);
-                                break;
-                            case Buffs.BuffEffectType.StatAdditive:
-                                modifiedHaste += effect.Value;
-                                break;
-                            case Buffs.BuffEffectType.StatReduction:
-                                modifiedHaste *= (1.0 - effect.Value);
-                                break;
-                        }
-                    }
-                }
-                
-                // 更新攻击轨道的急速倍率
-                // Update attack track haste multiplier
-                tracks.AttackTrack.SetHaste(1.0 + modifiedHaste / 100.0);
-            }
+            // Phase 7: 委托给 HasteCalculator 处理急速计算
+            // Phase 7: Delegate haste calculation to HasteCalculator
+            var buffOwner = _playerBuffOwners.GetValueOrDefault(charId);
+            HasteCalculator.UpdateCharacterHaste(character, buffOwner, tracks);
         }
 
         /// <summary>
@@ -780,415 +810,208 @@ namespace BlazorIdle.Game
         {
             if (isCasterPlayer)
             {
-                // 玩家施法逻辑
-                // Player casting logic
-                var member = _playerTeam.GetMember(casterId);
-                if (member == null) return;
-                var character = member.Entity;
-
-                // 选择一个默认目标用于上下文（用于CurrentTarget策略）
-                // Select a default target for context (used for CurrentTarget policy)
-                var defaultTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
-                var defaultTarget = defaultTargetId != null ? _enemyTeam.GetMember(defaultTargetId) : null;
-
-                // Phase 5: 计算攻击者战斗属性和HP比例
-                // Phase 5: Calculate attacker combat stats and HP ratio
-                // 旧系统清理：移除了向后兼容逻辑，现在要求 CombatStats 必须正确设置
-                // Legacy cleanup: Removed backward compatibility, CombatStats must be properly set
-                var attackerCombatStats = character.CombatStats ?? CombatStats.CreateDefault();
-                double attackerHPRatio = character.MaxHp > 0 ? (double)character.Hp / character.MaxHp : 1.0;
-                double defenderDRPct = defaultTarget?.Entity?.DamageReductionPercent ?? 0;
-
-                // 创建战斗上下文
-                // Create battle context
-                var ctx = new BattleContext
-                {
-                    Player = character,
-                    Enemy = defaultTarget?.Entity,
-                    PlayerTeam = _playerTeam,
-                    EnemyTeam = _enemyTeam,
-                    Rng = _rng,
-                    Clock = _clock,
-                    PlayerResources = _playerResources.GetValueOrDefault(casterId),
-                    PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(casterId),
-                    EnemyBuffOwners = _enemyBuffOwners,
-                    CurrentTargetId = defaultTargetId,
-                    // Phase 5: 新伤害系统属性 / New damage system properties
-                    DamageCalculator = _damageCalculator,
-                    AttackerCombatStats = attackerCombatStats,
-                    AttackerElement = character.Element,
-                    DefenderElement = defaultTarget?.Entity?.Element ?? ElementIds.Neutral,
-                    AttackerHPRatio = attackerHPRatio,
-                    DefenderDamageReductionPercent = defenderDRPct
-                };
-
-                // Phase 4: 检查技能施放条件
-                // Phase 4: Check skill casting conditions
-                var skillDef = _skillRepository.GetSkillById(skillId);
-                if (skillDef?.Conditions != null)
-                {
-                    if (!_conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: true, casterId: casterId))
-                    {
-                        // 条件不满足，跳过技能施放
-                        // Conditions not met, skip skill casting
-                        return;
-                    }
-                }
-
-                // Phase 5 & 6: 二次检查冷却和资源（必要的安全检查）
-                // Phase 5 & 6: Double-check cooldown and resources (necessary safety check)
-                // WindowExecutor 在选择技能时已检查，但在选择和执行之间可能有其他技能消耗资源或启动冷却
-                // WindowExecutor checks during selection, but resources may be consumed or cooldowns started between selection and execution
-                // 这个检查防止在同一窗口内多个技能执行时的竞争条件
-                // This check prevents race conditions when multiple skills execute in the same window
-                var casterCooldownMgr = GetOrCreateCooldownManager(casterId);
-                if (skillDef != null && !casterCooldownMgr.IsReady(skillId))
-                {
-                    // 技能还在冷却中，跳过施放
-                    // Skill is still on cooldown, skip casting
-                    return;
-                }
-
-                // Phase 5 & 6: 检查资源消耗（二次验证，见上方注释）
-                // Phase 5 & 6: Check resource cost (double verification, see comment above)
-                if (skillDef != null && !_resourceManager.CheckResourceCost(skillDef, ctx))
-                {
-                    // 资源不足，跳过施放
-                    // Insufficient resources, skip casting
-                    return;
-                }
-
-                // Note: 资源消耗由 SkillResolver 处理并通过 ApplyResourceChanges 应用
-                // Note: Resource consumption is handled by SkillResolver and applied via ApplyResourceChanges
-
-                // 使用 SkillResolver 执行技能
-                // Execute skill using SkillResolver
-                var opts = new SkillCastOptions 
-                { 
-                    SourceTrack = sourceTrack,
-                    CasterId = casterId
-                };
-                var result = _skillResolver.Cast(skillId, ctx, opts);
-
-                // 解析目标（来自技能的targetPolicy）
-                // Resolve targets (from skill's targetPolicy)
-                List<string> targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
-                    (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
-
-                // 应用效果到所有解析的目标
-                // Apply effects to all resolved targets
-                if (targetIds.Count > 0)
-                {
-                    bool isAoe = targetIds.Count > 1;
-                    
-                    // Battle Refactor Phase 2.4: 支持多段伤害
-                    // Battle Refactor Phase 2.4: Support multi-hit damage
-                    if (result.DamageInstances != null && result.DamageInstances.Count > 0)
-                    {
-                        // 多段伤害处理
-                        // Multi-hit damage processing
-                        foreach (var targetId in targetIds)
-                        {
-                            var enemyTarget = _enemyTeam.GetMember(targetId);
-                            if (enemyTarget != null)
-                            {
-                                // 为每个目标处理所有伤害实例
-                                // Process all damage instances for each target
-                                foreach (var instance in result.DamageInstances)
-                                {
-                                    // 克隆实例并设置目标
-                                    // Clone instance and set target
-                                    var targetedInstance = instance.Clone();
-                                    targetedInstance.TargetId = targetId;
-                                    targetedInstance.CasterId = casterId;
-                                    targetedInstance.IsCasterPlayer = true;
-                                    targetedInstance.EventSource = eventSource;  // 保留原始事件来源
-                                    
-                                    // AOE 伤害减免
-                                    // AOE damage reduction
-                                    if (isAoe)
-                                    {
-                                        targetedInstance.Damage = (int)(targetedInstance.Damage * _config.AoeDamageMultiplier);
-                                    }
-                                    
-                                    if (targetedInstance.IsImmediate)
-                                    {
-                                        // 立即伤害
-                                        // Immediate damage
-                                        if (!enemyTarget.IsDead && targetedInstance.Damage > 0)
-                                        {
-                                            ApplyDamageToEnemy(casterId, member, targetId, enemyTarget, targetedInstance.Damage, eventSource,
-                                                isAoe: isAoe, isCrit: targetedInstance.IsCrit, skillId: skillId, bundleId: result.BundleId);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        // 延迟伤害加入队列
-                                        // Delayed damage enqueue
-                                        _pendingDamageQueue.Enqueue(targetedInstance, _clock.NowMs / 1000.0);
-                                    }
-                                }
-                            }
-                            
-                            // Phase 5: 即时治疗应用到每个目标（支持治疗队友）
-                            // Phase 5: Instant heal applies to each target (supports healing allies)
-                            ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: true, skillId: skillId);
-                        }
-                    }
-                    else
-                    {
-                        // 传统单段伤害处理（向后兼容）
-                        // Legacy single-hit damage processing (backward compatible)
-                        int damagePerTarget = isAoe ? (int)(result.DamageDealt * _config.AoeDamageMultiplier) : result.DamageDealt;
-
-                        foreach (var targetId in targetIds)
-                        {
-                            // 处理伤害（针对敌人目标）
-                            // Process damage (for enemy targets)
-                            var enemyTarget = _enemyTeam.GetMember(targetId);
-                            if (enemyTarget != null && damagePerTarget > 0)
-                            {
-                                ApplyDamageToEnemy(casterId, member, targetId, enemyTarget, damagePerTarget, eventSource, 
-                                    isAoe: isAoe, isCrit: result.IsCrit, skillId: skillId, bundleId: result.BundleId);
-                            }
-                            
-                            // Phase 5: 即时治疗应用到每个目标（支持治疗队友）
-                            // Phase 5: Instant heal applies to each target (supports healing allies)
-                            ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: true, skillId: skillId);
-                        }
-                    }
-                    
-                    // Buff操作和资源变化只应用一次（不是每个目标）
-                    // Buff operations and resource changes apply once (not per target)
-                    // 使用第一个目标ID作为上下文（buff系统会根据BuffTarget类型正确解析实际目标）
-                    // Use first target ID as context (buff system will resolve actual targets based on BuffTarget type)
-                    string? primaryTargetId = targetIds.Count > 0 ? targetIds[0] : null;
-                    ProcessBuffOperations(result, casterId, primaryTargetId, isCasterPlayer: true);
-                    ApplyResourceChanges(result, casterId, isCasterPlayer: true, skillId: skillId);
-                }
-
-                // 向后兼容 - 如果技能没有定义资源获得，使用职业配置作为回退（仅普通攻击）
-                // Backward compatibility - if skill doesn't define resource gains, use profession config as fallback (normal attack only)
-                if (sourceTrack == "attack" && 
-                    (result.ResourceChanges == null || result.ResourceChanges.Count == 0) && 
-                    _playerResources.TryGetValue(casterId, out var resources))
-                {
-                    // 获取职业资源配置
-                    // Get profession resource config
-                    string resourceId = "rage";
-                    int gainPerAttack = _resourceConfig.GainPerAttack;
-                    int gainPerCritExtra = _resourceConfig.GainPerCritExtra;
-                    
-                    if (_professionResourceConfigs != null &&
-                        _professionResourceConfigs.TryGetValue(character.ActiveCombatProfessionId, out var profConfig))
-                    {
-                        resourceId = profConfig.Id;
-                        gainPerAttack = profConfig.GainPerAttack;
-                        gainPerCritExtra = profConfig.GainPerCritExtra;
-                    }
-                    
-                    if (resources.HasBucket(resourceId))
-                    {
-                        var bucket = resources.GetBucket(resourceId);
-                        
-                        // 命中产生资源
-                        int gained = bucket.Gain(gainPerAttack, "attack_hit");
-                        if (gained > 0)
-                        {
-                            _eventRecorder.RecordResourceGain(casterId, resourceId, gained, bucket.Current, "attack_hit", 
-                                skillId: skillId, bundleId: result.BundleId);
-                        }
-                        
-                        // 暴击额外产生资源
-                        if (result.IsCrit)
-                        {
-                            int critGain = bucket.Gain(gainPerCritExtra, "crit_bonus");
-                            if (critGain > 0)
-                            {
-                                _eventRecorder.RecordResourceGain(casterId, resourceId, critGain, bucket.Current, "crit_bonus",
-                                    skillId: skillId, bundleId: result.BundleId);
-                            }
-                        }
-                    }
-                }
-
-                // Phase 5: 启动冷却
-                // Phase 5: Start cooldown
-                if (skillDef != null && skillDef.CooldownSec > 0)
-                {
-                    casterCooldownMgr.StartCooldown(skillId, skillDef.CooldownSec);
-                }
+                ExecutePlayerSkill(casterId, skillId, sourceTrack, eventSource);
             }
             else
             {
-                // Monster Skill System: 怪物施法逻辑
-                // Monster Skill System: Monster casting logic
-                var member = _enemyTeam.GetMember(casterId);
-                if (member == null) return;
-                var enemy = member.Entity;
+                ExecuteMonsterSkill(casterId, skillId, sourceTrack, eventSource);
+            }
+        }
 
-                // 选择一个默认目标用于上下文
-                // Select a default target for context
-                var defaultTargetId = SelectPlayerTarget(_config.EnemyTargetStrategy);
-                var defaultTarget = defaultTargetId != null ? _playerTeam.GetMember(defaultTargetId) : null;
+        /// <summary>
+        /// Battle Refactor Phase 6.1: 执行玩家技能（使用 SkillExecutionCoordinator）
+        /// Battle Refactor Phase 6.1: Execute player skill (using SkillExecutionCoordinator)
+        /// </summary>
+        private void ExecutePlayerSkill(string casterId, string skillId, string sourceTrack, EventSource eventSource)
+        {
+            // 获取施法者
+            // Get caster
+            var member = _playerTeam.GetMember(casterId);
+            if (member == null) return;
+            var character = member.Entity;
 
-                // Phase 5: 计算怪物攻击者战斗属性和HP比例
-                // Phase 5: Calculate monster attacker combat stats and HP ratio
-                // 怪物使用 BaseAttack 作为攻击力
-                // Monster uses BaseAttack as attack power
-                var monsterCombatStats = new CombatStats { AttackFinal = (int)enemy.BaseAttack };
-                double attackerHPRatio = enemy.MaxHp > 0 ? (double)enemy.Hp / enemy.MaxHp : 1.0;
-                // 防御者（玩家）的减伤百分比 - 玩家暂时没有减伤属性，默认为0
-                // Defender (player) damage reduction percentage - players don't have DR yet, default to 0
-                double defenderDRPct = 0;
+            // 选择默认目标
+            // Select default target
+            var defaultTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
+            var defaultTarget = defaultTargetId != null ? _enemyTeam.GetMember(defaultTargetId) : null;
 
-                // 创建战斗上下文（Enemy 作为施法者）
-                // Create battle context (Enemy as caster)
-                var ctx = new BattleContext
+            // 使用 SkillExecutionCoordinator 构建上下文
+            // Build context using SkillExecutionCoordinator
+            var ctx = _skillExecutionCoordinator.BuildPlayerContext(
+                character,
+                defaultTarget?.Entity,
+                defaultTargetId,
+                _playerTeam,
+                _enemyTeam,
+                _rng,
+                _clock,
+                _playerResources.GetValueOrDefault(casterId),
+                _playerBuffOwners.GetValueOrDefault(casterId),
+                _enemyBuffOwners,
+                _damageCalculator
+            );
+
+            // 检查技能施放条件
+            // Check skill casting conditions
+            var skillDef = _skillRepository.GetSkillById(skillId);
+            if (skillDef?.Conditions != null && 
+                !_conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: true, casterId: casterId))
+            {
+                return;
+            }
+
+            // 二次检查冷却和资源（防止竞争条件）
+            // Double-check cooldown and resources (prevent race conditions)
+            var casterCooldownMgr = GetOrCreateCooldownManager(casterId);
+            if (skillDef != null && !casterCooldownMgr.IsReady(skillId))
+            {
+                return;
+            }
+            if (skillDef != null && !_resourceManager.CheckResourceCost(skillDef, ctx))
+            {
+                return;
+            }
+
+            // 执行技能
+            // Execute skill
+            var opts = new SkillCastOptions { SourceTrack = sourceTrack, CasterId = casterId };
+            var result = _skillResolver.Cast(skillId, ctx, opts);
+
+            // 解析目标
+            // Resolve targets
+            var targetIds = _skillExecutionCoordinator.ResolveSkillTargets(result, defaultTargetId);
+
+            // 应用伤害效果
+            // Apply damage effects
+            if (targetIds.Count > 0)
+            {
+                Func<string, bool> isTargetAlive = (targetId) => 
                 {
-                    Enemy = enemy,
-                    Player = defaultTarget?.Entity,
-                    PlayerTeam = _playerTeam,
-                    EnemyTeam = _enemyTeam,
-                    Rng = _rng,
-                    Clock = _clock,
-                    PlayerResources = defaultTargetId != null ? _playerResources.GetValueOrDefault(defaultTargetId) : null,
-                    PlayerBuffOwner = defaultTargetId != null ? _playerBuffOwners.GetValueOrDefault(defaultTargetId) : null,
-                    EnemyBuffOwners = _enemyBuffOwners,
-                    CurrentTargetId = defaultTargetId,
-                    // Phase 5: 新伤害系统属性 - 怪物作为攻击者 / New damage system properties - monster as attacker
-                    DamageCalculator = _damageCalculator,
-                    AttackerCombatStats = monsterCombatStats,
-                    AttackerElement = enemy.Element,
-                    DefenderElement = defaultTarget?.Entity?.Element ?? ElementIds.Neutral,
-                    AttackerHPRatio = attackerHPRatio,
-                    DefenderDamageReductionPercent = defenderDRPct
+                    var target = _enemyTeam.GetMember(targetId);
+                    return target != null && !target.IsDead;
                 };
 
-                // Phase 4: 检查技能施放条件（怪物）
-                // Phase 4: Check skill casting conditions (monster)
-                var skillDef = _skillRepository.GetSkillById(skillId);
-                if (skillDef?.Conditions != null)
+                if (_skillExecutionCoordinator.HasDamageInstances(result))
                 {
-                    if (!_conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: false, casterId: casterId))
-                    {
-                        // 条件不满足，跳过技能施放
-                        // Conditions not met, skip skill casting
-                        return;
-                    }
+                    _skillExecutionCoordinator.ProcessPlayerDamageInstances(
+                        result, casterId, targetIds, eventSource, skillId, isTargetAlive);
+                }
+                else
+                {
+                    _skillExecutionCoordinator.ApplyPlayerLegacySingleDamage(
+                        result, casterId, targetIds, eventSource, skillId, isTargetAlive);
                 }
 
-                // 使用 SkillResolver 执行技能
-                // Execute skill using SkillResolver
-                var opts = new SkillCastOptions 
-                { 
-                    SourceTrack = sourceTrack,
-                    CasterId = casterId
+                // Buff操作和资源变化
+                // Buff operations and resource changes
+                string? primaryTargetId = targetIds.Count > 0 ? targetIds[0] : null;
+                ProcessBuffOperations(result, casterId, primaryTargetId, isCasterPlayer: true);
+                ApplyResourceChanges(result, casterId, isCasterPlayer: true, skillId: skillId);
+            }
+
+            // 向后兼容资源获得
+            // Backward compatible resource gain
+            if (_playerResources.TryGetValue(casterId, out var resources))
+            {
+                _skillExecutionCoordinator.HandleBackwardCompatibleResourceGain(
+                    sourceTrack, result, casterId, skillId,
+                    character.ActiveCombatProfessionId, resources,
+                    _professionResourceConfigs, _resourceConfig);
+            }
+
+            // 启动冷却
+            // Start cooldown
+            if (skillDef != null && skillDef.CooldownSec > 0)
+            {
+                casterCooldownMgr.StartCooldown(skillId, skillDef.CooldownSec);
+            }
+        }
+
+        /// <summary>
+        /// Battle Refactor Phase 6.1: 执行怪物技能（使用 SkillExecutionCoordinator）
+        /// Battle Refactor Phase 6.1: Execute monster skill (using SkillExecutionCoordinator)
+        /// </summary>
+        private void ExecuteMonsterSkill(string casterId, string skillId, string sourceTrack, EventSource eventSource)
+        {
+            // 获取施法者
+            // Get caster
+            var member = _enemyTeam.GetMember(casterId);
+            if (member == null) return;
+            var enemy = member.Entity;
+
+            // 选择默认目标
+            // Select default target
+            var defaultTargetId = SelectPlayerTarget(_config.EnemyTargetStrategy);
+            var defaultTarget = defaultTargetId != null ? _playerTeam.GetMember(defaultTargetId) : null;
+
+            // 使用 SkillExecutionCoordinator 构建上下文
+            // Build context using SkillExecutionCoordinator
+            var ctx = _skillExecutionCoordinator.BuildMonsterContext(
+                enemy,
+                defaultTarget?.Entity,
+                defaultTargetId,
+                _playerTeam,
+                _enemyTeam,
+                _rng,
+                _clock,
+                defaultTargetId != null ? _playerResources.GetValueOrDefault(defaultTargetId) : null,
+                defaultTargetId != null ? _playerBuffOwners.GetValueOrDefault(defaultTargetId) : null,
+                _enemyBuffOwners,
+                _damageCalculator
+            );
+
+            // 检查技能施放条件
+            // Check skill casting conditions
+            var skillDef = _skillRepository.GetSkillById(skillId);
+            if (skillDef?.Conditions != null && 
+                !_conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: false, casterId: casterId))
+            {
+                return;
+            }
+
+            // 执行技能
+            // Execute skill
+            var opts = new SkillCastOptions { SourceTrack = sourceTrack, CasterId = casterId };
+            var result = _skillResolver.Cast(skillId, ctx, opts);
+
+            // 解析目标
+            // Resolve targets
+            var targetIds = _skillExecutionCoordinator.ResolveSkillTargets(result, defaultTargetId);
+
+            // 应用伤害效果
+            // Apply damage effects
+            if (targetIds.Count > 0)
+            {
+                Func<string, bool> isTargetAlive = (targetId) => 
+                {
+                    var target = _playerTeam.GetMember(targetId);
+                    return target != null && !target.IsDead;
                 };
-                var result = _skillResolver.Cast(skillId, ctx, opts);
 
-                // 解析目标（来自技能的targetPolicy）
-                // Resolve targets (from skill's targetPolicy)
-                List<string> targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
-                    (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
-
-                // 应用效果到所有解析的目标
-                // Apply effects to all resolved targets
-                if (targetIds.Count > 0)
+                if (_skillExecutionCoordinator.HasDamageInstances(result))
                 {
-                    bool isAoe = targetIds.Count > 1;
-                    
-                    // Battle Refactor Phase 2.4: 支持多段伤害（怪物对玩家）
-                    // Battle Refactor Phase 2.4: Support multi-hit damage (monster to player)
-                    if (result.DamageInstances != null && result.DamageInstances.Count > 0)
-                    {
-                        // 多段伤害处理
-                        // Multi-hit damage processing
-                        foreach (var targetId in targetIds)
-                        {
-                            var playerTarget = _playerTeam.GetMember(targetId);
-                            if (playerTarget != null)
-                            {
-                                // 为每个目标处理所有伤害实例
-                                // Process all damage instances for each target
-                                foreach (var instance in result.DamageInstances)
-                                {
-                                    // 克隆实例并设置目标
-                                    // Clone instance and set target
-                                    var targetedInstance = instance.Clone();
-                                    targetedInstance.TargetId = targetId;
-                                    targetedInstance.CasterId = casterId;
-                                    targetedInstance.IsCasterPlayer = false;
-                                    targetedInstance.EventSource = eventSource;  // 保留原始事件来源
-                                    
-                                    // AOE 伤害减免
-                                    // AOE damage reduction
-                                    if (isAoe)
-                                    {
-                                        targetedInstance.Damage = (int)(targetedInstance.Damage * _config.AoeDamageMultiplier);
-                                    }
-                                    
-                                    if (targetedInstance.IsImmediate)
-                                    {
-                                        // 立即伤害
-                                        // Immediate damage
-                                        if (!playerTarget.IsDead && targetedInstance.Damage > 0)
-                                        {
-                                            ApplyDamageToPlayer(casterId, member, targetId, playerTarget, targetedInstance.Damage,
-                                                source: eventSource, skillId: skillId, bundleId: result.BundleId);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        // 延迟伤害加入队列
-                                        // Delayed damage enqueue
-                                        _pendingDamageQueue.Enqueue(targetedInstance, _clock.NowMs / 1000.0);
-                                    }
-                                }
-                            }
-                            
-                            // Phase 5: 即时治疗应用到每个目标（支持治疗队友）
-                            // Phase 5: Instant heal applies to each target (supports healing allies)
-                            ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: false, skillId: skillId);
-                        }
-                    }
-                    else
-                    {
-                        // 传统单段伤害处理（向后兼容）
-                        // Legacy single-hit damage processing (backward compatible)
-                        int damagePerTarget = isAoe ? (int)(result.DamageDealt * _config.AoeDamageMultiplier) : result.DamageDealt;
-
-                        foreach (var targetId in targetIds)
-                        {
-                            // 处理伤害（针对玩家目标）
-                            // Process damage (for player targets)
-                            var playerTarget = _playerTeam.GetMember(targetId);
-                            if (playerTarget != null && damagePerTarget > 0)
-                            {
-                                ApplyDamageToPlayer(casterId, member, targetId, playerTarget, damagePerTarget,
-                                    source: eventSource, skillId: skillId, bundleId: result.BundleId);
-                            }
-                            
-                            // Phase 5: 即时治疗应用到每个目标（支持治疗队友）
-                            // Phase 5: Instant heal applies to each target (supports healing allies)
-                            ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: false, skillId: skillId);
-                        }
-                    }
-                    
-                    // Buff操作和资源变化只应用一次（不是每个目标）
-                    // Buff operations and resource changes apply once (not per target)
-                    string? primaryTargetId = targetIds.Count > 0 ? targetIds[0] : null;
-                    ProcessBuffOperations(result, casterId, primaryTargetId, isCasterPlayer: false);
-                    ApplyResourceChanges(result, casterId, isCasterPlayer: false, skillId: skillId);
+                    _skillExecutionCoordinator.ProcessMonsterDamageInstances(
+                        result, casterId, targetIds, eventSource, skillId, isTargetAlive);
+                }
+                else
+                {
+                    _skillExecutionCoordinator.ApplyMonsterLegacySingleDamage(
+                        result, casterId, targetIds, eventSource, skillId, isTargetAlive);
                 }
 
-                // Phase 9: 启动怪物技能冷却
-                // Phase 9: Start monster skill cooldown
-                if (skillDef != null && skillDef.CooldownSec > 0)
-                {
-                    var cooldownMgr = GetOrCreateCooldownManager(casterId);
-                    cooldownMgr.StartCooldown(skillId, skillDef.CooldownSec);
-                }
+                // Buff操作和资源变化
+                // Buff operations and resource changes
+                string? primaryTargetId = targetIds.Count > 0 ? targetIds[0] : null;
+                ProcessBuffOperations(result, casterId, primaryTargetId, isCasterPlayer: false);
+                ApplyResourceChanges(result, casterId, isCasterPlayer: false, skillId: skillId);
+            }
+
+            // 启动怪物技能冷却
+            // Start monster skill cooldown
+            if (skillDef != null && skillDef.CooldownSec > 0)
+            {
+                var cooldownMgr = GetOrCreateCooldownManager(casterId);
+                cooldownMgr.StartCooldown(skillId, skillDef.CooldownSec);
             }
         }
 
@@ -1234,51 +1057,35 @@ namespace BlazorIdle.Game
         /// </summary>
         private void ProcessAttackDecisionPoint(string charId, Character character, int now)
         {
-            // 获取 CharacterData（如果可用）
-            // Get CharacterData (if available)
-            Shared.Models.CharacterData? characterData = null;
-            if (_characterDataMap != null && _characterDataMap.TryGetValue(charId, out var data))
-            {
-                characterData = data;
-            }
+            // Phase 7: 使用 AttackDecisionHelper 准备数据
+            // Phase 7: Use AttackDecisionHelper to prepare data
+            var decisionData = AttackDecisionHelper.PrepareAttackDecisionData(
+                charId,
+                character,
+                _characterDataMap,
+                _playerBuffOwners,
+                _playerResources,
+                _rng,
+                _clock,
+                SelectEnemyTarget(_config.PlayerTargetStrategy),
+                _skillRepository);
 
-            // 如果还是没有 CharacterData，回退到旧的逻辑
-            // If still no CharacterData, fallback to old logic
-            if (characterData == null)
+            // 如果没有 CharacterData，回退到旧的逻辑
+            // If no CharacterData, fallback to old logic
+            if (!decisionData.HasCharacterData)
             {
                 ProcessCharacterAttackViaSkillResolver(charId, character);
                 return;
             }
 
-            // 构建战斗上下文
-            // Build battle context
-            var context = new BattleContext
-            {
-                Player = character,
-                PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(charId),
-                PlayerResources = _playerResources.GetValueOrDefault(charId),
-                Rng = _rng,
-                Clock = _clock,
-                CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
-            };
-
-            // FIX: 永远先执行普通攻击，然后检查施法
-            // FIX: Always execute normal attack first, then check for casting
-            // 这样避免浪费攻击进度条准备时间
-            // This avoids wasting attack track preparation time
-            
             // === 窗口执行路径：NormalAttack → PostAttack → TryStartCasting ===
             // === Window execution path: NormalAttack → PostAttack → TryStartCasting ===
             
-            string normalAttackSkillId = character.GetNormalAttackSkillId();
-            var normalAttackSkill = _skillRepository.GetSkill(normalAttackSkillId);
-            bool normalAttackIsGcd = normalAttackSkill?.IsGcd ?? true;
-
-            ExecuteSkill(charId, normalAttackSkillId, "attack", isCasterPlayer: true, EventSource.Attack);
+            ExecuteSkill(charId, decisionData.NormalAttackSkillId!, "attack", isCasterPlayer: true, EventSource.Attack);
 
             // Phase 6: PostAttack 窗口：使用 WindowExecutor 执行瞬发技能
             // Phase 6: PostAttack window: Use WindowExecutor to execute instant skills
-            var instantSkills = _windowExecutor.ExecuteWindow(WindowType.PostAttack, charId, characterData, character.ActiveCombatProfessionId, context, normalAttackIsGcd);
+            var instantSkills = _windowExecutor.ExecuteWindow(WindowType.PostAttack, charId, decisionData.CharacterData!, character.ActiveCombatProfessionId, decisionData.Context!, decisionData.NormalAttackIsGcd);
             foreach (var skill in instantSkills)
             {
                 ExecuteSkill(charId, skill.Id, "postattack", isCasterPlayer: true, EventSource.PostAttack);
@@ -1286,12 +1093,10 @@ namespace BlazorIdle.Game
             
             // Phase 7: PostAttack 窗口触发器
             // Phase 7: PostAttack window triggers
-            ProcessWindowTriggers(charId, "OnPostAttackWindow", normalAttackSkillId, isCasterPlayer: true);
+            ProcessWindowTriggers(charId, "OnPostAttackWindow", decisionData.NormalAttackSkillId!, isCasterPlayer: true);
             
-            // FIX: 普攻完成后立即尝试施法（如果有可用的施法技能）
-            // FIX: After normal attack, immediately try to start casting (if there's an available cast skill)
-            // 这样可以避免等待下一次 AttackTrack 触发才检查施法
-            // This avoids waiting for the next AttackTrack trigger to check for casting
+            // 普攻完成后立即尝试施法
+            // After normal attack, immediately try to start casting
             TryStartCasting(charId, now);
         }
 
@@ -1360,37 +1165,33 @@ namespace BlazorIdle.Game
             // Create battle context for monster
             var context = new BattleContext
             {
-                Player = null,  // Monster is caster, not player
+                Player = null,
                 Enemy = enemy,
                 PlayerBuffOwner = null,
-                EnemyBuffOwners = _enemyBuffOwners,  // Pass the dictionary
+                EnemyBuffOwners = _enemyBuffOwners,
                 Rng = _rng,
                 Clock = _clock,
-                CurrentTargetId = SelectTargetForEnemy()  // Get a player target
+                CurrentTargetId = SelectTargetForEnemy()
             };
 
-            // Battle Refactor Phase 5.2: 使用 CastingIntegration 选择怪物施法技能
-            // Battle Refactor Phase 5.2: Use CastingIntegration to select monster cast skill
-            var castSkill = _castingIntegration.SelectMonsterCastSkill(enemyId, enemy, context);
-            if (castSkill != null)
+            // Battle Refactor Phase 6.3: 使用 CastingIntegration 准备怪物施法数据
+            var (success, castSkill, _) = _castingIntegration.PrepareMonsterCasting(enemyId, enemy, context);
+            
+            if (!success || castSkill == null)
+                return false;
+
+            // 怪物目前不支持急速
+            double haste = 0.0;
+            bool castStarted = _castingController.StartCast(enemyId, castSkill.Id, castSkill.CastTimeSec, haste, pauseAttackTrack: true);
+            
+            if (castStarted && _enemyTracks.TryGetValue(enemyId, out var track))
             {
-                // Start casting immediately
-                double haste = 0.0;  // Monsters don't have haste for now
-                bool castStarted = _castingController.StartCast(enemyId, castSkill.Id, castSkill.CastTimeSec, haste, pauseAttackTrack: true);
-                
-                if (castStarted && _enemyTracks.TryGetValue(enemyId, out var track))
-                {
-                    // Pause attack track during cast
-                    track.AttackTrack.Pause(now);
-                    
-                    // Record event
-                    RecordMonsterCastStart(enemyId, castSkill.Id, castSkill.CastTimeSec);
-                    
-                    return true;  // Started casting
-                }
+                track.AttackTrack.Pause(now);
+                RecordMonsterCastStart(enemyId, castSkill.Id, castSkill.CastTimeSec);
+                return true;
             }
             
-            return false;  // Did not start casting
+            return false;
         }
 
         /// <summary>
@@ -1542,7 +1343,6 @@ namespace BlazorIdle.Game
             bool isKill = defender.IsDead;
             
             // Phase 9.11: 同步HP变化到Entity（供Buff系统使用）
-            // Phase 9.11: Sync HP change to Entity (for buff system use)
             defender.SyncHpToEntity();
 
             // 更新统计
@@ -1550,26 +1350,12 @@ namespace BlazorIdle.Game
             _damageDealtByCharacter[attackerId] += actualDamage;
             _totalPlayerDamage += actualDamage;
 
-            // 创建事件
-            var ev = new MultiCombatEvent
-            {
-                Attacker = ActorType.Player,
-                Defender = ActorType.Enemy,
-                AttackerId = attackerId,
-                AttackerName = GetCharacterName(attackerId),
-                DefenderId = defenderId,
-                DefenderName = GetEnemyName(defenderId),
-                Source = source,
-                TimeMs = _clock.NowMs,
-                Damage = actualDamage,
-                Crit = isCrit,
-                IsAoe = isAoe,
-                IsKill = isKill,
-                RngIndexAfter = _rng.Index,
-                DefenderHpAfter = defender.CurrentHp,
-                SkillId = skillId,
-                BundleId = bundleId
-            };
+            // Battle Refactor Phase 6.2: 使用 DamageApplicationHelper 创建事件
+            var ev = DamageApplicationHelper.CreatePlayerToEnemyEvent(
+                attackerId, GetCharacterName(attackerId),
+                defenderId, GetEnemyName(defenderId),
+                source, _clock.NowMs, actualDamage, isCrit, isAoe, isKill,
+                _rng.Index, defender.CurrentHp, skillId, bundleId);
 
             // 聚合事件
             var flushed = _aggregator.AddEvent(ev);
@@ -1578,10 +1364,8 @@ namespace BlazorIdle.Game
             // 触发事件
             CombatEventFired?.Invoke(ev);
 
-            // Phase 7: 处理攻击触发器 / Process attack triggers
-            // 只在非触发技能造成伤害时才处理触发器，避免无限递归
-            // Only process triggers for non-trigger skills to avoid infinite recursion
-            if (source != EventSource.Trigger)
+            // Phase 7: 处理攻击触发器
+            if (DamageApplicationHelper.ShouldProcessAttackTriggers(source))
             {
                 ProcessAttackTriggers(attackerId, skillId, isCrit, isCasterPlayer: true);
             }
@@ -1591,8 +1375,6 @@ namespace BlazorIdle.Game
             {
                 ProcessLootDrops(defenderId, defender.Entity);
                 ProcessExperienceGain(defenderId, defender.Entity, attackerId);
-                
-                // Phase 8: 中断对该目标的施法 / Interrupt casting on this target
                 CheckAndInterruptCasting(defenderId, isTargetPlayer: false);
             }
         }
@@ -1616,7 +1398,6 @@ namespace BlazorIdle.Game
             bool isKill = defender.IsDead;
             
             // Phase 9.11: 同步HP变化到Entity（供Buff系统使用）
-            // Phase 9.11: Sync HP change to Entity (for buff system use)
             defender.SyncHpToEntity();
 
             // 更新统计
@@ -1625,26 +1406,12 @@ namespace BlazorIdle.Game
             _damageTakenByCharacter[defenderId] += actualDamage;
             _totalEnemyDamage += actualDamage;
 
-            // 创建事件
-            var ev = new MultiCombatEvent
-            {
-                Attacker = ActorType.Enemy,
-                Defender = ActorType.Player,
-                AttackerId = attackerId,
-                AttackerName = GetEnemyName(attackerId),
-                DefenderId = defenderId,
-                DefenderName = GetCharacterName(defenderId),
-                Source = source,
-                TimeMs = _clock.NowMs,
-                Damage = actualDamage,
-                Crit = false,
-                IsAoe = false,
-                IsKill = isKill,
-                RngIndexAfter = _rng.Index,
-                DefenderHpAfter = defender.CurrentHp,
-                SkillId = skillId,
-                BundleId = bundleId
-            };
+            // Battle Refactor Phase 6.2: 使用 DamageApplicationHelper 创建事件
+            var ev = DamageApplicationHelper.CreateEnemyToPlayerEvent(
+                attackerId, GetEnemyName(attackerId),
+                defenderId, GetCharacterName(defenderId),
+                source, _clock.NowMs, actualDamage, isKill,
+                _rng.Index, defender.CurrentHp, skillId, bundleId);
 
             // 聚合事件
             var flushed = _aggregator.AddEvent(ev);
@@ -1653,10 +1420,8 @@ namespace BlazorIdle.Game
             // 触发事件
             CombatEventFired?.Invoke(ev);
 
-            // Phase 7: 处理怪物攻击触发器 / Process monster attack triggers
-            // 只在非触发技能造成伤害时才处理触发器，避免无限递归
-            // Only process triggers for non-trigger skills to avoid infinite recursion
-            if (source != EventSource.Trigger)
+            // Phase 7: 处理怪物攻击触发器
+            if (DamageApplicationHelper.ShouldProcessAttackTriggers(source))
             {
                 ProcessAttackTriggers(attackerId, skillId, isCrit: false, isCasterPlayer: false);
             }
@@ -2028,34 +1793,18 @@ namespace BlazorIdle.Game
         /// </summary>
         private void CheckBattleState(int now)
         {
-            if (_playerTeam.IsAllDead)
-            {
-                if (_config.AllowPlayerRevive)
-                {
-                    _state = MultiBattleState.PlayerTeamDeadCooldown;
-                    _resumeAtMs = now + _config.PlayerReviveCooldownMs;
-                }
-                else
-                {
-                    _state = MultiBattleState.Defeat;
-                    Stop();
-                }
-                FireTeamStatusEvent();
-            }
-            else if (_enemyTeam.IsAllDead)
-            {
-                if (_config.AllowEnemyRespawn)
-                {
-                    _state = MultiBattleState.EnemyTeamDeadCooldown;
-                    _resumeAtMs = now + _config.EnemyRespawnCooldownMs;
-                }
-                else
-                {
-                    _state = MultiBattleState.Victory;
-                    Stop();
-                }
-                FireTeamStatusEvent();
-            }
+            // Phase 7: 委托给 BattleStateManager 检查战斗状态
+            // Phase 7: Delegate to BattleStateManager for battle state check
+            // 先同步状态
+            _battleStateManager.SetState(_state);
+            _battleStateManager.SetResumeAtMs(_resumeAtMs);
+            
+            // 调用 BattleStateManager 检查
+            _battleStateManager.CheckBattleState(now);
+            
+            // 同步回本地状态
+            _state = _battleStateManager.State;
+            _resumeAtMs = _battleStateManager.ResumeAtMs;
         }
 
         /// <summary>
@@ -2064,82 +1813,18 @@ namespace BlazorIdle.Game
         /// </summary>
         private void HandleCooldownEnd(int now)
         {
-            if (_state == MultiBattleState.PlayerTeamDeadCooldown)
-            {
-                // 复活玩家队伍
-                _playerTeam.ReviveAll(_config.ReviveWithFullHp);
-
-                // Phase 4: 清除玩家所有 buff 和重置资源
-                // Clear all player buffs and reset resources on death
-                foreach (var kvp in _playerBuffOwners)
-                {
-                    var charId = kvp.Key;
-                    var buffOwner = kvp.Value;
-                    
-                    // 清除所有 buff
-                    buffOwner.ClearAllBuffs();
-                    
-                    // 重置资源
-                    if (_playerResources.TryGetValue(charId, out var resources))
-                    {
-                        // 获取资源配置以重置到初始值
-                        if (_professionResourceConfigs != null &&
-                            buffOwner.Character.ActiveCombatProfessionId != null &&
-                            _professionResourceConfigs.TryGetValue(buffOwner.Character.ActiveCombatProfessionId, out var profConfig))
-                        {
-                            // 重置到职业初始资源值
-                            var bucket = resources.GetBucket(profConfig.Id);
-                            bucket.Reset(profConfig.Initial);
-                        }
-                        else
-                        {
-                            // 后备：重置所有资源到 0
-                            foreach (var bucket in resources.GetAll().Values)
-                            {
-                                bucket.Reset(0);
-                            }
-                        }
-                    }
-                }
-
-                // 对称重置：玩家与敌人轨道全部重置到 now，避免冷却期间积压触发
-                foreach (var tracks in _characterTracks.Values)
-                {
-                    tracks.Reset(now);
-                }
-                foreach (var track in _enemyTracks.Values)
-                {
-                    track.Reset(now);
-                }
-
-                _state = MultiBattleState.Fighting;
-            }
-            else if (_state == MultiBattleState.EnemyTeamDeadCooldown)
-            {
-                // 刷新敌人队伍
-                _enemyTeam.ReviveAll(true);
-
-                // Phase 4: 清除敌人所有 buff
-                // Clear all enemy buffs on death
-                foreach (var buffOwner in _enemyBuffOwners.Values)
-                {
-                    buffOwner.ClearAllBuffs();
-                }
-
-                // 对称重置：敌人与玩家轨道全部重置到 now，避免冷却期间积压触发
-                foreach (var track in _enemyTracks.Values)
-                {
-                    track.Reset(now);
-                }
-                foreach (var tracks in _characterTracks.Values)
-                {
-                    tracks.Reset(now);
-                }
-
-                _state = MultiBattleState.Fighting;
-            }
-
-            FireTeamStatusEvent();
+            // Phase 7: 委托给 BattleStateManager 处理冷却结束
+            // Phase 7: Delegate to BattleStateManager for cooldown end handling
+            // 先同步状态
+            _battleStateManager.SetState(_state);
+            _battleStateManager.SetResumeAtMs(_resumeAtMs);
+            
+            // 调用 BattleStateManager 处理冷却结束
+            _battleStateManager.HandleCooldownEnd(now);
+            
+            // 同步回本地状态
+            _state = _battleStateManager.State;
+            _resumeAtMs = _battleStateManager.ResumeAtMs;
         }
 
         /// <summary>
@@ -2204,43 +1889,11 @@ namespace BlazorIdle.Game
         /// </summary>
         private void FireTeamStatusEvent()
         {
-            var playerStatus = new TeamStatus
-            {
-                TeamId = _playerTeam.TeamId,
-                TeamName = _playerTeam.TeamName,
-                AliveCount = _playerTeam.AliveCount,
-                TotalCount = _playerTeam.TotalCount
-            };
-
-            foreach (var member in _playerTeam.Members)
-            {
-                playerStatus.MemberHp[member.Id] = member.CurrentHp;
-                playerStatus.MemberMaxHp[member.Id] = member.MaxHp;
-            }
-
-            var enemyStatus = new TeamStatus
-            {
-                TeamId = _enemyTeam.TeamId,
-                TeamName = _enemyTeam.TeamName,
-                AliveCount = _enemyTeam.AliveCount,
-                TotalCount = _enemyTeam.TotalCount
-            };
-
-            foreach (var member in _enemyTeam.Members)
-            {
-                enemyStatus.MemberHp[member.Id] = member.CurrentHp;
-                enemyStatus.MemberMaxHp[member.Id] = member.MaxHp;
-            }
-
-            var statusEvent = new TeamStatusEvent
-            {
-                TimeMs = _clock.NowMs,
-                PlayerTeamStatus = playerStatus,
-                EnemyTeamStatus = enemyStatus,
-                BattleState = _state
-            };
-
-            TeamStatusChanged?.Invoke(statusEvent);
+            // Phase 7: 委托给 BattleStateManager 触发队伍状态事件
+            // Phase 7: Delegate to BattleStateManager for firing team status event
+            // 先同步状态
+            _battleStateManager.SetState(_state);
+            _battleStateManager.FireTeamStatusEvent();
         }
 
         // 旧系统清理：PlayerRollDamage 和 EnemyRollDamage 已移除
@@ -2722,9 +2375,7 @@ namespace BlazorIdle.Game
             // 如果已经在施法，返回 false
             // If already casting, return false
             if (_castingController.IsCastingForCaster(charId))
-            {
                 return false;
-            }
 
             // 获取角色和轨道
             // Get character and tracks
@@ -2739,9 +2390,7 @@ namespace BlazorIdle.Game
             // Get CharacterData
             Shared.Models.CharacterData? characterData = null;
             if (_characterDataMap != null && _characterDataMap.TryGetValue(charId, out var data))
-            {
                 characterData = data;
-            }
 
             if (characterData == null)
                 return false;
@@ -2758,38 +2407,29 @@ namespace BlazorIdle.Game
                 CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
             };
 
-            // Battle Refactor Phase 5.2: 使用 CastingIntegration 选择施法技能
-            // Battle Refactor Phase 5.2: Use CastingIntegration to select cast skill
-            var castSkill = _castingIntegration.SelectCastSkill(charId, character, characterData, context);
+            // Battle Refactor Phase 6.3: 使用 CastingIntegration 准备施法数据
+            _playerBuffOwners.TryGetValue(charId, out var buffOwner);
+            var (success, castSkill, hastePercent, actualCastTime) = 
+                _castingIntegration.PreparePlayerCasting(charId, character, characterData, context, buffOwner);
 
-            if (castSkill != null)
+            if (!success || castSkill == null)
+                return false;
+
+            // 开始施法 / Start casting
+            bool castStarted = _castingController.StartCast(charId, castSkill.Id, castSkill.CastTimeSec, hastePercent, pauseAttackTrack: true);
+            
+            if (castStarted)
             {
-                // Battle Refactor Phase 5.2: 使用 CastingIntegration 计算急速
-                // Battle Refactor Phase 5.2: Use CastingIntegration to calculate haste
-                _playerBuffOwners.TryGetValue(charId, out var buffOwner);
-                double hastePercent = _castingIntegration.CalculateHastePercent(character, buffOwner);
-
-                // 开始施法 / Start casting
-                bool castStarted = _castingController.StartCast(charId, castSkill.Id, castSkill.CastTimeSec, hastePercent, pauseAttackTrack: true);
-                
-                if (castStarted)
+                tracks.PauseAttackTrack(now);
+                CastStarted?.Invoke(new CastStartEvent
                 {
-                    // 暂停攻击轨道 / Pause attack track
-                    tracks.PauseAttackTrack(now);
-
-                    // 记录施法开始事件 / Record cast start event
-                    var actualCastTime = castSkill.CastTimeSec / (1.0 + hastePercent / 100.0);
-                    CastStarted?.Invoke(new CastStartEvent
-                    {
-                        TimeMs = now,
-                        CasterId = charId,
-                        SkillId = castSkill.Id,
-                        CastTimeSec = actualCastTime,
-                        PauseAttackTrack = true
-                    });
-
-                    return true;
-                }
+                    TimeMs = now,
+                    CasterId = charId,
+                    SkillId = castSkill.Id,
+                    CastTimeSec = actualCastTime,
+                    PauseAttackTrack = true
+                });
+                return true;
             }
 
             return false;
