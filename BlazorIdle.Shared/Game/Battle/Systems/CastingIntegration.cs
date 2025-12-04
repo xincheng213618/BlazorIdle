@@ -197,44 +197,25 @@ namespace BlazorIdle.Game.Battle.Systems
         /// <summary>
         /// 计算急速百分比（包含 Buff 效果）
         /// Calculate haste percentage (including buff effects)
+        /// 
+        /// Phase 8 优化：复用 HasteCalculator，消除代码重复
+        /// Phase 8 optimization: Reuse HasteCalculator to eliminate code duplication
         /// </summary>
         public double CalculateHastePercent(Character character, IBuffOwner? buffOwner)
         {
             if (character == null)
                 throw new ArgumentNullException(nameof(character));
                 
-            double hastePercent = character.HastePercent;
+            double baseHastePercent = character.HastePercent;
 
+            // Phase 8: 复用 HasteCalculator 的泛型方法
+            // Phase 8: Reuse HasteCalculator's generic method
             if (buffOwner is CharacterBuffOwner charBuffOwner)
             {
-                // 按应用时间排序 Buff
-                var sortedBuffs = charBuffOwner.Buffs.Values
-                    .OrderBy(b => b.AppliedAtMs)
-                    .ToList();
-
-                foreach (var buff in sortedBuffs)
-                {
-                    foreach (var effect in buff.Effects)
-                    {
-                        if (effect.Target != "HastePercent") continue;
-
-                        switch (effect.Type)
-                        {
-                            case BuffEffectType.StatMultiplier:
-                                hastePercent *= (1.0 + effect.Value);
-                                break;
-                            case BuffEffectType.StatAdditive:
-                                hastePercent += effect.Value;
-                                break;
-                            case BuffEffectType.StatReduction:
-                                hastePercent *= (1.0 - effect.Value);
-                                break;
-                        }
-                    }
-                }
+                return HasteCalculator.CalculateHastePercent(baseHastePercent, charBuffOwner);
             }
 
-            return hastePercent;
+            return baseHastePercent;
         }
 
         /// <summary>

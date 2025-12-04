@@ -13,17 +13,23 @@ namespace BlazorIdle.Game.Battle.Systems
     /// 职责:
     /// - 计算角色急速百分比（包含 Buff 效果）
     /// - 更新攻击轨道的急速倍率
+    /// 
+    /// Phase 8 优化：
+    /// - 统一玩家/怪物急速计算为泛型方法
+    /// - 消除代码重复
     /// </summary>
     public static class HasteCalculator
     {
         /// <summary>
-        /// 计算包含 Buff 效果的急速百分比
-        /// Calculate haste percent including buff effects
+        /// 通用急速计算方法 - 适用于任何拥有 Buff 的实体
+        /// Generic haste calculation method - works for any entity with buffs
         /// </summary>
+        /// <typeparam name="TBuffOwner">Buff 拥有者类型 / Buff owner type</typeparam>
         /// <param name="baseHastePercent">基础急速百分比 / Base haste percent</param>
         /// <param name="buffOwner">Buff 拥有者（可为 null）/ Buff owner (may be null)</param>
         /// <returns>修改后的急速百分比 / Modified haste percent</returns>
-        public static double CalculateHastePercent(double baseHastePercent, CharacterBuffOwner? buffOwner)
+        public static double CalculateHastePercentGeneric<TBuffOwner>(double baseHastePercent, TBuffOwner? buffOwner) 
+            where TBuffOwner : class, IBuffOwner
         {
             if (buffOwner == null)
                 return baseHastePercent;
@@ -61,6 +67,18 @@ namespace BlazorIdle.Game.Battle.Systems
             }
 
             return modifiedHaste;
+        }
+
+        /// <summary>
+        /// 计算包含 Buff 效果的急速百分比（玩家角色）
+        /// Calculate haste percent including buff effects (player character)
+        /// </summary>
+        /// <param name="baseHastePercent">基础急速百分比 / Base haste percent</param>
+        /// <param name="buffOwner">Buff 拥有者（可为 null）/ Buff owner (may be null)</param>
+        /// <returns>修改后的急速百分比 / Modified haste percent</returns>
+        public static double CalculateHastePercent(double baseHastePercent, CharacterBuffOwner? buffOwner)
+        {
+            return CalculateHastePercentGeneric(baseHastePercent, buffOwner);
         }
 
         /// <summary>
@@ -105,42 +123,7 @@ namespace BlazorIdle.Game.Battle.Systems
         /// <returns>修改后的急速百分比 / Modified haste percent</returns>
         public static double CalculateMonsterHastePercent(double baseHastePercent, EnemyBuffOwner? buffOwner)
         {
-            if (buffOwner == null)
-                return baseHastePercent;
-
-            double modifiedHaste = baseHastePercent;
-
-            // 按应用时间排序 Buff（与 SkillResolver 一致）
-            // Sort buffs by application time (consistent with SkillResolver)
-            var sortedBuffs = buffOwner.Buffs.Values
-                .OrderBy(b => b.AppliedAtMs)
-                .ToList();
-
-            foreach (var buff in sortedBuffs)
-            {
-                foreach (var effect in buff.Effects)
-                {
-                    // 只处理影响急速的效果
-                    // Only process effects targeting haste
-                    if (effect.Target != "HastePercent")
-                        continue;
-
-                    switch (effect.Type)
-                    {
-                        case BuffEffectType.StatMultiplier:
-                            modifiedHaste *= (1.0 + effect.Value);
-                            break;
-                        case BuffEffectType.StatAdditive:
-                            modifiedHaste += effect.Value;
-                            break;
-                        case BuffEffectType.StatReduction:
-                            modifiedHaste *= (1.0 - effect.Value);
-                            break;
-                    }
-                }
-            }
-
-            return modifiedHaste;
+            return CalculateHastePercentGeneric(baseHastePercent, buffOwner);
         }
 
     }

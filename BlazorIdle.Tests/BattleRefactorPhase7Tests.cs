@@ -71,6 +71,108 @@ namespace BlazorIdle.Tests
         }
 
         [Fact]
+        public void HasteCalculator_CalculateHastePercentGeneric_WithBuffEffects_AppliesCorrectly()
+        {
+            // Arrange - This test verifies that the generic method works correctly with buff effects
+            double baseHaste = 10.0;
+            var character = CreateTestCharacter();
+            var buffOwner = new CharacterBuffOwner(character, "char1", new ResourceBucketCollection());
+
+            // Add a buff with haste effect
+            var buff = new BuffInstance(
+                id: "test_haste_buff",
+                ownerId: "char1",
+                kind: BuffKind.Buff,
+                effects: new List<BuffEffect>
+                {
+                    new BuffEffect
+                    {
+                        Type = BuffEffectType.StatAdditive,
+                        Target = "HastePercent",
+                        Value = 20.0
+                    }
+                },
+                durationSec: 10.0,
+                appliedAtMs: 0,
+                maxStacks: 1);
+            buffOwner.ApplyBuff(buff);
+
+            // Act
+            double result = HasteCalculator.CalculateHastePercent(baseHaste, buffOwner);
+
+            // Assert
+            Assert.Equal(30.0, result); // 10.0 + 20.0 = 30.0
+        }
+
+        [Fact]
+        public void HasteCalculator_CalculateHastePercentGeneric_WithMultiplierEffect_AppliesCorrectly()
+        {
+            // Arrange
+            double baseHaste = 10.0;
+            var character = CreateTestCharacter();
+            var buffOwner = new CharacterBuffOwner(character, "char1", new ResourceBucketCollection());
+
+            // Add a buff with haste multiplier effect (50% increase)
+            var buff = new BuffInstance(
+                id: "test_haste_mult_buff",
+                ownerId: "char1",
+                kind: BuffKind.Buff,
+                effects: new List<BuffEffect>
+                {
+                    new BuffEffect
+                    {
+                        Type = BuffEffectType.StatMultiplier,
+                        Target = "HastePercent",
+                        Value = 0.5  // 50% increase
+                    }
+                },
+                durationSec: 10.0,
+                appliedAtMs: 0,
+                maxStacks: 1);
+            buffOwner.ApplyBuff(buff);
+
+            // Act
+            double result = HasteCalculator.CalculateHastePercent(baseHaste, buffOwner);
+
+            // Assert
+            Assert.Equal(15.0, result); // 10.0 * (1 + 0.5) = 15.0
+        }
+
+        [Fact]
+        public void HasteCalculator_CalculateHastePercentGeneric_WithReductionEffect_AppliesCorrectly()
+        {
+            // Arrange
+            double baseHaste = 20.0;
+            var character = CreateTestCharacter();
+            var buffOwner = new CharacterBuffOwner(character, "char1", new ResourceBucketCollection());
+
+            // Add a debuff with haste reduction effect (25% reduction)
+            var buff = new BuffInstance(
+                id: "test_slow_debuff",
+                ownerId: "char1",
+                kind: BuffKind.Debuff,
+                effects: new List<BuffEffect>
+                {
+                    new BuffEffect
+                    {
+                        Type = BuffEffectType.StatReduction,
+                        Target = "HastePercent",
+                        Value = 0.25  // 25% reduction
+                    }
+                },
+                durationSec: 10.0,
+                appliedAtMs: 0,
+                maxStacks: 1);
+            buffOwner.ApplyBuff(buff);
+
+            // Act
+            double result = HasteCalculator.CalculateHastePercent(baseHaste, buffOwner);
+
+            // Assert
+            Assert.Equal(15.0, result); // 20.0 * (1 - 0.25) = 15.0
+        }
+
+        [Fact]
         public void HasteCalculator_UpdateCharacterHaste_UpdatesTrackHaste()
         {
             // Arrange
