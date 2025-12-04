@@ -115,6 +115,18 @@ namespace BlazorIdle.Game
         // Note: Initialized in InitializeIntegrationModules()
         private CastingIntegration _castingIntegration = null!;
         
+        // Battle Refactor Phase 5.2: 定期技能处理器
+        // Battle Refactor Phase 5.2: Periodic skill processor
+        // 注：在 InitializeIntegrationModules() 中初始化
+        // Note: Initialized in InitializeIntegrationModules()
+        private PeriodicSkillProcessor _periodicSkillProcessor = null!;
+        
+        // Battle Refactor Phase 5.3: 消耗品处理器
+        // Battle Refactor Phase 5.3: Consumable processor
+        // 注：在 InitializeIntegrationModules() 中初始化
+        // Note: Initialized in InitializeIntegrationModules()
+        private ConsumableProcessor? _consumableProcessor;
+        
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
         // Current implementation directly uses TrackState + SkillResolver for better clarity.
@@ -331,6 +343,43 @@ namespace BlazorIdle.Game
             {
                 ProcessWindowTriggers(casterId, windowType, sourceSkillId, isCasterPlayer);
             };
+            
+            // Battle Refactor Phase 5.2: 初始化定期技能处理器
+            // Battle Refactor Phase 5.2: Initialize periodic skill processor
+            _periodicSkillProcessor = new PeriodicSkillProcessor(
+                _skillRepository,
+                _conditionChecker,
+                _rng,
+                GetOrCreateCooldownManager
+            );
+            
+            // 连接 PeriodicSkillProcessor 事件到 MultiBattleInstance
+            // Wire up PeriodicSkillProcessor events to MultiBattleInstance
+            _periodicSkillProcessor.OnExecuteSkillRequested += (casterId, skillId, source, isCasterPlayer, eventSource) =>
+            {
+                ExecuteSkill(casterId, skillId, source, isCasterPlayer, eventSource);
+            };
+            
+            // Battle Refactor Phase 5.3: 初始化消耗品处理器（仅当游戏配置服务可用时）
+            // Battle Refactor Phase 5.3: Initialize consumable processor (only when game config service is available)
+            if (_gameConfigService != null)
+            {
+                _consumableProcessor = new ConsumableProcessor(
+                    _conditionChecker,
+                    _gameConfigService,
+                    GetOrCreateCooldownManager,
+                    _clock
+                );
+                
+                // 连接 ConsumableProcessor 事件到 MultiBattleInstance
+                // Wire up ConsumableProcessor events to MultiBattleInstance
+                _consumableProcessor.OnExecuteSkillRequested += (casterId, skillId, source, isCasterPlayer, eventSource) =>
+                {
+                    ExecuteSkill(casterId, skillId, source, isCasterPlayer, eventSource);
+                };
+                _consumableProcessor.OnConsumableUsed += evt => ConsumableUsed?.Invoke(evt);
+                _consumableProcessor.OnConsumableOutOfStock += evt => ConsumableOutOfStock?.Invoke(evt);
+            }
         }
 
         /// <summary>
@@ -1747,6 +1796,9 @@ namespace BlazorIdle.Game
         /// <param name="nowMs">当前时间（毫秒）/ Current time (milliseconds)</param>
         private void ProcessCharacterPeriodicSkills(string characterId, int nowMs)
         {
+            // Battle Refactor Phase 5.2: 委托给 PeriodicSkillProcessor 模块
+            // Battle Refactor Phase 5.2: Delegate to PeriodicSkillProcessor module
+            
             // Step3 Optimization: 获取角色数据
             // Step3 Optimization: Get character data
             if (_characterDataMap == null || !_characterDataMap.TryGetValue(characterId, out var characterData))
@@ -1769,15 +1821,6 @@ namespace BlazorIdle.Game
             if (!characterData.EquippedSkillsByProfession.TryGetValue(professionId, out var config))
                 return;
 
-            // Step3 Optimization: 快速路径 - 检查被动技能槽位是否有技能
-            // Step3 Optimization: Fast path - check if passive slot has a skill
-            if (string.IsNullOrEmpty(config.PassiveSlot))
-                return;
-
-            var passiveSkill = _skillRepository.GetSkillById(config.PassiveSlot);
-            if (passiveSkill == null || passiveSkill.Triggers == null || passiveSkill.Triggers.Count == 0)
-                return;
-
             // 创建战斗上下文
             // Create battle context
             var context = new BattleContext
@@ -1793,61 +1836,9 @@ namespace BlazorIdle.Game
                 CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
             };
 
-            // 检查是否有 OnPeriodic 触发器
-            // Check if there are OnPeriodic triggers
-            foreach (var trigger in passiveSkill.Triggers)
-            {
-                if (trigger.When != "OnPeriodic")
-                    continue;
-
-                // 检查触发条件（使用trigger的conditions或技能的conditions）
-                // Check trigger conditions (use trigger's conditions or skill's conditions)
-                var conditionsToCheck = trigger.Conditions ?? passiveSkill.Conditions;
-                if (conditionsToCheck != null)
-                {
-                    // 创建临时技能定义用于条件检查
-                    // Create temporary skill definition for condition checking
-                    var tempSkill = new SkillDef
-                    {
-                        Id = passiveSkill.Id,
-                        Conditions = conditionsToCheck
-                    };
-
-                    if (!_conditionChecker.CheckConditions(tempSkill, context, isCasterPlayer: true, characterId))
-                        continue;
-                }
-
-                // 检查概率触发
-                // Check proc chance
-                if (trigger.ProcChance < 1.0)
-                {
-                    double roll = _rng.NextDouble();
-                    if (roll > trigger.ProcChance)
-                        continue;
-                }
-
-                // 获取要触发的技能
-                // Get the skill to trigger
-                if (string.IsNullOrEmpty(trigger.FireSkillId))
-                    continue;
-
-                var skillToFire = _skillRepository.GetSkillById(trigger.FireSkillId);
-                if (skillToFire == null)
-                    continue;
-
-                // 检查冷却（除非ignoreRequirements为true）
-                // Check cooldown (unless ignoreRequirements is true)
-                if (!trigger.IgnoreRequirements)
-                {
-                    var cooldownManager = GetOrCreateCooldownManager(characterId);
-                    if (!cooldownManager.IsReady(skillToFire.Id))
-                        continue;
-                }
-
-                // 执行触发的技能
-                // Execute the triggered skill
-                ExecuteSkill(characterId, skillToFire.Id, "periodic_trigger", isCasterPlayer: true, EventSource.Trigger);
-            }
+            // 委托给 PeriodicSkillProcessor 处理
+            // Delegate to PeriodicSkillProcessor
+            _periodicSkillProcessor.ProcessCharacterPeriodicSkills(characterId, config.PassiveSlot, context);
         }
 
         /// <summary>
@@ -1858,6 +1849,9 @@ namespace BlazorIdle.Game
         /// <param name="nowMs">当前时间（毫秒）/ Current time (milliseconds)</param>
         private void ProcessEnemyPeriodicSkills(string enemyId, int nowMs)
         {
+            // Battle Refactor Phase 5.2: 委托给 PeriodicSkillProcessor 模块
+            // Battle Refactor Phase 5.2: Delegate to PeriodicSkillProcessor module
+            
             // Step3 Optimization: 获取怪物成员，添加 null 安全检查
             // Step3 Optimization: Get enemy member with null safety checks
             var member = _enemyTeam.GetMember(enemyId);
@@ -1883,70 +1877,9 @@ namespace BlazorIdle.Game
                 CurrentTargetId = SelectPlayerTarget(_config.EnemyTargetStrategy)
             };
 
-            // 遍历怪物的定期技能
-            // Iterate through monster's periodic skills
-            foreach (var skillId in enemy.PeriodicSkillIds)
-            {
-                var skill = _skillRepository.GetSkillById(skillId);
-                if (skill == null || skill.Triggers == null || skill.Triggers.Count == 0)
-                    continue;
-
-                // 检查是否有 OnPeriodic 触发器
-                // Check if there are OnPeriodic triggers
-                foreach (var trigger in skill.Triggers)
-                {
-                    if (trigger.When != "OnPeriodic")
-                        continue;
-
-                    // 检查触发条件（使用trigger的conditions或技能的conditions）
-                    // Check trigger conditions (use trigger's conditions or skill's conditions)
-                    var conditionsToCheck = trigger.Conditions ?? skill.Conditions;
-                    if (conditionsToCheck != null)
-                    {
-                        // 创建临时技能定义用于条件检查
-                        // Create temporary skill definition for condition checking
-                        var tempSkill = new SkillDef
-                        {
-                            Id = skill.Id,
-                            Conditions = conditionsToCheck
-                        };
-
-                        if (!_conditionChecker.CheckConditions(tempSkill, context, isCasterPlayer: false, enemyId))
-                            continue;
-                    }
-
-                    // 检查概率触发
-                    // Check proc chance
-                    if (trigger.ProcChance < 1.0)
-                    {
-                        double roll = _rng.NextDouble();
-                        if (roll > trigger.ProcChance)
-                            continue;
-                    }
-
-                    // 获取要触发的技能
-                    // Get the skill to trigger
-                    if (string.IsNullOrEmpty(trigger.FireSkillId))
-                        continue;
-
-                    var skillToFire = _skillRepository.GetSkillById(trigger.FireSkillId);
-                    if (skillToFire == null)
-                        continue;
-
-                    // 检查冷却（除非ignoreRequirements为true）
-                    // Check cooldown (unless ignoreRequirements is true)
-                    if (!trigger.IgnoreRequirements)
-                    {
-                        var cooldownManager = GetOrCreateCooldownManager(enemyId);
-                        if (!cooldownManager.IsReady(skillToFire.Id))
-                            continue;
-                    }
-
-                    // 执行触发的技能
-                    // Execute the triggered skill
-                    ExecuteSkill(enemyId, skillToFire.Id, "periodic_trigger", isCasterPlayer: false, EventSource.Trigger);
-                }
-            }
+            // 委托给 PeriodicSkillProcessor 处理
+            // Delegate to PeriodicSkillProcessor
+            _periodicSkillProcessor.ProcessEnemyPeriodicSkills(enemyId, enemy.PeriodicSkillIds, context);
         }
 
         #region 消耗品系统 / Consumable System
@@ -1962,18 +1895,17 @@ namespace BlazorIdle.Game
         /// <param name="nowMs">当前时间（毫秒）/ Current time (milliseconds)</param>
         private void ProcessCharacterConsumableChecks(string characterId, int nowMs)
         {
-            // 检查必要的依赖是否可用
-            // Check if required dependencies are available
-            if (_characterDataMap == null || !_characterDataMap.TryGetValue(characterId, out var characterData))
+            // Battle Refactor Phase 5.3: 委托给 ConsumableProcessor 模块
+            // Battle Refactor Phase 5.3: Delegate to ConsumableProcessor module
+            
+            // 检查 ConsumableProcessor 是否可用
+            // Check if ConsumableProcessor is available
+            if (_consumableProcessor == null)
                 return;
             
-            if (_gameConfigService == null)
-                return;
-
-            // 获取角色当前职业的消耗品配置
-            // Get character's consumable configuration for current profession
-            var consumableConfig = characterData.GetConsumablesForProfession(characterData.ActiveCombatProfessionId);
-            if (consumableConfig == null)
+            // 检查角色数据是否可用
+            // Check if character data is available
+            if (_characterDataMap == null || !_characterDataMap.TryGetValue(characterId, out var characterData))
                 return;
 
             // 获取角色成员
@@ -2001,126 +1933,9 @@ namespace BlazorIdle.Game
                 CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
             };
 
-            // 处理药水槽位（优先触发，提供增益效果）
-            // Process potion slots (higher priority, provides buff effects)
-            foreach (var kvp in consumableConfig.PotionSlots.OrderBy(x => x.Key))
-            {
-                ProcessConsumableSlot(characterId, kvp.Key, kvp.Value, context, nowMs, characterData);
-            }
-
-            // 处理食物槽位（其次触发，提供恢复效果）
-            // Process food slots (lower priority, provides recovery effects)
-            foreach (var kvp in consumableConfig.FoodSlots.OrderBy(x => x.Key))
-            {
-                ProcessConsumableSlot(characterId, kvp.Key, kvp.Value, context, nowMs, characterData);
-            }
-        }
-
-        /// <summary>
-        /// 消耗品系统: 处理单个消耗品槽位
-        /// Consumable system: Process a single consumable slot
-        /// </summary>
-        private void ProcessConsumableSlot(
-            string characterId,
-            string slotId,
-            Shared.Models.ConsumableSlotData slotData,
-            BattleContext context,
-            int nowMs,
-            Shared.Models.CharacterData characterData)
-        {
-            // 检查槽位是否装备
-            // Check if slot is equipped
-            if (string.IsNullOrEmpty(slotData.ItemId) || string.IsNullOrEmpty(slotData.SkillId))
-                return;
-
-            // 获取物品配置
-            // Get item configuration
-            var itemConfig = _gameConfigService?.GetItem(slotData.ItemId);
-            if (itemConfig?.ConsumableConfig == null)
-                return;
-
-            // 检查触发条件（优先使用自定义条件，否则使用物品默认条件）
-            // Check trigger conditions (prefer custom conditions, otherwise use item default)
-            var effectiveConditions = slotData.GetEffectiveTriggerConditions(itemConfig.ConsumableConfig.TriggerConditions);
-            if (effectiveConditions != null)
-            {
-                var tempSkill = new SkillDef { Conditions = effectiveConditions };
-                if (!_conditionChecker.CheckConditions(tempSkill, context, isCasterPlayer: true, characterId))
-                    return;
-            }
-
-            // 检查冷却（按物品ID追踪，同类物品共享冷却）
-            // Check cooldown (tracked per item ID, same item type shares cooldown)
-            var cooldownManager = GetOrCreateCooldownManager(characterId);
-            string cooldownKey = $"consumable_{slotData.ItemId}";
-            if (!cooldownManager.IsReady(cooldownKey))
-                return;
-
-            // 检查背包库存（不自动卸载，保留配置等待玩家补充）
-            // Check inventory (no auto-unequip, preserve config waiting for player to replenish)
-            int currentCount = characterData.Inventory.GetItemQuantity(slotData.ItemId);
-            if (currentCount <= 0)
-            {
-                // 检查是否已通知耗尽（防止重复通知）- 使用 GetOrAdd 模式避免双重查找
-                // Check if already notified as out of stock (prevent duplicate notifications) - use GetOrAdd pattern to avoid double lookup
-                if (!_outOfStockNotified.TryGetValue(characterId, out var notifiedItems))
-                {
-                    notifiedItems = new HashSet<string>();
-                    _outOfStockNotified[characterId] = notifiedItems;
-                }
-                
-                // 只在首次耗尽时触发事件
-                // Only trigger event on first out of stock occurrence
-                if (notifiedItems.Add(slotData.ItemId))
-                {
-                    // 库存不足，触发库存耗尽事件（UI可据此显示特殊样式）
-                    // Out of stock, trigger event (UI can show special style)
-                    ConsumableOutOfStock?.Invoke(new ConsumableOutOfStockEvent
-                    {
-                        TimeMs = nowMs,
-                        CharacterId = characterId,
-                        ItemId = slotData.ItemId,
-                        SlotId = slotId
-                    });
-                }
-                return;
-            }
-            
-            // 如果库存已补充，清除耗尽通知标记
-            // If inventory is replenished, clear the out of stock notification flag
-            if (_outOfStockNotified.TryGetValue(characterId, out var notified))
-            {
-                notified.Remove(slotData.ItemId);
-            }
-
-            // 扣除背包库存
-            // Deduct from inventory
-            if (!characterData.Inventory.TryConsumeItem(slotData.ItemId, 1))
-                return;
-
-            // 执行消耗品技能
-            // Execute consumable skill
-            ExecuteSkill(characterId, slotData.SkillId, $"consumable_{slotId}", isCasterPlayer: true, EventSource.Consumable);
-
-            // 启动冷却（使用物品配置的冷却时间）
-            // Start cooldown (using item's cooldown time)
-            double cooldownSec = itemConfig.ConsumableConfig.CooldownSec;
-            if (cooldownSec > 0)
-            {
-                cooldownManager.StartCooldown(cooldownKey, cooldownSec);
-            }
-
-            // 触发消耗品使用事件
-            // Trigger consumable used event
-            ConsumableUsed?.Invoke(new ConsumableUsedEvent
-            {
-                TimeMs = nowMs,
-                CharacterId = characterId,
-                ItemId = slotData.ItemId,
-                SkillId = slotData.SkillId,
-                SlotId = slotId,
-                RemainingCount = characterData.Inventory.GetItemQuantity(slotData.ItemId)
-            });
+            // 委托给 ConsumableProcessor 处理
+            // Delegate to ConsumableProcessor
+            _consumableProcessor.ProcessCharacterConsumableChecks(characterId, characterData, context);
         }
 
         #endregion
