@@ -8,6 +8,7 @@ using BlazorIdle.Game.Config;
 using BlazorIdle.Game.Battle.Execution;
 using BlazorIdle.Game.Battle.Systems;
 using BlazorIdle.Game.Battle.Events;
+using BlazorIdle.Game.Battle.State;
 
 namespace BlazorIdle.Game
 {
@@ -132,6 +133,12 @@ namespace BlazorIdle.Game
         // 注：在 InitializeIntegrationModules() 中初始化
         // Note: Initialized in InitializeIntegrationModules()
         private SkillExecutionCoordinator _skillExecutionCoordinator = null!;
+        
+        // Battle Refactor Phase 7: 战斗状态管理器
+        // Battle Refactor Phase 7: Battle state manager
+        // 注：在 InitializeIntegrationModules() 中初始化
+        // Note: Initialized in InitializeIntegrationModules()
+        private BattleStateManager _battleStateManager = null!;
         
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
@@ -423,6 +430,26 @@ namespace BlazorIdle.Game
             {
                 _eventRecorder.RecordResourceGain(casterId, resourceId, amount, newValue, reason, skillId, bundleId);
             };
+            
+            // Battle Refactor Phase 7: 初始化战斗状态管理器
+            // Battle Refactor Phase 7: Initialize battle state manager
+            _battleStateManager = new BattleStateManager(
+                _clock,
+                _playerTeam,
+                _enemyTeam,
+                _config,
+                _playerBuffOwners,
+                _enemyBuffOwners,
+                _playerResources,
+                _professionResourceConfigs,
+                _characterTracks,
+                _enemyTracks
+            );
+            
+            // 连接 BattleStateManager 事件到 MultiBattleInstance
+            // Wire up BattleStateManager events to MultiBattleInstance
+            _battleStateManager.OnTeamStatusChanged += evt => TeamStatusChanged?.Invoke(evt);
+            _battleStateManager.OnStopRequested += () => Stop();
         }
 
         /// <summary>
@@ -759,50 +786,10 @@ namespace BlazorIdle.Game
         /// </summary>
         private void UpdateCharacterHaste(string charId, Character character, CharacterTracks tracks)
         {
-            // 获取基础急速
-            // Get base haste
-            double baseHastePercent = character.HastePercent;
-            
-            // 应用 Buff 效果到急速
-            // Apply buff effects to haste
-            if (_playerBuffOwners.TryGetValue(charId, out var buffOwner))
-            {
-                double modifiedHaste = baseHastePercent;
-                
-                // 按应用时间排序 Buff（与 SkillResolver 一致）
-                // Sort buffs by application time (consistent with SkillResolver)
-                var sortedBuffs = buffOwner.Buffs.Values
-                    .OrderBy(b => b.AppliedAtMs)
-                    .ToList();
-                
-                foreach (var buff in sortedBuffs)
-                {
-                    foreach (var effect in buff.Effects)
-                    {
-                        // 只处理影响急速的效果
-                        // Only process effects targeting haste
-                        if (effect.Target != "HastePercent")
-                            continue;
-                        
-                        switch (effect.Type)
-                        {
-                            case Buffs.BuffEffectType.StatMultiplier:
-                                modifiedHaste *= (1.0 + effect.Value);
-                                break;
-                            case Buffs.BuffEffectType.StatAdditive:
-                                modifiedHaste += effect.Value;
-                                break;
-                            case Buffs.BuffEffectType.StatReduction:
-                                modifiedHaste *= (1.0 - effect.Value);
-                                break;
-                        }
-                    }
-                }
-                
-                // 更新攻击轨道的急速倍率
-                // Update attack track haste multiplier
-                tracks.AttackTrack.SetHaste(1.0 + modifiedHaste / 100.0);
-            }
+            // Phase 7: 委托给 HasteCalculator 处理急速计算
+            // Phase 7: Delegate haste calculation to HasteCalculator
+            var buffOwner = _playerBuffOwners.GetValueOrDefault(charId);
+            HasteCalculator.UpdateCharacterHaste(character, buffOwner, tracks);
         }
 
         /// <summary>
@@ -1070,51 +1057,35 @@ namespace BlazorIdle.Game
         /// </summary>
         private void ProcessAttackDecisionPoint(string charId, Character character, int now)
         {
-            // 获取 CharacterData（如果可用）
-            // Get CharacterData (if available)
-            Shared.Models.CharacterData? characterData = null;
-            if (_characterDataMap != null && _characterDataMap.TryGetValue(charId, out var data))
-            {
-                characterData = data;
-            }
+            // Phase 7: 使用 AttackDecisionHelper 准备数据
+            // Phase 7: Use AttackDecisionHelper to prepare data
+            var decisionData = AttackDecisionHelper.PrepareAttackDecisionData(
+                charId,
+                character,
+                _characterDataMap,
+                _playerBuffOwners,
+                _playerResources,
+                _rng,
+                _clock,
+                SelectEnemyTarget(_config.PlayerTargetStrategy),
+                _skillRepository);
 
-            // 如果还是没有 CharacterData，回退到旧的逻辑
-            // If still no CharacterData, fallback to old logic
-            if (characterData == null)
+            // 如果没有 CharacterData，回退到旧的逻辑
+            // If no CharacterData, fallback to old logic
+            if (!decisionData.HasCharacterData)
             {
                 ProcessCharacterAttackViaSkillResolver(charId, character);
                 return;
             }
 
-            // 构建战斗上下文
-            // Build battle context
-            var context = new BattleContext
-            {
-                Player = character,
-                PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(charId),
-                PlayerResources = _playerResources.GetValueOrDefault(charId),
-                Rng = _rng,
-                Clock = _clock,
-                CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
-            };
-
-            // FIX: 永远先执行普通攻击，然后检查施法
-            // FIX: Always execute normal attack first, then check for casting
-            // 这样避免浪费攻击进度条准备时间
-            // This avoids wasting attack track preparation time
-            
             // === 窗口执行路径：NormalAttack → PostAttack → TryStartCasting ===
             // === Window execution path: NormalAttack → PostAttack → TryStartCasting ===
             
-            string normalAttackSkillId = character.GetNormalAttackSkillId();
-            var normalAttackSkill = _skillRepository.GetSkill(normalAttackSkillId);
-            bool normalAttackIsGcd = normalAttackSkill?.IsGcd ?? true;
-
-            ExecuteSkill(charId, normalAttackSkillId, "attack", isCasterPlayer: true, EventSource.Attack);
+            ExecuteSkill(charId, decisionData.NormalAttackSkillId!, "attack", isCasterPlayer: true, EventSource.Attack);
 
             // Phase 6: PostAttack 窗口：使用 WindowExecutor 执行瞬发技能
             // Phase 6: PostAttack window: Use WindowExecutor to execute instant skills
-            var instantSkills = _windowExecutor.ExecuteWindow(WindowType.PostAttack, charId, characterData, character.ActiveCombatProfessionId, context, normalAttackIsGcd);
+            var instantSkills = _windowExecutor.ExecuteWindow(WindowType.PostAttack, charId, decisionData.CharacterData!, character.ActiveCombatProfessionId, decisionData.Context!, decisionData.NormalAttackIsGcd);
             foreach (var skill in instantSkills)
             {
                 ExecuteSkill(charId, skill.Id, "postattack", isCasterPlayer: true, EventSource.PostAttack);
@@ -1122,12 +1093,10 @@ namespace BlazorIdle.Game
             
             // Phase 7: PostAttack 窗口触发器
             // Phase 7: PostAttack window triggers
-            ProcessWindowTriggers(charId, "OnPostAttackWindow", normalAttackSkillId, isCasterPlayer: true);
+            ProcessWindowTriggers(charId, "OnPostAttackWindow", decisionData.NormalAttackSkillId!, isCasterPlayer: true);
             
-            // FIX: 普攻完成后立即尝试施法（如果有可用的施法技能）
-            // FIX: After normal attack, immediately try to start casting (if there's an available cast skill)
-            // 这样可以避免等待下一次 AttackTrack 触发才检查施法
-            // This avoids waiting for the next AttackTrack trigger to check for casting
+            // FIX: 普攻完成后立即尝试施法
+            // FIX: After normal attack, immediately try to start casting
             TryStartCasting(charId, now);
         }
 
@@ -1824,34 +1793,18 @@ namespace BlazorIdle.Game
         /// </summary>
         private void CheckBattleState(int now)
         {
-            if (_playerTeam.IsAllDead)
-            {
-                if (_config.AllowPlayerRevive)
-                {
-                    _state = MultiBattleState.PlayerTeamDeadCooldown;
-                    _resumeAtMs = now + _config.PlayerReviveCooldownMs;
-                }
-                else
-                {
-                    _state = MultiBattleState.Defeat;
-                    Stop();
-                }
-                FireTeamStatusEvent();
-            }
-            else if (_enemyTeam.IsAllDead)
-            {
-                if (_config.AllowEnemyRespawn)
-                {
-                    _state = MultiBattleState.EnemyTeamDeadCooldown;
-                    _resumeAtMs = now + _config.EnemyRespawnCooldownMs;
-                }
-                else
-                {
-                    _state = MultiBattleState.Victory;
-                    Stop();
-                }
-                FireTeamStatusEvent();
-            }
+            // Phase 7: 委托给 BattleStateManager 检查战斗状态
+            // Phase 7: Delegate to BattleStateManager for battle state check
+            // 先同步状态
+            _battleStateManager.SetState(_state);
+            _battleStateManager.SetResumeAtMs(_resumeAtMs);
+            
+            // 调用 BattleStateManager 检查
+            _battleStateManager.CheckBattleState(now);
+            
+            // 同步回本地状态
+            _state = _battleStateManager.State;
+            _resumeAtMs = _battleStateManager.ResumeAtMs;
         }
 
         /// <summary>
@@ -1860,82 +1813,18 @@ namespace BlazorIdle.Game
         /// </summary>
         private void HandleCooldownEnd(int now)
         {
-            if (_state == MultiBattleState.PlayerTeamDeadCooldown)
-            {
-                // 复活玩家队伍
-                _playerTeam.ReviveAll(_config.ReviveWithFullHp);
-
-                // Phase 4: 清除玩家所有 buff 和重置资源
-                // Clear all player buffs and reset resources on death
-                foreach (var kvp in _playerBuffOwners)
-                {
-                    var charId = kvp.Key;
-                    var buffOwner = kvp.Value;
-                    
-                    // 清除所有 buff
-                    buffOwner.ClearAllBuffs();
-                    
-                    // 重置资源
-                    if (_playerResources.TryGetValue(charId, out var resources))
-                    {
-                        // 获取资源配置以重置到初始值
-                        if (_professionResourceConfigs != null &&
-                            buffOwner.Character.ActiveCombatProfessionId != null &&
-                            _professionResourceConfigs.TryGetValue(buffOwner.Character.ActiveCombatProfessionId, out var profConfig))
-                        {
-                            // 重置到职业初始资源值
-                            var bucket = resources.GetBucket(profConfig.Id);
-                            bucket.Reset(profConfig.Initial);
-                        }
-                        else
-                        {
-                            // 后备：重置所有资源到 0
-                            foreach (var bucket in resources.GetAll().Values)
-                            {
-                                bucket.Reset(0);
-                            }
-                        }
-                    }
-                }
-
-                // 对称重置：玩家与敌人轨道全部重置到 now，避免冷却期间积压触发
-                foreach (var tracks in _characterTracks.Values)
-                {
-                    tracks.Reset(now);
-                }
-                foreach (var track in _enemyTracks.Values)
-                {
-                    track.Reset(now);
-                }
-
-                _state = MultiBattleState.Fighting;
-            }
-            else if (_state == MultiBattleState.EnemyTeamDeadCooldown)
-            {
-                // 刷新敌人队伍
-                _enemyTeam.ReviveAll(true);
-
-                // Phase 4: 清除敌人所有 buff
-                // Clear all enemy buffs on death
-                foreach (var buffOwner in _enemyBuffOwners.Values)
-                {
-                    buffOwner.ClearAllBuffs();
-                }
-
-                // 对称重置：敌人与玩家轨道全部重置到 now，避免冷却期间积压触发
-                foreach (var track in _enemyTracks.Values)
-                {
-                    track.Reset(now);
-                }
-                foreach (var tracks in _characterTracks.Values)
-                {
-                    tracks.Reset(now);
-                }
-
-                _state = MultiBattleState.Fighting;
-            }
-
-            FireTeamStatusEvent();
+            // Phase 7: 委托给 BattleStateManager 处理冷却结束
+            // Phase 7: Delegate to BattleStateManager for cooldown end handling
+            // 先同步状态
+            _battleStateManager.SetState(_state);
+            _battleStateManager.SetResumeAtMs(_resumeAtMs);
+            
+            // 调用 BattleStateManager 处理冷却结束
+            _battleStateManager.HandleCooldownEnd(now);
+            
+            // 同步回本地状态
+            _state = _battleStateManager.State;
+            _resumeAtMs = _battleStateManager.ResumeAtMs;
         }
 
         /// <summary>
@@ -2000,43 +1889,11 @@ namespace BlazorIdle.Game
         /// </summary>
         private void FireTeamStatusEvent()
         {
-            var playerStatus = new TeamStatus
-            {
-                TeamId = _playerTeam.TeamId,
-                TeamName = _playerTeam.TeamName,
-                AliveCount = _playerTeam.AliveCount,
-                TotalCount = _playerTeam.TotalCount
-            };
-
-            foreach (var member in _playerTeam.Members)
-            {
-                playerStatus.MemberHp[member.Id] = member.CurrentHp;
-                playerStatus.MemberMaxHp[member.Id] = member.MaxHp;
-            }
-
-            var enemyStatus = new TeamStatus
-            {
-                TeamId = _enemyTeam.TeamId,
-                TeamName = _enemyTeam.TeamName,
-                AliveCount = _enemyTeam.AliveCount,
-                TotalCount = _enemyTeam.TotalCount
-            };
-
-            foreach (var member in _enemyTeam.Members)
-            {
-                enemyStatus.MemberHp[member.Id] = member.CurrentHp;
-                enemyStatus.MemberMaxHp[member.Id] = member.MaxHp;
-            }
-
-            var statusEvent = new TeamStatusEvent
-            {
-                TimeMs = _clock.NowMs,
-                PlayerTeamStatus = playerStatus,
-                EnemyTeamStatus = enemyStatus,
-                BattleState = _state
-            };
-
-            TeamStatusChanged?.Invoke(statusEvent);
+            // Phase 7: 委托给 BattleStateManager 触发队伍状态事件
+            // Phase 7: Delegate to BattleStateManager for firing team status event
+            // 先同步状态
+            _battleStateManager.SetState(_state);
+            _battleStateManager.FireTeamStatusEvent();
         }
 
         // 旧系统清理：PlayerRollDamage 和 EnemyRollDamage 已移除
