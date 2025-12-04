@@ -823,415 +823,208 @@ namespace BlazorIdle.Game
         {
             if (isCasterPlayer)
             {
-                // 玩家施法逻辑
-                // Player casting logic
-                var member = _playerTeam.GetMember(casterId);
-                if (member == null) return;
-                var character = member.Entity;
-
-                // 选择一个默认目标用于上下文（用于CurrentTarget策略）
-                // Select a default target for context (used for CurrentTarget policy)
-                var defaultTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
-                var defaultTarget = defaultTargetId != null ? _enemyTeam.GetMember(defaultTargetId) : null;
-
-                // Phase 5: 计算攻击者战斗属性和HP比例
-                // Phase 5: Calculate attacker combat stats and HP ratio
-                // 旧系统清理：移除了向后兼容逻辑，现在要求 CombatStats 必须正确设置
-                // Legacy cleanup: Removed backward compatibility, CombatStats must be properly set
-                var attackerCombatStats = character.CombatStats ?? CombatStats.CreateDefault();
-                double attackerHPRatio = character.MaxHp > 0 ? (double)character.Hp / character.MaxHp : 1.0;
-                double defenderDRPct = defaultTarget?.Entity?.DamageReductionPercent ?? 0;
-
-                // 创建战斗上下文
-                // Create battle context
-                var ctx = new BattleContext
-                {
-                    Player = character,
-                    Enemy = defaultTarget?.Entity,
-                    PlayerTeam = _playerTeam,
-                    EnemyTeam = _enemyTeam,
-                    Rng = _rng,
-                    Clock = _clock,
-                    PlayerResources = _playerResources.GetValueOrDefault(casterId),
-                    PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(casterId),
-                    EnemyBuffOwners = _enemyBuffOwners,
-                    CurrentTargetId = defaultTargetId,
-                    // Phase 5: 新伤害系统属性 / New damage system properties
-                    DamageCalculator = _damageCalculator,
-                    AttackerCombatStats = attackerCombatStats,
-                    AttackerElement = character.Element,
-                    DefenderElement = defaultTarget?.Entity?.Element ?? ElementIds.Neutral,
-                    AttackerHPRatio = attackerHPRatio,
-                    DefenderDamageReductionPercent = defenderDRPct
-                };
-
-                // Phase 4: 检查技能施放条件
-                // Phase 4: Check skill casting conditions
-                var skillDef = _skillRepository.GetSkillById(skillId);
-                if (skillDef?.Conditions != null)
-                {
-                    if (!_conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: true, casterId: casterId))
-                    {
-                        // 条件不满足，跳过技能施放
-                        // Conditions not met, skip skill casting
-                        return;
-                    }
-                }
-
-                // Phase 5 & 6: 二次检查冷却和资源（必要的安全检查）
-                // Phase 5 & 6: Double-check cooldown and resources (necessary safety check)
-                // WindowExecutor 在选择技能时已检查，但在选择和执行之间可能有其他技能消耗资源或启动冷却
-                // WindowExecutor checks during selection, but resources may be consumed or cooldowns started between selection and execution
-                // 这个检查防止在同一窗口内多个技能执行时的竞争条件
-                // This check prevents race conditions when multiple skills execute in the same window
-                var casterCooldownMgr = GetOrCreateCooldownManager(casterId);
-                if (skillDef != null && !casterCooldownMgr.IsReady(skillId))
-                {
-                    // 技能还在冷却中，跳过施放
-                    // Skill is still on cooldown, skip casting
-                    return;
-                }
-
-                // Phase 5 & 6: 检查资源消耗（二次验证，见上方注释）
-                // Phase 5 & 6: Check resource cost (double verification, see comment above)
-                if (skillDef != null && !_resourceManager.CheckResourceCost(skillDef, ctx))
-                {
-                    // 资源不足，跳过施放
-                    // Insufficient resources, skip casting
-                    return;
-                }
-
-                // Note: 资源消耗由 SkillResolver 处理并通过 ApplyResourceChanges 应用
-                // Note: Resource consumption is handled by SkillResolver and applied via ApplyResourceChanges
-
-                // 使用 SkillResolver 执行技能
-                // Execute skill using SkillResolver
-                var opts = new SkillCastOptions 
-                { 
-                    SourceTrack = sourceTrack,
-                    CasterId = casterId
-                };
-                var result = _skillResolver.Cast(skillId, ctx, opts);
-
-                // 解析目标（来自技能的targetPolicy）
-                // Resolve targets (from skill's targetPolicy)
-                List<string> targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
-                    (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
-
-                // 应用效果到所有解析的目标
-                // Apply effects to all resolved targets
-                if (targetIds.Count > 0)
-                {
-                    bool isAoe = targetIds.Count > 1;
-                    
-                    // Battle Refactor Phase 2.4: 支持多段伤害
-                    // Battle Refactor Phase 2.4: Support multi-hit damage
-                    if (result.DamageInstances != null && result.DamageInstances.Count > 0)
-                    {
-                        // 多段伤害处理
-                        // Multi-hit damage processing
-                        foreach (var targetId in targetIds)
-                        {
-                            var enemyTarget = _enemyTeam.GetMember(targetId);
-                            if (enemyTarget != null)
-                            {
-                                // 为每个目标处理所有伤害实例
-                                // Process all damage instances for each target
-                                foreach (var instance in result.DamageInstances)
-                                {
-                                    // 克隆实例并设置目标
-                                    // Clone instance and set target
-                                    var targetedInstance = instance.Clone();
-                                    targetedInstance.TargetId = targetId;
-                                    targetedInstance.CasterId = casterId;
-                                    targetedInstance.IsCasterPlayer = true;
-                                    targetedInstance.EventSource = eventSource;  // 保留原始事件来源
-                                    
-                                    // AOE 伤害减免
-                                    // AOE damage reduction
-                                    if (isAoe)
-                                    {
-                                        targetedInstance.Damage = (int)(targetedInstance.Damage * _config.AoeDamageMultiplier);
-                                    }
-                                    
-                                    if (targetedInstance.IsImmediate)
-                                    {
-                                        // 立即伤害
-                                        // Immediate damage
-                                        if (!enemyTarget.IsDead && targetedInstance.Damage > 0)
-                                        {
-                                            ApplyDamageToEnemy(casterId, member, targetId, enemyTarget, targetedInstance.Damage, eventSource,
-                                                isAoe: isAoe, isCrit: targetedInstance.IsCrit, skillId: skillId, bundleId: result.BundleId);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        // 延迟伤害加入队列
-                                        // Delayed damage enqueue
-                                        _pendingDamageQueue.Enqueue(targetedInstance, _clock.NowMs / 1000.0);
-                                    }
-                                }
-                            }
-                            
-                            // Phase 5: 即时治疗应用到每个目标（支持治疗队友）
-                            // Phase 5: Instant heal applies to each target (supports healing allies)
-                            ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: true, skillId: skillId);
-                        }
-                    }
-                    else
-                    {
-                        // 传统单段伤害处理（向后兼容）
-                        // Legacy single-hit damage processing (backward compatible)
-                        int damagePerTarget = isAoe ? (int)(result.DamageDealt * _config.AoeDamageMultiplier) : result.DamageDealt;
-
-                        foreach (var targetId in targetIds)
-                        {
-                            // 处理伤害（针对敌人目标）
-                            // Process damage (for enemy targets)
-                            var enemyTarget = _enemyTeam.GetMember(targetId);
-                            if (enemyTarget != null && damagePerTarget > 0)
-                            {
-                                ApplyDamageToEnemy(casterId, member, targetId, enemyTarget, damagePerTarget, eventSource, 
-                                    isAoe: isAoe, isCrit: result.IsCrit, skillId: skillId, bundleId: result.BundleId);
-                            }
-                            
-                            // Phase 5: 即时治疗应用到每个目标（支持治疗队友）
-                            // Phase 5: Instant heal applies to each target (supports healing allies)
-                            ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: true, skillId: skillId);
-                        }
-                    }
-                    
-                    // Buff操作和资源变化只应用一次（不是每个目标）
-                    // Buff operations and resource changes apply once (not per target)
-                    // 使用第一个目标ID作为上下文（buff系统会根据BuffTarget类型正确解析实际目标）
-                    // Use first target ID as context (buff system will resolve actual targets based on BuffTarget type)
-                    string? primaryTargetId = targetIds.Count > 0 ? targetIds[0] : null;
-                    ProcessBuffOperations(result, casterId, primaryTargetId, isCasterPlayer: true);
-                    ApplyResourceChanges(result, casterId, isCasterPlayer: true, skillId: skillId);
-                }
-
-                // 向后兼容 - 如果技能没有定义资源获得，使用职业配置作为回退（仅普通攻击）
-                // Backward compatibility - if skill doesn't define resource gains, use profession config as fallback (normal attack only)
-                if (sourceTrack == "attack" && 
-                    (result.ResourceChanges == null || result.ResourceChanges.Count == 0) && 
-                    _playerResources.TryGetValue(casterId, out var resources))
-                {
-                    // 获取职业资源配置
-                    // Get profession resource config
-                    string resourceId = "rage";
-                    int gainPerAttack = _resourceConfig.GainPerAttack;
-                    int gainPerCritExtra = _resourceConfig.GainPerCritExtra;
-                    
-                    if (_professionResourceConfigs != null &&
-                        _professionResourceConfigs.TryGetValue(character.ActiveCombatProfessionId, out var profConfig))
-                    {
-                        resourceId = profConfig.Id;
-                        gainPerAttack = profConfig.GainPerAttack;
-                        gainPerCritExtra = profConfig.GainPerCritExtra;
-                    }
-                    
-                    if (resources.HasBucket(resourceId))
-                    {
-                        var bucket = resources.GetBucket(resourceId);
-                        
-                        // 命中产生资源
-                        int gained = bucket.Gain(gainPerAttack, "attack_hit");
-                        if (gained > 0)
-                        {
-                            _eventRecorder.RecordResourceGain(casterId, resourceId, gained, bucket.Current, "attack_hit", 
-                                skillId: skillId, bundleId: result.BundleId);
-                        }
-                        
-                        // 暴击额外产生资源
-                        if (result.IsCrit)
-                        {
-                            int critGain = bucket.Gain(gainPerCritExtra, "crit_bonus");
-                            if (critGain > 0)
-                            {
-                                _eventRecorder.RecordResourceGain(casterId, resourceId, critGain, bucket.Current, "crit_bonus",
-                                    skillId: skillId, bundleId: result.BundleId);
-                            }
-                        }
-                    }
-                }
-
-                // Phase 5: 启动冷却
-                // Phase 5: Start cooldown
-                if (skillDef != null && skillDef.CooldownSec > 0)
-                {
-                    casterCooldownMgr.StartCooldown(skillId, skillDef.CooldownSec);
-                }
+                ExecutePlayerSkill(casterId, skillId, sourceTrack, eventSource);
             }
             else
             {
-                // Monster Skill System: 怪物施法逻辑
-                // Monster Skill System: Monster casting logic
-                var member = _enemyTeam.GetMember(casterId);
-                if (member == null) return;
-                var enemy = member.Entity;
+                ExecuteMonsterSkill(casterId, skillId, sourceTrack, eventSource);
+            }
+        }
 
-                // 选择一个默认目标用于上下文
-                // Select a default target for context
-                var defaultTargetId = SelectPlayerTarget(_config.EnemyTargetStrategy);
-                var defaultTarget = defaultTargetId != null ? _playerTeam.GetMember(defaultTargetId) : null;
+        /// <summary>
+        /// Battle Refactor Phase 6.1: 执行玩家技能（使用 SkillExecutionCoordinator）
+        /// Battle Refactor Phase 6.1: Execute player skill (using SkillExecutionCoordinator)
+        /// </summary>
+        private void ExecutePlayerSkill(string casterId, string skillId, string sourceTrack, EventSource eventSource)
+        {
+            // 获取施法者
+            // Get caster
+            var member = _playerTeam.GetMember(casterId);
+            if (member == null) return;
+            var character = member.Entity;
 
-                // Phase 5: 计算怪物攻击者战斗属性和HP比例
-                // Phase 5: Calculate monster attacker combat stats and HP ratio
-                // 怪物使用 BaseAttack 作为攻击力
-                // Monster uses BaseAttack as attack power
-                var monsterCombatStats = new CombatStats { AttackFinal = (int)enemy.BaseAttack };
-                double attackerHPRatio = enemy.MaxHp > 0 ? (double)enemy.Hp / enemy.MaxHp : 1.0;
-                // 防御者（玩家）的减伤百分比 - 玩家暂时没有减伤属性，默认为0
-                // Defender (player) damage reduction percentage - players don't have DR yet, default to 0
-                double defenderDRPct = 0;
+            // 选择默认目标
+            // Select default target
+            var defaultTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
+            var defaultTarget = defaultTargetId != null ? _enemyTeam.GetMember(defaultTargetId) : null;
 
-                // 创建战斗上下文（Enemy 作为施法者）
-                // Create battle context (Enemy as caster)
-                var ctx = new BattleContext
+            // 使用 SkillExecutionCoordinator 构建上下文
+            // Build context using SkillExecutionCoordinator
+            var ctx = _skillExecutionCoordinator.BuildPlayerContext(
+                character,
+                defaultTarget?.Entity,
+                defaultTargetId,
+                _playerTeam,
+                _enemyTeam,
+                _rng,
+                _clock,
+                _playerResources.GetValueOrDefault(casterId),
+                _playerBuffOwners.GetValueOrDefault(casterId),
+                _enemyBuffOwners,
+                _damageCalculator
+            );
+
+            // 检查技能施放条件
+            // Check skill casting conditions
+            var skillDef = _skillRepository.GetSkillById(skillId);
+            if (skillDef?.Conditions != null && 
+                !_conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: true, casterId: casterId))
+            {
+                return;
+            }
+
+            // 二次检查冷却和资源（防止竞争条件）
+            // Double-check cooldown and resources (prevent race conditions)
+            var casterCooldownMgr = GetOrCreateCooldownManager(casterId);
+            if (skillDef != null && !casterCooldownMgr.IsReady(skillId))
+            {
+                return;
+            }
+            if (skillDef != null && !_resourceManager.CheckResourceCost(skillDef, ctx))
+            {
+                return;
+            }
+
+            // 执行技能
+            // Execute skill
+            var opts = new SkillCastOptions { SourceTrack = sourceTrack, CasterId = casterId };
+            var result = _skillResolver.Cast(skillId, ctx, opts);
+
+            // 解析目标
+            // Resolve targets
+            var targetIds = _skillExecutionCoordinator.ResolveSkillTargets(result, defaultTargetId);
+
+            // 应用伤害效果
+            // Apply damage effects
+            if (targetIds.Count > 0)
+            {
+                Func<string, bool> isTargetAlive = (targetId) => 
                 {
-                    Enemy = enemy,
-                    Player = defaultTarget?.Entity,
-                    PlayerTeam = _playerTeam,
-                    EnemyTeam = _enemyTeam,
-                    Rng = _rng,
-                    Clock = _clock,
-                    PlayerResources = defaultTargetId != null ? _playerResources.GetValueOrDefault(defaultTargetId) : null,
-                    PlayerBuffOwner = defaultTargetId != null ? _playerBuffOwners.GetValueOrDefault(defaultTargetId) : null,
-                    EnemyBuffOwners = _enemyBuffOwners,
-                    CurrentTargetId = defaultTargetId,
-                    // Phase 5: 新伤害系统属性 - 怪物作为攻击者 / New damage system properties - monster as attacker
-                    DamageCalculator = _damageCalculator,
-                    AttackerCombatStats = monsterCombatStats,
-                    AttackerElement = enemy.Element,
-                    DefenderElement = defaultTarget?.Entity?.Element ?? ElementIds.Neutral,
-                    AttackerHPRatio = attackerHPRatio,
-                    DefenderDamageReductionPercent = defenderDRPct
+                    var target = _enemyTeam.GetMember(targetId);
+                    return target != null && !target.IsDead;
                 };
 
-                // Phase 4: 检查技能施放条件（怪物）
-                // Phase 4: Check skill casting conditions (monster)
-                var skillDef = _skillRepository.GetSkillById(skillId);
-                if (skillDef?.Conditions != null)
+                if (_skillExecutionCoordinator.HasDamageInstances(result))
                 {
-                    if (!_conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: false, casterId: casterId))
-                    {
-                        // 条件不满足，跳过技能施放
-                        // Conditions not met, skip skill casting
-                        return;
-                    }
+                    _skillExecutionCoordinator.ProcessPlayerDamageInstances(
+                        result, casterId, targetIds, eventSource, skillId, isTargetAlive);
+                }
+                else
+                {
+                    _skillExecutionCoordinator.ApplyPlayerLegacySingleDamage(
+                        result, casterId, targetIds, eventSource, skillId, isTargetAlive);
                 }
 
-                // 使用 SkillResolver 执行技能
-                // Execute skill using SkillResolver
-                var opts = new SkillCastOptions 
-                { 
-                    SourceTrack = sourceTrack,
-                    CasterId = casterId
+                // Buff操作和资源变化
+                // Buff operations and resource changes
+                string? primaryTargetId = targetIds.Count > 0 ? targetIds[0] : null;
+                ProcessBuffOperations(result, casterId, primaryTargetId, isCasterPlayer: true);
+                ApplyResourceChanges(result, casterId, isCasterPlayer: true, skillId: skillId);
+            }
+
+            // 向后兼容资源获得
+            // Backward compatible resource gain
+            if (_playerResources.TryGetValue(casterId, out var resources))
+            {
+                _skillExecutionCoordinator.HandleBackwardCompatibleResourceGain(
+                    sourceTrack, result, casterId, skillId,
+                    character.ActiveCombatProfessionId, resources,
+                    _professionResourceConfigs, _resourceConfig);
+            }
+
+            // 启动冷却
+            // Start cooldown
+            if (skillDef != null && skillDef.CooldownSec > 0)
+            {
+                casterCooldownMgr.StartCooldown(skillId, skillDef.CooldownSec);
+            }
+        }
+
+        /// <summary>
+        /// Battle Refactor Phase 6.1: 执行怪物技能（使用 SkillExecutionCoordinator）
+        /// Battle Refactor Phase 6.1: Execute monster skill (using SkillExecutionCoordinator)
+        /// </summary>
+        private void ExecuteMonsterSkill(string casterId, string skillId, string sourceTrack, EventSource eventSource)
+        {
+            // 获取施法者
+            // Get caster
+            var member = _enemyTeam.GetMember(casterId);
+            if (member == null) return;
+            var enemy = member.Entity;
+
+            // 选择默认目标
+            // Select default target
+            var defaultTargetId = SelectPlayerTarget(_config.EnemyTargetStrategy);
+            var defaultTarget = defaultTargetId != null ? _playerTeam.GetMember(defaultTargetId) : null;
+
+            // 使用 SkillExecutionCoordinator 构建上下文
+            // Build context using SkillExecutionCoordinator
+            var ctx = _skillExecutionCoordinator.BuildMonsterContext(
+                enemy,
+                defaultTarget?.Entity,
+                defaultTargetId,
+                _playerTeam,
+                _enemyTeam,
+                _rng,
+                _clock,
+                defaultTargetId != null ? _playerResources.GetValueOrDefault(defaultTargetId) : null,
+                defaultTargetId != null ? _playerBuffOwners.GetValueOrDefault(defaultTargetId) : null,
+                _enemyBuffOwners,
+                _damageCalculator
+            );
+
+            // 检查技能施放条件
+            // Check skill casting conditions
+            var skillDef = _skillRepository.GetSkillById(skillId);
+            if (skillDef?.Conditions != null && 
+                !_conditionChecker.CheckConditions(skillDef, ctx, isCasterPlayer: false, casterId: casterId))
+            {
+                return;
+            }
+
+            // 执行技能
+            // Execute skill
+            var opts = new SkillCastOptions { SourceTrack = sourceTrack, CasterId = casterId };
+            var result = _skillResolver.Cast(skillId, ctx, opts);
+
+            // 解析目标
+            // Resolve targets
+            var targetIds = _skillExecutionCoordinator.ResolveSkillTargets(result, defaultTargetId);
+
+            // 应用伤害效果
+            // Apply damage effects
+            if (targetIds.Count > 0)
+            {
+                Func<string, bool> isTargetAlive = (targetId) => 
+                {
+                    var target = _playerTeam.GetMember(targetId);
+                    return target != null && !target.IsDead;
                 };
-                var result = _skillResolver.Cast(skillId, ctx, opts);
 
-                // 解析目标（来自技能的targetPolicy）
-                // Resolve targets (from skill's targetPolicy)
-                List<string> targetIds = result.TargetIds?.Count > 0 ? result.TargetIds : 
-                    (defaultTargetId != null ? new List<string> { defaultTargetId } : new List<string>());
-
-                // 应用效果到所有解析的目标
-                // Apply effects to all resolved targets
-                if (targetIds.Count > 0)
+                if (_skillExecutionCoordinator.HasDamageInstances(result))
                 {
-                    bool isAoe = targetIds.Count > 1;
-                    
-                    // Battle Refactor Phase 2.4: 支持多段伤害（怪物对玩家）
-                    // Battle Refactor Phase 2.4: Support multi-hit damage (monster to player)
-                    if (result.DamageInstances != null && result.DamageInstances.Count > 0)
-                    {
-                        // 多段伤害处理
-                        // Multi-hit damage processing
-                        foreach (var targetId in targetIds)
-                        {
-                            var playerTarget = _playerTeam.GetMember(targetId);
-                            if (playerTarget != null)
-                            {
-                                // 为每个目标处理所有伤害实例
-                                // Process all damage instances for each target
-                                foreach (var instance in result.DamageInstances)
-                                {
-                                    // 克隆实例并设置目标
-                                    // Clone instance and set target
-                                    var targetedInstance = instance.Clone();
-                                    targetedInstance.TargetId = targetId;
-                                    targetedInstance.CasterId = casterId;
-                                    targetedInstance.IsCasterPlayer = false;
-                                    targetedInstance.EventSource = eventSource;  // 保留原始事件来源
-                                    
-                                    // AOE 伤害减免
-                                    // AOE damage reduction
-                                    if (isAoe)
-                                    {
-                                        targetedInstance.Damage = (int)(targetedInstance.Damage * _config.AoeDamageMultiplier);
-                                    }
-                                    
-                                    if (targetedInstance.IsImmediate)
-                                    {
-                                        // 立即伤害
-                                        // Immediate damage
-                                        if (!playerTarget.IsDead && targetedInstance.Damage > 0)
-                                        {
-                                            ApplyDamageToPlayer(casterId, member, targetId, playerTarget, targetedInstance.Damage,
-                                                source: eventSource, skillId: skillId, bundleId: result.BundleId);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        // 延迟伤害加入队列
-                                        // Delayed damage enqueue
-                                        _pendingDamageQueue.Enqueue(targetedInstance, _clock.NowMs / 1000.0);
-                                    }
-                                }
-                            }
-                            
-                            // Phase 5: 即时治疗应用到每个目标（支持治疗队友）
-                            // Phase 5: Instant heal applies to each target (supports healing allies)
-                            ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: false, skillId: skillId);
-                        }
-                    }
-                    else
-                    {
-                        // 传统单段伤害处理（向后兼容）
-                        // Legacy single-hit damage processing (backward compatible)
-                        int damagePerTarget = isAoe ? (int)(result.DamageDealt * _config.AoeDamageMultiplier) : result.DamageDealt;
-
-                        foreach (var targetId in targetIds)
-                        {
-                            // 处理伤害（针对玩家目标）
-                            // Process damage (for player targets)
-                            var playerTarget = _playerTeam.GetMember(targetId);
-                            if (playerTarget != null && damagePerTarget > 0)
-                            {
-                                ApplyDamageToPlayer(casterId, member, targetId, playerTarget, damagePerTarget,
-                                    source: eventSource, skillId: skillId, bundleId: result.BundleId);
-                            }
-                            
-                            // Phase 5: 即时治疗应用到每个目标（支持治疗队友）
-                            // Phase 5: Instant heal applies to each target (supports healing allies)
-                            ApplyInstantHeal(result, casterId, targetId, isCasterPlayer: false, skillId: skillId);
-                        }
-                    }
-                    
-                    // Buff操作和资源变化只应用一次（不是每个目标）
-                    // Buff operations and resource changes apply once (not per target)
-                    string? primaryTargetId = targetIds.Count > 0 ? targetIds[0] : null;
-                    ProcessBuffOperations(result, casterId, primaryTargetId, isCasterPlayer: false);
-                    ApplyResourceChanges(result, casterId, isCasterPlayer: false, skillId: skillId);
+                    _skillExecutionCoordinator.ProcessMonsterDamageInstances(
+                        result, casterId, targetIds, eventSource, skillId, isTargetAlive);
+                }
+                else
+                {
+                    _skillExecutionCoordinator.ApplyMonsterLegacySingleDamage(
+                        result, casterId, targetIds, eventSource, skillId, isTargetAlive);
                 }
 
-                // Phase 9: 启动怪物技能冷却
-                // Phase 9: Start monster skill cooldown
-                if (skillDef != null && skillDef.CooldownSec > 0)
-                {
-                    var cooldownMgr = GetOrCreateCooldownManager(casterId);
-                    cooldownMgr.StartCooldown(skillId, skillDef.CooldownSec);
-                }
+                // Buff操作和资源变化
+                // Buff operations and resource changes
+                string? primaryTargetId = targetIds.Count > 0 ? targetIds[0] : null;
+                ProcessBuffOperations(result, casterId, primaryTargetId, isCasterPlayer: false);
+                ApplyResourceChanges(result, casterId, isCasterPlayer: false, skillId: skillId);
+            }
+
+            // 启动怪物技能冷却
+            // Start monster skill cooldown
+            if (skillDef != null && skillDef.CooldownSec > 0)
+            {
+                var cooldownMgr = GetOrCreateCooldownManager(casterId);
+                cooldownMgr.StartCooldown(skillId, skillDef.CooldownSec);
             }
         }
 
