@@ -7,6 +7,7 @@ using BlazorIdle.Game.Tracks;
 using BlazorIdle.Game.Config;
 using BlazorIdle.Game.Battle.Execution;
 using BlazorIdle.Game.Battle.Systems;
+using BlazorIdle.Game.Battle.Events;
 
 namespace BlazorIdle.Game
 {
@@ -95,6 +96,12 @@ namespace BlazorIdle.Game
         // Note: These fields are lazy-initialized in constructor chain via InitializeIntegrationModules()
         private BuffIntegration _buffIntegration = null!;
         private ResourceIntegration _resourceIntegration = null!;
+        
+        // Battle Refactor Phase 4: 事件记录模块
+        // Battle Refactor Phase 4: Event recording module
+        // 注：在 InitializeIntegrationModules() 中初始化
+        // Note: Initialized in InitializeIntegrationModules()
+        private CombatEventRecorder _eventRecorder = null!;
         
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
@@ -243,26 +250,43 @@ namespace BlazorIdle.Game
             // Initialize ResourceIntegration
             _resourceIntegration = new ResourceIntegration(_playerResources);
             
-            // 连接 BuffIntegration 事件到 MultiBattleInstance 事件处理
-            // Wire up BuffIntegration events to MultiBattleInstance event handling
+            // Battle Refactor Phase 4: 初始化事件记录器
+            // Battle Refactor Phase 4: Initialize event recorder
+            _eventRecorder = new CombatEventRecorder(
+                _clock,
+                _rng,
+                _combatConfig,
+                _aggregator,
+                _segments
+            );
+            
+            // 连接事件记录器的事件到 MultiBattleInstance 的公开事件
+            // Wire up event recorder events to MultiBattleInstance public events
+            _eventRecorder.OnBuffApplied += evt => BuffApplied?.Invoke(evt);
+            _eventRecorder.OnBuffRemoved += evt => BuffRemoved?.Invoke(evt);
+            _eventRecorder.OnBuffTicked += evt => BuffTicked?.Invoke(evt);
+            _eventRecorder.OnHealed += evt => Healed?.Invoke(evt);
+            
+            // 连接 BuffIntegration 事件到事件记录器
+            // Wire up BuffIntegration events to event recorder
             _buffIntegration.OnBuffApply += (ownerId, buffId, kind, duration, stacks, effectsSummary, sourceSkillId, bundleId) =>
             {
-                RecordBuffApply(ownerId, buffId, kind, duration, stacks, effectsSummary, sourceSkillId, bundleId);
+                _eventRecorder.RecordBuffApply(ownerId, buffId, kind, duration, stacks, effectsSummary, sourceSkillId, bundleId);
             };
             _buffIntegration.OnBuffRemove += (ownerId, buffId, reason, bundleId) =>
             {
-                RecordBuffRemove(ownerId, buffId, reason, bundleId);
+                _eventRecorder.RecordBuffRemove(ownerId, buffId, reason, bundleId);
             };
             _buffIntegration.OnBuffTick += (ownerId, buffId, tickType, amount, resultingHp, bundleId) =>
             {
-                RecordBuffTick(ownerId, buffId, tickType, amount, resultingHp, bundleId);
+                _eventRecorder.RecordBuffTick(ownerId, buffId, tickType, amount, resultingHp, bundleId);
             };
             
-            // 连接 ResourceIntegration 事件到 MultiBattleInstance 事件处理
-            // Wire up ResourceIntegration events to MultiBattleInstance event handling
+            // 连接 ResourceIntegration 事件到事件记录器
+            // Wire up ResourceIntegration events to event recorder
             _resourceIntegration.OnResourceChange += (actorId, bucketId, delta, newValue, reason, skillId, bundleId) =>
             {
-                RecordResourceGain(actorId, bucketId, delta, newValue, reason, skillId, bundleId);
+                _eventRecorder.RecordResourceGain(actorId, bucketId, delta, newValue, reason, skillId, bundleId);
             };
         }
 
@@ -879,7 +903,7 @@ namespace BlazorIdle.Game
                         int gained = bucket.Gain(gainPerAttack, "attack_hit");
                         if (gained > 0)
                         {
-                            RecordResourceGain(casterId, resourceId, gained, bucket.Current, "attack_hit", 
+                            _eventRecorder.RecordResourceGain(casterId, resourceId, gained, bucket.Current, "attack_hit", 
                                 skillId: skillId, bundleId: result.BundleId);
                         }
                         
@@ -889,7 +913,7 @@ namespace BlazorIdle.Game
                             int critGain = bucket.Gain(gainPerCritExtra, "crit_bonus");
                             if (critGain > 0)
                             {
-                                RecordResourceGain(casterId, resourceId, critGain, bucket.Current, "crit_bonus",
+                                _eventRecorder.RecordResourceGain(casterId, resourceId, critGain, bucket.Current, "crit_bonus",
                                     skillId: skillId, bundleId: result.BundleId);
                             }
                         }
@@ -1546,206 +1570,6 @@ namespace BlazorIdle.Game
         }
 
         /// <summary>
-        /// Phase 2: 记录资源获得事件
-        /// Phase 2: Record resource gain event
-        /// </summary>
-        private void RecordResourceGain(
-            string actorId, 
-            string bucketId, 
-            int delta, 
-            int newValue, 
-            string reason,
-            string? skillId = null,
-            string? bundleId = null)
-        {
-            if (_combatConfig.EmitCastEvents)
-            {
-                var evt = new Resources.ResourceGainEvent
-                {
-                    TimeMs = _clock.NowMs,
-                    ActorId = actorId,
-                    BucketId = bucketId,
-                    Delta = delta,
-                    NewValue = newValue,
-                    Reason = reason,
-                    SkillId = skillId,
-                    BundleId = bundleId,
-                    Attacker = ActorType.Player,
-                    Defender = ActorType.Player,
-                    Source = EventSource.Attack,
-                    Damage = 0,
-                    Crit = false,
-                    RngIndexAfter = _rng.Index,
-                    DefenderHpAfter = 0
-                };
-                
-                var flushed = _aggregator.AddEvent(evt);
-                if (flushed != null) _segments.Add(flushed);
-            }
-        }
-
-        /// <summary>
-        /// Phase 7: 记录 Buff 应用事件
-        /// Phase 7: Record buff apply event
-        /// </summary>
-        private void RecordBuffApply(
-            string ownerId,
-            string buffId,
-            Buffs.BuffKind kind,
-            double? durationSec,
-            int stacks,
-            string effectsSummary,
-            string? sourceSkillId = null,
-            string? bundleId = null)
-        {
-            if (_combatConfig.EmitCastEvents)
-            {
-                var evt = new Buffs.BuffApplyEvent
-                {
-                    TimeMs = _clock.NowMs,
-                    OwnerId = ownerId,
-                    BuffId = buffId,
-                    Kind = kind,
-                    DurationSec = durationSec,
-                    Stacks = stacks,
-                    EffectsSummary = effectsSummary,
-                    SourceSkillId = sourceSkillId,
-                    BundleId = bundleId,
-                    Attacker = ActorType.Player,
-                    Defender = ActorType.Player,
-                    Source = EventSource.Attack,
-                    Damage = 0,
-                    Crit = false,
-                    RngIndexAfter = _rng.Index,
-                    DefenderHpAfter = 0
-                };
-
-                var flushed = _aggregator.AddEvent(evt);
-                if (flushed != null) _segments.Add(flushed);
-                
-                // Phase 9: 触发 Buff 应用事件
-                // Phase 9: Fire buff applied event
-                BuffApplied?.Invoke(evt);
-            }
-        }
-
-        /// <summary>
-        /// Phase 7: 记录 Buff 移除事件
-        /// Phase 7: Record buff remove event
-        /// </summary>
-        private void RecordBuffRemove(
-            string ownerId,
-            string buffId,
-            string reason,
-            string? bundleId = null)
-        {
-            if (_combatConfig.EmitCastEvents)
-            {
-                var evt = new Buffs.BuffRemoveEvent
-                {
-                    TimeMs = _clock.NowMs,
-                    OwnerId = ownerId,
-                    BuffId = buffId,
-                    Reason = reason,
-                    BundleId = bundleId,
-                    Attacker = ActorType.Player,
-                    Defender = ActorType.Player,
-                    Source = EventSource.Attack,
-                    Damage = 0,
-                    Crit = false,
-                    RngIndexAfter = _rng.Index,
-                    DefenderHpAfter = 0
-                };
-
-                var flushed = _aggregator.AddEvent(evt);
-                if (flushed != null) _segments.Add(flushed);
-                
-                // Phase 9: 触发 Buff 移除事件
-                // Phase 9: Fire buff removed event
-                BuffRemoved?.Invoke(evt);
-            }
-        }
-
-        /// <summary>
-        /// Phase 7: 记录 Buff Tick 事件
-        /// Phase 7: Record buff tick event
-        /// </summary>
-        private void RecordBuffTick(
-            string ownerId,
-            string buffId,
-            Buffs.BuffTickType tickType,
-            int amount,
-            int resultingHp,
-            string? bundleId = null)
-        {
-            if (_combatConfig.EmitCastEvents)
-            {
-                var evt = new Buffs.BuffTickEvent
-                {
-                    TimeMs = _clock.NowMs,
-                    OwnerId = ownerId,
-                    BuffId = buffId,
-                    TickType = tickType,
-                    Amount = amount,
-                    ResultingHp = resultingHp,
-                    BundleId = bundleId,
-                    Attacker = ActorType.Player,
-                    Defender = ActorType.Player,
-                    Source = EventSource.Attack,
-                    Damage = 0,
-                    Crit = false,
-                    RngIndexAfter = _rng.Index,
-                    DefenderHpAfter = 0
-                };
-
-                var flushed = _aggregator.AddEvent(evt);
-                if (flushed != null) _segments.Add(flushed);
-                
-                // Phase 9: 触发 Buff Tick 事件
-                // Phase 9: Fire buff tick event
-                BuffTicked?.Invoke(evt);
-            }
-        }
-
-        /// <summary>
-        /// Phase 7: 记录治疗事件
-        /// Phase 7: Record heal event
-        /// </summary>
-        private void RecordHeal(
-            string ownerId,
-            int amount,
-            int resultingHp,
-            string healSource,
-            string? bundleId = null)
-        {
-            if (_combatConfig.EmitCastEvents)
-            {
-                var evt = new Buffs.HealEvent
-                {
-                    TimeMs = _clock.NowMs,
-                    OwnerId = ownerId,
-                    Amount = amount,
-                    ResultingHp = resultingHp,
-                    BundleId = bundleId,
-                    Source = healSource,  // HealEvent's own Source property
-                    Attacker = ActorType.Player,
-                    Defender = ActorType.Player,
-                    Damage = 0,
-                    Crit = false,
-                    RngIndexAfter = _rng.Index,
-                    DefenderHpAfter = 0
-                };
-
-                var flushed = _aggregator.AddEvent(evt);
-                if (flushed != null) _segments.Add(flushed);
-                
-                // Phase 9: 触发治疗事件
-                // Phase 9: Fire heal event
-                Healed?.Invoke(evt);
-            }
-        }
-
-        /// <summary>
         /// 选择敌人目标
         /// Select enemy target
         /// </summary>
@@ -2312,9 +2136,9 @@ namespace BlazorIdle.Game
                 int healAmount = result.InstantHeal;
                 target.ReceiveHeal(healAmount, healMeta);
 
-                // Phase 7: 记录 HealEvent
-                // Phase 7: Record HealEvent
-                RecordHeal(
+                // Phase 7: 记录 HealEvent (委托给事件记录器)
+                // Phase 7: Record HealEvent (delegated to event recorder)
+                _eventRecorder.RecordHeal(
                     ownerId: target.Id,
                     amount: healAmount,
                     resultingHp: target.CurrentHp,
