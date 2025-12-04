@@ -127,6 +127,12 @@ namespace BlazorIdle.Game
         // Note: Initialized in InitializeIntegrationModules()
         private ConsumableProcessor? _consumableProcessor;
         
+        // Battle Refactor Phase 6.1: 技能执行协调器
+        // Battle Refactor Phase 6.1: Skill execution coordinator
+        // 注：在 InitializeIntegrationModules() 中初始化
+        // Note: Initialized in InitializeIntegrationModules()
+        private SkillExecutionCoordinator _skillExecutionCoordinator = null!;
+        
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
         // Current implementation directly uses TrackState + SkillResolver for better clarity.
@@ -380,6 +386,43 @@ namespace BlazorIdle.Game
                 _consumableProcessor.OnConsumableUsed += evt => ConsumableUsed?.Invoke(evt);
                 _consumableProcessor.OnConsumableOutOfStock += evt => ConsumableOutOfStock?.Invoke(evt);
             }
+            
+            // Battle Refactor Phase 6.1: 初始化技能执行协调器
+            // Battle Refactor Phase 6.1: Initialize skill execution coordinator
+            _skillExecutionCoordinator = new SkillExecutionCoordinator(
+                _pendingDamageQueue,
+                _clock,
+                _config.AoeDamageMultiplier
+            );
+            
+            // 连接 SkillExecutionCoordinator 事件到 MultiBattleInstance
+            // Wire up SkillExecutionCoordinator events to MultiBattleInstance
+            _skillExecutionCoordinator.OnApplyDamageToEnemy += (casterId, targetId, damage, source, isAoe, isCrit, skillId, bundleId) =>
+            {
+                var attacker = _playerTeam.GetMember(casterId);
+                var defender = _enemyTeam.GetMember(targetId);
+                if (attacker != null && defender != null && !defender.IsDead)
+                {
+                    ApplyDamageToEnemy(casterId, attacker, targetId, defender, damage, source, isAoe, isCrit, skillId, bundleId);
+                }
+            };
+            _skillExecutionCoordinator.OnApplyDamageToPlayer += (casterId, targetId, damage, source, skillId, bundleId) =>
+            {
+                var attacker = _enemyTeam.GetMember(casterId);
+                var defender = _playerTeam.GetMember(targetId);
+                if (attacker != null && defender != null && !defender.IsDead)
+                {
+                    ApplyDamageToPlayer(casterId, attacker, targetId, defender, damage, source, skillId, bundleId);
+                }
+            };
+            _skillExecutionCoordinator.OnApplyInstantHeal += (result, casterId, targetId, isCasterPlayer, skillId) =>
+            {
+                ApplyInstantHeal(result, casterId, targetId, isCasterPlayer, skillId);
+            };
+            _skillExecutionCoordinator.OnRecordResourceGain += (casterId, resourceId, amount, newValue, reason, skillId, bundleId) =>
+            {
+                _eventRecorder.RecordResourceGain(casterId, resourceId, amount, newValue, reason, skillId, bundleId);
+            };
         }
 
         /// <summary>
