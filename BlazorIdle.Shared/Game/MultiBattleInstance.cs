@@ -1196,37 +1196,33 @@ namespace BlazorIdle.Game
             // Create battle context for monster
             var context = new BattleContext
             {
-                Player = null,  // Monster is caster, not player
+                Player = null,
                 Enemy = enemy,
                 PlayerBuffOwner = null,
-                EnemyBuffOwners = _enemyBuffOwners,  // Pass the dictionary
+                EnemyBuffOwners = _enemyBuffOwners,
                 Rng = _rng,
                 Clock = _clock,
-                CurrentTargetId = SelectTargetForEnemy()  // Get a player target
+                CurrentTargetId = SelectTargetForEnemy()
             };
 
-            // Battle Refactor Phase 5.2: 使用 CastingIntegration 选择怪物施法技能
-            // Battle Refactor Phase 5.2: Use CastingIntegration to select monster cast skill
-            var castSkill = _castingIntegration.SelectMonsterCastSkill(enemyId, enemy, context);
-            if (castSkill != null)
+            // Battle Refactor Phase 6.3: 使用 CastingIntegration 准备怪物施法数据
+            var (success, castSkill, _) = _castingIntegration.PrepareMonsterCasting(enemyId, enemy, context);
+            
+            if (!success || castSkill == null)
+                return false;
+
+            // 怪物目前不支持急速
+            double haste = 0.0;
+            bool castStarted = _castingController.StartCast(enemyId, castSkill.Id, castSkill.CastTimeSec, haste, pauseAttackTrack: true);
+            
+            if (castStarted && _enemyTracks.TryGetValue(enemyId, out var track))
             {
-                // Start casting immediately
-                double haste = 0.0;  // Monsters don't have haste for now
-                bool castStarted = _castingController.StartCast(enemyId, castSkill.Id, castSkill.CastTimeSec, haste, pauseAttackTrack: true);
-                
-                if (castStarted && _enemyTracks.TryGetValue(enemyId, out var track))
-                {
-                    // Pause attack track during cast
-                    track.AttackTrack.Pause(now);
-                    
-                    // Record event
-                    RecordMonsterCastStart(enemyId, castSkill.Id, castSkill.CastTimeSec);
-                    
-                    return true;  // Started casting
-                }
+                track.AttackTrack.Pause(now);
+                RecordMonsterCastStart(enemyId, castSkill.Id, castSkill.CastTimeSec);
+                return true;
             }
             
-            return false;  // Did not start casting
+            return false;
         }
 
         /// <summary>
@@ -2522,9 +2518,7 @@ namespace BlazorIdle.Game
             // 如果已经在施法，返回 false
             // If already casting, return false
             if (_castingController.IsCastingForCaster(charId))
-            {
                 return false;
-            }
 
             // 获取角色和轨道
             // Get character and tracks
@@ -2539,9 +2533,7 @@ namespace BlazorIdle.Game
             // Get CharacterData
             Shared.Models.CharacterData? characterData = null;
             if (_characterDataMap != null && _characterDataMap.TryGetValue(charId, out var data))
-            {
                 characterData = data;
-            }
 
             if (characterData == null)
                 return false;
@@ -2558,38 +2550,29 @@ namespace BlazorIdle.Game
                 CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
             };
 
-            // Battle Refactor Phase 5.2: 使用 CastingIntegration 选择施法技能
-            // Battle Refactor Phase 5.2: Use CastingIntegration to select cast skill
-            var castSkill = _castingIntegration.SelectCastSkill(charId, character, characterData, context);
+            // Battle Refactor Phase 6.3: 使用 CastingIntegration 准备施法数据
+            _playerBuffOwners.TryGetValue(charId, out var buffOwner);
+            var (success, castSkill, hastePercent, actualCastTime) = 
+                _castingIntegration.PreparePlayerCasting(charId, character, characterData, context, buffOwner);
 
-            if (castSkill != null)
+            if (!success || castSkill == null)
+                return false;
+
+            // 开始施法 / Start casting
+            bool castStarted = _castingController.StartCast(charId, castSkill.Id, castSkill.CastTimeSec, hastePercent, pauseAttackTrack: true);
+            
+            if (castStarted)
             {
-                // Battle Refactor Phase 5.2: 使用 CastingIntegration 计算急速
-                // Battle Refactor Phase 5.2: Use CastingIntegration to calculate haste
-                _playerBuffOwners.TryGetValue(charId, out var buffOwner);
-                double hastePercent = _castingIntegration.CalculateHastePercent(character, buffOwner);
-
-                // 开始施法 / Start casting
-                bool castStarted = _castingController.StartCast(charId, castSkill.Id, castSkill.CastTimeSec, hastePercent, pauseAttackTrack: true);
-                
-                if (castStarted)
+                tracks.PauseAttackTrack(now);
+                CastStarted?.Invoke(new CastStartEvent
                 {
-                    // 暂停攻击轨道 / Pause attack track
-                    tracks.PauseAttackTrack(now);
-
-                    // 记录施法开始事件 / Record cast start event
-                    var actualCastTime = castSkill.CastTimeSec / (1.0 + hastePercent / 100.0);
-                    CastStarted?.Invoke(new CastStartEvent
-                    {
-                        TimeMs = now,
-                        CasterId = charId,
-                        SkillId = castSkill.Id,
-                        CastTimeSec = actualCastTime,
-                        PauseAttackTrack = true
-                    });
-
-                    return true;
-                }
+                    TimeMs = now,
+                    CasterId = charId,
+                    SkillId = castSkill.Id,
+                    CastTimeSec = actualCastTime,
+                    PauseAttackTrack = true
+                });
+                return true;
             }
 
             return false;

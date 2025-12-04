@@ -19,6 +19,10 @@ namespace BlazorIdle.Game.Battle.Systems
     /// - 处理怪物施法完成后的窗口技能 (ProcessMonsterPostCastWindow)
     /// - 选择玩家的施法技能 (SelectCastSkill)
     /// - 选择怪物的施法技能 (SelectMonsterCastSkill)
+    /// - Battle Refactor Phase 6.3: 准备施法数据
+    ///   - PreparePlayerCasting() - 准备玩家施法数据（技能选择、急速计算、实际施法时间）
+    ///   - PrepareMonsterCasting() - 准备怪物施法数据
+    ///   - GetSkillDef() - 获取技能定义
     /// 
     /// 注意：轨道暂停/恢复和施法控制器管理保留在 MultiBattleInstance 中，
     /// 因为这些需要直接访问轨道字典和施法控制器事件。
@@ -57,6 +61,88 @@ namespace BlazorIdle.Game.Battle.Systems
             _windowExecutor = windowExecutor ?? throw new ArgumentNullException(nameof(windowExecutor));
             _autoCastEngine = autoCastEngine ?? throw new ArgumentNullException(nameof(autoCastEngine));
         }
+
+        #region Battle Refactor Phase 6.3: 施法开始流程
+
+        /// <summary>
+        /// Battle Refactor Phase 6.3: 尝试为玩家开始施法的数据准备
+        /// Battle Refactor Phase 6.3: Prepare data for starting player casting
+        /// </summary>
+        /// <param name="charId">角色ID / Character ID</param>
+        /// <param name="character">角色 / Character</param>
+        /// <param name="characterData">角色数据 / Character data</param>
+        /// <param name="context">战斗上下文 / Battle context</param>
+        /// <param name="buffOwner">Buff所有者 / Buff owner</param>
+        /// <returns>
+        /// 施法数据元组：(成功, 技能定义, 急速百分比, 实际施法时间)
+        /// Casting data tuple: (success, skill definition, haste percent, actual cast time)
+        /// </returns>
+        public (bool Success, SkillDef? Skill, double HastePercent, double ActualCastTime) PreparePlayerCasting(
+            string charId,
+            Character character,
+            CharacterData? characterData,
+            BattleContext context,
+            IBuffOwner? buffOwner)
+        {
+            if (characterData == null)
+                return (false, null, 0, 0);
+
+            // 选择施法技能
+            // Select cast skill
+            var castSkill = SelectCastSkill(charId, character, characterData, context);
+            if (castSkill == null)
+                return (false, null, 0, 0);
+
+            // 计算急速
+            // Calculate haste
+            double hastePercent = CalculateHastePercent(character, buffOwner);
+
+            // 计算实际施法时间
+            // Calculate actual cast time
+            double actualCastTime = castSkill.CastTimeSec / (1.0 + hastePercent / 100.0);
+
+            return (true, castSkill, hastePercent, actualCastTime);
+        }
+
+        /// <summary>
+        /// Battle Refactor Phase 6.3: 尝试为怪物开始施法的数据准备
+        /// Battle Refactor Phase 6.3: Prepare data for starting monster casting
+        /// </summary>
+        /// <param name="enemyId">怪物ID / Enemy ID</param>
+        /// <param name="enemy">怪物 / Enemy</param>
+        /// <param name="context">战斗上下文 / Battle context</param>
+        /// <returns>
+        /// 施法数据元组：(成功, 技能定义, 实际施法时间)
+        /// Casting data tuple: (success, skill definition, actual cast time)
+        /// </returns>
+        public (bool Success, SkillDef? Skill, double ActualCastTime) PrepareMonsterCasting(
+            string enemyId,
+            Enemy enemy,
+            BattleContext context)
+        {
+            // 选择施法技能
+            // Select cast skill
+            var castSkill = SelectMonsterCastSkill(enemyId, enemy, context);
+            if (castSkill == null)
+                return (false, null, 0);
+
+            // 怪物目前不支持急速，施法时间就是基础施法时间
+            // Monster doesn't support haste yet, cast time is base cast time
+            double actualCastTime = castSkill.CastTimeSec;
+
+            return (true, castSkill, actualCastTime);
+        }
+
+        /// <summary>
+        /// Battle Refactor Phase 6.3: 获取技能定义
+        /// Battle Refactor Phase 6.3: Get skill definition
+        /// </summary>
+        public SkillDef? GetSkillDef(string skillId)
+        {
+            return _skillRepository.GetSkill(skillId);
+        }
+
+        #endregion
 
         /// <summary>
         /// 选择玩家的施法技能
