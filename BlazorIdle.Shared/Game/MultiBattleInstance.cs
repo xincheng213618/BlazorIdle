@@ -1378,7 +1378,6 @@ namespace BlazorIdle.Game
             bool isKill = defender.IsDead;
             
             // Phase 9.11: 同步HP变化到Entity（供Buff系统使用）
-            // Phase 9.11: Sync HP change to Entity (for buff system use)
             defender.SyncHpToEntity();
 
             // 更新统计
@@ -1386,26 +1385,12 @@ namespace BlazorIdle.Game
             _damageDealtByCharacter[attackerId] += actualDamage;
             _totalPlayerDamage += actualDamage;
 
-            // 创建事件
-            var ev = new MultiCombatEvent
-            {
-                Attacker = ActorType.Player,
-                Defender = ActorType.Enemy,
-                AttackerId = attackerId,
-                AttackerName = GetCharacterName(attackerId),
-                DefenderId = defenderId,
-                DefenderName = GetEnemyName(defenderId),
-                Source = source,
-                TimeMs = _clock.NowMs,
-                Damage = actualDamage,
-                Crit = isCrit,
-                IsAoe = isAoe,
-                IsKill = isKill,
-                RngIndexAfter = _rng.Index,
-                DefenderHpAfter = defender.CurrentHp,
-                SkillId = skillId,
-                BundleId = bundleId
-            };
+            // Battle Refactor Phase 6.2: 使用 DamageApplicationHelper 创建事件
+            var ev = DamageApplicationHelper.CreatePlayerToEnemyEvent(
+                attackerId, GetCharacterName(attackerId),
+                defenderId, GetEnemyName(defenderId),
+                source, _clock.NowMs, actualDamage, isCrit, isAoe, isKill,
+                _rng.Index, defender.CurrentHp, skillId, bundleId);
 
             // 聚合事件
             var flushed = _aggregator.AddEvent(ev);
@@ -1414,10 +1399,8 @@ namespace BlazorIdle.Game
             // 触发事件
             CombatEventFired?.Invoke(ev);
 
-            // Phase 7: 处理攻击触发器 / Process attack triggers
-            // 只在非触发技能造成伤害时才处理触发器，避免无限递归
-            // Only process triggers for non-trigger skills to avoid infinite recursion
-            if (source != EventSource.Trigger)
+            // Phase 7: 处理攻击触发器
+            if (DamageApplicationHelper.ShouldProcessAttackTriggers(source))
             {
                 ProcessAttackTriggers(attackerId, skillId, isCrit, isCasterPlayer: true);
             }
@@ -1427,8 +1410,6 @@ namespace BlazorIdle.Game
             {
                 ProcessLootDrops(defenderId, defender.Entity);
                 ProcessExperienceGain(defenderId, defender.Entity, attackerId);
-                
-                // Phase 8: 中断对该目标的施法 / Interrupt casting on this target
                 CheckAndInterruptCasting(defenderId, isTargetPlayer: false);
             }
         }
@@ -1452,7 +1433,6 @@ namespace BlazorIdle.Game
             bool isKill = defender.IsDead;
             
             // Phase 9.11: 同步HP变化到Entity（供Buff系统使用）
-            // Phase 9.11: Sync HP change to Entity (for buff system use)
             defender.SyncHpToEntity();
 
             // 更新统计
@@ -1461,26 +1441,12 @@ namespace BlazorIdle.Game
             _damageTakenByCharacter[defenderId] += actualDamage;
             _totalEnemyDamage += actualDamage;
 
-            // 创建事件
-            var ev = new MultiCombatEvent
-            {
-                Attacker = ActorType.Enemy,
-                Defender = ActorType.Player,
-                AttackerId = attackerId,
-                AttackerName = GetEnemyName(attackerId),
-                DefenderId = defenderId,
-                DefenderName = GetCharacterName(defenderId),
-                Source = source,
-                TimeMs = _clock.NowMs,
-                Damage = actualDamage,
-                Crit = false,
-                IsAoe = false,
-                IsKill = isKill,
-                RngIndexAfter = _rng.Index,
-                DefenderHpAfter = defender.CurrentHp,
-                SkillId = skillId,
-                BundleId = bundleId
-            };
+            // Battle Refactor Phase 6.2: 使用 DamageApplicationHelper 创建事件
+            var ev = DamageApplicationHelper.CreateEnemyToPlayerEvent(
+                attackerId, GetEnemyName(attackerId),
+                defenderId, GetCharacterName(defenderId),
+                source, _clock.NowMs, actualDamage, isKill,
+                _rng.Index, defender.CurrentHp, skillId, bundleId);
 
             // 聚合事件
             var flushed = _aggregator.AddEvent(ev);
@@ -1489,10 +1455,8 @@ namespace BlazorIdle.Game
             // 触发事件
             CombatEventFired?.Invoke(ev);
 
-            // Phase 7: 处理怪物攻击触发器 / Process monster attack triggers
-            // 只在非触发技能造成伤害时才处理触发器，避免无限递归
-            // Only process triggers for non-trigger skills to avoid infinite recursion
-            if (source != EventSource.Trigger)
+            // Phase 7: 处理怪物攻击触发器
+            if (DamageApplicationHelper.ShouldProcessAttackTriggers(source))
             {
                 ProcessAttackTriggers(attackerId, skillId, isCrit: false, isCasterPlayer: false);
             }
