@@ -103,6 +103,12 @@ namespace BlazorIdle.Game
         // Note: Initialized in InitializeIntegrationModules()
         private CombatEventRecorder _eventRecorder = null!;
         
+        // Battle Refactor Phase 5: 触发器集成模块
+        // Battle Refactor Phase 5: Trigger integration module
+        // 注：在 InitializeIntegrationModules() 中初始化
+        // Note: Initialized in InitializeIntegrationModules()
+        private TriggerIntegration _triggerIntegration = null!;
+        
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
         // Current implementation directly uses TrackState + SkillResolver for better clarity.
@@ -287,6 +293,17 @@ namespace BlazorIdle.Game
             _resourceIntegration.OnResourceChange += (actorId, bucketId, delta, newValue, reason, skillId, bundleId) =>
             {
                 _eventRecorder.RecordResourceGain(actorId, bucketId, delta, newValue, reason, skillId, bundleId);
+            };
+            
+            // Battle Refactor Phase 5: 初始化触发器集成模块
+            // Battle Refactor Phase 5: Initialize trigger integration module
+            _triggerIntegration = new TriggerIntegration(_skillRepository, _triggerProcessor);
+            
+            // 连接 TriggerIntegration 事件到 MultiBattleInstance
+            // Wire up TriggerIntegration events to MultiBattleInstance
+            _triggerIntegration.OnExecuteSkillRequested += (casterId, skillId, isCasterPlayer, eventSource) =>
+            {
+                ExecuteSkill(casterId, skillId, "trigger", isCasterPlayer, eventSource);
             };
         }
 
@@ -2739,10 +2756,6 @@ namespace BlazorIdle.Game
         /// </summary>
         private void ProcessAttackTriggers(string casterId, string? skillId, bool isCrit, bool isCasterPlayer)
         {
-            // 获取源技能定义（如果有）
-            // Get source skill definition (if any)
-            SkillDef? sourceSkill = skillId != null ? _skillRepository.GetSkill(skillId) : null;
-            
             // 创建战斗上下文用于触发检查
             // Create battle context for trigger checking
             BattleContext context;
@@ -2804,40 +2817,9 @@ namespace BlazorIdle.Game
                 };
             }
             
-            // 处理 OnAttackHit 触发
-            // Process OnAttackHit triggers
-            var hitTriggers = _triggerProcessor.ProcessTriggers(
-                "OnAttackHit",
-                casterId,
-                sourceSkill,
-                context,
-                isCasterPlayer,
-                characterData,
-                professionId,
-                wasCrit: isCrit);
-            
-            // 如果是暴击，处理 OnAttackCrit 触发
-            // If crit, process OnAttackCrit triggers
-            List<SkillDef> critTriggers = new List<SkillDef>();
-            if (isCrit)
-            {
-                critTriggers = _triggerProcessor.ProcessTriggers(
-                    "OnAttackCrit",
-                    casterId,
-                    sourceSkill,
-                    context,
-                    isCasterPlayer,
-                    characterData,
-                    professionId,
-                    wasCrit: true);
-            }
-            
-            // 执行所有触发的技能
-            // Execute all triggered skills
-            foreach (var triggeredSkill in hitTriggers.Concat(critTriggers))
-            {
-                ExecuteSkill(casterId, triggeredSkill.Id, "trigger", isCasterPlayer, EventSource.Trigger);
-            }
+            // 委托给 TriggerIntegration 处理
+            // Delegate to TriggerIntegration
+            _triggerIntegration.ProcessAttackTriggers(casterId, skillId, isCrit, isCasterPlayer, context, characterData, professionId);
         }
 
         /// <summary>
@@ -2846,70 +2828,44 @@ namespace BlazorIdle.Game
         /// </summary>
         private void ProcessWindowTriggers(string casterId, string windowType, string? sourceSkillId, bool isCasterPlayer)
         {
-            // 获取源技能定义（如果有）
-            // Get source skill definition (if any)
-            SkillDef? sourceSkill = sourceSkillId != null ? _skillRepository.GetSkill(sourceSkillId) : null;
+            // 怪物目前不使用窗口触发
+            // Monsters don't currently use window triggers
+            if (!isCasterPlayer)
+                return;
             
             // 创建战斗上下文
             // Create battle context
-            BattleContext context;
+            var member = _playerTeam.GetMember(casterId);
+            if (member == null) return;
+            
+            var defaultTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
+            var defaultTarget = defaultTargetId != null ? _enemyTeam.GetMember(defaultTargetId) : null;
+            
+            var context = new BattleContext
+            {
+                Player = member.Entity,
+                Enemy = defaultTarget?.Entity,
+                PlayerTeam = _playerTeam,
+                EnemyTeam = _enemyTeam,
+                Rng = _rng,
+                Clock = _clock,
+                PlayerResources = _playerResources.GetValueOrDefault(casterId),
+                PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(casterId),
+                EnemyBuffOwners = _enemyBuffOwners,
+                CurrentTargetId = defaultTargetId
+            };
+            
             Shared.Models.CharacterData? characterData = null;
             string? professionId = null;
-            
-            if (isCasterPlayer)
+            if (_characterDataMap != null)
             {
-                var member = _playerTeam.GetMember(casterId);
-                if (member == null) return;
-                
-                var defaultTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy);
-                var defaultTarget = defaultTargetId != null ? _enemyTeam.GetMember(defaultTargetId) : null;
-                
-                context = new BattleContext
-                {
-                    Player = member.Entity,
-                    Enemy = defaultTarget?.Entity,
-                    PlayerTeam = _playerTeam,
-                    EnemyTeam = _enemyTeam,
-                    Rng = _rng,
-                    Clock = _clock,
-                    PlayerResources = _playerResources.GetValueOrDefault(casterId),
-                    PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(casterId),
-                    EnemyBuffOwners = _enemyBuffOwners,
-                    CurrentTargetId = defaultTargetId
-                };
-                
-                if (_characterDataMap != null)
-                {
-                    _characterDataMap.TryGetValue(casterId, out characterData);
-                    professionId = member.Entity.ActiveCombatProfessionId;
-                }
-            }
-            else
-            {
-                // 怪物目前不使用窗口触发，但保持接口一致性
-                // Monsters don't currently use window triggers, but keep interface consistent
-                return;
+                _characterDataMap.TryGetValue(casterId, out characterData);
+                professionId = member.Entity.ActiveCombatProfessionId;
             }
             
-            // 处理窗口触发
-            // Process window triggers
-            var triggers = _triggerProcessor.ProcessTriggers(
-                windowType,
-                casterId,
-                sourceSkill,
-                context,
-                isCasterPlayer,
-                characterData,
-                professionId,
-                wasCrit: false);
-            
-            // 执行所有触发的技能
-            // Execute all triggered skills
-            foreach (var triggeredSkill in triggers)
-            {
-                EventSource eventSource = windowType == "OnPostAttackWindow" ? EventSource.PostAttack : EventSource.PostCast;
-                ExecuteSkill(casterId, triggeredSkill.Id, "windowtrigger", isCasterPlayer, eventSource);
-            }
+            // 委托给 TriggerIntegration 处理
+            // Delegate to TriggerIntegration
+            _triggerIntegration.ProcessWindowTriggers(casterId, windowType, sourceSkillId, isCasterPlayer, context, characterData, professionId);
         }
 
         /// <summary>
