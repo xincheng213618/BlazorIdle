@@ -418,36 +418,37 @@ namespace BlazorIdle.Tests
         {
             // Arrange
             var clock = new TestClock();
-            var castingController = new CastingController();
             var skillRepository = SkillRepository.Shared;
             var conditionChecker = new ConditionChecker();
             var windowExecutor = new WindowExecutor(skillRepository, conditionChecker, casterId => new CooldownManager(), new ResourceManager());
             var autoCastEngine = new AutoCastEngine(skillRepository, conditionChecker, casterId => new CooldownManager(), new ResourceManager());
             
-            var castingIntegration = new CastingIntegration(clock, castingController, skillRepository, windowExecutor, autoCastEngine);
+            var castingIntegration = new CastingIntegration(clock, skillRepository, windowExecutor, autoCastEngine);
 
-            // Act & Assert
-            Assert.False(castingIntegration.IsCasting("player1"));
+            // Act & Assert - CastingIntegration no longer has IsCasting method (managed by MultiBattleInstance)
+            // Just verify the module can be created successfully
+            Assert.NotNull(castingIntegration);
         }
 
         [Fact]
-        public void CastingIntegration_Tick_CallsCastingController()
+        public void CastingIntegration_CalculateHastePercent_ReturnsBaseHaste()
         {
             // Arrange
             var clock = new TestClock();
-            var castingController = new CastingController();
             var skillRepository = SkillRepository.Shared;
             var conditionChecker = new ConditionChecker();
             var windowExecutor = new WindowExecutor(skillRepository, conditionChecker, casterId => new CooldownManager(), new ResourceManager());
             var autoCastEngine = new AutoCastEngine(skillRepository, conditionChecker, casterId => new CooldownManager(), new ResourceManager());
             
-            var castingIntegration = new CastingIntegration(clock, castingController, skillRepository, windowExecutor, autoCastEngine);
+            var castingIntegration = new CastingIntegration(clock, skillRepository, windowExecutor, autoCastEngine);
+            var character = CreateTestCharacter();
+            character.HastePercent = 10.0;
 
-            // Act - just verify no exceptions
-            castingIntegration.Tick(0.1);
+            // Act
+            var haste = castingIntegration.CalculateHastePercent(character, null);
 
-            // Assert - no exception means success
-            Assert.True(true);
+            // Assert
+            Assert.Equal(10.0, haste);
         }
 
         #endregion

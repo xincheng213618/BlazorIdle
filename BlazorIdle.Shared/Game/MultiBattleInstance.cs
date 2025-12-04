@@ -109,6 +109,12 @@ namespace BlazorIdle.Game
         // Note: Initialized in InitializeIntegrationModules()
         private TriggerIntegration _triggerIntegration = null!;
         
+        // Battle Refactor Phase 5.2: 施法集成模块
+        // Battle Refactor Phase 5.2: Casting integration module
+        // 注：在 InitializeIntegrationModules() 中初始化
+        // Note: Initialized in InitializeIntegrationModules()
+        private CastingIntegration _castingIntegration = null!;
+        
         // Note: Legacy Tracks are created but not actively used in the current simplified implementation.
         // They are preserved for potential future use or alternative implementation paths.
         // Current implementation directly uses TrackState + SkillResolver for better clarity.
@@ -304,6 +310,26 @@ namespace BlazorIdle.Game
             _triggerIntegration.OnExecuteSkillRequested += (casterId, skillId, isCasterPlayer, eventSource) =>
             {
                 ExecuteSkill(casterId, skillId, "trigger", isCasterPlayer, eventSource);
+            };
+            
+            // Battle Refactor Phase 5.2: 初始化施法集成模块
+            // Battle Refactor Phase 5.2: Initialize casting integration module
+            _castingIntegration = new CastingIntegration(
+                _clock,
+                _skillRepository,
+                _windowExecutor,
+                _autoCastEngine
+            );
+            
+            // 连接 CastingIntegration 事件到 MultiBattleInstance
+            // Wire up CastingIntegration events to MultiBattleInstance
+            _castingIntegration.OnExecuteSkillRequested += (casterId, skillId, isCasterPlayer, eventSource) =>
+            {
+                ExecuteSkill(casterId, skillId, "cast", isCasterPlayer, eventSource);
+            };
+            _castingIntegration.OnWindowTriggerRequested += (casterId, windowType, sourceSkillId, isCasterPlayer) =>
+            {
+                ProcessWindowTriggers(casterId, windowType, sourceSkillId, isCasterPlayer);
             };
         }
 
@@ -1294,9 +1320,10 @@ namespace BlazorIdle.Game
                 CurrentTargetId = SelectTargetForEnemy()  // Get a player target
             };
 
-            // Try to select a cast skill
-            var castSkill = _autoCastEngine.SelectMonsterCastSkill(enemyId, enemy, enemyId, context);
-            if (castSkill != null && castSkill.CastTimeSec > 0)
+            // Battle Refactor Phase 5.2: 使用 CastingIntegration 选择怪物施法技能
+            // Battle Refactor Phase 5.2: Use CastingIntegration to select monster cast skill
+            var castSkill = _castingIntegration.SelectMonsterCastSkill(enemyId, enemy, context);
+            if (castSkill != null)
             {
                 // Start casting immediately
                 double haste = 0.0;  // Monsters don't have haste for now
@@ -2916,43 +2943,16 @@ namespace BlazorIdle.Game
                 CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
             };
 
-            // 检查是否有施法技能可用
-            // Check if there's a cast skill available
-            var castSkills = _windowExecutor.ExecuteWindow(WindowType.PreAttack, charId, characterData, character.ActiveCombatProfessionId, context, gcdAlreadyUsed: false);
-            var castSkill = castSkills.FirstOrDefault();
+            // Battle Refactor Phase 5.2: 使用 CastingIntegration 选择施法技能
+            // Battle Refactor Phase 5.2: Use CastingIntegration to select cast skill
+            var castSkill = _castingIntegration.SelectCastSkill(charId, character, characterData, context);
 
-            if (castSkill != null && castSkill.CastTimeSec > 0)
+            if (castSkill != null)
             {
-                // 获取急速加成 / Get haste bonus
-                double hastePercent = character.HastePercent;
-                if (_playerBuffOwners.TryGetValue(charId, out var buffOwner))
-                {
-                    // 应用 Buff 效果到急速 / Apply buff effects to haste
-                    var sortedBuffs = buffOwner.Buffs.Values
-                        .OrderBy(b => b.AppliedAtMs)
-                        .ToList();
-                    
-                    foreach (var buff in sortedBuffs)
-                    {
-                        foreach (var effect in buff.Effects)
-                        {
-                            if (effect.Target != "HastePercent") continue;
-                            
-                            switch (effect.Type)
-                            {
-                                case Buffs.BuffEffectType.StatMultiplier:
-                                    hastePercent *= (1.0 + effect.Value);
-                                    break;
-                                case Buffs.BuffEffectType.StatAdditive:
-                                    hastePercent += effect.Value;
-                                    break;
-                                case Buffs.BuffEffectType.StatReduction:
-                                    hastePercent *= (1.0 - effect.Value);
-                                    break;
-                            }
-                        }
-                    }
-                }
+                // Battle Refactor Phase 5.2: 使用 CastingIntegration 计算急速
+                // Battle Refactor Phase 5.2: Use CastingIntegration to calculate haste
+                _playerBuffOwners.TryGetValue(charId, out var buffOwner);
+                double hastePercent = _castingIntegration.CalculateHastePercent(character, buffOwner);
 
                 // 开始施法 / Start casting
                 bool castStarted = _castingController.StartCast(charId, castSkill.Id, castSkill.CastTimeSec, hastePercent, pauseAttackTrack: true);
@@ -3015,10 +3015,6 @@ namespace BlazorIdle.Game
         /// </summary>
         private void HandlePlayerCastComplete(string casterId, string skillId, SkillDef skillDef, Character character, int now)
         {
-
-            // 执行施法技能效果 / Execute cast skill effects
-            ExecuteSkill(casterId, skillId, "cast", isCasterPlayer: true, EventSource.Cast);
-
             // 获取 CharacterData / Get CharacterData
             Shared.Models.CharacterData? characterData = null;
             if (_characterDataMap != null && _characterDataMap.TryGetValue(casterId, out var data))
@@ -3026,31 +3022,22 @@ namespace BlazorIdle.Game
                 characterData = data;
             }
 
-            // Phase 6: PostCast 窗口：施法完成后执行瞬发技能
-            // Phase 6: PostCast window: Execute instant skills after casting
-            if (characterData != null)
+            // Battle Refactor Phase 5.2: 使用 CastingIntegration 处理施法完成后的窗口技能
+            // Battle Refactor Phase 5.2: Use CastingIntegration to process post-cast window skills
+            // 构建战斗上下文 / Build battle context
+            var context = new BattleContext
             {
-                // 构建战斗上下文 / Build battle context
-                var context = new BattleContext
-                {
-                    Player = character,
-                    PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(casterId),
-                    PlayerResources = _playerResources.GetValueOrDefault(casterId),
-                    Rng = _rng,
-                    Clock = _clock,
-                    CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
-                };
+                Player = character,
+                PlayerBuffOwner = _playerBuffOwners.GetValueOrDefault(casterId),
+                PlayerResources = _playerResources.GetValueOrDefault(casterId),
+                Rng = _rng,
+                Clock = _clock,
+                CurrentTargetId = SelectEnemyTarget(_config.PlayerTargetStrategy)
+            };
 
-                bool castSkillIsGcd = skillDef.IsGcd;
-                var postCastSkills = _windowExecutor.ExecuteWindow(WindowType.PostCast, casterId, characterData, character.ActiveCombatProfessionId, context, castSkillIsGcd);
-                foreach (var skill in postCastSkills)
-                {
-                    ExecuteSkill(casterId, skill.Id, "postcast", isCasterPlayer: true, EventSource.PostCast);
-                }
-
-                // Phase 7: PostCast 窗口触发器 / PostCast window triggers
-                ProcessWindowTriggers(casterId, "OnPostCastWindow", skillId, isCasterPlayer: true);
-            }
+            // 委托给 CastingIntegration 处理施法技能效果和 PostCast 窗口
+            // Delegate to CastingIntegration to handle cast skill effects and PostCast window
+            _castingIntegration.ProcessPostCastWindow(casterId, skillId, character, characterData, context);
 
             // 记录施法完成事件 / Record cast complete event
             var activeCast = _castingController.GetActiveCast(casterId);
@@ -3085,35 +3072,23 @@ namespace BlazorIdle.Game
         /// </summary>
         private void HandleMonsterCastComplete(string monsterId, string skillId, SkillDef skillDef, Enemy enemy, int now)
         {
-            // 执行施法技能效果 / Execute cast skill effects
-            ExecuteSkill(monsterId, skillId, "enemy_cast", isCasterPlayer: false, EventSource.Cast);
-
-            // Phase 9: PostCast 窗口：怪物施法完成后执行瞬发技能
-            // Phase 9: PostCast window: Execute instant skills after monster casting
-            if (_enemyBuffOwners.TryGetValue(monsterId, out var buffOwner))
+            // Battle Refactor Phase 5.2: 使用 CastingIntegration 处理怪物施法完成后的窗口技能
+            // Battle Refactor Phase 5.2: Use CastingIntegration to process monster post-cast window skills
+            // 构建战斗上下文 / Build battle context
+            var context = new BattleContext
             {
-                // 构建战斗上下文 / Build battle context
-                var context = new BattleContext
-                {
-                    Player = null,
-                    Enemy = enemy,
-                    PlayerBuffOwner = null,
-                    EnemyBuffOwners = _enemyBuffOwners,  // Pass the dictionary
-                    Rng = _rng,
-                    Clock = _clock,
-                    CurrentTargetId = SelectTargetForEnemy()
-                };
+                Player = null,
+                Enemy = enemy,
+                PlayerBuffOwner = null,
+                EnemyBuffOwners = _enemyBuffOwners,
+                Rng = _rng,
+                Clock = _clock,
+                CurrentTargetId = SelectTargetForEnemy()
+            };
 
-                bool castSkillIsGcd = skillDef.IsGcd;
-                var postCastSkills = _autoCastEngine.ExecuteMonsterWindow(enemy, monsterId, context, castSkillIsGcd, "PostCast");
-                foreach (var skill in postCastSkills)
-                {
-                    ExecuteSkill(monsterId, skill.Id, "enemy_postcast", isCasterPlayer: false, EventSource.PostCast);
-                }
-
-                // Phase 7: PostCast 窗口触发器 / PostCast window triggers
-                ProcessWindowTriggers(monsterId, "OnPostCastWindow", skillId, isCasterPlayer: false);
-            }
+            // 委托给 CastingIntegration 处理施法技能效果和 PostCast 窗口
+            // Delegate to CastingIntegration to handle cast skill effects and PostCast window
+            _castingIntegration.ProcessMonsterPostCastWindow(monsterId, skillId, enemy, context);
 
             // 记录施法完成事件 / Record cast complete event
             var activeCast = _castingController.GetActiveCast(monsterId);
